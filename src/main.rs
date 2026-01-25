@@ -8,7 +8,7 @@ use gpui::{
 
 use crate::{
     loader::Loader,
-    search_bar::{
+    search_view::{
         Backspace, Copy, Cut, Delete, DeleteAll, End, Execute, FocusNext, FocusPrev, Home,
         InputExample, Left, Paste, Quit, Right, SelectAll, TextInput,
     },
@@ -17,7 +17,7 @@ use crate::{
 
 mod loader;
 mod prelude;
-mod search_bar;
+mod search_view;
 mod ui;
 mod utils;
 

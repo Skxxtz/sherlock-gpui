@@ -4863,6 +4863,7 @@ dependencies = [
  "chrono",
  "glob",
  "gpui",
+ "libc",
  "linicon",
  "once_cell",
  "rayon",

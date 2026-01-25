@@ -34,12 +34,6 @@ impl SherlockError {
             ),
         }
     }
-    pub fn empty() -> Self {
-        Self {
-            error: SherlockErrorType::None,
-            traceback: String::new(),
-        }
-    }
 }
 
 #[allow(dead_code)]

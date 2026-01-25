@@ -2,6 +2,7 @@ use std::fs;
 use std::{ops::Range, sync::Arc};
 
 use crate::loader::AppData;
+use crate::utils::command_launch::spawn_detached;
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
     EntityInputHandler, FocusHandle, Focusable, GlobalElementId, Image, ImageFormat, ImageSource,
@@ -655,9 +656,16 @@ impl InputExample {
             cx.notify();
         }
     }
-    fn execute(&mut self, _: &Execute, _: &mut Window, _cx: &mut Context<Self>) {
+    fn execute(&mut self, _: &Execute, win: &mut Window, _cx: &mut Context<Self>) {
         if let Some(selected) = self.data.get(self.selected_index) {
-            println!("selected keystroke: {:?}", selected)
+            if let Some(exec) = selected.exec.as_ref() {
+                if let Err(e) = spawn_detached(exec) {
+                    eprintln!("{e}");
+                } else {
+                    // Close window
+                    win.remove_window();
+                }
+            }
         }
     }
     fn quit(&mut self, _: &Quit, win: &mut Window, _: &mut Context<Self>) {
