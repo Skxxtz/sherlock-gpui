@@ -2,11 +2,10 @@ use std::ops::Range;
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
-    EntityInputHandler, FocusHandle, Focusable, GlobalElementId, Keystroke, LayoutId, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point, ShapedLine,
-    SharedString, Style, Subscription, TextRun, UTF16Selection, UnderlineStyle, Window, actions,
-    black, div, fill, hsla, opaque_grey, point, prelude::*, px, relative, rgb, rgba, size,
-    transparent_white, white, yellow,
+    EntityInputHandler, FocusHandle, Focusable, GlobalElementId, Keystroke, LayoutId, ListState,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point,
+    ShapedLine, SharedString, Style, Subscription, TextRun, UTF16Selection, UnderlineStyle, Window,
+    actions, div, fill, hsla, list, point, prelude::*, px, relative, rgb, rgba, size,
 };
 use unicode_segmentation::*;
 
@@ -27,9 +26,9 @@ actions!(
         Paste,
         Cut,
         Copy,
-        Quit,
     ]
 );
+actions!(example_input, [Quit, FocusNext, FocusPrev, Execute,]);
 
 pub struct TextInput {
     pub focus_handle: FocusHandle,
@@ -44,10 +43,6 @@ pub struct TextInput {
 }
 
 impl TextInput {
-    fn quit(&mut self, _: &Quit, win: &mut Window, _: &mut Context<Self>) {
-        win.remove_window();
-    }
-
     fn left(&mut self, _: &Left, _: &mut Window, cx: &mut Context<Self>) {
         if self.selected_range.is_empty() {
             self.move_to(self.previous_boundary(self.cursor_offset()), cx);
@@ -98,7 +93,7 @@ impl TextInput {
         }
         self.replace_text_in_range(None, "", window, cx)
     }
-    fn delete_all(&mut self, _: &DeleteAll, window: &mut Window, cx: &mut Context<Self>) {
+    fn delete_all(&mut self, _: &DeleteAll, _window: &mut Window, _cx: &mut Context<Self>) {
         self.reset();
     }
 
@@ -591,19 +586,20 @@ impl Render for TextInput {
             .on_action(cx.listener(Self::paste))
             .on_action(cx.listener(Self::cut))
             .on_action(cx.listener(Self::copy))
-            .on_action(cx.listener(Self::quit))
             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
-            .line_height(px(30.))
-            .text_size(px(24.))
+            .line_height(px(16.))
+            .text_size(px(16.))
             .text_color(rgb(0xcccccc))
             .child(
                 div()
-                    .h(px(30. + 4. * 2.))
+                    .h(px(30. + 4. * 2.)) // 38px
                     .w_full()
                     .p(px(4.))
+                    .flex()
+                    .items_center()
                     .child(TextElement { input: cx.entity() }),
             )
     }
@@ -617,9 +613,11 @@ impl Focusable for TextInput {
 
 pub struct InputExample {
     pub text_input: Entity<TextInput>,
-    pub recent_keystrokes: Vec<Keystroke>,
+    pub data: Vec<Keystroke>,
     pub focus_handle: FocusHandle,
-    pub subs: Vec<Subscription>,
+    pub list_state: ListState,
+    pub _subs: Vec<Subscription>,
+    pub selected_index: usize,
 }
 
 impl Focusable for InputExample {
@@ -627,21 +625,60 @@ impl Focusable for InputExample {
         self.focus_handle.clone()
     }
 }
+impl InputExample {
+    fn focus_next(&mut self, _: &FocusNext, _: &mut Window, cx: &mut Context<Self>) {
+        let count = self.data.len();
+        if count == 0 {
+            return;
+        }
+
+        if self.selected_index < count - 1 {
+            self.selected_index += 1;
+            self.list_state.scroll_to_reveal_item(self.selected_index);
+            cx.notify();
+        }
+    }
+    fn focus_prev(&mut self, _: &FocusPrev, _: &mut Window, cx: &mut Context<Self>) {
+        let count = self.data.len();
+        if count == 0 {
+            return;
+        }
+
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+            self.list_state.scroll_to_reveal_item(self.selected_index);
+            cx.notify();
+        }
+    }
+    fn execute(&mut self, _: &Execute, _: &mut Window, _cx: &mut Context<Self>) {
+        if let Some(selected) = self.data.get(self.selected_index) {
+            println!("selected keystroke: {selected}")
+        }
+    }
+    fn quit(&mut self, _: &Quit, win: &mut Window, _: &mut Context<Self>) {
+        win.remove_window();
+    }
+}
 
 impl Render for InputExample {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let weak_self = cx.entity().downgrade();
         div()
             .id("sherlock")
             .track_focus(&self.focus_handle(cx))
             .flex()
             .flex_col()
-            .w_full()
-            .bg(rgb(0x1e1e1e))
+            .size_full()
+            .bg(rgb(0x0F0F0F))
             .border_2()
-            .border_color(rgb(0x3e3e3e))
-            .rounded_xl()
+            .border_color(hsla(0., 0., 0.1882, 1.0))
+            .rounded(px(5.))
             .shadow_xl()
             .overflow_hidden()
+            .on_action(cx.listener(Self::focus_next))
+            .on_action(cx.listener(Self::focus_prev))
+            .on_action(cx.listener(Self::execute))
+            .on_action(cx.listener(Self::quit))
             .child(
                 // search bar
                 div()
@@ -649,54 +686,106 @@ impl Render for InputExample {
                     .flex_row()
                     .items_center()
                     .px_4()
-                    .py_3()
+                    .py(px(4.))
                     .gap_3()
                     .child(div().text_color(rgb(0x888888)).child(""))
-                    .child(div().flex_1().child(self.text_input.clone())),
+                    .child(div().flex_1().child(self.text_input.clone()))
+                    .border_b_2()
+                    .border_color(hsla(0., 0., 0.1882, 1.0)),
             )
             .child(
-                // results - TODO: make this an stateful interactive element maybe? then we can use
-                // scroll
-                if !self.recent_keystrokes.is_empty() {
-                    div()
-                        .border_t_1()
-                        .border_color(rgb(0x3e3e3e))
-                        .max_h_96()
-                        .overflow_y_hidden()
-                        .child(
-                            div().flex_col().py_2().children(
-                                self.recent_keystrokes
-                                    .iter()
-                                    .rev()
-                                    .take(10)
-                                    .map(|ks| self.render_result_item(ks)),
-                            ),
-                        )
-                } else {
-                    div()
-                },
+                div()
+                    .id("results-container")
+                    .flex_1()
+                    .min_h_0()
+                    .p_2()
+                    .child(
+                        list(self.list_state.clone(), move |idx, _win, cx| {
+                            div()
+                                .id(("keystroke", idx))
+                                .w_full()
+                                .on_click(move |_, _, _| {
+                                    println!("Clicked item {}", idx);
+                                })
+                                .child(if let Some(ent) = weak_self.upgrade() {
+                                    let state = ent.read(cx);
+                                    if let Some(ks) = state.data.get(idx) {
+                                        state.render_result_item(ks, idx).into_any_element()
+                                    } else {
+                                        div().into_any_element()
+                                    }
+                                } else {
+                                    div().into_any_element()
+                                })
+                                .into_any_element()
+                        })
+                        .size_full(),
+                    ),
+            )
+            .child(
+                // statusbar
+                div()
+                    .h(px(30.))
+                    .line_height(px(30.))
+                    .w_full()
+                    .bg(hsla(0., 0., 0.098, 1.0))
+                    .border_t_1()
+                    .border_color(hsla(0., 0., 0.1882, 1.0))
+                    .px_5()
+                    .text_size(px(13.))
+                    .items_center()
+                    .text_color(hsla(0.6, 0.0217, 0.3608, 1.0))
+                    .child(String::from("Sherlock")),
             )
     }
 }
 impl InputExample {
-    fn render_result_item(&self, ks: &Keystroke) -> impl IntoElement {
+    fn render_result_item(&self, ks: &Keystroke, idx: usize) -> impl IntoElement {
+        let is_selected = self.selected_index == idx;
+
         div()
+            .group("")
+            .relative()
+            .w_full()
             .px_4()
             .py_2()
-            .hover(|s| s.bg(rgb(0x3e3e3e)))
+            .rounded_md()
             .cursor_pointer()
-            .flex()
+            .flex_col()
+            .items_center()
             .justify_between()
+            .bg(if is_selected {
+                hsla(0., 0., 0.149, 1.0)
+            } else {
+                hsla(0., 0., 0., 0.)
+            })
+            .hover(|s| {
+                if is_selected {
+                    s
+                } else {
+                    s.bg(hsla(0., 0., 0.12, 1.0))
+                }
+            })
             .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(0xcccccc))
-                    .child(ks.unparse()),
+                div().flex().gap_3().items_center().child(
+                    div()
+                        .text_sm()
+                        .text_color(if is_selected {
+                            rgb(0xffffff)
+                        } else {
+                            rgb(0xcccccc)
+                        })
+                        .child(ks.unparse()),
+                ),
             )
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(0x666666))
+                    .text_color(if is_selected {
+                        rgb(0x999999)
+                    } else {
+                        rgb(0x666666)
+                    })
                     .child("Application"),
             )
     }

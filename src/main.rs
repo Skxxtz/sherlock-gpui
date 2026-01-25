@@ -6,8 +6,8 @@ use gpui::{
 };
 
 use crate::search_bar::{
-    Backspace, Copy, Cut, Delete, DeleteAll, End, Home, InputExample, Paste, Quit, SelectAll,
-    TextInput,
+    Backspace, Copy, Cut, Delete, DeleteAll, End, Execute, FocusNext, FocusPrev, Home,
+    InputExample, Left, Paste, Quit, Right, SelectAll, TextInput,
 };
 
 mod search_bar;
@@ -33,7 +33,12 @@ fn main() {
             KeyBinding::new("ctrl-x", Cut, None),
             KeyBinding::new("home", Home, None),
             KeyBinding::new("end", End, None),
+            KeyBinding::new("left", Left, None),
+            KeyBinding::new("right", Right, None),
             KeyBinding::new("escape", Quit, None),
+            KeyBinding::new("down", FocusNext, None),
+            KeyBinding::new("up", FocusPrev, None),
+            KeyBinding::new("enter", Execute, None),
         ]);
 
         let socket_path = "/tmp/sherlock.sock";
@@ -77,15 +82,22 @@ fn spawn_launcher(cx: &mut App) -> AnyWindowHandle {
             });
             cx.new(|cx| {
                 let sub = cx.observe_keystrokes(move |this: &mut InputExample, ev, _, cx| {
-                    this.recent_keystrokes.push(ev.keystroke.clone());
+                    let old_count = this.data.len();
+                    this.data.push(ev.keystroke.clone());
+
+                    this.list_state.splice(old_count..old_count, 1);
                     cx.notify();
                 });
 
+                let list_state = ListState::new(0, ListAlignment::Top, px(48.));
+
                 InputExample {
                     text_input,
-                    recent_keystrokes: vec![],
+                    data: vec![],
                     focus_handle: cx.focus_handle(),
-                    subs: vec![sub],
+                    list_state,
+                    _subs: vec![sub],
+                    selected_index: 0,
                 }
             })
         })
@@ -108,6 +120,10 @@ fn get_window_options() -> WindowOptions {
             layer: Layer::Overlay,
             ..Default::default()
         }),
+        window_bounds: Some(WindowBounds::Windowed(Bounds {
+            origin: point(px(0.), px(0.)),
+            size: Size::new(px(900.), px(600.)),
+        })),
         window_background: WindowBackgroundAppearance::Blurred,
         ..Default::default()
     }
