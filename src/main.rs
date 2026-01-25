@@ -1,16 +1,54 @@
-use std::io::Write;
+use once_cell::sync::OnceCell;
+use std::{collections::HashMap, io::Write, sync::RwLock};
 
 use gpui::{
     layer_shell::{Layer, LayerShellOptions},
     *,
 };
 
-use crate::search_bar::{
-    Backspace, Copy, Cut, Delete, DeleteAll, End, Execute, FocusNext, FocusPrev, Home,
-    InputExample, Left, Paste, Quit, Right, SelectAll, TextInput,
+use crate::{
+    loader::Loader,
+    search_bar::{
+        Backspace, Copy, Cut, Delete, DeleteAll, End, Execute, FocusNext, FocusPrev, Home,
+        InputExample, Left, Paste, Quit, Right, SelectAll, TextInput,
+    },
+    utils::{config::SherlockConfig, errors::SherlockErrorType},
 };
 
+mod loader;
+mod prelude;
 mod search_bar;
+mod ui;
+mod utils;
+
+use utils::errors::SherlockError;
+
+static CONFIG: OnceCell<RwLock<SherlockConfig>> = OnceCell::new();
+
+fn setup() -> Result<(), SherlockError> {
+    let mut flags = Loader::load_flags()?;
+
+    let config = flags.to_config().map_or_else(
+        |e| {
+            eprintln!("{e}");
+            let defaults = SherlockConfig::default();
+            SherlockConfig::apply_flags(&mut flags, defaults)
+        },
+        |(cfg, non_crit)| {
+            if !non_crit.is_empty() {
+                eprintln!("{:?}", non_crit);
+            }
+            cfg
+        },
+    );
+
+    // Create global config
+    CONFIG
+        .set(RwLock::new(config.clone()))
+        .map_err(|_| sherlock_error!(SherlockErrorType::ConfigError(None), ""))?;
+
+    Ok(())
+}
 
 fn main() {
     // connect to existing socket
@@ -18,6 +56,10 @@ fn main() {
     if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(socket_path) {
         let _ = stream.write_all(b"open");
         return;
+    }
+
+    if let Err(e) = setup() {
+        eprintln!("{e}");
     }
 
     // start primary instance
@@ -67,6 +109,9 @@ fn main() {
 }
 
 fn spawn_launcher(cx: &mut App) -> AnyWindowHandle {
+    // For now load application here
+    let counts = HashMap::new();
+
     let window = cx
         .open_window(get_window_options(), |_, cx| {
             let text_input = cx.new(|cx| TextInput {
@@ -81,22 +126,23 @@ fn spawn_launcher(cx: &mut App) -> AnyWindowHandle {
                 is_selecting: false,
             });
             cx.new(|cx| {
-                let sub = cx.observe_keystrokes(move |this: &mut InputExample, ev, _, cx| {
-                    let old_count = this.data.len();
-                    this.data.push(ev.keystroke.clone());
+                // let sub = cx.observe_keystrokes(move |this: &mut InputExample, ev, _, cx| {
+                //     let old_count = this.data.len();
+                //     this.data.push(ev.keystroke.clone());
 
-                    this.list_state.splice(old_count..old_count, 1);
-                    cx.notify();
-                });
+                //     this.list_state.splice(old_count..old_count, 1);
+                //     cx.notify();
+                // });
+                let apps = Loader::load_applications(1.0, &counts, 2, true).unwrap_or_default();
 
-                let list_state = ListState::new(0, ListAlignment::Top, px(48.));
+                let list_state = ListState::new(apps.len(), ListAlignment::Top, px(48.));
 
                 InputExample {
                     text_input,
-                    data: vec![],
+                    data: apps,
                     focus_handle: cx.focus_handle(),
                     list_state,
-                    _subs: vec![sub],
+                    _subs: vec![],
                     selected_index: 0,
                 }
             })

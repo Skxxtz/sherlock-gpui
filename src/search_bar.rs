@@ -1,12 +1,17 @@
-use std::ops::Range;
+use std::fs;
+use std::{ops::Range, sync::Arc};
 
+use crate::loader::AppData;
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
-    EntityInputHandler, FocusHandle, Focusable, GlobalElementId, Keystroke, LayoutId, ListState,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point,
-    ShapedLine, SharedString, Style, Subscription, TextRun, UTF16Selection, UnderlineStyle, Window,
-    actions, div, fill, hsla, list, point, prelude::*, px, relative, rgb, rgba, size,
+    EntityInputHandler, FocusHandle, Focusable, GlobalElementId, Image, ImageFormat, ImageSource,
+    LayoutId, ListState, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad,
+    Pixels, Point, ShapedLine, SharedString, Style, Subscription, TextRun, UTF16Selection,
+    UnderlineStyle, Window, actions, div, fill, hsla, img, list, point, prelude::*, px, relative,
+    rgb, rgba, size,
 };
+use linicon::lookup_icon;
+use std::path::PathBuf;
 use unicode_segmentation::*;
 
 actions!(
@@ -613,7 +618,7 @@ impl Focusable for TextInput {
 
 pub struct InputExample {
     pub text_input: Entity<TextInput>,
-    pub data: Vec<Keystroke>,
+    pub data: Vec<AppData>,
     pub focus_handle: FocusHandle,
     pub list_state: ListState,
     pub _subs: Vec<Subscription>,
@@ -652,7 +657,7 @@ impl InputExample {
     }
     fn execute(&mut self, _: &Execute, _: &mut Window, _cx: &mut Context<Self>) {
         if let Some(selected) = self.data.get(self.selected_index) {
-            println!("selected keystroke: {selected}")
+            println!("selected keystroke: {:?}", selected)
         }
     }
     fn quit(&mut self, _: &Quit, win: &mut Window, _: &mut Context<Self>) {
@@ -740,7 +745,36 @@ impl Render for InputExample {
     }
 }
 impl InputExample {
-    fn render_result_item(&self, ks: &Keystroke, idx: usize) -> impl IntoElement {
+    fn get_icon_path(&self, icon_name: &str) -> Option<PathBuf> {
+        lookup_icon(icon_name)
+            .with_size(48)
+            .with_search_paths(&["~/.local/share/icons"])
+            .ok()?
+            .next()?
+            .map(|i| i.path)
+            .ok()
+    }
+    fn load_local_icon(&self, path: PathBuf) -> Option<ImageSource> {
+        let ext = path.extension()?.to_str()?.to_lowercase();
+        let bytes = fs::read(path).ok()?;
+
+        // infer the format based on suffix
+        let format = match ext.as_str() {
+            "png" => Some(ImageFormat::Png),
+            "jpg" | "jpeg" => Some(ImageFormat::Jpeg),
+            "webp" => Some(ImageFormat::Webp),
+            "gif" => Some(ImageFormat::Gif),
+            "svg" => Some(ImageFormat::Svg),
+            "bmp" => Some(ImageFormat::Bmp),
+            "tif" | "tiff" => Some(ImageFormat::Tiff),
+            "ico" => Some(ImageFormat::Ico),
+            _ => None,
+        }?;
+
+        let image = Image::from_bytes(format, bytes);
+        Some(ImageSource::Image(Arc::new(image)))
+    }
+    fn render_result_item(&self, ks: &AppData, idx: usize) -> impl IntoElement {
         let is_selected = self.selected_index == idx;
 
         div()
@@ -751,9 +785,9 @@ impl InputExample {
             .py_2()
             .rounded_md()
             .cursor_pointer()
-            .flex_col()
+            .flex()
+            .gap_5()
             .items_center()
-            .justify_between()
             .bg(if is_selected {
                 hsla(0., 0., 0.149, 1.0)
             } else {
@@ -767,26 +801,45 @@ impl InputExample {
                 }
             })
             .child(
-                div().flex().gap_3().items_center().child(
-                    div()
-                        .text_sm()
-                        .text_color(if is_selected {
-                            rgb(0xffffff)
-                        } else {
-                            rgb(0xcccccc)
-                        })
-                        .child(ks.unparse()),
-                ),
+                if let Some(icon) = ks
+                    .icon
+                    .as_ref()
+                    .and_then(|i| self.get_icon_path(i))
+                    .and_then(|i| self.load_local_icon(i))
+                {
+                    img(icon)
+                } else {
+                    img(ImageSource::Image(Arc::new(Image::empty())))
+                }
+                .size_5(),
             )
             .child(
                 div()
-                    .text_xs()
-                    .text_color(if is_selected {
-                        rgb(0x999999)
-                    } else {
-                        rgb(0x666666)
-                    })
-                    .child("Application"),
+                    .flex_col()
+                    .justify_between()
+                    .items_center()
+                    .child(
+                        div().flex().gap_3().items_center().child(
+                            div()
+                                .text_sm()
+                                .text_color(if is_selected {
+                                    rgb(0xffffff)
+                                } else {
+                                    rgb(0xcccccc)
+                                })
+                                .child(ks.name()),
+                        ),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(if is_selected {
+                                rgb(0x999999)
+                            } else {
+                                rgb(0x666666)
+                            })
+                            .child("Application"),
+                    ),
             )
     }
 }
