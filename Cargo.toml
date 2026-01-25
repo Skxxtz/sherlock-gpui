@@ -1,0 +1,13 @@
+[package]
+name = "sherlock-gpui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-net = "2.0.0"
+# Use the git version to get the latest Linux/Wayland patches
+gpui = { git = "https://github.com/zed-industries/zed", rev = "7c724c0f1049e610c541c2f4f6a8739f91865e02" }
+unicode-segmentation = "1.12.0"
+
+[features]
+wayland = ["gpui/wayland"]
