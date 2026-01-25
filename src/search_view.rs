@@ -1,5 +1,4 @@
-use std::fs;
-use std::{ops::Range, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, ops::Range, path::Path, sync::Arc};
 
 use crate::loader::AppData;
 use crate::utils::command_launch::spawn_detached;
@@ -7,12 +6,11 @@ use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
     EntityInputHandler, FocusHandle, Focusable, GlobalElementId, Image, ImageFormat, ImageSource,
     LayoutId, ListState, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad,
-    Pixels, Point, ShapedLine, SharedString, Style, Subscription, TextRun, UTF16Selection,
-    UnderlineStyle, Window, actions, div, fill, hsla, img, list, point, prelude::*, px, relative,
-    rgb, rgba, size,
+    Pixels, Point, Resource, ShapedLine, SharedString, Style, Subscription, TextRun,
+    UTF16Selection, UnderlineStyle, Window, actions, div, fill, hsla, img, list, point, prelude::*,
+    px, relative, rgb, rgba, size, svg,
 };
 use linicon::lookup_icon;
-use std::path::PathBuf;
 use unicode_segmentation::*;
 
 actions!(
@@ -624,6 +622,7 @@ pub struct InputExample {
     pub list_state: ListState,
     pub _subs: Vec<Subscription>,
     pub selected_index: usize,
+    pub icon_cache: RefCell<HashMap<String, Option<Arc<Path>>>>,
 }
 
 impl Focusable for InputExample {
@@ -753,35 +752,53 @@ impl Render for InputExample {
     }
 }
 impl InputExample {
-    fn get_icon_path(&self, icon_name: &str) -> Option<PathBuf> {
-        lookup_icon(icon_name)
-            .with_size(48)
-            .with_search_paths(&["~/.local/share/icons"])
-            .ok()?
-            .next()?
-            .map(|i| i.path)
-            .ok()
-    }
-    fn load_local_icon(&self, path: PathBuf) -> Option<ImageSource> {
-        let ext = path.extension()?.to_str()?.to_lowercase();
-        let bytes = fs::read(path).ok()?;
+    fn get_icon_path(&self, icon_name: &str) -> Option<Arc<Path>> {
+        // Check if we already have it
+        if let Some(cached) = self.icon_cache.borrow().get(icon_name) {
+            return cached.clone();
+        }
 
-        // infer the format based on suffix
-        let format = match ext.as_str() {
-            "png" => Some(ImageFormat::Png),
-            "jpg" | "jpeg" => Some(ImageFormat::Jpeg),
-            "webp" => Some(ImageFormat::Webp),
-            "gif" => Some(ImageFormat::Gif),
-            "svg" => Some(ImageFormat::Svg),
-            "bmp" => Some(ImageFormat::Bmp),
-            "tif" | "tiff" => Some(ImageFormat::Tiff),
-            "ico" => Some(ImageFormat::Ico),
-            _ => None,
-        }?;
+        let result = (|| {
+            let icon_path = lookup_icon(icon_name)
+                .with_size(48)
+                .with_search_paths(&["~/.local/share/icons/"])
+                .ok()?
+                .next()?
+                .map(|i| i.path)
+                .ok()?;
 
-        let image = Image::from_bytes(format, bytes);
-        Some(ImageSource::Image(Arc::new(image)))
+            Some(Arc::from(icon_path.into_boxed_path()))
+        })();
+
+        self.icon_cache.borrow_mut().insert(icon_name.to_string(), result.clone());
+
+        result
     }
+    // fn load_local_icon(&self, path: PathBuf) -> Option<ImageSource> {
+    //     let ext = path.extension()?.to_str()?.to_lowercase();
+    //     let raw = image::open(path);
+
+    //     let mut pixels = raw.into_raw();
+    //     for chunk in pixels.chunks_exact_mut(4) {
+    //         chunk.swap(0, 2); // Extremely fast hardware-level swap
+    //     }
+
+    //     // infer the format based on suffix
+    //     let format = match ext.as_str() {
+    //         "png" => Some(ImageFormat::Png),
+    //         "jpg" | "jpeg" => Some(ImageFormat::Jpeg),
+    //         "webp" => Some(ImageFormat::Webp),
+    //         "gif" => Some(ImageFormat::Gif),
+    //         "svg" => Some(ImageFormat::Svg),
+    //         "bmp" => Some(ImageFormat::Bmp),
+    //         "tif" | "tiff" => Some(ImageFormat::Tiff),
+    //         "ico" => Some(ImageFormat::Ico),
+    //         _ => None,
+    //     }?;
+
+    //     let image = Image::from_bytes(format, pixels);
+    //     Some(ImageSource::Image(Arc::new(image)))
+    // }
     fn render_result_item(&self, ks: &AppData, idx: usize) -> impl IntoElement {
         let is_selected = self.selected_index == idx;
 
@@ -809,17 +826,26 @@ impl InputExample {
                 }
             })
             .child(
-                if let Some(icon) = ks
-                    .icon
-                    .as_ref()
-                    .and_then(|i| self.get_icon_path(i))
-                    .and_then(|i| self.load_local_icon(i))
-                {
-                    img(icon)
+                if let Some(icon) = ks.icon.as_ref().and_then(|i| self.get_icon_path(i)) {
+                    img(ImageSource::Resource(Resource::Path(icon))).size_5()
                 } else {
-                    img(ImageSource::Image(Arc::new(Image::empty())))
-                }
-                .size_5(),
+                    img(ImageSource::Image(Arc::new(Image::empty()))).size_5()
+                }, // if let Some(icon) = ks
+                   //     .icon
+                   //     .as_ref()
+                   //     .and_then(|i| self.get_icon_path(i))
+                   // {
+                   //     let path_buf: PathBuf = icon;
+
+                   //     // 1. Convert PathBuf to Box<Path>
+                   //     let boxed_path: Box<Path> = path_buf.into_boxed_path();
+
+                   //     // 2. Convert Box<Path> to Arc<Path>
+                   //     let arc_path: Arc<Path> = Arc::from(boxed_path);
+                   //     img(ImageSource::Resource(Resource::Path(arc_path))).into_any_element()
+
+                   // } else {
+                   // }
             )
             .child(
                 div()

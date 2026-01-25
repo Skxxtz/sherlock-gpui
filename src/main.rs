@@ -1,5 +1,5 @@
 use once_cell::sync::OnceCell;
-use std::{collections::HashMap, io::Write, sync::RwLock};
+use std::{cell::RefCell, collections::HashMap, io::Write, sync::{Arc, RwLock}};
 
 use gpui::{
     layer_shell::{Layer, LayerShellOptions},
@@ -7,7 +7,7 @@ use gpui::{
 };
 
 use crate::{
-    loader::Loader,
+    loader::{Assets, Loader},
     search_view::{
         Backspace, Copy, Cut, Delete, DeleteAll, End, Execute, FocusNext, FocusPrev, Home,
         InputExample, Left, Paste, Quit, Right, SelectAll, TextInput,
@@ -63,7 +63,7 @@ fn main() {
     }
 
     // start primary instance
-    let app = Application::new();
+    let app = Application::new().with_assets(Assets);
     app.with_quit_mode(QuitMode::Explicit).run(|cx: &mut App| {
         cx.bind_keys([
             KeyBinding::new("backspace", Backspace, None),
@@ -144,6 +144,7 @@ fn spawn_launcher(cx: &mut App) -> AnyWindowHandle {
                     list_state,
                     _subs: vec![],
                     selected_index: 0,
+                    icon_cache: RefCell::new(HashMap::new()),
                 }
             })
         })

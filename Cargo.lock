@@ -4857,16 +4857,19 @@ dependencies = [
 name = "sherlock-gpui"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-net",
  "async-std",
  "bincode",
  "chrono",
  "glob",
  "gpui",
+ "image",
  "libc",
  "linicon",
  "once_cell",
  "rayon",
+ "rust-embed",
  "serde",
  "serde_json",
  "simd-json",
