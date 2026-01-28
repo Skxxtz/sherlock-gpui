@@ -15,19 +15,20 @@ it.
 # Tasks
 
 ## [1] Improve Launcher Loading from `fallback.json`
-[in progress]
+[in progress (pretty much done for now)] 
 This step includes several sub tasks:
-- Implement launcher loader 
-- Improve the launcher logic (maybe macro for improved extesibility)
-- Add bincode cache for the launcher logic with a trigger on original file change
+- [x] Implement launcher loader 
+- [ ] Improve the launcher logic (maybe macro for improved extesibility)
+- [ ] Add bincode cache for the launcher logic with a trigger on original file change
 
 
 ## [2] Clean up `search_view.rs` 
+[done for now]
 The file is currently over 700 lines long. It should be refactored before
 anything is added to it.
 
 ## [3] Add Filter/Sorter to `search_view`
-[depends on 2]
+[done for now]
 Currently, the search bar takes inputs, but the input does not change the
 sorting and filtering of the content.
 
