@@ -5,3 +5,4 @@ pub mod errors;
 pub mod files;
 pub mod logging;
 pub mod paths;
+pub mod websearch;

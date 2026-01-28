@@ -1,3 +1,7 @@
+pub mod main_window;
+pub mod search;
+pub mod search_bar;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Hash, Debug, Clone)]

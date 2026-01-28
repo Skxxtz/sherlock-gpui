@@ -1,5 +1,11 @@
 use once_cell::sync::OnceCell;
-use std::{cell::RefCell, collections::HashMap, io::Write, sync::{Arc, RwLock}};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    io::Write,
+    sync::{Arc, RwLock},
+};
+use tokio::net::UnixListener;
 
 use gpui::{
     layer_shell::{Layer, LayerShellOptions},
@@ -7,19 +13,22 @@ use gpui::{
 };
 
 use crate::{
-    loader::{Assets, Loader},
-    search_view::{
-        Backspace, Copy, Cut, Delete, DeleteAll, End, Execute, FocusNext, FocusPrev, Home,
-        InputExample, Left, Paste, Quit, Right, SelectAll, TextInput,
-    },
+    launcher::children::RenderableChild,
+    loader::Loader,
     utils::{config::SherlockConfig, errors::SherlockErrorType},
 };
 
+mod launcher;
 mod loader;
 mod prelude;
 mod search_view;
 mod ui;
 mod utils;
+
+use ui::main_window::{Execute, FocusNext, FocusPrev, InputExample, Quit};
+use ui::search_bar::{
+    Backspace, Copy, Cut, Delete, DeleteAll, End, Home, Left, Paste, Right, SelectAll, TextInput,
+};
 
 use utils::errors::SherlockError;
 
@@ -50,7 +59,8 @@ fn setup() -> Result<(), SherlockError> {
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // connect to existing socket
     let socket_path = "/tmp/sherlock.sock";
     if let Ok(mut stream) = std::os::unix::net::UnixStream::connect(socket_path) {
@@ -63,7 +73,7 @@ fn main() {
     }
 
     // start primary instance
-    let app = Application::new().with_assets(Assets);
+    let app = Application::new();
     app.with_quit_mode(QuitMode::Explicit).run(|cx: &mut App| {
         cx.bind_keys([
             KeyBinding::new("backspace", Backspace, None),
@@ -84,12 +94,16 @@ fn main() {
         ]);
 
         let socket_path = "/tmp/sherlock.sock";
+        let data: Entity<Arc<Vec<RenderableChild>>> = cx.new(|_| Arc::new(Vec::new()));
+        if let Err(e) = Loader::load_launchers(cx, data.clone()) {
+            eprintln!("{e}")
+        };
 
-        spawn_launcher(cx);
+        spawn_launcher(cx, data.clone());
 
         // listen for open requests
         let _ = std::fs::remove_file(socket_path);
-        let listener = async_net::unix::UnixListener::bind(socket_path).unwrap();
+        let listener = UnixListener::bind(socket_path).unwrap();
 
         cx.spawn(|cx: &mut AsyncApp| {
             let cx = cx.clone();
@@ -97,7 +111,7 @@ fn main() {
                 loop {
                     if let Ok((_stream, _)) = listener.accept().await {
                         cx.update(|cx| {
-                            spawn_launcher(cx);
+                            spawn_launcher(cx, data.clone());
                         })
                         .ok();
                     }
@@ -108,10 +122,8 @@ fn main() {
     });
 }
 
-fn spawn_launcher(cx: &mut App) -> AnyWindowHandle {
+fn spawn_launcher(cx: &mut App, data: Entity<Arc<Vec<RenderableChild>>>) -> AnyWindowHandle {
     // For now load application here
-    let counts = HashMap::new();
-
     let window = cx
         .open_window(get_window_options(), |_, cx| {
             let text_input = cx.new(|cx| TextInput {
@@ -126,25 +138,25 @@ fn spawn_launcher(cx: &mut App) -> AnyWindowHandle {
                 is_selecting: false,
             });
             cx.new(|cx| {
-                // let sub = cx.observe_keystrokes(move |this: &mut InputExample, ev, _, cx| {
-                //     let old_count = this.data.len();
-                //     this.data.push(ev.keystroke.clone());
-
-                //     this.list_state.splice(old_count..old_count, 1);
-                //     cx.notify();
-                // });
-                let apps = Loader::load_applications(1.0, &counts, 2, true).unwrap_or_default();
-
-                let list_state = ListState::new(apps.len(), ListAlignment::Top, px(48.));
+                let data_len = data.read(cx).len();
+                let sub = cx.observe(&text_input, move |this: &mut InputExample, _ev, cx| {
+                    this.selected_index = 0;
+                    this.filter_and_sort(cx);
+                });
+                let list_state = ListState::new(data_len, ListAlignment::Top, px(48.));
 
                 InputExample {
                     text_input,
-                    data: apps,
                     focus_handle: cx.focus_handle(),
                     list_state,
-                    _subs: vec![],
+                    _subs: vec![sub],
                     selected_index: 0,
                     icon_cache: RefCell::new(HashMap::new()),
+                    // Data model
+                    data,
+                    deferred_render_task: None,
+                    last_query: String::new(),
+                    filtered_indices: (0..data_len).collect(),
                 }
             })
         })
