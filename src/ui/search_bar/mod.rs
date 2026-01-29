@@ -93,8 +93,9 @@ impl TextInput {
         }
         self.replace_text_in_range(None, "", window, cx)
     }
-    fn delete_all(&mut self, _: &DeleteAll, _window: &mut Window, _cx: &mut Context<Self>) {
+    fn delete_all(&mut self, _: &DeleteAll, _window: &mut Window, cx: &mut Context<Self>) {
         self.reset();
+        cx.notify();
     }
 
     fn on_mouse_down(
