@@ -5,13 +5,18 @@ use gpui::{
 };
 
 use crate::{
-    launcher::{ExecAttrs, children::RenderableChildImpl},
+    launcher::{ExecAttrs, Launcher, children::RenderableChildImpl},
     loader::utils::AppData,
     utils::errors::SherlockError,
 };
 
 impl RenderableChildImpl for AppData {
-    fn render(&self, icon: Option<Arc<std::path::Path>>, is_selected: bool) -> AnyElement {
+    fn render(
+        &self,
+        launcher: &Arc<Launcher>,
+        icon: Option<Arc<std::path::Path>>,
+        is_selected: bool,
+    ) -> AnyElement {
         div()
             .px_4()
             .py_2()
@@ -50,27 +55,22 @@ impl RenderableChildImpl for AppData {
                             } else {
                                 rgb(0x666666)
                             })
-                            .children(
-                                self.launcher
-                                    .name
-                                    .as_ref()
-                                    .map(|name| div().child(name.clone())),
-                            ),
+                            .children(launcher.name.as_ref().map(|name| div().child(name.clone()))),
                     ),
             )
             .into_any_element()
     }
-    fn execute(&self, keyword: &str) -> Result<bool, SherlockError> {
-        let attrs = ExecAttrs::from(self);
-        self.launcher.execute(&attrs, keyword)
+    fn execute(&self, launcher: &Arc<Launcher>, keyword: &str) -> Result<bool, SherlockError> {
+        let attrs = ExecAttrs::from_appdata(self, launcher);
+        launcher.execute(&attrs, keyword)
     }
-    fn priority(&self) -> f32 {
+    fn priority(&self, _launcher: &Arc<Launcher>) -> f32 {
         self.priority
     }
-    fn search(&self) -> String {
+    fn search(&self, _launcher: &Arc<Launcher>) -> String {
         self.search_string.clone()
     }
-    fn icon(&self) -> Option<String> {
+    fn icon(&self, _launcher: &Arc<Launcher>) -> Option<String> {
         self.icon.clone()
     }
 }

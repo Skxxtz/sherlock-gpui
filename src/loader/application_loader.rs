@@ -80,7 +80,7 @@ impl Loader {
                 let r_path = entry.to_str()?;
                 match read_lines(r_path) {
                     Ok(content) => {
-                        let mut data = AppData::new(Arc::clone(&launcher));
+                        let mut data = AppData::new();
                         let mut current_section = None;
                         let mut current_action = ApplicationAction::new("app_launcher");
                         data.desktop_file = Some(entry);
@@ -240,7 +240,7 @@ impl Loader {
 
             let cleaned_apps: Vec<AppData> = cached_apps
                 .into_iter()
-                .map(|serde| AppData::from_deserialized(serde, Arc::clone(&launcher)))
+                .map(|serde| AppData::from_deserialized(serde))
                 .map(|mut v| {
                     let count = v
                         .exec

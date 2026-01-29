@@ -90,32 +90,38 @@ impl LauncherType {
     ) -> Option<Vec<RenderableChild>> {
         match self {
             Self::App(app) => {
-                Loader::load_applications(launcher, counts, decimals, app.use_keywords)
+                Loader::load_applications(Arc::clone(&launcher), counts, decimals, app.use_keywords)
                     .map(|ad| {
                         ad.into_iter()
-                            .map(|ad| RenderableChild::AppLike(ad))
+                            .map(|inner| RenderableChild::AppLike {
+                                launcher: Arc::clone(&launcher),
+                                inner,
+                            })
                             .collect()
                     })
                     .ok()
             }
 
-            Self::Bookmark(bkm) => BookmarkLauncher::find_bookmarks(&bkm.target_browser, launcher)
-                .map(|ad| {
-                    ad.into_iter()
-                        .map(|ad| RenderableChild::AppLike(ad))
-                        .collect()
-                })
-                .ok(),
+            Self::Bookmark(bkm) => {
+                BookmarkLauncher::find_bookmarks(&bkm.target_browser, Arc::clone(&launcher))
+                    .map(|ad| {
+                        ad.into_iter()
+                            .map(|inner| RenderableChild::AppLike {
+                                launcher: Arc::clone(&launcher),
+                                inner,
+                            })
+                            .collect()
+                    })
+                    .ok()
+            }
 
             Self::Weather(wttr) => {
                 match WeatherData::from_cache(wttr) {
-                    Some(d) => Some(vec![RenderableChild::WeatherLike(d)]),
+                    Some(inner) => Some(vec![RenderableChild::WeatherLike { launcher, inner }]),
                     None => {
                         // 1. Data isn't cached, start the fetch
                         let wttr_clone = wttr.clone();
 
-                        // Note: You need a way to reach back into your Model/View.
-                        // If this is called from within a View's update:
                         cx.spawn(|cx: &mut AsyncApp| {
                             let cx = cx.clone();
                             async move {
@@ -124,20 +130,22 @@ impl LauncherType {
                                 {
                                     let _ = cx.update(|cx| {
                                         // Update the entity's inner data
-                                        data_handle.update(cx, |items, cx| {
-                                            let mut new_items: Vec<RenderableChild> =
-                                                items.iter().cloned().collect();
+                                        data_handle.update(cx, {
+                                            |items_arc, cx| {
+                                                let items = Arc::make_mut(items_arc);
 
-                                            // 2. Perform your mutation on the new Vec
-                                            for item in new_items.iter_mut() {
-                                                if let RenderableChild::WeatherLike(old_data) = item
-                                                {
-                                                    // No need to clone new_weather_data every time if it's already an Arc/struct
-                                                    *old_data = new_weather_data.clone();
+                                                for item in items.iter_mut() {
+                                                    if let RenderableChild::WeatherLike {
+                                                        inner,
+                                                        ..
+                                                    } = item
+                                                    {
+                                                        *inner = new_weather_data.clone();
+                                                    }
                                                 }
+
+                                                cx.notify();
                                             }
-                                            // Tell everyone listening to this entity to re-render
-                                            cx.notify();
                                         });
                                     });
                                 }
@@ -146,9 +154,10 @@ impl LauncherType {
                         .detach();
 
                         // Return None or a "Loading" placeholder for now
-                        Some(vec![RenderableChild::WeatherLike(
-                            WeatherData::uninitialized(),
-                        )])
+                        Some(vec![RenderableChild::WeatherLike {
+                            launcher: Arc::clone(&launcher),
+                            inner: WeatherData::uninitialized(),
+                        }])
                     }
                 }
             }
@@ -255,21 +264,21 @@ fn increment(key: &str) {
     };
 }
 
-struct ExecAttrs<'a> {
+pub struct ExecAttrs<'a> {
     exec: Option<&'a str>,
     term: bool,
     engine: Option<&'a str>,
     browser: Option<&'a str>,
 }
-impl<'a> From<&'a AppData> for ExecAttrs<'a> {
-    fn from(value: &'a AppData) -> Self {
-        let (browser, engine) = match &value.launcher.launcher_type {
+impl<'a> ExecAttrs<'a> {
+    pub fn from_appdata(value: &'a AppData, launcher: &'a Arc<Launcher>) -> Self {
+        let (browser, engine) = match &launcher.launcher_type {
             LauncherType::Web(w) => (w.browser.as_deref(), Some(w.engine.as_str())),
             LauncherType::Bookmark(b) => (Some(b.target_browser.as_str()), None),
             _ => (None, None),
         };
 
-        Self {
+        ExecAttrs {
             exec: value.exec.as_deref(),
             term: value.terminal,
             browser,

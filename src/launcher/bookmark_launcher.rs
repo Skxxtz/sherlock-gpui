@@ -148,7 +148,7 @@ impl MozillaSqliteParser {
             if let Ok(app_data) = BinaryCache::read::<Vec<AppDataSerde>, _>(&cache) {
                 let app_data = app_data
                     .into_iter()
-                    .map(|ad| AppData::from_deserialized(ad, launcher.clone()))
+                    .map(|ad| AppData::from_deserialized(ad))
                     .collect::<Vec<_>>();
                 return Ok(app_data);
             }
@@ -187,7 +187,6 @@ impl MozillaSqliteParser {
 
             if let Ok(rows) = event_iter {
                 for row in rows.flatten() {
-                    let launcher = Arc::clone(&launcher);
                     let bookmark = AppData {
                         name: SharedString::from(&row.0),
                         icon: None,
@@ -198,7 +197,6 @@ impl MozillaSqliteParser {
                         actions: vec![],
                         vars: vec![],
                         terminal: false,
-                        launcher,
                     };
                     res.push(bookmark);
                 }
@@ -288,7 +286,6 @@ impl ChromeParser {
                             actions: vec![],
                             vars: vec![],
                             terminal: false,
-                            launcher,
                         });
                     }
                 }

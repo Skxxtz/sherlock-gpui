@@ -3,15 +3,14 @@ use std::sync::Arc;
 use gpui::AnyElement;
 
 use crate::{
-    launcher::weather_launcher::WeatherData, loader::utils::AppData, utils::errors::SherlockError,
+    launcher::Launcher, launcher::weather_launcher::WeatherData, loader::utils::AppData,
+    utils::errors::SherlockError,
 };
 
 pub mod app_data;
 pub mod weather_data;
 
-/// Creates enum RenderableChild and implementes RenderableChildImpl trait for it, which delegates
-/// the function call to the trait implementation of the respective child.
-///
+/// Creates enum RenderableChild,
 /// ## Example:
 /// ```
 /// renderable_enum! {
@@ -29,43 +28,47 @@ macro_rules! renderable_enum {
     ) => {
         #[derive(Clone)]
         pub enum $name {
-            $($variant($inner)),*
+            $(
+                $variant {
+                    launcher: Arc<Launcher>,
+                    inner: $inner,
+                }
+            ),*
         }
 
-        impl RenderableChildImpl for $name {
+        impl RenderableChildDelegate for $name {
             fn render(&self, icon: Option<Arc<std::path::Path>>, is_selected: bool) -> AnyElement {
                 match self {
-                    $(Self::$variant(inner) => inner.render(icon, is_selected)),*
+                    $(Self::$variant {inner, launcher} => inner.render(launcher, icon, is_selected)),*
                 }
             }
 
             fn execute(&self, keyword: &str) -> Result<bool, SherlockError> {
                 match self {
-                    $(Self::$variant(inner) => inner.execute(keyword)),*
+                    $(Self::$variant {inner, launcher} => inner.execute(launcher, keyword)),*
                 }
             }
 
             fn priority(&self) -> f32 {
                 match self {
-                    $(Self::$variant(inner) => inner.priority()),*
+                    $(Self::$variant {inner, launcher} => inner.priority(launcher)),*
                 }
             }
 
             fn search(&self) -> String {
                 match self {
-                    $(Self::$variant(inner) => inner.search()),*
+                    $(Self::$variant {inner, launcher} => inner.search(launcher)),*
                 }
             }
 
             fn icon(&self) -> Option<String> {
-                match self {
-                    $(Self::$variant(inner) => inner.icon()),*
+                match &self {
+                    $(Self::$variant {inner, launcher} => inner.icon(launcher)),*
                 }
             }
         }
     };
 }
-
 renderable_enum! {
     enum RenderableChild {
         AppLike(AppData),
@@ -76,18 +79,31 @@ renderable_enum! {
 impl RenderableChild {
     pub fn get_exec(&self) -> Option<String> {
         match self {
-            Self::AppLike(ad) => ad.get_exec(),
+            Self::AppLike { inner, launcher } => inner.get_exec(launcher),
             _ => None,
         }
     }
 }
 
-pub trait RenderableChildImpl {
+pub trait RenderableChildDelegate {
     fn render(&self, icon: Option<Arc<std::path::Path>>, is_selected: bool) -> AnyElement;
     fn execute(&self, keyword: &str) -> Result<bool, SherlockError>;
     fn priority(&self) -> f32;
     fn search(&self) -> String;
     fn icon(&self) -> Option<String>;
+}
+
+pub trait RenderableChildImpl {
+    fn render(
+        &self,
+        launcher: &Arc<Launcher>,
+        icon: Option<Arc<std::path::Path>>,
+        is_selected: bool,
+    ) -> AnyElement;
+    fn execute(&self, launcher: &Arc<Launcher>, keyword: &str) -> Result<bool, SherlockError>;
+    fn priority(&self, launcher: &Arc<Launcher>) -> f32;
+    fn search(&self, launcher: &Arc<Launcher>) -> String;
+    fn icon(&self, launcher: &Arc<Launcher>) -> Option<String>;
 }
 
 pub trait SherlockSearch {

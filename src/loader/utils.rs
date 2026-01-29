@@ -87,7 +87,6 @@ pub struct AppData {
     pub actions: Vec<ApplicationAction>,
     pub vars: Vec<ExecVariable>,
     pub terminal: bool,
-    pub launcher: Arc<Launcher>,
 }
 impl Serialize for AppData {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -124,7 +123,7 @@ impl Serialize for AppData {
     }
 }
 impl AppData {
-    pub fn new(launcher: Arc<Launcher>) -> Self {
+    pub fn new() -> Self {
         Self {
             name: SharedString::new(""),
             exec: None,
@@ -135,10 +134,9 @@ impl AppData {
             actions: vec![],
             vars: vec![],
             terminal: false,
-            launcher,
         }
     }
-    pub fn from_deserialized(serde: AppDataSerde, launcher: Arc<Launcher>) -> Self {
+    pub fn from_deserialized(serde: AppDataSerde) -> Self {
         Self {
             name: SharedString::from(serde.name),
             exec: serde.exec,
@@ -149,7 +147,6 @@ impl AppData {
             actions: serde.actions,
             vars: serde.vars,
             terminal: serde.terminal,
-            launcher,
         }
     }
     pub fn apply_alias(&mut self, alias: Option<SherlockAlias>, use_keywords: bool) {
@@ -195,8 +192,8 @@ impl AppData {
             self.search_string = construct_search(&self.name, &self.search_string, use_keywords);
         }
     }
-    pub fn get_exec(&self) -> Option<String> {
-        match &self.launcher.launcher_type {
+    pub fn get_exec(&self, launcher: &Arc<Launcher>) -> Option<String> {
+        match &launcher.launcher_type {
             LauncherType::Web(web) => Some(format!("websearch-{}", web.engine)),
 
             LauncherType::App(_) | LauncherType::Command(_) | LauncherType::Category(_) => {

@@ -6,24 +6,29 @@ use gpui::{
 };
 
 use crate::{
-    launcher::{children::RenderableChildImpl, weather_launcher::WeatherData},
+    launcher::{Launcher, children::RenderableChildImpl, weather_launcher::WeatherData},
     utils::errors::SherlockError,
 };
 
 impl RenderableChildImpl for WeatherData {
-    fn execute(&self, _keyword: &str) -> Result<bool, SherlockError> {
+    fn execute(&self, _launcher: &Arc<Launcher>, _keyword: &str) -> Result<bool, SherlockError> {
         Ok(false)
     }
-    fn priority(&self) -> f32 {
-        0.0
+    fn priority(&self, launcher: &Arc<Launcher>) -> f32 {
+        launcher.priority as f32
     }
-    fn search(&self) -> String {
+    fn search(&self, _launcher: &Arc<Launcher>) -> String {
         String::new()
     }
-    fn icon(&self) -> Option<String> {
+    fn icon(&self, _launcher: &Arc<Launcher>) -> Option<String> {
         Some(self.icon.clone())
     }
-    fn render(&self, icon: Option<Arc<std::path::Path>>, _is_selected: bool) -> AnyElement {
+    fn render(
+        &self,
+        _launcher: &Arc<Launcher>,
+        icon: Option<Arc<std::path::Path>>,
+        _is_selected: bool,
+    ) -> AnyElement {
         div()
             .px_4()
             .py_2()

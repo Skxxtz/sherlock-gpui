@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, path::Path, sync::Arc};
 
 use crate::launcher::children::RenderableChild;
-use crate::launcher::children::{RenderableChildImpl, SherlockSearch};
+use crate::launcher::children::{RenderableChildDelegate, SherlockSearch};
 use gpui::{AnyElement, WeakEntity};
 use gpui::{
     App, Context, Entity, FocusHandle, Focusable, ListState, Subscription, Window, actions, div,
