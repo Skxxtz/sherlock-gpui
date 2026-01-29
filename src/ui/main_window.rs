@@ -62,7 +62,11 @@ impl InputExample {
     }
     fn execute(&mut self, _: &Execute, win: &mut Window, cx: &mut Context<Self>) {
         let keyword = self.text_input.read(cx).content.as_str();
-        if let Some(selected) = self.data.read(cx).get(self.selected_index) {
+        if let Some(selected) = self
+            .data
+            .read(cx)
+            .get(self.filtered_indices[self.selected_index])
+        {
             match selected.execute(keyword) {
                 Ok(exit) if exit => win.remove_window(),
                 Err(e) => eprintln!("{e}"),
