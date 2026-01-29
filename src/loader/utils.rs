@@ -50,9 +50,9 @@ impl ApplicationAction {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct AppDataSerde {
+pub struct AppData {
     #[serde(default)]
-    pub name: String,
+    pub name: SharedString,
     pub exec: Option<String>,
     pub search_string: String,
     #[serde(default)]
@@ -67,59 +67,12 @@ pub struct AppDataSerde {
     #[serde(default)]
     pub terminal: bool,
 }
-impl Eq for AppDataSerde {}
-impl Hash for AppDataSerde {
+impl Eq for AppData {}
+impl Hash for AppData {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Make more efficient and handle error using f32
         self.exec.hash(state);
         self.desktop_file.hash(state);
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct AppData {
-    pub name: SharedString,
-    pub exec: Option<String>,
-    pub search_string: String,
-    pub priority: f32,
-    pub icon: Option<String>,
-    pub desktop_file: Option<PathBuf>,
-    pub actions: Vec<ApplicationAction>,
-    pub vars: Vec<ExecVariable>,
-    pub terminal: bool,
-}
-impl Serialize for AppData {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        #[derive(Serialize)]
-        struct AppDataShadow<'a> {
-            name: &'a String,
-            exec: &'a Option<String>,
-            search_string: &'a String,
-            priority: f32,
-            icon: &'a Option<String>,
-            desktop_file: &'a Option<PathBuf>,
-            actions: &'a Vec<ApplicationAction>,
-            #[serde(rename = "variables")]
-            vars: &'a Vec<ExecVariable>,
-            terminal: bool,
-        }
-
-        let shadow = AppDataShadow {
-            name: &self.name.to_string(),
-            exec: &self.exec,
-            search_string: &self.search_string,
-            priority: self.priority,
-            icon: &self.icon,
-            desktop_file: &self.desktop_file,
-            actions: &self.actions,
-            vars: &self.vars,
-            terminal: self.terminal,
-        };
-
-        shadow.serialize(serializer)
     }
 }
 impl AppData {
@@ -134,19 +87,6 @@ impl AppData {
             actions: vec![],
             vars: vec![],
             terminal: false,
-        }
-    }
-    pub fn from_deserialized(serde: AppDataSerde) -> Self {
-        Self {
-            name: SharedString::from(serde.name),
-            exec: serde.exec,
-            search_string: serde.search_string,
-            priority: serde.priority,
-            icon: serde.icon,
-            desktop_file: serde.desktop_file,
-            actions: serde.actions,
-            vars: serde.vars,
-            terminal: serde.terminal,
         }
     }
     pub fn apply_alias(&mut self, alias: Option<SherlockAlias>, use_keywords: bool) {
@@ -302,24 +242,24 @@ impl CounterReader {
     }
 }
 
-pub fn deserialize_named_appdata<'de, D>(deserializer: D) -> Result<HashSet<AppDataSerde>, D::Error>
+pub fn deserialize_named_appdata<'de, D>(deserializer: D) -> Result<HashSet<AppData>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct AppDataMapVisitor;
     impl<'de> Visitor<'de> for AppDataMapVisitor {
-        type Value = HashSet<AppDataSerde>;
+        type Value = HashSet<AppData>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             formatter.write_str("a map of AppData keyed by 'name'")
         }
-        fn visit_map<M>(self, mut map: M) -> Result<HashSet<AppDataSerde>, M::Error>
+        fn visit_map<M>(self, mut map: M) -> Result<HashSet<AppData>, M::Error>
         where
             M: MapAccess<'de>,
         {
             let mut set = HashSet::new();
-            while let Some((key, mut value)) = map.next_entry::<String, AppDataSerde>()? {
-                value.name = key;
+            while let Some((key, mut value)) = map.next_entry::<String, AppData>()? {
+                value.name = SharedString::from(key);
                 set.insert(value);
             }
             Ok(set)

@@ -15,7 +15,6 @@ use super::Loader;
 use super::utils::ApplicationAction;
 use super::utils::{AppData, SherlockAlias};
 use crate::launcher::Launcher;
-use crate::loader::utils::AppDataSerde;
 use crate::prelude::PathHelpers;
 use crate::utils::cache::BinaryCache;
 use crate::utils::{
@@ -236,11 +235,10 @@ impl Loader {
 
         if !changed {
             let _ = sher_log!("Loading cached apps");
-            let cached_apps: Vec<AppDataSerde> = BinaryCache::read(&config.caching.cache)?;
+            let cached_apps: Vec<AppData> = BinaryCache::read(&config.caching.cache)?;
 
             let cleaned_apps: Vec<AppData> = cached_apps
                 .into_iter()
-                .map(|serde| AppData::from_deserialized(serde))
                 .map(|mut v| {
                     let count = v
                         .exec

@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::launcher::Launcher;
 use crate::loader::application_loader::file_has_changed;
-use crate::loader::utils::{AppData, AppDataSerde, construct_search};
+use crate::loader::utils::{AppData, construct_search};
 use crate::utils::cache::BinaryCache;
 use crate::utils::errors::{SherlockError, SherlockErrorType};
 use crate::utils::files::home_dir;
@@ -145,11 +145,7 @@ impl MozillaSqliteParser {
         let cache = cache_dir.join(format!("bookmarks/{}-cache.bin", prefix));
 
         if !file_has_changed(&cache, &self.path) {
-            if let Ok(app_data) = BinaryCache::read::<Vec<AppDataSerde>, _>(&cache) {
-                let app_data = app_data
-                    .into_iter()
-                    .map(|ad| AppData::from_deserialized(ad))
-                    .collect::<Vec<_>>();
+            if let Ok(app_data) = BinaryCache::read::<Vec<AppData>, _>(&cache) {
                 return Ok(app_data);
             }
         }
