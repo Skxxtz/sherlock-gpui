@@ -1,12 +1,12 @@
 use std::ops::Range;
 
 use gpui::{
-    App, Bounds, ClipboardItem, Context, CursorStyle, Element, ElementId, ElementInputHandler,
-    Entity, EntityInputHandler, FocusHandle, Focusable, GlobalElementId, InteractiveElement,
-    IntoElement, LayoutId, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad,
-    ParentElement, Pixels, Point, Render, ShapedLine, SharedString, Style, Styled, TextRun,
-    UTF16Selection, UnderlineStyle, Window, actions, div, fill, hsla, point, px, relative, rgb,
-    rgba,
+    AbsoluteLength, App, Bounds, ClipboardItem, Context, CursorStyle, Element, ElementId,
+    ElementInputHandler, Entity, EntityInputHandler, FocusHandle, Focusable, GlobalElementId,
+    InteractiveElement, IntoElement, LayoutId, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, PaintQuad, ParentElement, Pixels, Point, Render, ShapedLine, SharedString, Style,
+    Styled, TextRun, UTF16Selection, UnderlineStyle, Window, actions, div, fill, hsla, point, px,
+    relative, rgb, rgba,
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -399,6 +399,10 @@ struct PrepaintState {
     selection: Option<PaintQuad>,
 }
 
+struct TextElementRequestLayoutState {
+    l: ShapedLine,
+}
+
 impl IntoElement for TextElement {
     type Element = Self;
 
@@ -408,7 +412,7 @@ impl IntoElement for TextElement {
 }
 
 impl Element for TextElement {
-    type RequestLayoutState = ();
+    type RequestLayoutState = TextElementRequestLayoutState;
     type PrepaintState = PrepaintState;
 
     fn id(&self) -> Option<ElementId> {
@@ -426,25 +430,8 @@ impl Element for TextElement {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
-        let mut style = Style::default();
-        style.size.width = relative(1.).into();
-        style.size.height = window.line_height().into();
-        (window.request_layout(style, [], cx), ())
-    }
-
-    fn prepaint(
-        &mut self,
-        _id: Option<&GlobalElementId>,
-        _inspector_id: Option<&gpui::InspectorElementId>,
-        bounds: Bounds<Pixels>,
-        _request_layout: &mut Self::RequestLayoutState,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Self::PrepaintState {
         let input = self.input.read(cx);
         let content = input.content.clone();
-        let selected_range = input.selected_range.clone();
-        let cursor = input.cursor_offset();
         let style = window.text_style();
 
         let (display_text, text_color) = if content.is_empty() {
@@ -493,6 +480,35 @@ impl Element for TextElement {
             .text_system()
             .shape_line(display_text, font_size, &runs, None);
 
+        // Update style
+        let mut style = Style::default();
+        style.size.width = gpui::Length::Definite(gpui::DefiniteLength::Absolute(
+            AbsoluteLength::Pixels(line.width),
+        ));
+        style.size.height = window.line_height().into();
+
+        (
+            window.request_layout(style, [], cx),
+            Self::RequestLayoutState { l: line },
+        )
+    }
+
+    fn prepaint(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&gpui::InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        request_layout: &mut Self::RequestLayoutState,
+        _window: &mut Window,
+        cx: &mut App,
+    ) -> Self::PrepaintState {
+        let input = self.input.read(cx);
+        let selected_range = input.selected_range.clone();
+        let cursor = input.cursor_offset();
+
+        // Cached from request layout
+        let line = &request_layout.l;
+
         let cursor_pos = line.x_for_index(cursor);
         let (selection, cursor) = if selected_range.is_empty() {
             (
@@ -527,7 +543,7 @@ impl Element for TextElement {
             )
         };
         PrepaintState {
-            line: Some(line),
+            line: Some(line.clone()),
             cursor,
             selection,
         }
@@ -597,13 +613,16 @@ impl Render for TextInput {
             .line_height(px(16.))
             .text_size(px(16.))
             .text_color(rgb(0xcccccc))
+            .w_auto()
             .child(
                 div()
                     .h(px(30. + 4. * 2.)) // 38px
-                    .w_full()
                     .p(px(4.))
+                    .w_auto()
                     .flex()
+                    .flex_none()
                     .items_center()
+                    .min_w(px(20.))
                     .child(TextElement { input: cx.entity() }),
             )
     }

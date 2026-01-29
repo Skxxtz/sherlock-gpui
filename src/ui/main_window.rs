@@ -104,12 +104,14 @@ impl Render for InputExample {
                 div()
                     .flex()
                     .flex_row()
+                    .w_full()
                     .items_center()
                     .px_4()
                     .py(px(4.))
                     .gap_3()
                     .child(div().text_color(rgb(0x888888)).child(""))
-                    .child(div().flex_1().child(self.text_input.clone()))
+                    .child(div().w_auto().child(self.text_input.clone()))
+                    // .children(iterator) TODO: implement the variable text fields here
                     .border_b_2()
                     .border_color(hsla(0., 0., 0.1882, 1.0)),
             )
