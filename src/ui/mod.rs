@@ -1,5 +1,4 @@
 pub mod main_window;
-pub mod search;
 pub mod search_bar;
 
 use serde::{Deserialize, Serialize};
