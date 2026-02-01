@@ -58,7 +58,7 @@ pub fn websearch(
         browser
     };
 
-    spawn_detached(&command, variables)
+    spawn_detached(&command, query, variables)
 }
 
 fn is_url(input: &str) -> bool {

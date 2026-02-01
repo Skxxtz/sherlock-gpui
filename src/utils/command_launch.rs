@@ -4,10 +4,14 @@ use std::{
 };
 
 use gpui::SharedString;
+use regex::{Captures, Regex};
 
 use crate::{
     sherlock_error,
-    utils::errors::{SherlockError, SherlockErrorType},
+    utils::{
+        config::{ConfigGuard, SherlockConfig},
+        errors::{SherlockError, SherlockErrorType},
+    },
 };
 
 /// Spawnes a command completely detatched from the current process.
@@ -26,9 +30,15 @@ use crate::{
 /// * `cmd` -  A string containing the program name followed by its arguments (e.g, `foot -e`).
 pub fn spawn_detached(
     cmd: &str,
+    keyword: &str,
     variables: &[(SharedString, SharedString)],
 ) -> Result<(), SherlockError> {
-    let parts = split_as_command(cmd);
+    let config = ConfigGuard::read().unwrap();
+    let cmd = parse_variables(cmd, keyword, variables, &config);
+
+    drop(config);
+
+    let parts = split_as_command(&cmd);
     if parts.is_empty() {
         return Ok(());
     }
@@ -117,4 +127,59 @@ pub fn split_as_command(cmd: &str) -> Vec<String> {
 
     parts.retain(|s| !s.starts_with('%'));
     parts
+}
+
+pub fn parse_variables<'a>(
+    exec_input: &'a str,
+    keyword: &str,
+    variables: &[(SharedString, SharedString)],
+    config: &SherlockConfig,
+) -> String {
+    let mut exec = exec_input.to_string();
+
+    // Handle standard variables
+    let pattern = r#"\{([a-zA-Z_]+)(?::(.*?))?\}"#;
+    let re = Regex::new(pattern).unwrap();
+
+    exec = re
+        .replace_all(&exec, |caps: &Captures| {
+            let key = &caps[1];
+            let value = caps.get(2).map(|m| m.as_str());
+
+            match key {
+                "terminal" => format!("{} -e", config.default_apps.terminal),
+                "keyword" => keyword.to_string(),
+                "variable" => variables
+                    .iter()
+                    .find(|v| Some(v.0.as_ref()) == value)
+                    .map(|v| v.1.to_string())
+                    .unwrap_or_else(|| caps[0].to_string()),
+                _ => caps[0].to_string(),
+            }
+        })
+        .into_owned();
+
+    // Handle prefixes
+    let prefix_pattern = r#"\{prefix\[(.*?)\]:(.*?)\}"#;
+    let re_prefix = Regex::new(prefix_pattern).unwrap();
+
+    exec = re_prefix
+        .replace_all(&exec, |caps: &Captures| {
+            let prefix_for = &caps[1];
+            let prefix = &caps[2];
+
+            let has_value = variables
+                .iter()
+                .find(|v| v.0.as_ref() == prefix_for)
+                .map_or(false, |v| !v.1.is_empty());
+
+            if has_value {
+                prefix.to_string()
+            } else {
+                "".to_string()
+            }
+        })
+        .into_owned();
+
+    exec
 }
