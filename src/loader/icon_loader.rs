@@ -1,5 +1,6 @@
 use linicon::lookup_icon;
 
+use crate::loader::assets::Assets;
 use crate::utils::errors::{SherlockError, SherlockErrorType};
 use crate::utils::files::home_dir;
 use crate::utils::paths::get_cache_dir;
@@ -56,7 +57,7 @@ impl CustomIconTheme {
                 if is_icon {
                     if let Some(stem) = entry_path.file_stem().and_then(|s| s.to_str()) {
                         let stem = stem.to_string();
-                        if let Some(arc_path) = render_svg_to_cache(entry_path) {
+                        if let Some(arc_path) = render_svg_to_cache(&stem, entry_path) {
                             buf.entry(stem).or_insert(Some(arc_path));
                         }
                     }
@@ -121,49 +122,50 @@ impl<'g> IconThemeGuard {
 }
 
 pub fn resolve_icon_path(name: &str) -> Option<Arc<Path>> {
-    // check if previously cached
+    // 1. Check in-memory HashMap cache
     if let Ok(Some(icon)) = IconThemeGuard::lookup_icon(name) {
         return icon;
     }
 
-    fn write_to_cache(name: &str, result: Option<Arc<Path>>) {
-        if let Ok(mut cache) = IconThemeGuard::get_write() {
-            cache.buf.insert(name.to_string(), result);
-        }
+    let mut result: Option<Arc<Path>> = None;
+
+    // Check embedded files
+    if let Some(asset) = Assets::get(&format!("icons/{name}.svg")) {
+        result = render_to_png_cache(name, &asset.data);
     }
 
-    // retrieve new
-    let result: Option<Arc<Path>> = (|| {
-        let icon_path = lookup_icon(name)
+    // Fallback to local linicon lookup (~/.local/share/icons)
+    if result.is_none() {
+        result = (|| {
+            let icon_path = lookup_icon(name)
+                .with_size(128)
+                .with_search_paths(&["~/.local/share/icons/"])
+                .ok()?
+                .next()?
+                .map(|i| i.path)
+                .ok()?;
+            render_svg_to_cache(name, icon_path)
+        })();
+    }
+
+    // Fallback to global Freedesktop lookup
+    if result.is_none() {
+        result = freedesktop_icons::lookup(name)
             .with_size(128)
-            .with_search_paths(&["~/.local/share/icons/"])
-            .ok()?
-            .next()?
-            .map(|i| i.path)
-            .ok()?;
-
-        render_svg_to_cache(icon_path)
-    })();
-
-    if result.is_some() {
-        write_to_cache(name, result.clone());
-        return result;
+            .find()
+            .and_then(|i| render_svg_to_cache(name, i));
     }
 
-    let result = freedesktop_icons::lookup(name)
-        .with_size(128)
-        .find()
-        .and_then(|i| render_svg_to_cache(i));
-    if result.is_some() {
-        write_to_cache(name, result.clone());
-        return result;
+    // Finalize: Write found result back to the Guard buffer
+    if let Ok(mut cache) = IconThemeGuard::get_write() {
+        cache.buf.insert(name.to_string(), result.clone());
     }
 
-    None
+    result
 }
 
 /// Renders an svg icon into a high-resolution png version.
-pub fn render_svg_to_cache(path: PathBuf) -> Option<Arc<Path>> {
+fn render_svg_to_cache(key: &str, path: PathBuf) -> Option<Arc<Path>> {
     // Early return if file does not exist
     if !path.exists() {
         return None;
@@ -172,27 +174,6 @@ pub fn render_svg_to_cache(path: PathBuf) -> Option<Arc<Path>> {
     // Early return if file is not svg
     if path.extension().map_or(true, |s| s.to_str() != Some("svg")) {
         return Some(Arc::from(path.into_boxed_path()));
-    }
-
-    // Create dist
-    let mut output_path = get_cache_dir().unwrap();
-    output_path.push("icons");
-
-    if let Err(e) = std::fs::create_dir_all(&output_path) {
-        eprintln!("Warning: Failed to create cache directory: {}", e);
-        return None;
-    }
-
-    if let Some(stem) = path.file_stem() {
-        output_path.push(stem);
-        output_path.set_extension("png");
-    } else {
-        return None;
-    }
-
-    // Check for cache hit
-    if output_path.exists() {
-        return Some(Arc::from(output_path.into_boxed_path()));
     }
 
     // Read svg
@@ -204,18 +185,35 @@ pub fn render_svg_to_cache(path: PathBuf) -> Option<Arc<Path>> {
         }
     };
 
+    render_to_png_cache(key, &svg_data)
+}
+
+fn render_to_png_cache(key: &str, svg_data: &[u8]) -> Option<Arc<Path>> {
+    let mut out = get_cache_dir().ok()?.join("icons");
+
+    if let Err(e) = std::fs::create_dir_all(&out) {
+        eprintln!("Warning: Failed to create cache directory: {}", e);
+        return None;
+    }
+
+    out.push(format!("{}.png", key.replace('/', "_")));
+
+    if out.exists() {
+        return Some(Arc::from(out.into_boxed_path()));
+    }
+
     // Parse svg
     let opt = usvg::Options::default();
     let tree = match usvg::Tree::from_data(&svg_data, &opt) {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("Failed to parse SVG {:?}: {}", path, e);
+            eprintln!("Failed to parse SVG {key}: {e}");
             return None;
         }
     };
 
     // Scale svg
-    let target_height = 64.0;
+    let target_height = 96.0;
     let zoom = target_height / tree.size().height();
 
     let width = (tree.size().width() * zoom).round() as u32;
@@ -234,10 +232,10 @@ pub fn render_svg_to_cache(path: PathBuf) -> Option<Arc<Path>> {
     );
 
     // Save svg to destination
-    if let Err(e) = pixmap.save_png(&output_path) {
+    if let Err(e) = pixmap.save_png(&out) {
         eprintln!("Warning: Failed to cache file: {e}");
         return None;
     }
 
-    Some(Arc::from(output_path.into_boxed_path()))
+    Some(Arc::from(out.into_boxed_path()))
 }

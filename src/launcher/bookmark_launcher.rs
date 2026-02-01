@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use crate::launcher::Launcher;
 use crate::loader::application_loader::file_has_changed;
+use crate::loader::resolve_icon_path;
 use crate::loader::utils::{AppData, construct_search};
 use crate::utils::cache::BinaryCache;
 use crate::utils::errors::{SherlockError, SherlockErrorType};
@@ -185,7 +186,7 @@ impl MozillaSqliteParser {
                 for row in rows.flatten() {
                     let bookmark = AppData {
                         name: Some(SharedString::from(&row.0)),
-                        icon: None,
+                        icon: resolve_icon_path("sherlock-bookmark"),
                         search_string: construct_search(Some(&row.0), &row.1, true),
                         exec: Some(row.1),
                         desktop_file: None,
@@ -274,7 +275,7 @@ impl ChromeParser {
                     if let Some(url) = bookmark.url {
                         bookmarks.push(AppData {
                             name: Some(SharedString::from(&bookmark.name)),
-                            icon: None,
+                            icon: resolve_icon_path("sherlock-bookmark"),
                             exec: Some(url.clone()),
                             search_string: construct_search(Some(&bookmark.name), &url, true),
                             desktop_file: None,
