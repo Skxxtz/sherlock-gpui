@@ -264,11 +264,16 @@ impl Launcher {
         }
     }
 
-    pub fn execute<'a>(&self, what: &'a ExecAttrs, keyword: &str) -> Result<bool, SherlockError> {
+    pub fn execute<'a>(
+        &self,
+        what: &'a ExecAttrs,
+        keyword: &str,
+        variables: &[(SharedString, SharedString)],
+    ) -> Result<bool, SherlockError> {
         match self.method.as_str() {
             "app_launcher" => {
                 if let Some(exec) = what.exec {
-                    spawn_detached(exec)?;
+                    spawn_detached(exec, variables)?;
                     increment(&exec);
                 }
             }
@@ -279,7 +284,7 @@ impl Launcher {
                 } else {
                     keyword
                 };
-                websearch(engine, query, what.browser.as_deref())?;
+                websearch(engine, query, what.browser.as_deref(), variables)?;
             }
 
             _ => return Ok(false),

@@ -10,6 +10,8 @@ use gpui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::loader::utils::ExecVariable;
+
 actions!(
     text_input,
     [
@@ -40,6 +42,7 @@ pub struct TextInput {
     pub last_layout: Option<ShapedLine>,
     pub last_bounds: Option<Bounds<Pixels>>,
     pub is_selecting: bool,
+    pub variable: Option<ExecVariable>,
 }
 
 impl TextInput {
@@ -431,7 +434,12 @@ impl Element for TextElement {
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
         let input = self.input.read(cx);
-        let content = input.content.clone();
+        let content: SharedString = match &input.variable {
+            Some(ExecVariable::PasswordInput(_)) => {
+                "•".repeat(input.content.chars().count()).into()
+            }
+            _ => input.content.clone().into(),
+        };
         let style = window.text_style();
 
         let (display_text, text_color) = if content.is_empty() {
@@ -483,7 +491,7 @@ impl Element for TextElement {
         // Update style
         let mut style = Style::default();
         style.size.width = gpui::Length::Definite(gpui::DefiniteLength::Absolute(
-            AbsoluteLength::Pixels(line.width),
+            AbsoluteLength::Pixels(line.width + Pixels::from(2.0)),
         ));
         style.size.height = window.line_height().into();
 
@@ -503,8 +511,17 @@ impl Element for TextElement {
         cx: &mut App,
     ) -> Self::PrepaintState {
         let input = self.input.read(cx);
-        let selected_range = input.selected_range.clone();
-        let cursor = input.cursor_offset();
+        let mut selected_range = input.selected_range.clone();
+        let mut cursor = input.cursor_offset();
+
+        // handle password fields
+        if let Some(ExecVariable::PasswordInput(_)) = &input.variable {
+            cursor = input.content[..cursor].chars().count() * "•".len();
+
+            let start = input.content[..selected_range.start].chars().count() * "•".len();
+            let end = input.content[..selected_range.end].chars().count() * "•".len();
+            selected_range = start..end;
+        }
 
         // Cached from request layout
         let line = &request_layout.l;
@@ -610,12 +627,28 @@ impl Render for TextInput {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
-            .line_height(px(16.))
-            .text_size(px(16.))
             .text_color(rgb(0xcccccc))
             .w_auto()
-            .child(
+            .child(if let Some(variable) = &self.variable {
                 div()
+                    .line_height(px(12.))
+                    .text_size(px(12.))
+                    .h(px(20. + 4. * 2.)) // 38px
+                    .p(px(4.))
+                    .px(px(7.))
+                    .w_auto()
+                    .flex()
+                    .flex_none()
+                    .items_center()
+                    .border(px(1.))
+                    .border_color(hsla(0., 0., 0.1882, 1.0))
+                    .rounded_md()
+                    .min_w(px(20.))
+                    .child(TextElement { input: cx.entity() })
+            } else {
+                div()
+                    .line_height(px(16.))
+                    .text_size(px(16.))
                     .h(px(30. + 4. * 2.)) // 38px
                     .p(px(4.))
                     .w_auto()
@@ -623,8 +656,8 @@ impl Render for TextInput {
                     .flex_none()
                     .items_center()
                     .min_w(px(20.))
-                    .child(TextElement { input: cx.entity() }),
-            )
+                    .child(TextElement { input: cx.entity() })
+            })
     }
 }
 

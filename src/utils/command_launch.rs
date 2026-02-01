@@ -3,6 +3,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+use gpui::SharedString;
+
 use crate::{
     sherlock_error,
     utils::errors::{SherlockError, SherlockErrorType},
@@ -22,7 +24,10 @@ use crate::{
 ///
 /// # Arguments
 /// * `cmd` -  A string containing the program name followed by its arguments (e.g, `foot -e`).
-pub fn spawn_detached(cmd: &str) -> Result<(), SherlockError> {
+pub fn spawn_detached(
+    cmd: &str,
+    variables: &[(SharedString, SharedString)],
+) -> Result<(), SherlockError> {
     let parts = split_as_command(cmd);
     if parts.is_empty() {
         return Ok(());

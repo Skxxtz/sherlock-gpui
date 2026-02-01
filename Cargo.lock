@@ -5175,6 +5175,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simd-json",
+ "smallvec",
  "strum 0.27.2",
  "tiny-skia",
  "tokio",

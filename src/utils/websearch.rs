@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use gpui::SharedString;
+
 use super::command_launch::spawn_detached;
 use crate::utils::{
     config::{ConfigGuard, ConstantDefaults},
@@ -10,6 +12,7 @@ pub fn websearch(
     mut engine: &str,
     query: &str,
     browser: Option<&str>,
+    variables: &[(SharedString, SharedString)],
 ) -> Result<(), SherlockError> {
     if is_url(query) {
         engine = "plain";
@@ -55,7 +58,7 @@ pub fn websearch(
         browser
     };
 
-    spawn_detached(&command)
+    spawn_detached(&command, variables)
 }
 
 fn is_url(input: &str) -> bool {

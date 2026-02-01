@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, Image, ImageSource, IntoElement, ParentElement, Styled, div, img, linear_gradient,
-    px,
+    AnyElement, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div, img,
+    linear_gradient, px,
 };
 
 use crate::{
@@ -11,7 +11,12 @@ use crate::{
 };
 
 impl RenderableChildImpl for WeatherData {
-    fn execute(&self, _launcher: &Arc<Launcher>, _keyword: &str) -> Result<bool, SherlockError> {
+    fn execute(
+        &self,
+        _launcher: &Arc<Launcher>,
+        _keyword: &str,
+        _variables: &[(SharedString, SharedString)],
+    ) -> Result<bool, SherlockError> {
         Ok(false)
     }
     fn priority(&self, launcher: &Arc<Launcher>) -> f32 {

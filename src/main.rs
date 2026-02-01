@@ -13,6 +13,7 @@ use gpui::{
 use crate::{
     launcher::children::RenderableChild,
     loader::{CustomIconTheme, IconThemeGuard, Loader, assets::Assets},
+    ui::main_window::{NextVar, PrevVar},
     utils::{config::SherlockConfig, errors::SherlockErrorType},
 };
 
@@ -98,6 +99,8 @@ async fn main() {
             KeyBinding::new("down", FocusNext, None),
             KeyBinding::new("up", FocusPrev, None),
             KeyBinding::new("enter", Execute, None),
+            KeyBinding::new("tab", NextVar, None),
+            KeyBinding::new("shift-tab", PrevVar, None),
         ]);
 
         let socket_path = "/tmp/sherlock.sock";
@@ -137,6 +140,7 @@ fn spawn_launcher(cx: &mut App, data: Entity<Arc<Vec<RenderableChild>>>) -> AnyW
                 focus_handle: cx.focus_handle(),
                 content: "".into(),
                 placeholder: "Search:".into(),
+                variable: None,
                 selected_range: 0..0,
                 selection_reversed: false,
                 marked_range: None,
@@ -158,6 +162,9 @@ fn spawn_launcher(cx: &mut App, data: Entity<Arc<Vec<RenderableChild>>>) -> AnyW
                     list_state,
                     _subs: vec![sub],
                     selected_index: 0,
+                    // variable inputs
+                    variable_input: Vec::new(),
+                    active_bar: 0,
                     // Data model
                     data,
                     deferred_render_task: None,

@@ -183,8 +183,16 @@ pub struct SherlockAlias {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecVariable {
-    StringInput(String),
-    PasswordInput(String),
+    StringInput(SharedString),
+    PasswordInput(SharedString),
+}
+impl ExecVariable {
+    pub fn placeholder(&self) -> SharedString {
+        match self {
+            Self::StringInput(s) => s.clone(),
+            Self::PasswordInput(s) => s.clone(),
+        }
+    }
 }
 
 fn default_true() -> bool {

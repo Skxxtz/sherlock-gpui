@@ -88,6 +88,7 @@ impl RenderableChildImpl for CalcData {
         &self,
         _launcher: &std::sync::Arc<crate::launcher::Launcher>,
         _keyword: &str,
+        _variables: &[(SharedString, SharedString)],
     ) -> Result<bool, crate::utils::errors::SherlockError> {
         Ok(true)
     }

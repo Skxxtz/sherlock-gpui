@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gpui::AnyElement;
+use gpui::{AnyElement, SharedString};
 
 pub mod app_data;
 pub mod calc_data;
@@ -8,7 +8,7 @@ pub mod weather_data;
 
 use crate::{
     launcher::{Launcher, weather_launcher::WeatherData},
-    loader::utils::AppData,
+    loader::utils::{AppData, ExecVariable},
     utils::{config::HomeType, errors::SherlockError},
 };
 
@@ -47,9 +47,9 @@ macro_rules! renderable_enum {
                 }
             }
 
-            fn execute(&self, keyword: &str) -> Result<bool, SherlockError> {
+            fn execute(&self, keyword: &str, variables: &[(SharedString, SharedString)]) -> Result<bool, SherlockError> {
                 match self {
-                    $(Self::$variant {inner, launcher} => inner.execute(launcher, keyword)),*
+                    $(Self::$variant {inner, launcher} => inner.execute(launcher, keyword, variables)),*
                 }
             }
 
@@ -76,6 +76,13 @@ macro_rules! renderable_enum {
                     $(
                         Self::$variant { launcher, .. } => launcher.alias.as_deref()
                     ),*
+                }
+            }
+
+            fn vars(&self) -> Option<&[ExecVariable]> {
+                match self {
+                    Self::AppLike { inner, .. } => Some(&inner.vars), // Works for Vec or SmallVec
+                    _ => None,
                 }
             }
         }
@@ -109,16 +116,26 @@ impl RenderableChild {
 
 pub trait RenderableChildDelegate<'a> {
     fn render(&self, is_selected: bool) -> AnyElement;
-    fn execute(&self, keyword: &str) -> Result<bool, SherlockError>;
+    fn execute(
+        &self,
+        keyword: &str,
+        variables: &[(SharedString, SharedString)],
+    ) -> Result<bool, SherlockError>;
     fn priority(&self) -> f32;
     fn search(&self) -> String;
     fn home(&self) -> HomeType;
     fn alias(&'a self) -> Option<&'a str>;
+    fn vars(&self) -> Option<&[ExecVariable]>;
 }
 
 pub trait RenderableChildImpl {
     fn render(&self, launcher: &Arc<Launcher>, is_selected: bool) -> AnyElement;
-    fn execute(&self, launcher: &Arc<Launcher>, keyword: &str) -> Result<bool, SherlockError>;
+    fn execute(
+        &self,
+        launcher: &Arc<Launcher>,
+        keyword: &str,
+        variables: &[(SharedString, SharedString)],
+    ) -> Result<bool, SherlockError>;
     fn priority(&self, launcher: &Arc<Launcher>) -> f32;
     fn search(&self, launcher: &Arc<Launcher>) -> String;
 }

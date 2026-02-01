@@ -2,18 +2,24 @@ use std::sync::Arc;
 
 use crate::launcher::children::RenderableChild;
 use crate::launcher::children::{RenderableChildDelegate, SherlockSearch};
+use crate::loader::utils::ExecVariable;
 use crate::utils::config::HomeType;
-use gpui::{AnyElement, WeakEntity};
+use gpui::{AnyElement, AppContext, SharedString, WeakEntity};
 use gpui::{
     App, Context, Entity, FocusHandle, Focusable, ListState, Subscription, Window, actions, div,
     hsla, list, prelude::*, px, rgb,
 };
 use gpui::{AsyncApp, Task};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use simd_json::prelude::{ArrayTrait, Indexed};
+use smallvec::SmallVec;
 
 use crate::ui::search_bar::TextInput;
 
-actions!(example_input, [Quit, FocusNext, FocusPrev, Execute,]);
+actions!(
+    example_input,
+    [Quit, FocusNext, FocusPrev, NextVar, PrevVar, Execute,]
+);
 
 pub struct InputExample {
     pub text_input: Entity<TextInput>,
@@ -21,6 +27,10 @@ pub struct InputExample {
     pub list_state: ListState,
     pub _subs: Vec<Subscription>,
     pub selected_index: usize,
+
+    // variable input fields
+    pub variable_input: Vec<Entity<TextInput>>,
+    pub active_bar: usize,
 
     // Model
     pub deferred_render_task: Option<Task<Option<()>>>,
@@ -44,6 +54,8 @@ impl InputExample {
         if self.selected_index < count - 1 {
             self.selected_index += 1;
             self.list_state.scroll_to_reveal_item(self.selected_index);
+            self.update_vars(cx);
+            self.active_bar = 0;
             cx.notify();
         }
     }
@@ -56,17 +68,59 @@ impl InputExample {
         if self.selected_index > 0 {
             self.selected_index -= 1;
             self.list_state.scroll_to_reveal_item(self.selected_index);
+            self.update_vars(cx);
+            self.active_bar = 0;
+            cx.notify();
+        }
+    }
+    fn next_var(&mut self, _: &NextVar, win: &mut Window, cx: &mut Context<Self>) {
+        let total_inputs = 1 + self.variable_input.len();
+
+        if self.active_bar < total_inputs - 1 {
+            self.active_bar += 1;
+
+            if self.active_bar == 0 {
+                self.text_input.read(cx).focus_handle.focus(win);
+            } else {
+                let var_idx = self.active_bar - 1;
+                let handle = self.variable_input[var_idx].read(cx).focus_handle.clone();
+                handle.focus(win);
+            }
+
+            cx.notify();
+        }
+    }
+
+    fn prev_var(&mut self, _: &PrevVar, win: &mut Window, cx: &mut Context<Self>) {
+        if self.active_bar > 0 {
+            self.active_bar -= 1;
+
+            if self.active_bar == 0 {
+                self.text_input.read(cx).focus_handle.focus(win);
+            } else {
+                let var_idx = self.active_bar - 1;
+                let handle = self.variable_input[var_idx].read(cx).focus_handle.clone();
+                handle.focus(win);
+            }
+
             cx.notify();
         }
     }
     fn execute(&mut self, _: &Execute, win: &mut Window, cx: &mut Context<Self>) {
         let keyword = self.text_input.read(cx).content.as_str();
+        // collect variables
+        let mut variables: SmallVec<[(SharedString, SharedString); 4]> = SmallVec::new();
+        for s in &self.variable_input {
+            let guard = s.read(cx);
+            variables.push((guard.placeholder.clone(), guard.content.clone()));
+        }
+
         if let Some(selected) = self
             .data
             .read(cx)
             .get(self.filtered_indices[self.selected_index])
         {
-            match selected.execute(keyword) {
+            match selected.execute(keyword, &variables) {
                 Ok(exit) if exit => win.remove_window(),
                 Err(e) => eprintln!("{e}"),
                 _ => {}
@@ -75,6 +129,41 @@ impl InputExample {
     }
     fn quit(&mut self, _: &Quit, win: &mut Window, _: &mut Context<Self>) {
         win.remove_window();
+    }
+    fn update_vars(&mut self, cx: &mut Context<Self>) {
+        let Some(idx) = self.filtered_indices.get(self.selected_index).copied() else {
+            return;
+        };
+
+        let needed_vars: Option<Vec<ExecVariable>> = {
+            let data_guard = self.data.read(cx);
+            data_guard
+                .get(idx)
+                .and_then(|data| data.vars().map(|slice| slice.to_vec()))
+        };
+
+        if let Some(vars_to_create) = needed_vars {
+            self.variable_input = vars_to_create
+                .into_iter()
+                .map(|var| {
+                    cx.new(|cx| TextInput {
+                        focus_handle: cx.focus_handle(),
+                        content: "".into(),
+                        placeholder: var.placeholder(),
+                        variable: Some(var),
+                        // Initialize your other fields here...
+                        selected_range: 0..0,
+                        selection_reversed: false,
+                        marked_range: None,
+                        last_layout: None,
+                        last_bounds: None,
+                        is_selecting: false,
+                    })
+                })
+                .collect();
+        } else {
+            self.variable_input.clear();
+        }
     }
 }
 
@@ -95,6 +184,8 @@ impl Render for InputExample {
             .overflow_hidden()
             .on_action(cx.listener(Self::focus_next))
             .on_action(cx.listener(Self::focus_prev))
+            .on_action(cx.listener(Self::next_var))
+            .on_action(cx.listener(Self::prev_var))
             .on_action(cx.listener(Self::execute))
             .on_action(cx.listener(Self::quit))
             .child(
@@ -109,7 +200,7 @@ impl Render for InputExample {
                     .gap_3()
                     .child(div().text_color(rgb(0x888888)).child(""))
                     .child(div().w_auto().child(self.text_input.clone()))
-                    // .children(iterator) TODO: implement the variable text fields here
+                    .children(self.variable_input.iter().cloned())
                     .border_b_2()
                     .border_color(hsla(0., 0., 0.1882, 1.0)),
             )
@@ -167,8 +258,43 @@ impl InputExample {
         let old_count = self.list_state.item_count();
         let new_count = results.len();
 
-        self.filtered_indices = results;
+        if let Some(&first_idx) = results.first() {
+            let needed_vars: Option<Vec<ExecVariable>> = {
+                let data_guard = self.data.read(cx);
+                data_guard
+                    .get(first_idx)
+                    .and_then(|data| data.vars().map(|slice| slice.to_vec()))
+            };
+
+            if let Some(vars_to_create) = needed_vars {
+                let current_top_idx = self.filtered_indices.get(self.selected_index).copied();
+                if current_top_idx != Some(first_idx) {
+                    self.variable_input = vars_to_create
+                        .into_iter()
+                        .map(|var| {
+                            cx.new(|cx| TextInput {
+                                focus_handle: cx.focus_handle(),
+                                content: "".into(),
+                                placeholder: var.placeholder(),
+                                variable: Some(var),
+                                selected_range: 0..0,
+                                selection_reversed: false,
+                                marked_range: None,
+                                last_layout: None,
+                                last_bounds: None,
+                                is_selecting: false,
+                            })
+                        })
+                        .collect();
+                }
+            } else {
+                self.variable_input.clear();
+            }
+        }
+
         self.selected_index = 0;
+        self.active_bar = 0;
+        self.filtered_indices = results;
         self.last_query = Some(query);
 
         self.list_state.splice(0..old_count, new_count);
@@ -192,10 +318,9 @@ impl InputExample {
                 let mut cx = cx.clone();
                 let mode = "all";
                 async move {
-                    // collects Vec<(index, priority)>
-                    //
                     let is_home = query.is_empty(); // && mode == "all";
 
+                    // collects Vec<(index, priority)>
                     let mut results: Vec<(usize, f32)> = (0..data_arc.len())
                         .into_par_iter()
                         .map(|i| (i, &data_arc[i]))
