@@ -256,20 +256,20 @@ impl LauncherType {
 pub struct Launcher {
     pub name: Option<String>,
     pub display_name: Option<SharedString>,
-    pub icon: Option<String>,
+    pub icon: Option<String>, // nu
     pub alias: Option<String>,
-    pub tag_end: Option<String>,
-    pub method: String,
-    pub exit: bool,
-    pub next_content: Option<String>,
+    pub tag_end: Option<String>,      // nu
+    pub method: String,               // nu
+    pub exit: bool,                   // nu
+    pub next_content: Option<String>, // nu
     pub priority: u32,
-    pub r#async: bool,
+    pub r#async: bool, // nu
     pub home: HomeType,
     pub launcher_type: LauncherType,
-    pub shortcut: bool,
-    pub spawn_focus: bool,
-    pub actions: Option<Vec<ApplicationAction>>,
-    pub add_actions: Option<Vec<ApplicationAction>>,
+    pub shortcut: bool,                              // nu
+    pub spawn_focus: bool,                           // nu
+    pub actions: Option<Vec<ApplicationAction>>,     // nu
+    pub add_actions: Option<Vec<ApplicationAction>>, // nu
 }
 impl Launcher {
     pub fn from_raw(

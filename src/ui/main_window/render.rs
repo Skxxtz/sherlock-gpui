@@ -1,8 +1,15 @@
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Element, Focusable, Image, ImageSource, InteractiveElement, IntoElement, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, div, hsla, img, list, px, relative, rgb};
+use gpui::{
+    AnyElement, Context, Element, Focusable, Image, ImageSource, InteractiveElement, IntoElement,
+    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, div, hsla,
+    img, list, px, relative, rgb,
+};
 
-use crate::{launcher::children::{RenderableChild, RenderableChildDelegate}, ui::main_window::SherlockMainWindow};
+use crate::{
+    launcher::children::{RenderableChild, RenderableChildDelegate},
+    ui::main_window::SherlockMainWindow,
+};
 
 impl Render for SherlockMainWindow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {

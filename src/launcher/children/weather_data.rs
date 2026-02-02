@@ -10,7 +10,7 @@ use crate::{
     utils::errors::SherlockError,
 };
 
-impl RenderableChildImpl for WeatherData {
+impl<'a> RenderableChildImpl<'a> for WeatherData {
     fn execute(
         &self,
         _launcher: &Arc<Launcher>,
@@ -22,8 +22,8 @@ impl RenderableChildImpl for WeatherData {
     fn priority(&self, launcher: &Arc<Launcher>) -> f32 {
         launcher.priority as f32
     }
-    fn search(&self, _launcher: &Arc<Launcher>) -> String {
-        String::new()
+    fn search(&self, _launcher: &Arc<Launcher>) -> &'a str {
+        ""
     }
     fn render(&self, _launcher: &Arc<Launcher>, _is_selected: bool) -> AnyElement {
         div()

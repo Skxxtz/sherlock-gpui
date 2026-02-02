@@ -3,7 +3,11 @@ use std::sync::Arc;
 use gpui::{AppContext, Context, SharedString, Window, actions};
 use smallvec::SmallVec;
 
-use crate::{launcher::children::{RenderableChild, RenderableChildDelegate}, loader::utils::ExecVariable, ui::{main_window::SherlockMainWindow, search_bar::TextInput}};
+use crate::{
+    launcher::children::{RenderableChild, RenderableChildDelegate},
+    loader::utils::ExecVariable,
+    ui::{main_window::SherlockMainWindow, search_bar::TextInput},
+};
 
 actions!(
     example_input,
@@ -151,7 +155,12 @@ impl SherlockMainWindow {
             }
         }
     }
-    pub(super) fn open_context(&mut self, _: &OpenContext, _win: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn open_context(
+        &mut self,
+        _: &OpenContext,
+        _win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.context_actions.is_empty() {
             return;
         }
@@ -225,4 +234,3 @@ impl SherlockMainWindow {
         }
     }
 }
-

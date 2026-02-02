@@ -11,7 +11,7 @@ use crate::{
     utils::errors::SherlockError,
 };
 
-impl RenderableChildImpl for AppData {
+impl<'a> RenderableChildImpl<'a> for AppData {
     fn render(&self, launcher: &Arc<Launcher>, is_selected: bool) -> AnyElement {
         div()
             .px_4()
@@ -75,7 +75,7 @@ impl RenderableChildImpl for AppData {
     fn priority(&self, launcher: &Arc<Launcher>) -> f32 {
         self.priority.unwrap_or(launcher.priority as f32)
     }
-    fn search(&self, _launcher: &Arc<Launcher>) -> String {
-        self.search_string.clone()
+    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+        &self.search_string
     }
 }

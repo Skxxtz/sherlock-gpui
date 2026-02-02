@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
-use crate::launcher::children::RenderableChild;
+use crate::launcher::children::{LauncherValues, RenderableChild};
 use crate::launcher::children::{RenderableChildDelegate, SherlockSearch};
 use crate::loader::utils::{ApplicationAction, ExecVariable};
 use crate::utils::config::HomeType;
+use gpui::{App, Context, Entity, FocusHandle, Focusable, ListState, Subscription};
 use gpui::{AppContext, WeakEntity};
-use gpui::{
-    App, Context, Entity, FocusHandle, Focusable, ListState, Subscription,
-};
 use gpui::{AsyncApp, Task};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use simd_json::prelude::Indexed;
@@ -17,15 +15,7 @@ use crate::ui::search_bar::TextInput;
 pub mod actions;
 pub mod render;
 
-pub use actions::{
-    Quit,
-    FocusNext,
-    FocusPrev,
-    NextVar,
-    PrevVar,
-    Execute,
-    OpenContext
-};
+pub use actions::{Execute, FocusNext, FocusPrev, NextVar, OpenContext, PrevVar, Quit};
 
 pub struct SherlockMainWindow {
     pub text_input: Entity<TextInput>,
@@ -130,9 +120,12 @@ impl SherlockMainWindow {
                             let home = data.home();
 
                             // [Rule 1]
-                            // Early return if mode applies but item is not assigned to that mode
-                            if mode != "all" && Some(mode) != data.alias() {
-                                return false;
+                            // Case 1: Early return if mode applies but item is not assigned to that mode
+                            // Case 2: Early return if current mode is not required mode for item
+                            if Some(mode) != data.alias() {
+                                if mode != "all" || data.priority() < 1.0 {
+                                    return false;
+                                }
                             }
 
                             // [Rule 2]
@@ -228,5 +221,4 @@ impl SherlockMainWindow {
 
     //     result
     // }
-
 }

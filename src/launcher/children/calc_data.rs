@@ -58,9 +58,9 @@ impl CalcData {
     }
 }
 
-impl RenderableChildImpl for CalcData {
-    fn search(&self, _launcher: &std::sync::Arc<crate::launcher::Launcher>) -> String {
-        String::new()
+impl<'a> RenderableChildImpl<'a> for CalcData {
+    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::Launcher>) -> &'a str {
+        ""
     }
     fn execute(
         &self,

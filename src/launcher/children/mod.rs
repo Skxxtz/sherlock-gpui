@@ -7,7 +7,7 @@ pub mod calc_data;
 pub mod weather_data;
 
 use crate::{
-    launcher::{ExecMode, Launcher, weather_launcher::WeatherData},
+    launcher::{ExecMode, Launcher, LauncherType, weather_launcher::WeatherData},
     loader::utils::{AppData, ApplicationAction, ExecVariable},
     utils::{config::HomeType, errors::SherlockError},
 };
@@ -52,6 +52,7 @@ macro_rules! renderable_enum {
                     $(Self::$variant {inner, launcher} => inner.execute(launcher, keyword, variables)),*
                 }
             }
+
             fn execute_action(&self, action: &'a ApplicationAction) -> Result<bool, SherlockError> {
                 match self {
                     $(Self::$variant {launcher, ..} => {
@@ -61,31 +62,12 @@ macro_rules! renderable_enum {
                 }
             }
 
-            fn priority(&self) -> f32 {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.priority(launcher)),*
-                }
-            }
-
-            fn search(&self) -> String {
+            fn search(&'a self) -> &'a str {
                 match self {
                     $(Self::$variant {inner, launcher} => inner.search(launcher)),*
                 }
             }
 
-            fn home(&self) -> HomeType {
-                match &self {
-                    $(Self::$variant {launcher, ..} => launcher.home),*
-                }
-            }
-
-            fn alias(&'a self) -> Option<&'a str> {
-                match self {
-                    $(
-                        Self::$variant { launcher, .. } => launcher.alias.as_deref()
-                    ),*
-                }
-            }
 
             fn vars(&self) -> Option<&[ExecVariable]> {
                 match self {
@@ -98,6 +80,47 @@ macro_rules! renderable_enum {
                 match self {
                     Self::AppLike { inner, ..} => Some(inner.actions.clone()),
                     _ => None
+                }
+            }
+        }
+
+        impl<'a> LauncherValues<'a> for $name {
+            fn name(&'a self) -> Option<&'a str> {
+                self.launcher().name.as_deref()
+            }
+
+            fn display_name(&self) -> Option<SharedString> {
+                self.launcher().display_name.clone()
+            }
+
+            fn home(&self) -> HomeType {
+                self.launcher().home
+            }
+
+            fn is_async(&self) -> bool {
+                self.launcher().r#async
+            }
+
+            fn alias(&'a self) -> Option<&'a str> {
+                self.launcher().alias.as_deref()
+            }
+
+            fn priority(&self) -> f32 {
+                match self {
+                    $(Self::$variant {inner, launcher} => inner.priority(launcher)),*
+                }
+            }
+
+            fn launcher_type(&'a self) -> &'a LauncherType {
+                &self.launcher().launcher_type
+            }
+        }
+
+        impl <'a> $name {
+            #[inline(always)]
+            fn launcher(&'a self) -> &'a Launcher {
+                match self {
+                    $(Self::$variant {launcher, ..} => &launcher),*
                 }
             }
         }
@@ -137,15 +160,23 @@ pub trait RenderableChildDelegate<'a> {
         variables: &[(SharedString, SharedString)],
     ) -> Result<bool, SherlockError>;
     fn execute_action(&self, action: &'a ApplicationAction) -> Result<bool, SherlockError>;
-    fn priority(&self) -> f32;
-    fn search(&self) -> String;
-    fn home(&self) -> HomeType;
-    fn alias(&'a self) -> Option<&'a str>;
+    fn search(&'a self) -> &'a str;
     fn vars(&self) -> Option<&[ExecVariable]>;
     fn actions(&self) -> Option<Arc<[Arc<ApplicationAction>]>>;
 }
 
-pub trait RenderableChildImpl {
+#[allow(dead_code)]
+pub trait LauncherValues<'a> {
+    fn name(&'a self) -> Option<&'a str>;
+    fn display_name(&self) -> Option<SharedString>;
+    fn alias(&'a self) -> Option<&'a str>;
+    fn priority(&self) -> f32;
+    fn is_async(&self) -> bool;
+    fn home(&self) -> HomeType;
+    fn launcher_type(&'a self) -> &'a LauncherType;
+}
+
+pub trait RenderableChildImpl<'a> {
     fn render(&self, launcher: &Arc<Launcher>, is_selected: bool) -> AnyElement;
     fn execute(
         &self,
@@ -154,7 +185,7 @@ pub trait RenderableChildImpl {
         variables: &[(SharedString, SharedString)],
     ) -> Result<bool, SherlockError>;
     fn priority(&self, launcher: &Arc<Launcher>) -> f32;
-    fn search(&self, launcher: &Arc<Launcher>) -> String;
+    fn search(&'a self, launcher: &Arc<Launcher>) -> &'a str;
 }
 
 pub trait SherlockSearch {
