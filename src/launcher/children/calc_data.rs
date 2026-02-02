@@ -5,7 +5,11 @@ use std::{
 
 use gpui::{IntoElement, ParentElement, SharedString, Styled, div, px, rgb};
 
-use crate::{launcher::children::RenderableChildImpl, utils::intent::Intent};
+use crate::{
+    launcher::{ExecAttrs, children::RenderableChildImpl},
+    sherlock_error,
+    utils::{errors::SherlockErrorType, intent::Intent},
+};
 
 #[derive(Clone)]
 pub struct CalcData {
@@ -68,7 +72,7 @@ impl RenderableChildImpl for CalcData {
         _keyword: &str,
         _variables: &[(SharedString, SharedString)],
     ) -> Result<bool, crate::utils::errors::SherlockError> {
-        Ok(true)
+        Ok(false)
     }
     fn priority(&self, launcher: &std::sync::Arc<crate::launcher::Launcher>) -> f32 {
         launcher.priority as f32
