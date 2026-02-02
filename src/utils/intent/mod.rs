@@ -235,11 +235,31 @@ impl<'a> Intent<'a> {
 macro_rules! define_units {
     ($(
         $category:ident {
+            cap: $cap_val:expr,
             $($variant:ident: [$($alias:literal),*] => $factor:expr, $canonical_symbol:literal),* $(,)?
         }
     )*) => {
         #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
         pub enum UnitCategory { $($category),* }
+        impl UnitCategory {
+            pub fn capability_mask(&self) -> u32 {
+                match self {
+                    $( UnitCategory::$category => Capabilities::$category, )*
+                }
+            }
+        }
+
+        pub struct Capabilities(u32);
+        impl Capabilities {
+            pub const NONE: u32 = 0;
+            $( pub const $category: u32 = $cap_val; )*
+            pub const EVERYTHING: u32 = u32::MAX;
+
+            #[inline]
+            pub fn allows(mask: u32, cap: u32) -> bool {
+                (mask & cap) != 0
+            }
+        }
 
         #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
         pub enum Unit {
@@ -362,6 +382,7 @@ impl Unit {
 
 define_units! {
     Currency {
+        cap: 1 << 0,
         Usd: ["usd", "dollar", "dollars", "bucks", "$"] => 1.0, "$",
         Eur: ["eur", "euro", "euros", "€"] => 1.0, "€",
         Jpy: ["jpy", "yen", "japanese yen", "¥"] => 1.0, "¥",
@@ -380,6 +401,7 @@ define_units! {
         Pln: ["pln", "polish", "złoty", "zł"] => 1.0, "zł",
     }
     Length {
+        cap: 1 << 1,
         Millimeter: ["mm", "millimeter", "millimeters"] => 0.001, "mm",
         Centimeter: ["cm", "centimeter", "centimeters"] => 0.01, "cm",
         Meter: ["m", "meter", "meters"] => 1.0, "m",
@@ -391,6 +413,7 @@ define_units! {
         NauticalMile: ["nm", "nautical mile"] => 1852.0, "nmi",
     }
     Volume {
+        cap: 1 << 2,
         Milliliter: ["ml", "milliliter", "milliliters", "cc"] => 0.001, "ml",
         Centiliter: ["cl", "centiliter"] => 0.01, "cl",
         Liter: ["l", "liter", "liters"] => 1.0, "l",
@@ -408,6 +431,7 @@ define_units! {
         ImperialGallon: ["imp gal"] => 4.54609, "imp gal",
     }
     Weight {
+        cap: 1 << 3,
         Milligram: ["mg", "milligram", "milligrams"] => 0.000001, "mg",
         Gram: ["g", "gram", "grams"] => 0.001, "g",
         Kilogram: ["kg", "kilogram", "kilograms", "kilo", "kilos"] => 1.0, "kg",
@@ -422,10 +446,12 @@ define_units! {
         TroyOunce: ["ozt", "troy ounce", "troy ounces"] => 0.0311035, "ozt",
     }
     Temperature {
+        cap: 1 << 4,
         Celsius: ["c", "celsius", "°c", "°"] => 1.0, "°C",
         Fahrenheit: ["f", "fahrenheit", "°f"] => 1.0, "°F",
     }
     Pressure {
+        cap: 1 << 5,
         Pascal: ["pa", "pascal", "pascals"] => 0.00001, "Pa",
         Kilopascal: ["kpa", "kilopascal"] => 0.01, "kPa",
         Bar: ["bar", "bars"] => 1.0, "bar",
@@ -434,6 +460,7 @@ define_units! {
         Torr: ["torr", "mmhg"] => 0.00133322, "mmHg",
     }
     Digital {
+        cap: 1 << 6,
         Bit: ["bit", "bits", "b"] => 0.125, "bit",
         Kilobit: ["kb", "kilobit"] => 128.0, "kb",
         Megabit: ["mb", "megabit"] => 131072.0, "Mb",
@@ -446,6 +473,7 @@ define_units! {
         Petabyte: ["pb", "petabyte", "PB"] => 1125899906842624.0, "PB",
     }
     Time {
+        cap: 1 << 7,
         Milliseconds: ["ms", "millisecond", "milliseconds"] => 0.001, "ms",
         Seconds: ["s", "sec", "second", "seconds"] => 1.0, "s",
         Minutes: ["min", "minute", "minutes"] => 60.0, "min",
@@ -456,6 +484,7 @@ define_units! {
         Years: ["yr", "year", "years"] => 31556952.0, "yr",
     }
     Area {
+        cap: 1 << 8,
         SquareMeter: ["m2", "sq m", "sq meter"] => 1.0, "m²",
         SquareKilometer: ["km2", "sq km"] => 1000000.0, "km²",
         SquareFoot: ["ft2", "sq ft", "sq feet"] => 0.092903, "ft²",
@@ -464,6 +493,7 @@ define_units! {
         Hectare: ["ha", "hectare"] => 10000.0, "ha",
     }
     Speed {
+        cap: 1 << 9,
         MetersPerSecond: ["ms", "m/s", "meters per second"] => 1.0, "m/s",
         KilometersPerHour: ["kmh", "km/h", "kph"] => 0.277778, "km/h",
         MilesPerHour: ["mph", "mile per hour", "miles per hour"] => 0.44704, "mph",
