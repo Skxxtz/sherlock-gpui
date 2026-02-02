@@ -79,6 +79,7 @@ impl Loader {
                 let r_path = entry.to_str()?;
                 match read_lines(r_path) {
                     Ok(content) => {
+                        let mut buffer = Vec::new();
                         let mut data = AppData::new();
                         let mut current_section = None;
                         let mut current_action = ApplicationAction::new("app_launcher");
@@ -92,7 +93,7 @@ impl Loader {
                             if line.starts_with('[') && line.ends_with(']') {
                                 current_section = Some(line[1..line.len() - 1].to_string());
                                 if current_action.is_valid() {
-                                    data.actions.push(current_action.clone())
+                                    buffer.push(Arc::new(current_action))
                                 }
                                 current_action = ApplicationAction::new("app_launcher");
                                 continue;
@@ -132,28 +133,30 @@ impl Loader {
                                 } else {
                                     // Application Actions
                                     match key.as_ref() {
-                                        "name" => current_action.name = Some(value.to_string()),
+                                        "name" => {
+                                            current_action.name =
+                                                Some(SharedString::from(value.to_string()))
+                                        }
                                         "exec" => current_action.exec = Some(value.to_string()),
                                         "icon" => current_action.icon = resolve_icon_path(value),
                                         _ => {}
                                     }
+                                    if current_action.icon.is_none() {
+                                        current_action.icon = data.icon.clone();
+                                    }
                                     if current_action.is_full() {
-                                        data.actions.push(current_action.clone());
+                                        buffer.push(Arc::new(current_action));
                                         current_action = ApplicationAction::new("app_launcher");
                                         current_section = None;
                                     }
                                 }
                             }
                         }
-                        data.actions
-                            .iter_mut()
-                            .filter(|action| action.icon.is_none())
-                            .for_each(|action| action.icon = data.icon.clone());
                         let alias = {
                             let mut aliases = aliases.write().unwrap();
                             aliases.remove(data.name.as_ref().unwrap().as_str())
                         };
-                        data.apply_alias(&launcher, alias, use_keywords);
+                        data.apply_alias(&launcher, alias, use_keywords, buffer);
                         // apply counts
                         let count = data
                             .exec

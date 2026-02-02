@@ -6,7 +6,7 @@ use gpui::{
 };
 
 use crate::{
-    launcher::{ExecAttrs, Launcher, children::RenderableChildImpl},
+    launcher::{ExecMode, Launcher, children::RenderableChildImpl},
     loader::utils::AppData,
     utils::errors::SherlockError,
 };
@@ -69,7 +69,7 @@ impl RenderableChildImpl for AppData {
         keyword: &str,
         variables: &[(SharedString, SharedString)],
     ) -> Result<bool, SherlockError> {
-        let attrs = ExecAttrs::from_appdata(self, launcher);
+        let attrs = ExecMode::from_appdata(self, launcher);
         launcher.execute(&attrs, keyword, variables)
     }
     fn priority(&self, launcher: &Arc<Launcher>) -> f32 {

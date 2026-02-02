@@ -7,7 +7,7 @@ pub mod calc_data;
 pub mod weather_data;
 
 use crate::{
-    launcher::{Launcher, weather_launcher::WeatherData},
+    launcher::{ExecMode, Launcher, weather_launcher::WeatherData},
     loader::utils::{AppData, ApplicationAction, ExecVariable},
     utils::{config::HomeType, errors::SherlockError},
 };
@@ -52,6 +52,14 @@ macro_rules! renderable_enum {
                     $(Self::$variant {inner, launcher} => inner.execute(launcher, keyword, variables)),*
                 }
             }
+            fn execute_action(&self, action: &'a ApplicationAction) -> Result<bool, SherlockError> {
+                match self {
+                    $(Self::$variant {launcher, ..} => {
+                        let what = ExecMode::from_app_action(action, launcher);
+                        launcher.execute(&what, "", &[])
+                    }),*
+                }
+            }
 
             fn priority(&self) -> f32 {
                 match self {
@@ -86,9 +94,9 @@ macro_rules! renderable_enum {
                 }
             }
 
-            fn actions(&self) -> Option<&[ApplicationAction]> {
+            fn actions(&self) -> Option<Arc<[Arc<ApplicationAction>]>> {
                 match self {
-                    Self::AppLike { inner, ..} => Some(inner.actions.as_ref()),
+                    Self::AppLike { inner, ..} => Some(inner.actions.clone()),
                     _ => None
                 }
             }
@@ -128,12 +136,13 @@ pub trait RenderableChildDelegate<'a> {
         keyword: &str,
         variables: &[(SharedString, SharedString)],
     ) -> Result<bool, SherlockError>;
+    fn execute_action(&self, action: &'a ApplicationAction) -> Result<bool, SherlockError>;
     fn priority(&self) -> f32;
     fn search(&self) -> String;
     fn home(&self) -> HomeType;
     fn alias(&'a self) -> Option<&'a str>;
     fn vars(&self) -> Option<&[ExecVariable]>;
-    fn actions(&self) -> Option<&[ApplicationAction]>;
+    fn actions(&self) -> Option<Arc<[Arc<ApplicationAction>]>>;
 }
 
 pub trait RenderableChildImpl {

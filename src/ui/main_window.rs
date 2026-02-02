@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use crate::launcher::ExecMode;
 use crate::launcher::children::RenderableChild;
 use crate::launcher::children::{RenderableChildDelegate, SherlockSearch};
-use crate::loader::utils::ExecVariable;
+use crate::loader::utils::{ApplicationAction, ExecVariable};
 use crate::utils::config::HomeType;
-use gpui::{AnyElement, AppContext, SharedString, WeakEntity, relative};
+use gpui::{AnyElement, AppContext, Image, ImageSource, SharedString, WeakEntity, img, relative};
 use gpui::{
     App, Context, Entity, FocusHandle, Focusable, ListState, Subscription, Window, actions, div,
     hsla, list, prelude::*, px, rgb,
@@ -18,7 +19,15 @@ use crate::ui::search_bar::TextInput;
 
 actions!(
     example_input,
-    [Quit, FocusNext, FocusPrev, NextVar, PrevVar, Execute,]
+    [
+        Quit,
+        FocusNext,
+        FocusPrev,
+        NextVar,
+        PrevVar,
+        Execute,
+        OpenContext
+    ]
 );
 
 pub struct SherloockMainView {
@@ -27,6 +36,10 @@ pub struct SherloockMainView {
     pub list_state: ListState,
     pub _subs: Vec<Subscription>,
     pub selected_index: usize,
+
+    // context menu
+    pub context_idx: Option<usize>,
+    pub context_actions: Arc<[Arc<ApplicationAction>]>,
 
     // variable input fields
     pub variable_input: Vec<Entity<TextInput>>,
@@ -51,12 +64,29 @@ impl SherloockMainView {
             return;
         }
 
-        if self.selected_index < count - 1 {
-            self.selected_index += 1;
-            self.list_state.scroll_to_reveal_item(self.selected_index);
-            self.update_vars(cx);
-            self.active_bar = 0;
-            cx.notify();
+        if let Some(idx) = self.context_idx {
+            // handle context
+            if idx < self.context_actions.len() - 1 {
+                self.context_idx = Some(idx + 1);
+                cx.notify();
+            }
+        } else {
+            // handle normal view
+            if self.selected_index < count - 1 {
+                self.selected_index += 1;
+                self.list_state.scroll_to_reveal_item(self.selected_index);
+                self.update_vars(cx);
+                self.active_bar = 0;
+
+                self.context_actions = self
+                    .filtered_indices
+                    .get(self.selected_index)
+                    .and_then(|i| self.data.read(cx).get(*i))
+                    .and_then(RenderableChild::actions)
+                    .unwrap_or_default();
+
+                cx.notify();
+            }
         }
     }
     fn focus_prev(&mut self, _: &FocusPrev, _: &mut Window, cx: &mut Context<Self>) {
@@ -65,12 +95,29 @@ impl SherloockMainView {
             return;
         }
 
-        if self.selected_index > 0 {
-            self.selected_index -= 1;
-            self.list_state.scroll_to_reveal_item(self.selected_index);
-            self.update_vars(cx);
-            self.active_bar = 0;
-            cx.notify();
+        if let Some(idx) = self.context_idx {
+            // handle context
+            if idx > 0 {
+                self.context_idx = Some(idx - 1);
+                cx.notify();
+            }
+        } else {
+            // handle normal view
+            if self.selected_index > 0 {
+                self.selected_index -= 1;
+                self.list_state.scroll_to_reveal_item(self.selected_index);
+                self.update_vars(cx);
+                self.active_bar = 0;
+
+                self.context_actions = self
+                    .filtered_indices
+                    .get(self.selected_index)
+                    .and_then(|i| self.data.read(cx).get(*i))
+                    .and_then(RenderableChild::actions)
+                    .unwrap_or_default();
+
+                cx.notify();
+            }
         }
     }
     fn next_var(&mut self, _: &NextVar, win: &mut Window, cx: &mut Context<Self>) {
@@ -107,28 +154,65 @@ impl SherloockMainView {
         }
     }
     fn execute(&mut self, _: &Execute, win: &mut Window, cx: &mut Context<Self>) {
-        let keyword = self.text_input.read(cx).content.as_str();
-        // collect variables
-        let mut variables: SmallVec<[(SharedString, SharedString); 4]> = SmallVec::new();
-        for s in &self.variable_input {
-            let guard = s.read(cx);
-            variables.push((guard.placeholder.clone(), guard.content.clone()));
-        }
+        if let Some(idx) = self.context_idx {
+            if let Some(action) = self.context_actions.get(idx) {
+                if let Some(selected) = self
+                    .data
+                    .read(cx)
+                    .get(self.filtered_indices[self.selected_index])
+                {
+                    match selected.execute_action(action) {
+                        Ok(exit) if exit => self.close_window(win, cx),
+                        Err(e) => eprintln!("{e}"),
+                        _ => {}
+                    }
+                }
+            }
+        } else {
+            let keyword = self.text_input.read(cx).content.as_str();
+            // collect variables
+            let mut variables: SmallVec<[(SharedString, SharedString); 4]> = SmallVec::new();
+            for s in &self.variable_input {
+                let guard = s.read(cx);
+                variables.push((guard.placeholder.clone(), guard.content.clone()));
+            }
 
-        if let Some(selected) = self
-            .data
-            .read(cx)
-            .get(self.filtered_indices[self.selected_index])
-        {
-            match selected.execute(keyword, &variables) {
-                Ok(exit) if exit => self.close_window(win, cx),
-                Err(e) => eprintln!("{e}"),
-                _ => {}
+            if let Some(selected) = self
+                .data
+                .read(cx)
+                .get(self.filtered_indices[self.selected_index])
+            {
+                match selected.execute(keyword, &variables) {
+                    Ok(exit) if exit => self.close_window(win, cx),
+                    Err(e) => eprintln!("{e}"),
+                    _ => {}
+                }
             }
         }
     }
+    fn open_context(&mut self, _: &OpenContext, _win: &mut Window, cx: &mut Context<Self>) {
+        if self.context_actions.is_empty() {
+            return;
+        }
+
+        // toggle logic
+        if self.context_idx.take().is_none() {
+            self.context_idx = Some(0);
+        }
+
+        cx.notify();
+    }
+    fn close_context(&mut self, cx: &mut Context<Self>) {
+        if let Some(_) = self.context_idx.take() {
+            cx.notify();
+        }
+    }
     fn quit(&mut self, _: &Quit, win: &mut Window, cx: &mut Context<Self>) {
-        self.close_window(win, cx);
+        if self.context_idx.is_some() {
+            self.close_context(cx);
+        } else {
+            self.close_window(win, cx);
+        }
     }
     fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
         // Cleanup
@@ -202,6 +286,7 @@ impl Render for SherloockMainView {
             .on_action(cx.listener(Self::prev_var))
             .on_action(cx.listener(Self::execute))
             .on_action(cx.listener(Self::quit))
+            .on_action(cx.listener(Self::open_context))
             .child(
                 // search bar
                 div()
@@ -223,7 +308,7 @@ impl Render for SherloockMainView {
                     .id("results-container")
                     .flex_1()
                     .min_h_0()
-                    .p_2()
+                    .p(px(10.))
                     .child(
                         list(self.list_state.clone(), move |idx, _win, cx| {
                             // 1. Upgrade and Read
@@ -248,7 +333,69 @@ impl Render for SherloockMainView {
                             state.render_list_item(&child, idx)
                         })
                         .size_full(),
-                    ),
+                    )
+                    .child(if let Some(active) = self.context_idx {
+                        div().inset_0().absolute().child(
+                            div()
+                                .p(px(7.))
+                                .bg(rgb(0x0F0F0F))
+                                .border_color(hsla(0., 0., 0.1882, 1.0))
+                                .border(px(1.))
+                                .rounded_md()
+                                .absolute()
+                                .bottom(px(10.))
+                                .right(px(10.))
+                                .flex()
+                                .flex_col()
+                                .gap(px(5.))
+                                .children(self.context_actions.iter().enumerate().map(
+                                    |(i, child)| {
+                                        let is_selected = i == active;
+                                        div()
+                                            .group("")
+                                            .rounded_md()
+                                            .relative()
+                                            .flex_1()
+                                            .flex()
+                                            .gap(px(10.))
+                                            .p(px(10.))
+                                            .cursor_pointer()
+                                            .text_color(if is_selected {
+                                                hsla(0.0, 0.0, 0.8, 1.0)
+                                            } else {
+                                                hsla(0.6, 0.0217, 0.3608, 1.0)
+                                            })
+                                            .text_size(px(13.))
+                                            .line_height(relative(1.0))
+                                            .items_center()
+                                            .bg(if is_selected {
+                                                hsla(0., 0., 0.149, 1.0)
+                                            } else {
+                                                hsla(0., 0., 0., 0.)
+                                            })
+                                            .hover(|s| {
+                                                if is_selected && self.context_idx.is_some() {
+                                                    s
+                                                } else {
+                                                    s.bg(hsla(0., 0., 0.12, 1.0))
+                                                }
+                                            })
+                                            .child(if let Some(icon) = child.icon.as_ref() {
+                                                img(Arc::clone(&icon))
+                                                    .size(px(16.))
+                                                    .into_any_element()
+                                            } else {
+                                                img(ImageSource::Image(Arc::new(Image::empty())))
+                                                    .size(px(16.))
+                                                    .into_any_element()
+                                            })
+                                            .child(child.name.as_ref().unwrap().clone())
+                                    },
+                                )),
+                        )
+                    } else {
+                        div()
+                    }),
             )
             .child(
                 // statusbar
@@ -495,7 +642,7 @@ impl SherloockMainView {
                         hsla(0., 0., 0., 0.)
                     })
                     .hover(|s| {
-                        if is_selected {
+                        if is_selected || self.context_idx.is_some() {
                             s
                         } else {
                             s.bg(hsla(0., 0., 0.12, 1.0))

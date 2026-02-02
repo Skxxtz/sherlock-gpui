@@ -300,40 +300,39 @@ impl Launcher {
 
     pub fn execute<'a>(
         &self,
-        what: &'a ExecAttrs,
+        what: &'a ExecMode,
         keyword: &str,
         variables: &[(SharedString, SharedString)],
     ) -> Result<bool, SherlockError> {
-        match self.method.as_str() {
-            "app_launcher" => {
-                if let Some(exec) = what.exec {
-                    let cmd = if what.term {
-                        format!(r#"{{terminal}} {exec}"#)
-                    } else {
-                        exec.to_string()
-                    };
-                    spawn_detached(&cmd, keyword, variables)?;
-                    increment(&exec);
-                }
+        match what {
+            ExecMode::App { exec, terminal } => {
+                let cmd = if *terminal {
+                    format!(r#"{{terminal}} {exec}"#)
+                } else {
+                    exec.to_string()
+                };
+                spawn_detached(&cmd, keyword, variables)?;
+                increment(exec);
             }
-            "command" => {
-                if let Some(exec) = what.exec {
-                    spawn_detached(exec, keyword, variables)?;
-                    increment(exec);
-                }
+            ExecMode::Commmand { exec } => {
+                spawn_detached(exec, keyword, variables)?;
+                increment(exec);
             }
-            "web_launcher" | "bookmarks" => {
-                let engine = what.engine.unwrap_or("plain");
-                let query = if let Some(query) = what.exec {
+            ExecMode::Web {
+                engine,
+                browser,
+                exec,
+            } => {
+                let engine = engine.as_deref().unwrap_or("plain");
+                let query = if let Some(query) = exec {
                     query
                 } else {
                     keyword
                 };
-                websearch(engine, query, what.browser.as_deref(), variables)?;
+                websearch(engine, query, browser.as_deref(), variables)?;
             }
-
-            _ => return Ok(false),
-        }
+            _ => {}
+        };
 
         Ok(true)
     }
@@ -344,25 +343,51 @@ fn increment(key: &str) {
     };
 }
 
-pub struct ExecAttrs<'a> {
-    exec: Option<&'a str>,
-    term: bool,
-    engine: Option<&'a str>,
-    browser: Option<&'a str>,
+pub enum ExecMode<'a> {
+    App {
+        exec: &'a str,
+        terminal: bool,
+    },
+    Commmand {
+        exec: &'a str,
+    },
+    Web {
+        engine: Option<&'a str>,
+        browser: Option<&'a str>,
+        exec: Option<&'a str>,
+    },
+    None,
 }
-impl<'a> ExecAttrs<'a> {
-    pub fn from_appdata(value: &'a AppData, launcher: &'a Arc<Launcher>) -> Self {
-        let (browser, engine) = match &launcher.launcher_type {
-            LauncherType::Web(w) => (w.browser.as_deref(), Some(w.engine.as_str())),
-            LauncherType::Bookmark(b) => (Some(b.target_browser.as_str()), None),
-            _ => (None, None),
-        };
+impl<'a> ExecMode<'a> {
+    pub fn from_appdata(app_data: &'a AppData, launcher: &'a Arc<Launcher>) -> Self {
+        match &launcher.launcher_type {
+            LauncherType::App(_) => Self::App {
+                exec: app_data.exec.as_deref().unwrap_or(""),
+                terminal: app_data.terminal,
+            },
+            LauncherType::Bookmark(bkm) => Self::Web {
+                engine: None,
+                browser: Some(&bkm.target_browser),
+                exec: app_data.exec.as_deref(),
+            },
+            LauncherType::Command(_) => Self::Commmand {
+                exec: app_data.exec.as_deref().unwrap_or(""),
+            },
+            LauncherType::Web(web) => Self::Web {
+                engine: Some(&web.engine),
+                browser: web.browser.as_deref(),
+                exec: app_data.exec.as_deref(),
+            },
+            _ => Self::None,
+        }
+    }
+    pub fn from_app_action(action: &'a ApplicationAction, _launcher: &'a Arc<Launcher>) -> Self {
+        match action.method.as_str() {
+            "app_launcher" | "command" => Self::Commmand {
+                exec: action.exec.as_deref().unwrap_or(""),
+            },
 
-        ExecAttrs {
-            exec: value.exec.as_deref(),
-            term: value.terminal,
-            browser,
-            engine,
+            _ => Self::None,
         }
     }
 }

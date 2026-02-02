@@ -25,7 +25,7 @@ use crate::{
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ApplicationAction {
-    pub name: Option<String>,
+    pub name: Option<SharedString>,
     pub exec: Option<String>,
     pub icon: Option<Arc<Path>>,
     pub method: String,
@@ -61,7 +61,7 @@ pub struct AppData {
     pub icon: Option<Arc<Path>>,
     pub desktop_file: Option<PathBuf>,
     #[serde(default)]
-    pub actions: Vec<ApplicationAction>,
+    pub actions: Arc<[Arc<ApplicationAction>]>,
     #[serde(default)]
     #[serde(rename = "variables")]
     pub vars: Vec<ExecVariable>,
@@ -85,7 +85,7 @@ impl AppData {
             priority: None,
             icon: None,
             desktop_file: None,
-            actions: vec![],
+            actions: Arc::new([]),
             vars: vec![],
             terminal: false,
         }
@@ -95,6 +95,7 @@ impl AppData {
         launcher: &Arc<Launcher>,
         alias: Option<SherlockAlias>,
         use_keywords: bool,
+        mut buffer: Vec<Arc<ApplicationAction>>,
     ) {
         if let Some(alias) = alias {
             if let Some(alias_name) = alias.name.as_ref() {
@@ -125,7 +126,7 @@ impl AppData {
                     if a.icon.is_none() {
                         a.icon = self.icon.clone();
                     }
-                    self.actions.push(a);
+                    buffer.push(a.into());
                 });
             }
 
@@ -136,9 +137,11 @@ impl AppData {
                         if a.icon.is_none() {
                             a.icon = self.icon.clone();
                         }
-                        a
+                        a.into()
                     })
                     .collect();
+            } else {
+                self.actions = buffer.into();
             }
 
             if let Some(variables) = alias.variables {

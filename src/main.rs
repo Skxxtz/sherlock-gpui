@@ -13,7 +13,7 @@ use gpui::{
 use crate::{
     launcher::children::RenderableChild,
     loader::{CustomIconTheme, IconThemeGuard, Loader, assets::Assets},
-    ui::main_window::{NextVar, PrevVar},
+    ui::main_window::{NextVar, OpenContext, PrevVar},
     utils::{
         config::{ConfigGuard, SherlockConfig},
         errors::SherlockErrorType,
@@ -26,7 +26,7 @@ mod prelude;
 mod ui;
 mod utils;
 
-use ui::main_window::{Execute, FocusNext, FocusPrev, SherloockMainView, Quit};
+use ui::main_window::{Execute, FocusNext, FocusPrev, Quit, SherloockMainView};
 use ui::search_bar::{
     Backspace, Copy, Cut, Delete, DeleteAll, End, Home, Left, Paste, Right, SelectAll, TextInput,
 };
@@ -103,6 +103,7 @@ async fn main() {
             KeyBinding::new("enter", Execute, None),
             KeyBinding::new("tab", NextVar, None),
             KeyBinding::new("shift-tab", PrevVar, None),
+            KeyBinding::new("ctrl-l", OpenContext, None),
         ]);
 
         let socket_path = "/tmp/sherlock.sock";
@@ -175,6 +176,9 @@ fn spawn_launcher(cx: &mut App, data: Entity<Arc<Vec<RenderableChild>>>) -> AnyW
                     list_state,
                     _subs: vec![sub],
                     selected_index: 0,
+                    // context menu
+                    context_idx: None,
+                    context_actions: Arc::new([]),
                     // variable inputs
                     variable_input: Vec::new(),
                     active_bar: 0,

@@ -191,7 +191,7 @@ impl MozillaSqliteParser {
                         exec: Some(row.1),
                         desktop_file: None,
                         priority: Some(launcher.priority as f32 + 1.0),
-                        actions: vec![],
+                        actions: Arc::new([]),
                         vars: vec![],
                         terminal: false,
                     };
@@ -280,7 +280,7 @@ impl ChromeParser {
                             search_string: construct_search(Some(&bookmark.name), &url, true),
                             desktop_file: None,
                             priority: Some(launcher.priority as f32 + 1.0),
-                            actions: vec![],
+                            actions: Arc::new([]),
                             vars: vec![],
                             terminal: false,
                         });
