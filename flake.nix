@@ -1,0 +1,119 @@
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs =
+    { nixpkgs, rust-overlay, ... }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+      forAllSystems =
+        fn:
+        nixpkgs.lib.genAttrs systems (
+          system:
+          fn (
+            import nixpkgs {
+              inherit system;
+              overlays = [ rust-overlay.overlays.default ];
+            }
+          )
+        );
+    in
+    {
+      packages = forAllSystems (pkgs: rec {
+        default = sherlock-gpui;
+        sherlock-gpui = pkgs.rustPlatform.buildRustPackage {
+          pname = "sherlock-gpui";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+          cargoLock.outputHashes = {
+            "collections-0.1.0" = "sha256-zh+9n9h3Vu7BbFczueXs3dC5sObMEPbKJMIS9YQPqYc=";
+            "xim-ctext-0.3.0" = "sha256-pRT4Sz1JU9ros47/7pmIW9kosWOGMOItcnNd+VrvnpE=";
+            "zed-font-kit-0.14.1-zed" = "sha256-rxpumYP0QpHW+4e+J1qo5lEZXfBk1LaL/Y0APkUp9cg=";
+            "zed-reqwest-0.12.15-zed" = "sha256-p4SiUrOrbTlk/3bBrzN/mq/t+1Gzy2ot4nso6w6S+F8=";
+            "zed-scap-0.0.8-zed" = "sha256-BihiQHlal/eRsktyf0GI3aSWsUCW7WcICMsC2Xvb7kw=";
+          };
+
+          buildFeatures = [ "wayland" ];
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+            cmake
+            clang
+            makeWrapper
+          ];
+          buildInputs = with pkgs; [
+            wayland
+            libxkbcommon
+            vulkan-loader
+            openssl
+            sqlite
+            fontconfig
+            freetype
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXrandr
+            xorg.libXi
+            xorg.libxcb
+          ];
+
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+          postInstall = ''
+            wrapProgram $out/bin/sherlock-gpui \
+              --prefix LD_LIBRARY_PATH : "${
+                pkgs.lib.makeLibraryPath [
+                  pkgs.wayland
+                  pkgs.libxkbcommon
+                  pkgs.vulkan-loader
+                ]
+              }"
+          '';
+
+          meta.mainProgram = "sherlock-gpui";
+        };
+      });
+
+      devShells = forAllSystems (pkgs: {
+        default = pkgs.mkShell {
+          packages = with pkgs; [
+            (rust-bin.nightly."2025-01-15".default.override {
+              extensions = [
+                "rust-src"
+                "rust-analyzer"
+              ];
+            })
+            pkg-config
+            cmake
+            clang
+            wayland
+            libxkbcommon
+            vulkan-loader
+            openssl
+            sqlite
+            fontconfig
+            freetype
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXrandr
+            xorg.libXi
+            xorg.libxcb
+          ];
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath [
+            pkgs.wayland
+            pkgs.libxkbcommon
+            pkgs.vulkan-loader
+          ]}";
+        };
+      });
+    };
+}
