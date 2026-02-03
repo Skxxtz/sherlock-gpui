@@ -18,11 +18,30 @@ actions!(
         NextVar,
         PrevVar,
         Execute,
-        OpenContext
+        OpenContext,
+        Backspace,
     ]
 );
 
 impl SherlockMainWindow {
+    pub fn focus_nth(&mut self, n: usize, cx: &mut Context<Self>) {
+        self.selected_index = n;
+        self.list_state.scroll_to_reveal_item(n);
+
+        // Handle variable inputs
+        self.update_vars(cx);
+        self.active_bar = 0;
+
+        // Handle context menu entries
+        self.context_actions = self
+            .filtered_indices
+            .get(n)
+            .and_then(|i| self.data.read(cx).get(*i))
+            .and_then(RenderableChild::actions)
+            .unwrap_or_default();
+
+        cx.notify()
+    }
     pub(super) fn focus_next(&mut self, _: &FocusNext, _: &mut Window, cx: &mut Context<Self>) {
         let count = self.data.read(cx).len();
         if count == 0 {
@@ -38,19 +57,7 @@ impl SherlockMainWindow {
         } else {
             // handle normal view
             if self.selected_index < count - 1 {
-                self.selected_index += 1;
-                self.list_state.scroll_to_reveal_item(self.selected_index);
-                self.update_vars(cx);
-                self.active_bar = 0;
-
-                self.context_actions = self
-                    .filtered_indices
-                    .get(self.selected_index)
-                    .and_then(|i| self.data.read(cx).get(*i))
-                    .and_then(RenderableChild::actions)
-                    .unwrap_or_default();
-
-                cx.notify();
+                self.focus_nth(self.selected_index + 1, cx);
             }
         }
     }
@@ -69,19 +76,7 @@ impl SherlockMainWindow {
         } else {
             // handle normal view
             if self.selected_index > 0 {
-                self.selected_index -= 1;
-                self.list_state.scroll_to_reveal_item(self.selected_index);
-                self.update_vars(cx);
-                self.active_bar = 0;
-
-                self.context_actions = self
-                    .filtered_indices
-                    .get(self.selected_index)
-                    .and_then(|i| self.data.read(cx).get(*i))
-                    .and_then(RenderableChild::actions)
-                    .unwrap_or_default();
-
-                cx.notify();
+                self.focus_nth(self.selected_index - 1, cx);
             }
         }
     }
@@ -183,6 +178,10 @@ impl SherlockMainWindow {
         } else {
             self.close_window(win, cx);
         }
+    }
+    pub(super) fn backspace(&mut self, _: &Backspace, win: &mut Window, cx: &mut Context<Self>) {
+        println!("testing");
+        cx.stop_propagation();
     }
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
         // Cleanup

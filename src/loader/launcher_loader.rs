@@ -18,6 +18,7 @@ use crate::{
     },
     loader::utils::RawLauncher,
     sherlock_error,
+    ui::main_window::LauncherMode,
     utils::{
         cache::BinaryCache,
         config::{ConfigGuard, ConstantDefaults},
@@ -32,7 +33,7 @@ impl Loader {
     pub fn load_launchers(
         cx: &mut App,
         data_handle: Entity<Arc<Vec<RenderableChild>>>,
-    ) -> Result<(), SherlockError> {
+    ) -> Result<Arc<[LauncherMode]>, SherlockError> {
         // read config
         let config = ConfigGuard::read()?;
 
@@ -105,9 +106,18 @@ impl Loader {
             .collect();
 
         launchers.sort_by_key(|(l, _)| l.priority);
+        let mut modes = Vec::with_capacity(launchers.len());
         let renders: Vec<RenderableChild> = launchers
             .into_iter()
             .filter_map(|(launcher, opts)| {
+                // insert modes
+                if let Some((alias, name)) = launcher.alias.as_ref().zip(launcher.name.as_ref()) {
+                    modes.push(LauncherMode::Alias {
+                        short: alias.into(),
+                        name: name.into(),
+                    });
+                }
+
                 launcher.launcher_type.get_render_obj(
                     Arc::clone(&launcher),
                     opts, //
@@ -138,7 +148,7 @@ impl Loader {
             cx.notify();
         });
 
-        Ok(())
+        Ok(Arc::from(modes))
     }
 }
 

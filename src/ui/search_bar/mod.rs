@@ -2,11 +2,11 @@ use std::ops::Range;
 
 use gpui::{
     AbsoluteLength, App, Bounds, ClipboardItem, Context, CursorStyle, Element, ElementId,
-    ElementInputHandler, Entity, EntityInputHandler, FocusHandle, Focusable, GlobalElementId,
-    InteractiveElement, IntoElement, LayoutId, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, PaintQuad, ParentElement, Pixels, Point, Render, ShapedLine, SharedString, Style,
-    Styled, TextRun, UTF16Selection, UnderlineStyle, Window, actions, div, fill, hsla, point, px,
-    rgb, rgba,
+    ElementInputHandler, Entity, EntityInputHandler, EventEmitter, FocusHandle, Focusable,
+    GlobalElementId, InteractiveElement, IntoElement, LayoutId, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, PaintQuad, ParentElement, Pixels, Point, Render, ShapedLine,
+    SharedString, Style, Styled, TextRun, UTF16Selection, UnderlineStyle, Window, actions, div,
+    fill, hsla, point, px, rgb, rgba,
 };
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -31,6 +31,10 @@ actions!(
         Copy,
     ]
 );
+
+// Implement event for mode change
+pub struct EmptyBackspace;
+impl EventEmitter<EmptyBackspace> for TextInput {}
 
 pub struct TextInput {
     pub focus_handle: FocusHandle,
@@ -84,6 +88,11 @@ impl TextInput {
     }
 
     fn backspace(&mut self, _: &Backspace, window: &mut Window, cx: &mut Context<Self>) {
+        if self.content.is_empty() {
+            cx.emit(EmptyBackspace);
+            return;
+        }
+
         if self.selected_range.is_empty() {
             self.select_to(self.previous_boundary(self.cursor_offset()), cx)
         }
@@ -254,7 +263,7 @@ impl TextInput {
             .unwrap_or(self.content.len())
     }
 
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.content = "".into();
         self.selected_range = 0..0;
         self.selection_reversed = false;

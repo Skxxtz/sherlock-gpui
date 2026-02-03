@@ -4,7 +4,7 @@ use crate::launcher::children::{LauncherValues, RenderableChild};
 use crate::launcher::children::{RenderableChildDelegate, SherlockSearch};
 use crate::loader::utils::{ApplicationAction, ExecVariable};
 use crate::utils::config::HomeType;
-use gpui::{App, Context, Entity, FocusHandle, Focusable, ListState, Subscription};
+use gpui::{App, Context, Entity, FocusHandle, Focusable, ListState, SharedString, Subscription};
 use gpui::{AppContext, WeakEntity};
 use gpui::{AsyncApp, Task};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -23,6 +23,10 @@ pub struct SherlockMainWindow {
     pub list_state: ListState,
     pub _subs: Vec<Subscription>,
     pub selected_index: usize,
+
+    // mode
+    pub mode: LauncherMode,
+    pub modes: Arc<[LauncherMode]>,
 
     // context menu
     pub context_idx: Option<usize>,
@@ -90,11 +94,12 @@ impl SherlockMainWindow {
         self.last_query = Some(query);
 
         self.list_state.splice(0..old_count, new_count);
+        self.list_state.scroll_to_reveal_item(self.selected_index);
 
         cx.notify();
     }
     pub fn filter_and_sort(&mut self, cx: &mut Context<Self>) {
-        let query = self.text_input.read(cx).content.to_lowercase();
+        let mut query = self.text_input.read(cx).content.to_lowercase();
 
         if Some(&query) == self.last_query.as_ref() {
             return;
@@ -104,13 +109,22 @@ impl SherlockMainWindow {
             drop(task);
         }
 
+        // handle mode change
+        if self.mode.transition_for_query(&query, &self.modes) {
+            self.text_input.update(cx, |this, _cx| {
+                this.reset();
+            });
+            query = "".into();
+        }
+
         let data_arc = self.data.read(cx).clone();
+        let mode = self.mode.clone();
         self.deferred_render_task = Some(cx.spawn(
             |this: WeakEntity<SherlockMainWindow>, cx: &mut AsyncApp| {
                 let mut cx = cx.clone();
-                let mode = "all";
                 async move {
-                    let is_home = query.is_empty(); // && mode == "all";
+                    let mode = mode.as_str();
+                    let is_home = query.is_empty() && mode == "all";
 
                     // collects Vec<(index, priority)>
                     let mut results: Vec<(usize, f32)> = (0..data_arc.len())
@@ -184,41 +198,61 @@ impl SherlockMainWindow {
             },
         ));
     }
+}
 
-    // pub fn get_icon_path(&self, icon_name: &str) -> Option<Arc<Path>> {
-    //     // Check if we already have it
-    //     if let Some(cached) = self.icon_cache.borrow().get(icon_name) {
-    //         return cached.clone();
-    //     }
+#[derive(PartialEq, Eq, Clone)]
+pub enum LauncherMode {
+    Home,
+    Search,
+    Alias {
+        short: SharedString,
+        name: SharedString,
+    },
+}
 
-    //     if let Ok(Some(icon)) = IconThemeGuard::lookup_icon(icon_name) {
-    //         let path_arc: Arc<Path> = Arc::from(icon);
-    //         self.icon_cache.borrow_mut().insert(icon_name.to_string(), Some(path_arc.clone()));
-    //         return Some(path_arc)
-    //     }
+impl LauncherMode {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Home | Self::Search => "all",
+            Self::Alias { short, .. } => short.as_ref(),
+        }
+    }
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Alias { .. })
+    }
+    pub fn display_str(&self) -> SharedString {
+        match self {
+            // "".into() uses static literals (no allocation) → efficient
+            Self::Home => "All".into(),
+            Self::Search => "Search".into(),
+            Self::Alias { name, .. } => name.clone(),
+        }
+    }
+    pub fn transition_for_query(&mut self, query: &str, modes: &[Self]) -> bool {
+        match (self, query.is_empty()) {
+            (m @ Self::Search, true) => *m = Self::Home,
+            (m @ Self::Home, false) => *m = Self::Search,
+            (m @ Self::Search, false) | (m @ Self::Alias { .. }, false) => {
+                if let Some(alias_input) = query.strip_suffix(' ') {
+                    let found_mode = modes.iter().find(|mode| {
+                        if let Self::Alias { short, .. } = mode {
+                            short.eq_ignore_ascii_case(alias_input)
+                        } else {
+                            false
+                        }
+                    });
 
-    //     let icon_size = if icon_name.ends_with(".svg") {
-    //         256
-    //     } else {
-    //         64
-    //     };
+                    if let Some(new_mode) = found_mode {
+                        *m = new_mode.clone();
+                        // should clear search bar
+                        return true;
+                    }
+                }
+            }
+            _ => {}
+        }
 
-    //     let result = (|| {
-    //         let icon_path = lookup_icon(icon_name)
-    //             .with_size(icon_size)
-    //             .with_search_paths(&["~/.local/share/icons/"])
-    //             .ok()?
-    //             .next()?
-    //             .map(|i| i.path)
-    //             .ok()?;
-
-    //         Some(Arc::from(icon_path.into_boxed_path()))
-    //     })();
-
-    //     self.icon_cache
-    //         .borrow_mut()
-    //         .insert(icon_name.to_string(), result.clone());
-
-    //     result
-    // }
+        // only minor change
+        false
+    }
 }

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, Context, Element, Focusable, Image, ImageSource, InteractiveElement, IntoElement,
-    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, div, hsla,
-    img, list, px, relative, rgb,
+    AnyElement, Context, Element, Focusable, FontWeight, Image, ImageSource, InteractiveElement,
+    IntoElement, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window,
+    div, hsla, img, list, px, relative, rgb,
 };
 
 use crate::{
@@ -33,6 +33,7 @@ impl Render for SherlockMainWindow {
             .on_action(cx.listener(Self::execute))
             .on_action(cx.listener(Self::quit))
             .on_action(cx.listener(Self::open_context))
+            .on_action(cx.listener(Self::backspace))
             .child(
                 // search bar
                 div()
@@ -51,10 +52,19 @@ impl Render for SherlockMainWindow {
             )
             .child(
                 div()
+                    .px(px(14.))
+                    .py(px(4.))
+                    .text_size(px(14.))
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(rgb(0x2e2e2e))
+                    .child(self.mode.display_str()),
+            )
+            .child(
+                div()
                     .id("results-container")
                     .flex_1()
                     .min_h_0()
-                    .p(px(10.))
+                    .px(px(10.))
                     .child(
                         list(self.list_state.clone(), move |idx, _win, cx| {
                             // 1. Upgrade and Read

@@ -13,7 +13,10 @@ use gpui::{
 use crate::{
     launcher::children::RenderableChild,
     loader::{CustomIconTheme, IconThemeGuard, Loader, assets::Assets},
-    ui::main_window::{NextVar, OpenContext, PrevVar},
+    ui::{
+        main_window::{LauncherMode, NextVar, OpenContext, PrevVar},
+        search_bar::EmptyBackspace,
+    },
     utils::{
         config::{ConfigGuard, SherlockConfig},
         errors::SherlockErrorType,
@@ -108,11 +111,15 @@ async fn main() {
 
         let socket_path = "/tmp/sherlock.sock";
         let data: Entity<Arc<Vec<RenderableChild>>> = cx.new(|_| Arc::new(Vec::new()));
-        if let Err(e) = Loader::load_launchers(cx, data.clone()) {
-            eprintln!("{e}")
+        let modes = match Loader::load_launchers(cx, data.clone()) {
+            Ok(modes) => modes,
+            Err(e) => {
+                eprintln!("{e}");
+                return;
+            }
         };
 
-        spawn_launcher(cx, data.clone());
+        spawn_launcher(cx, data.clone(), Arc::clone(&modes));
 
         // listen for open requests
         let _ = std::fs::remove_file(socket_path);
@@ -133,7 +140,7 @@ async fn main() {
                             }
 
                             // Create new window
-                            win = Some(spawn_launcher(cx, data.clone()));
+                            win = Some(spawn_launcher(cx, data.clone(), Arc::clone(&modes)));
                         })
                         .ok();
                     } else {
@@ -146,7 +153,11 @@ async fn main() {
     });
 }
 
-fn spawn_launcher(cx: &mut App, data: Entity<Arc<Vec<RenderableChild>>>) -> AnyWindowHandle {
+fn spawn_launcher(
+    cx: &mut App,
+    data: Entity<Arc<Vec<RenderableChild>>>,
+    modes: Arc<[LauncherMode]>,
+) -> AnyWindowHandle {
     // For now load application here
     let window = cx
         .open_window(get_window_options(), |_, cx| {
@@ -171,14 +182,29 @@ fn spawn_launcher(cx: &mut App, data: Entity<Arc<Vec<RenderableChild>>>) -> AnyW
                         this.filter_and_sort(cx);
                     },
                 );
+                let backspace_sub =
+                    cx.subscribe(&text_input, |this, _, _ev: &EmptyBackspace, cx| {
+                        if this.mode != LauncherMode::Home {
+                            this.mode = LauncherMode::Home;
+
+                            // Propagate changes to ui
+                            this.last_query = None;
+                            this.selected_index = 0;
+                            this.filter_and_sort(cx);
+                        }
+                    });
+
                 let list_state = ListState::new(data_len, ListAlignment::Top, px(48.));
 
                 let mut view = SherlockMainWindow {
                     text_input,
                     focus_handle: cx.focus_handle(),
                     list_state,
-                    _subs: vec![sub],
+                    _subs: vec![sub, backspace_sub],
                     selected_index: 0,
+                    // modes
+                    mode: LauncherMode::Home,
+                    modes,
                     // context menu
                     context_idx: None,
                     context_actions: Arc::new([]),
