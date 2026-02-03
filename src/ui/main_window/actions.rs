@@ -43,7 +43,7 @@ impl SherlockMainWindow {
         cx.notify()
     }
     pub(super) fn focus_next(&mut self, _: &FocusNext, _: &mut Window, cx: &mut Context<Self>) {
-        let count = self.data.read(cx).len();
+        let count = self.filtered_indices.len();
         if count == 0 {
             return;
         }
