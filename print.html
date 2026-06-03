@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ba7ae583.js";
+            window.path_to_searchindex_js = "searchindex-ca990381.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-ef2cd792.js"></script>
@@ -260,107 +260,931 @@ If <code>Port</code> is <code>22</code>: <code>ssh -p 22 myhost</code></p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="launchers"><a class="header" href="#launchers">Launchers</a></h1>
-<p>Launchers are the backbone for Sherlock’s widget engine. Each displayed widget
-is owned by a launcher. For example:</p>
+<p>Sherlock separates <strong>Launchers</strong> (The Logic) from <strong>Widgets</strong> (The View). One Launcher configuration can generate multiple Widgets (like a weather tile and a clock tile), but they all follow the same <code>priority</code> and <code>home</code> rules.</p>
 <pre><code>[Weather Launcher]
     [Widget] Weather Display
-[App Launcher] 
+[App Launcher]
     [Widget] App 1
     [Widget] App 2
     [Widget] App 3
 </code></pre>
-<p>A launcher’s widgets will share the same behavious based on the shared launcher configuration.</p>
+<p>The Widgets get sorted based by a tiered sort: <code>Launcher Priority</code> then <code>Search Score</code> then <code>Number of Executions</code></p>
 <h2 id="shared-launcher-configuration"><a class="header" href="#shared-launcher-configuration">Shared Launcher Configuration</a></h2>
 <h3 id="fields"><a class="header" href="#fields">Fields</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>name</code></td><td><code>string?</code></td><td>Label shown in the UI</td></tr>
-<tr><td><code>alias</code></td><td><code>string?</code></td><td>Keyword that activates focused/alias mode</td></tr>
-<tr><td><code>home</code></td><td><code>HomeType</code></td><td>Controls home screen visibility</td></tr>
-<tr><td><code>priority</code></td><td><code>integer</code></td><td>Sort weight — lower appears first</td></tr>
-<tr><td><code>type</code></td><td><code>LauncherVariant</code></td><td>Launcher kind (e.g. <code>app</code>, <code>weather</code>)</td></tr>
-<tr><td><code>args</code></td><td><code>{}</code></td><td>Launcher-specific configuration options.</td></tr>
-<tr><td><code>async</code></td><td><code>bool</code></td><td>Enable async widget updates</td></tr>
-<tr><td><code>exit</code></td><td><code>bool</code></td><td>Close Sherlock after execution</td></tr>
-<tr><td><code>spawn_focus</code></td><td><code>bool</code></td><td>Allow item to receive automatic focus</td></tr>
-<tr><td><code>shortcut</code></td><td><code>bool</code></td><td>Show a keybind shortcut for this launcher</td></tr>
-<tr><td><code>binds</code></td><td><code>Bind[]?</code></td><td>Keyboard shortcuts</td></tr>
-<tr><td><code>actions</code></td><td><code>Action[]?</code></td><td>Context menu actions (overwrites <code>.desktop</code> file actions)</td></tr>
-<tr><td><code>add_actions</code></td><td><code>Action[]?</code></td><td>Extra actions appended to the context menu</td></tr>
-<tr><td><code>variables</code></td><td><code>ExecVariable[]?</code></td><td>Variables injected into spawned commands</td></tr>
+<tr><td><code>name</code></td><td><code>string</code></td><td></td><td>—</td><td>Display name of the launcher. Shown in the widget if set.</td></tr>
+<tr><td><code>alias</code></td><td><code>string</code></td><td></td><td>—</td><td>Short trigger prefix (e.g. <code>app</code>) that scopes the launcher to alias-only mode.</td></tr>
+<tr><td><code>type</code></td><td><code>LauncherVariant</code></td><td>✓</td><td>—</td><td>The category and functional variant of the launcher.</td></tr>
+<tr><td><code>priority</code></td><td><code>u16</code></td><td>✓</td><td>—</td><td>Display order weight. Lower values appear first. <code>0</code> only appears in alias mode.</td></tr>
+<tr><td><code>limit</code></td><td><code>u16</code></td><td></td><td>—</td><td>The number of items to display per launcher. Useful to limit the number of search results to the best <code>n</code> items.</td></tr>
+<tr><td><code>home</code></td><td><code>HomeType</code></td><td></td><td>Home</td><td>Controls when the launcher is shown: <code>Home</code>, <code>OnlyHome</code>, <code>Search</code>, or <code>Persist</code>.</td></tr>
+<tr><td><code>exit</code></td><td><code>bool</code></td><td></td><td>true</td><td>Whether Sherlock closes after the launcher is executed.</td></tr>
+<tr><td><code>shortcut</code></td><td><code>bool</code></td><td></td><td>true</td><td>Whether a UI shortcut key is assigned to this launcher.</td></tr>
+<tr><td><code>spawn_focus</code></td><td><code>bool</code></td><td></td><td>true</td><td>Whether this launcher can receive spawned focus.</td></tr>
+<tr><td><code>on_return</code></td><td><code>string</code></td><td></td><td>—</td><td>Command or action executed when the user confirms this launcher.</td></tr>
+<tr><td><code>args</code></td><td><code>object</code></td><td></td><td>{}</td><td>Launcher-specific arguments. Shape depends on the launcher type.</td></tr>
+<tr><td><code>binds</code></td><td><code>Bind[]</code></td><td></td><td>—</td><td>Key bindings attached to this launcher.</td></tr>
+<tr><td><code>actions</code></td><td><code>ApplicationAction[]</code></td><td></td><td>—</td><td>Primary context menu actions. Overwrites any actions defined in desktop files.</td></tr>
+<tr><td><code>add_actions</code></td><td><code>ApplicationAction[]</code></td><td></td><td>—</td><td>Supplementary actions appended to the primary action list.</td></tr>
+<tr><td><code>variables</code></td><td><code>ExecVariable[]</code></td><td></td><td>—</td><td>Runtime variable substitutions available to this launcher’s commands.</td></tr>
 </tbody>
 </table>
 </div>
 <hr>
-<h3 id="bind"><a class="header" href="#bind">Bind</a></h3>
-<p>A keyboard shortcut attached to a launcher’s widgets.</p>
+<h2 id="app-launcher"><a class="header" href="#app-launcher">App Launcher</a></h2>
+<p><code>type = apps</code></p>
+<p>Launches installed desktop applications</p>
+<h3 id="args"><a class="header" href="#args">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>key</code></td><td><code>string</code></td><td>Key to bind (e.g. <code>ctrl+c</code>)</td></tr>
-<tr><td><code>callback</code></td><td><code>string</code></td><td>Action to invoke (e.g. <code>inner.copy</code>, <code>app_launcher</code>)</td></tr>
-<tr><td><code>exit</code></td><td><code>bool</code></td><td>Close Sherlock after this bind executes</td></tr>
+<tr><td><code>use_keywords</code></td><td><code>bool</code></td><td></td><td>true</td><td>Whether the search should use the keywords defined in the .desktop file.</td></tr>
 </tbody>
 </table>
 </div>
-<hr>
-<h3 id="action"><a class="header" href="#action">Action</a></h3>
-<p>A context menu entry attached to a launcher’s widgets.</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>name</code></td><td><code>string</code></td><td>Label shown in the context menu</td></tr>
-<tr><td><code>icon</code></td><td><code>string?</code></td><td>The icon name for the application action</td></tr>
-<tr><td><code>method</code></td><td><code>string</code></td><td>Action to invoke (e.g. <code>app_launcher</code>, <code>web_launcher</code>)</td></tr>
-<tr><td><code>exec</code></td><td><code>string?</code></td><td>Command or URL to execute</td></tr>
-<tr><td><code>exit</code></td><td><code>bool</code></td><td>Close Sherlock after this action executes, (default = <code>true</code>)</td></tr>
-</tbody>
-</table>
-</div>
-<hr>
-<h2 id="execvariable"><a class="header" href="#execvariable">ExecVariable</a></h2>
-<p>A variable injected into a command at spawn time. Defined as a tagged variant.</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Variant</th><th>Value Type</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>string_input</code></td><td><code>string</code></td><td>Prompts the user for a plain text input</td></tr>
-<tr><td><code>password_input</code></td><td><code>string</code></td><td>Prompts the user for a masked/hidden input</td></tr>
-<tr><td><code>path_input</code></td><td><code>PathData</code></td><td>Prompts the user to select a file or directory path</td></tr>
-<tr><td><code>command_input</code></td><td><code>CommandData</code></td><td>Prompts the user for input passed to a shell command</td></tr>
-</tbody>
-</table>
-</div>
-<blockquote class="blockquote-tag blockquote-tag-tip">
-<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
-<p><code>path_input</code> and <code>command_input</code> have autocompletion. The <code>path_input</code> will
-assume to search in the home directory if the search query does not start
-with <code>/</code></p>
-</blockquote>
-<p><strong>Example:</strong></p>
-<pre><code class="language-json">variables = [
-    { "string_input": "location" },
-    { "password_input": "token" },
-]
+<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
+<p><em>Basic app launcher</em></p>
+<pre><code class="language-json">{
+    "name": "App Launcher",
+    "alias": "app",
+    "type": "apps",
+    "args": {
+        "use_keywords": false
+    },
+    "priority": 4,
+    "home": "Home"
+}
 </code></pre>
-<h3 id="example-usage"><a class="header" href="#example-usage">Example Usage</a></h3>
+<hr>
+<h2 id="bookmark-launcher"><a class="header" href="#bookmark-launcher">Bookmark Launcher</a></h2>
+<p><code>type = bookmarks</code></p>
+<p>Launches browser bookmarks in your default browser.</p>
+<h3 id="args-1"><a class="header" href="#args-1">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>browser</code></td><td><code>string</code></td><td></td><td>Default browser</td><td>The browser from which the bookmarks should be parsed</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
+<p><em>Basic bookmarks launcher</em></p>
+<pre><code class="language-json">{
+    "name": "Bookmarks",
+    "type": "bookmarks",
+    "alias": "bm",
+    "args": {
+        "browser": "brave"
+    },
+    "priority": 7
+}
+</code></pre>
+<hr>
+<h2 id="calculator-launcher"><a class="header" href="#calculator-launcher">Calculator Launcher</a></h2>
+<p><code>type = calculator</code></p>
+<p>Allows math calculations and different unit conversions.</p>
+<h3 id="args-2"><a class="header" href="#args-2">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>capabilities</code></td><td><code>Capability[]</code></td><td></td><td>[ “calc.units”, “calc.math” ]</td><td>The capabilities the calculator should have.</td></tr>
+<tr><td><code>currency_update_interval</code></td><td><code>u64</code></td><td></td><td>1440</td><td>Number of minutes to keep the currency cache alive.</td></tr>
+</tbody>
+</table>
+</div>
+<details>
+<summary>
+<strong>Capabilities:</strong>
+</summary>
+<p>Capabilities control what the calculator can compute. Pass them via the <code>capabilities</code> arg:</p>
+<pre><code class="language-json">{ "capabilities": ["calc.math", "calc.units"] }
+</code></pre>
+<details>
+<summary>
+Math
+</summary>
+<p><code>calc.math</code></p>
+</details>
+<details>
+<summary>
+Colors
+</summary>
+<p><code>colors</code></p>
+</details>
+<details>
+<summary>
+Currency
+</summary>
+<p><code>calc.currencies</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Usd</td><td>usd, dollar, dollars, bucks, $</td><td>$</td></tr>
+<tr><td>Eur</td><td>eur, euro, euros, €</td><td>€</td></tr>
+<tr><td>Jpy</td><td>jpy, yen, japanese yen, ¥</td><td>¥</td></tr>
+<tr><td>Gbp</td><td>gbp, pound, pounds, sterling, £</td><td>£</td></tr>
+<tr><td>Aud</td><td>aud, australian dollar, aussie, a$</td><td>A$</td></tr>
+<tr><td>Cad</td><td>cad, canadian dollar, loonie, c$</td><td>C$</td></tr>
+<tr><td>Chf</td><td>chf, swiss franc, franc</td><td>CHF</td></tr>
+<tr><td>Cny</td><td>cny, chinese yuan, renminbi, yuan</td><td>¥</td></tr>
+<tr><td>Nzd</td><td>nzd, new zealand dollar, kiwi, nz$</td><td>NZ$</td></tr>
+<tr><td>Sek</td><td>sek, swedish krona, krona, kr</td><td>kr</td></tr>
+<tr><td>Nok</td><td>nok, norwegian krone, krone</td><td>kr</td></tr>
+<tr><td>Mxn</td><td>mxn, mexican peso, peso, mex$</td><td>Mex$</td></tr>
+<tr><td>Sgd</td><td>sgd, singapore dollar, s$</td><td>S$</td></tr>
+<tr><td>Hkd</td><td>hkd, hong kong dollar, hk$</td><td>HK$</td></tr>
+<tr><td>Krw</td><td>krw, south korean won, won, ₩</td><td>₩</td></tr>
+<tr><td>Pln</td><td>pln, polish, złoty, zł</td><td>zł</td></tr>
+<tr><td>Pen</td><td>pen, peruvian, sole, soles</td><td>S/</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Length
+</summary>
+<p><code>calc.length</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Millimeter</td><td>mm, millimeter, millimeters</td><td>mm</td></tr>
+<tr><td>Centimeter</td><td>cm, centimeter, centimeters</td><td>cm</td></tr>
+<tr><td>Meter</td><td>m, meter, meters</td><td>m</td></tr>
+<tr><td>Kilometer</td><td>km, kilometer, kilometers, kilos</td><td>km</td></tr>
+<tr><td>Inch</td><td>in, inch, inches, “</td><td>in</td></tr>
+<tr><td>Feet</td><td>ft, feet, foot, ’</td><td>ft</td></tr>
+<tr><td>Yard</td><td>yd, yard, yards</td><td>yd</td></tr>
+<tr><td>Mile</td><td>mi, mile, miles</td><td>mi</td></tr>
+<tr><td>NauticalMile</td><td>nm, nautical mile</td><td>nmi</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Volume
+</summary>
+<p><code>calc.volume</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Milliliter</td><td>ml, milliliter, milliliters, cc</td><td>ml</td></tr>
+<tr><td>Centiliter</td><td>cl, centiliter</td><td>cl</td></tr>
+<tr><td>Liter</td><td>l, liter, liters</td><td>l</td></tr>
+<tr><td>Kiloliter</td><td>kl, kiloliter</td><td>kl</td></tr>
+<tr><td>CubicMeter</td><td>m3, cubic meter, cubic meters</td><td>m³</td></tr>
+<tr><td>Teaspoon</td><td>tsp, teaspoon</td><td>tsp</td></tr>
+<tr><td>Tablespoon</td><td>tbsp, tablespoon</td><td>tbsp</td></tr>
+<tr><td>FluidOunce</td><td>fl oz, fluid ounce, fluid ounces</td><td>fl oz</td></tr>
+<tr><td>Cup</td><td>cup, cups</td><td>cup</td></tr>
+<tr><td>Pint</td><td>pt, pint, pints</td><td>pt</td></tr>
+<tr><td>Quart</td><td>qt, quart, quarts</td><td>qt</td></tr>
+<tr><td>Gallon</td><td>gal, gallon, gallons</td><td>gal</td></tr>
+<tr><td>ImperialGallon</td><td>imp gal</td><td>imp gal</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Weight
+</summary>
+<p><code>calc.weight</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Milligram</td><td>mg, milligram, milligrams</td><td>mg</td></tr>
+<tr><td>Gram</td><td>g, gram, grams</td><td>g</td></tr>
+<tr><td>Kilogram</td><td>kg, kilogram, kilograms, kilo, kilos</td><td>kg</td></tr>
+<tr><td>MetricTon</td><td>t, tonne, metric ton, metric tons</td><td>t</td></tr>
+<tr><td>Ounce</td><td>oz, ounce, ounces</td><td>oz</td></tr>
+<tr><td>Pound</td><td>lb, lbs, pound, pounds</td><td>lb</td></tr>
+<tr><td>Stone</td><td>st, stone, stones</td><td>st</td></tr>
+<tr><td>ShortTon</td><td>ton, tons, us ton</td><td>ton</td></tr>
+<tr><td>LongTon</td><td>imperial ton, uk ton</td><td>ton</td></tr>
+<tr><td>TroyOunce</td><td>ozt, troy ounce, troy ounces</td><td>ozt</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Temperature
+</summary>
+<p><code>calc.temperature</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Celsius</td><td>c, celsius, °c, °</td><td>°C</td></tr>
+<tr><td>Fahrenheit</td><td>f, fahrenheit, °f</td><td>°F</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Pressure
+</summary>
+<p><code>calc.pressure</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Pascal</td><td>pa, pascal, pascals</td><td>Pa</td></tr>
+<tr><td>Kilopascal</td><td>kpa, kilopascal</td><td>kPa</td></tr>
+<tr><td>Bar</td><td>bar, bars</td><td>bar</td></tr>
+<tr><td>Atmosphere</td><td>atm, atmosphere, atmospheres</td><td>atm</td></tr>
+<tr><td>Psi</td><td>psi, pounds per square inch</td><td>psi</td></tr>
+<tr><td>Torr</td><td>torr, mmhg</td><td>mmHg</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Digital
+</summary>
+<p><code>calc.digital</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Bit</td><td>bit, bits, b</td><td>bit</td></tr>
+<tr><td>Kilobit</td><td>kb, kilobit</td><td>kb</td></tr>
+<tr><td>Megabit</td><td>mb, megabit</td><td>Mb</td></tr>
+<tr><td>Gigabit</td><td>gb, gigabit</td><td>Gb</td></tr>
+<tr><td>Byte</td><td>byte, bytes, B</td><td>B</td></tr>
+<tr><td>Kilobyte</td><td>kb, kilobyte, KB</td><td>KB</td></tr>
+<tr><td>Megabyte</td><td>mb, megabyte, MB</td><td>MB</td></tr>
+<tr><td>Gigabyte</td><td>gb, gigabyte, GB</td><td>GB</td></tr>
+<tr><td>Terabyte</td><td>tb, terabyte, TB</td><td>TB</td></tr>
+<tr><td>Petabyte</td><td>pb, petabyte, PB</td><td>PB</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Time
+</summary>
+<p><code>calc.time</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Milliseconds</td><td>ms, millisecond, milliseconds</td><td>ms</td></tr>
+<tr><td>Seconds</td><td>s, sec, second, seconds</td><td>s</td></tr>
+<tr><td>Minutes</td><td>m, min, minute, minutes</td><td>min</td></tr>
+<tr><td>Hours</td><td>h, hr, hour, hours</td><td>h</td></tr>
+<tr><td>Days</td><td>d, day, days</td><td>d</td></tr>
+<tr><td>Weeks</td><td>wk, week, weeks</td><td>wk</td></tr>
+<tr><td>Months</td><td>mo, month, months</td><td>mo</td></tr>
+<tr><td>Years</td><td>yr, year, years</td><td>yr</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Area
+</summary>
+<p><code>calc.area</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>SquareMeter</td><td>m2, sq m, sq meter</td><td>m²</td></tr>
+<tr><td>SquareKilometer</td><td>km2, sq km</td><td>km²</td></tr>
+<tr><td>SquareFoot</td><td>ft2, sq ft, sq feet</td><td>ft²</td></tr>
+<tr><td>SquareInch</td><td>in2, sq in</td><td>in²</td></tr>
+<tr><td>Acre</td><td>acre, acres</td><td>ac</td></tr>
+<tr><td>Hectare</td><td>ha, hectare</td><td>ha</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Speed
+</summary>
+<p><code>calc.speed</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>MetersPerSecond</td><td>ms, m/s, meters per second</td><td>m/s</td></tr>
+<tr><td>KilometersPerHour</td><td>kmh, km/h, kph</td><td>km/h</td></tr>
+<tr><td>MilesPerHour</td><td>mph, mile per hour, miles per hour</td><td>mph</td></tr>
+<tr><td>Knot</td><td>kn, knot, knots</td><td>kn</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</details>
+<h3 id="examples-2"><a class="header" href="#examples-2">Examples</a></h3>
+<p><em>Basic calculator config</em></p>
+<pre><code class="language-json">{
+    "name": "Calculator",
+    "type": "calculator",
+    "alias": "calc",
+    "args": {
+        "currency_update_interval": 60,
+        "capabilities": [
+            "calc.math",
+            "calc.units",
+            "calc.currencies",
+            "colors"
+        ]
+    },
+    "priority": 1,
+    "on_return": "copy"
+}
+</code></pre>
+<hr>
+<h2 id="category-launcher"><a class="header" href="#category-launcher">Category Launcher</a></h2>
+<p><code>type = categories</code></p>
+<p>Applies aliases to restrict search to certain launchers.</p>
+<h3 id="args-3"><a class="header" href="#args-3">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>categories</code></td><td><code>{Name: AppData}</code></td><td>✓</td><td>—</td><td>The available categories. On execution, will apply the aslias, privodes as the <code>exec</code> field.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-3"><a class="header" href="#examples-3">Examples</a></h3>
+<p><em>Power Menu Example</em></p>
+<pre><code class="language-json">{
+    "name": "Categories",
+    "alias": "cat",
+    "type": "categories",
+    "args": {
+        "categories": {
+            "Power Menu": {
+                "icon": "battery-full-symbolic",
+                "icon_class": "reactive",
+                "exec": "pm",
+                "search_string": "powermenu;",
+                "actions": [
+                    {
+                        "name": "Shutdown",
+                        "icon": "system-shutdown",
+                        "exec": "systemctl poweroff",
+                        "method": "command"
+                    },
+                    {
+                        "name": "Sleep",
+                        "icon": "system-suspend",
+                        "exec": "systemctl suspend",
+                        "method": "command"
+                    },
+                    {
+                        "name": "Lock",
+                        "icon": "system-lock-screen",
+                        "exec": "systemctl suspend &amp; swaylock",
+                        "method": "command"
+                    },
+                    {
+                        "name": "Reboot",
+                        "icon": "system-reboot",
+                        "exec": "systemctl reboot",
+                        "method": "command"
+                    },
+                    {
+                        "name": "Log Out",
+                        "icon": "system-log-out",
+                        "exec": "hyprctl dispatch exit",
+                        "method": "command"
+                    }
+                ]
+            }
+        }
+    },
+    "priority": 4,
+    "home": "Home"
+}
+</code></pre>
+<hr>
+<h2 id="clipboard-launcher"><a class="header" href="#clipboard-launcher">Clipboard Launcher</a></h2>
+<p><code>type = clipboard</code></p>
+<p>Executes commands based on the clipboard content.</p>
+<h3 id="args-4"><a class="header" href="#args-4">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>capabilities</code></td><td><code>Capabilities[]</code></td><td></td><td>[</td><td></td></tr>
+<tr><td>“calc.units”,</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>“calc.math”</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>]</td><td>The capabilities the clipboard executor should have.</td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+<details>
+<summary>
+<strong>Capabilities:</strong>
+</summary>
+<p>Capabilities control what the calculator can compute. Pass them via the <code>capabilities</code> arg:</p>
+<pre><code class="language-json">{ "capabilities": ["calc.math", "calc.units"] }
+</code></pre>
+<details>
+<summary>
+Math
+</summary>
+<p><code>calc.math</code></p>
+</details>
+<details>
+<summary>
+Colors
+</summary>
+<p><code>colors</code></p>
+</details>
+<details>
+<summary>
+Currency
+</summary>
+<p><code>calc.currencies</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Usd</td><td>usd, dollar, dollars, bucks, $</td><td>$</td></tr>
+<tr><td>Eur</td><td>eur, euro, euros, €</td><td>€</td></tr>
+<tr><td>Jpy</td><td>jpy, yen, japanese yen, ¥</td><td>¥</td></tr>
+<tr><td>Gbp</td><td>gbp, pound, pounds, sterling, £</td><td>£</td></tr>
+<tr><td>Aud</td><td>aud, australian dollar, aussie, a$</td><td>A$</td></tr>
+<tr><td>Cad</td><td>cad, canadian dollar, loonie, c$</td><td>C$</td></tr>
+<tr><td>Chf</td><td>chf, swiss franc, franc</td><td>CHF</td></tr>
+<tr><td>Cny</td><td>cny, chinese yuan, renminbi, yuan</td><td>¥</td></tr>
+<tr><td>Nzd</td><td>nzd, new zealand dollar, kiwi, nz$</td><td>NZ$</td></tr>
+<tr><td>Sek</td><td>sek, swedish krona, krona, kr</td><td>kr</td></tr>
+<tr><td>Nok</td><td>nok, norwegian krone, krone</td><td>kr</td></tr>
+<tr><td>Mxn</td><td>mxn, mexican peso, peso, mex$</td><td>Mex$</td></tr>
+<tr><td>Sgd</td><td>sgd, singapore dollar, s$</td><td>S$</td></tr>
+<tr><td>Hkd</td><td>hkd, hong kong dollar, hk$</td><td>HK$</td></tr>
+<tr><td>Krw</td><td>krw, south korean won, won, ₩</td><td>₩</td></tr>
+<tr><td>Pln</td><td>pln, polish, złoty, zł</td><td>zł</td></tr>
+<tr><td>Pen</td><td>pen, peruvian, sole, soles</td><td>S/</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Length
+</summary>
+<p><code>calc.length</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Millimeter</td><td>mm, millimeter, millimeters</td><td>mm</td></tr>
+<tr><td>Centimeter</td><td>cm, centimeter, centimeters</td><td>cm</td></tr>
+<tr><td>Meter</td><td>m, meter, meters</td><td>m</td></tr>
+<tr><td>Kilometer</td><td>km, kilometer, kilometers, kilos</td><td>km</td></tr>
+<tr><td>Inch</td><td>in, inch, inches, “</td><td>in</td></tr>
+<tr><td>Feet</td><td>ft, feet, foot, ’</td><td>ft</td></tr>
+<tr><td>Yard</td><td>yd, yard, yards</td><td>yd</td></tr>
+<tr><td>Mile</td><td>mi, mile, miles</td><td>mi</td></tr>
+<tr><td>NauticalMile</td><td>nm, nautical mile</td><td>nmi</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Volume
+</summary>
+<p><code>calc.volume</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Milliliter</td><td>ml, milliliter, milliliters, cc</td><td>ml</td></tr>
+<tr><td>Centiliter</td><td>cl, centiliter</td><td>cl</td></tr>
+<tr><td>Liter</td><td>l, liter, liters</td><td>l</td></tr>
+<tr><td>Kiloliter</td><td>kl, kiloliter</td><td>kl</td></tr>
+<tr><td>CubicMeter</td><td>m3, cubic meter, cubic meters</td><td>m³</td></tr>
+<tr><td>Teaspoon</td><td>tsp, teaspoon</td><td>tsp</td></tr>
+<tr><td>Tablespoon</td><td>tbsp, tablespoon</td><td>tbsp</td></tr>
+<tr><td>FluidOunce</td><td>fl oz, fluid ounce, fluid ounces</td><td>fl oz</td></tr>
+<tr><td>Cup</td><td>cup, cups</td><td>cup</td></tr>
+<tr><td>Pint</td><td>pt, pint, pints</td><td>pt</td></tr>
+<tr><td>Quart</td><td>qt, quart, quarts</td><td>qt</td></tr>
+<tr><td>Gallon</td><td>gal, gallon, gallons</td><td>gal</td></tr>
+<tr><td>ImperialGallon</td><td>imp gal</td><td>imp gal</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Weight
+</summary>
+<p><code>calc.weight</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Milligram</td><td>mg, milligram, milligrams</td><td>mg</td></tr>
+<tr><td>Gram</td><td>g, gram, grams</td><td>g</td></tr>
+<tr><td>Kilogram</td><td>kg, kilogram, kilograms, kilo, kilos</td><td>kg</td></tr>
+<tr><td>MetricTon</td><td>t, tonne, metric ton, metric tons</td><td>t</td></tr>
+<tr><td>Ounce</td><td>oz, ounce, ounces</td><td>oz</td></tr>
+<tr><td>Pound</td><td>lb, lbs, pound, pounds</td><td>lb</td></tr>
+<tr><td>Stone</td><td>st, stone, stones</td><td>st</td></tr>
+<tr><td>ShortTon</td><td>ton, tons, us ton</td><td>ton</td></tr>
+<tr><td>LongTon</td><td>imperial ton, uk ton</td><td>ton</td></tr>
+<tr><td>TroyOunce</td><td>ozt, troy ounce, troy ounces</td><td>ozt</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Temperature
+</summary>
+<p><code>calc.temperature</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Celsius</td><td>c, celsius, °c, °</td><td>°C</td></tr>
+<tr><td>Fahrenheit</td><td>f, fahrenheit, °f</td><td>°F</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Pressure
+</summary>
+<p><code>calc.pressure</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Pascal</td><td>pa, pascal, pascals</td><td>Pa</td></tr>
+<tr><td>Kilopascal</td><td>kpa, kilopascal</td><td>kPa</td></tr>
+<tr><td>Bar</td><td>bar, bars</td><td>bar</td></tr>
+<tr><td>Atmosphere</td><td>atm, atmosphere, atmospheres</td><td>atm</td></tr>
+<tr><td>Psi</td><td>psi, pounds per square inch</td><td>psi</td></tr>
+<tr><td>Torr</td><td>torr, mmhg</td><td>mmHg</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Digital
+</summary>
+<p><code>calc.digital</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Bit</td><td>bit, bits, b</td><td>bit</td></tr>
+<tr><td>Kilobit</td><td>kb, kilobit</td><td>kb</td></tr>
+<tr><td>Megabit</td><td>mb, megabit</td><td>Mb</td></tr>
+<tr><td>Gigabit</td><td>gb, gigabit</td><td>Gb</td></tr>
+<tr><td>Byte</td><td>byte, bytes, B</td><td>B</td></tr>
+<tr><td>Kilobyte</td><td>kb, kilobyte, KB</td><td>KB</td></tr>
+<tr><td>Megabyte</td><td>mb, megabyte, MB</td><td>MB</td></tr>
+<tr><td>Gigabyte</td><td>gb, gigabyte, GB</td><td>GB</td></tr>
+<tr><td>Terabyte</td><td>tb, terabyte, TB</td><td>TB</td></tr>
+<tr><td>Petabyte</td><td>pb, petabyte, PB</td><td>PB</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Time
+</summary>
+<p><code>calc.time</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>Milliseconds</td><td>ms, millisecond, milliseconds</td><td>ms</td></tr>
+<tr><td>Seconds</td><td>s, sec, second, seconds</td><td>s</td></tr>
+<tr><td>Minutes</td><td>m, min, minute, minutes</td><td>min</td></tr>
+<tr><td>Hours</td><td>h, hr, hour, hours</td><td>h</td></tr>
+<tr><td>Days</td><td>d, day, days</td><td>d</td></tr>
+<tr><td>Weeks</td><td>wk, week, weeks</td><td>wk</td></tr>
+<tr><td>Months</td><td>mo, month, months</td><td>mo</td></tr>
+<tr><td>Years</td><td>yr, year, years</td><td>yr</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Area
+</summary>
+<p><code>calc.area</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>SquareMeter</td><td>m2, sq m, sq meter</td><td>m²</td></tr>
+<tr><td>SquareKilometer</td><td>km2, sq km</td><td>km²</td></tr>
+<tr><td>SquareFoot</td><td>ft2, sq ft, sq feet</td><td>ft²</td></tr>
+<tr><td>SquareInch</td><td>in2, sq in</td><td>in²</td></tr>
+<tr><td>Acre</td><td>acre, acres</td><td>ac</td></tr>
+<tr><td>Hectare</td><td>ha, hectare</td><td>ha</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+<details>
+<summary>
+Speed
+</summary>
+<p><code>calc.speed</code></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Unit</th><th>Aliases</th><th>Symbol</th></tr>
+</thead>
+<tbody>
+<tr><td>MetersPerSecond</td><td>ms, m/s, meters per second</td><td>m/s</td></tr>
+<tr><td>KilometersPerHour</td><td>kmh, km/h, kph</td><td>km/h</td></tr>
+<tr><td>MilesPerHour</td><td>mph, mile per hour, miles per hour</td><td>mph</td></tr>
+<tr><td>Knot</td><td>kn, knot, knots</td><td>kn</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</details>
+<h3 id="examples-4"><a class="header" href="#examples-4">Examples</a></h3>
+<p><em>Power Menu Example</em></p>
+<pre><code class="language-json">{
+    "name": "Clipboard",
+    "type": "clipboard",
+    "args": {
+        "capabilities": [
+            "url",
+            "colors",
+            "calc.math"
+        ]
+    },
+    "on_return": "copy",
+    "priority": 3,
+    "home": "OnlyHome"
+}
+</code></pre>
+<hr>
+<h2 id="command-launcher"><a class="header" href="#command-launcher">Command Launcher</a></h2>
+<p><code>type = commands</code></p>
+<p>Launches user-specified commands.</p>
+<h3 id="args-5"><a class="header" href="#args-5">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>commands</code></td><td><code>{Name: AppData}</code></td><td>✓</td><td>—</td><td>The commands to show in Sherlock.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-5"><a class="header" href="#examples-5">Examples</a></h3>
+<p><em>Basic command launcher</em></p>
+<pre><code class="language-json">{
+    "name": "Throw Confetti",
+    "type": "commands",
+    "args": {
+        "commands": {
+            "Confetti": {
+                "icon": "sherlock-confetti",
+                "exec": "confetti",
+                "search_string": "confetti;party"
+            }
+        }
+    },
+    "priority": 4
+}
+</code></pre>
+<hr>
+<h2 id="debug-launcher"><a class="header" href="#debug-launcher">Debug Launcher</a></h2>
+<p><code>type = debug</code></p>
+<p>Execute different debug functions like clearing the cache or app counts.</p>
+<h3 id="inner-functions"><a class="header" href="#inner-functions">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Clear Cache</td><td><code>inner.clear_cache</code></td><td>Clears the entire ~/.cache/sherlock/ directory.</td></tr>
+<tr><td>Clear App Counts</td><td><code>inner.clear_app_counts</code></td><td>Clears the app count file to reset the sorting based on execution counts.</td></tr>
+<tr><td>Clear Errors</td><td><code>inner.clear_errors</code></td><td>Clears the messages from the message view</td></tr>
+<tr><td>Insert Test Errors</td><td><code>inner.insert_test_errors</code></td><td>Inserts test messages for each message type: Info, Warning, and Error.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-6"><a class="header" href="#examples-6">Examples</a></h3>
+<p><em>Basic app launcher</em></p>
+<pre><code class="language-json">{
+    "name": "Debug",
+    "type": "debug",
+    "alias": "debug",
+    "args": {},
+    "priority": 1,
+    "exit": false
+}
+</code></pre>
+<hr>
+<h2 id="emoji-picker"><a class="header" href="#emoji-picker">Emoji Picker</a></h2>
+<p><code>type = emoji</code></p>
+<p>A emoji picker allowing for skin tone selection.</p>
+<h3 id="args-6"><a class="header" href="#args-6">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>default_skin_tone</code></td><td><code>SkinTone</code></td><td></td><td>Simpsons</td><td>The skin tone to use as the default. Can be either: Light, MediumLight, Medium, MediumDark, Dark, or Simpsons</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-7"><a class="header" href="#examples-7">Examples</a></h3>
+<p><em>Basic emoji picker</em></p>
+<pre><code class="language-json">{
+    "name": "Emoji Picker",
+    "alias": "emj",
+    "type": "emoji",
+    "args": {
+        "default_skin_tone": "Simpsons"
+    },
+    "priority": 5,
+    "home": "Home"
+}
+</code></pre>
+<hr>
+<h2 id="event-launcher"><a class="header" href="#event-launcher">Event Launcher</a></h2>
+<p><code>type = event</code></p>
+<p>Shows upcoming events and joins them on return.</p>
+<h3 id="args-7"><a class="header" href="#args-7">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>look_back</code></td><td><code>Time</code></td><td></td><td>10mins</td><td>The duration events should stay visible after already having started.</td></tr>
+<tr><td><code>look_ahead</code></td><td><code>Time</code></td><td></td><td>1h</td><td>The duration events should show before having started.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="inner-functions-1"><a class="header" href="#inner-functions-1">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Hard Refresh</td><td><code>inner.hard_refresh</code></td><td>Refetch the events from the server.</td></tr>
+<tr><td>Join Meeting</td><td><code>inner.join_meeting</code></td><td>Only acailable if its actually a meeting. Will join a meeting using the application provided by a mime-type lookup.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-8"><a class="header" href="#examples-8">Examples</a></h3>
+<p><em>Basic event launcher</em></p>
+<pre><code class="language-json">{
+    "type": "event",
+    "args": {
+        "look_ahead": "5 hours",
+        "look_back": "50 hours"
+    },
+    "priority": 3,
+    "home": "OnlyHome",
+    "spawn_focus": false,
+    "shortcut": false
+}
+</code></pre>
+<hr>
+<h2 id="file-launcher"><a class="header" href="#file-launcher">File Launcher</a></h2>
+<p><code>type = files</code></p>
+<p>A file search. Allows you to search for files and directories from within Sherlock.</p>
+<h3 id="args-8"><a class="header" href="#args-8">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>backend</code></td><td><code>string</code></td><td></td><td>fd</td><td>The backend to be used by the file search. Can be either of: <code>Fd</code>, <code>Rg</code>, or <code>WalkDir</code></td></tr>
+<tr><td><code>poll_interval</code></td><td><code>u64</code></td><td></td><td>50</td><td>The time in milliseconds between backend calls.</td></tr>
+<tr><td><code>max_results</code></td><td><code>usize</code></td><td></td><td>50</td><td>The maximum number of results to show in the file search.</td></tr>
+<tr><td><code>path</code></td><td><code>path</code></td><td></td><td>~/</td><td>The root path from which to start the file search.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-9"><a class="header" href="#examples-9">Examples</a></h3>
+<p><em>Basic event launcher</em></p>
+<pre><code class="language-json">{
+    "name": "File Search",
+    "type": "files",
+    "alias": "fs",
+    "args": {
+        "max_results": 50,
+        "poll_interval": 50,
+        "backend": "fd",
+        "path": "~/"
+    },
+    "priority": 5,
+    "home": "Home"
+}
+</code></pre>
+<hr>
+<h2 id="music-player-launcher"><a class="header" href="#music-player-launcher">Music Player Launcher</a></h2>
+<p><code>type = music_player</code></p>
+<p>Shows the currently played song or video with thumbnail, title, and artists.</p>
+<h3 id="inner-functions-2"><a class="header" href="#inner-functions-2">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Toggle Playback</td><td><code>inner.toggle_playback</code></td><td>Toggles current media playback status (playing/paused).</td></tr>
+<tr><td>Previous</td><td><code>inner.previous</code></td><td>Skips to the previous audio element (song, video).</td></tr>
+<tr><td>Next</td><td><code>inner.next</code></td><td>Skips to the next audio element (song, video).</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-10"><a class="header" href="#examples-10">Examples</a></h3>
+<p><em>Basic music player</em></p>
 <pre><code class="language-json">{
     "name": "Spotify",
     "type": "music_player",
     "args": {},
-    "async": true,
     "priority": 2,
     "home": "OnlyHome",
     "spawn_focus": false,
@@ -376,433 +1200,258 @@ with <code>/</code></p>
             "callback": "previous",
             "exit": false
         }
-    ],
-    "actions": [
-        {
-            "name": "Skip",
-            "icon": "media-seek-forward",
-            "method": "inner.next",
-            "exit": false
-        },
-        {
-            "name": "Previous",
-            "icon": "media-seek-backward",
-            "method": "inner.previous",
-            "exit": false
-        }
     ]
 }
 </code></pre>
 <hr>
-<h2 id="app-launcher"><a class="header" href="#app-launcher">App Launcher</a></h2>
-<p>Searches and launches installed applications from <code>.desktop</code> files.</p>
-<pre><code class="language-json">{
-    "name": "App Launcher",
-    "alias": "app",
-    "type": "apps",
-    "args": {
-        "use_keywords": true
-    },
-    "priority": 2,
-    "home": "Home"
-}
-</code></pre>
-<h3 id="args"><a class="header" href="#args">args</a></h3>
+<h2 id="process-launcher"><a class="header" href="#process-launcher">Process Launcher</a></h2>
+<p><code>type = process</code></p>
+<p>Searches and terminates processes from within Sherlock.</p>
+<h3 id="args-9"><a class="header" href="#args-9">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>use_keywords</code></td><td>no</td><td>If <code>true</code>, also searches the <code>Keywords</code> field from the <code>.desktop</code> file</td></tr>
+<tr><td><code>max_results</code></td><td><code>usize</code></td><td></td><td>50</td><td>The maximum number of results to show in the process search.</td></tr>
+<tr><td><code>show_tile</code></td><td><code>bool</code></td><td></td><td>false</td><td>Wheather a tile should be displayed of the user only wants the alias-based execution.</td></tr>
 </tbody>
 </table>
 </div>
-<hr>
-<h2 id="bookmark-launcher"><a class="header" href="#bookmark-launcher">Bookmark Launcher</a></h2>
-<p>Finds and launches browser bookmarks.</p>
+<h3 id="inner-functions-3"><a class="header" href="#inner-functions-3">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Quit</td><td><code>inner.quit</code></td><td>Quit the current process</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-11"><a class="header" href="#examples-11">Examples</a></h3>
+<p><em>Basic process terminator</em></p>
 <pre><code class="language-json">{
-    "name": "Bookmarks",
-    "type": "bookmarks",
+    "name": "Processes",
+    "type": "process",
+    "alias": "kill",
     "args": {},
-    "priority": 3,
-    "home": "Search"
-}
-</code></pre>
-<h3 id="supported-browsers"><a class="header" href="#supported-browsers">Supported browsers</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Browser</th><th>Config value in <code>default_apps</code></th></tr>
-</thead>
-<tbody>
-<tr><td>Zen</td><td><code>zen</code>, <code>zen-browser</code>, <code>/opt/zen-browser-bin/zen-bin %u</code></td></tr>
-<tr><td>Firefox</td><td><code>firefox</code>, <code>/usr/lib/firefox/firefox %u</code></td></tr>
-<tr><td>Brave</td><td><code>brave</code>, <code>brave %u</code></td></tr>
-<tr><td>Chrome</td><td><code>chrome</code>, <code>google-chrome</code>, <code>/usr/bin/google-chrome-stable %u</code></td></tr>
-<tr><td>Thorium</td><td><code>thorium</code>, <code>/usr/bin/thorium-browser %u</code></td></tr>
-</tbody>
-</table>
-</div>
-<p>The browser is matched against the <code>exec</code> string in your config, so both the short name and the full path are accepted.</p>
-<hr>
-<h2 id="calculator"><a class="header" href="#calculator">Calculator</a></h2>
-<p>Evaluates math expressions and unit conversions. On return, copies the result to the clipboard.</p>
-<pre><code class="language-json">{
-    "name": "Calculator",
-    "type": "calculation",
-    "args": {
-        "capabilities": [
-            "calc.math",
-            "calc.units"
-        ]
-    },
-    "priority": 1
-}
-</code></pre>
-<h3 id="args-1"><a class="header" href="#args-1">args</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>capabilities</code></td><td>no</td><td>List of enabled features. Defaults to <code>calc.math</code> and <code>calc.units</code></td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="supported-unit-conversions"><a class="header" href="#supported-unit-conversions"><strong>Supported Unit Conversions</strong></a></h3>
-<p>Sherlock supports natural language conversions across the following categories:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Category</th><th>Supported Units &amp; Aliases</th></tr>
-</thead>
-<tbody>
-<tr><td><code>calc.math</code></td><td>Basic and advanced mathematical expressions.</td></tr>
-<tr><td><code>colors</code></td><td>Conversion between Hex, RGB, HSL, and other color formats.</td></tr>
-<tr><td><code>calc.currencies</code></td><td>USD ($), EUR (€), JPY (¥), GBP (£), AUD (A$), CAD (C$),</td></tr>
-<tr><td>CHF, CNY (¥), NZD, SEK (kr), NOK, MXN, SGD, HKD, KRW (₩), PLN (zł), PEN (S/).</td><td></td></tr>
-<tr><td><code>calc.length</code></td><td>mm, cm, m, km, inch (“), feet (’), yard, mile, nautical mile.</td></tr>
-<tr><td><code>calc.volume</code></td><td>ml, cl, l, kl, cubic meter, tsp, tbsp, fl oz, cup, pint, quart, gallon, imperial gallon.</td></tr>
-<tr><td><code>calc.weight</code></td><td>mg, g, kg, metric ton, oz, lb, stone, US ton, imperial ton, troy ounce.</td></tr>
-<tr><td><code>calc.temperature</code></td><td>Celsius (°C), Fahrenheit (°F).</td></tr>
-<tr><td><code>calc.pressure</code></td><td>Pascal, kPa, bar, atmosphere, psi, Torr (mmHg).</td></tr>
-<tr><td><code>calc.digital</code></td><td>bit, kb, Mb, Gb, Byte, KB, MB, GB, TB, PB.</td></tr>
-<tr><td><code>calc.time</code></td><td>ms, seconds, minutes, hours, days, weeks, months, years.</td></tr>
-<tr><td><code>calc.area</code></td><td>square meter, square kilometer, square foot, square inch, acre, hectare.</td></tr>
-<tr><td><code>calc.speed</code></td><td>m/s, km/h, mph, knots.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="usage-tips"><a class="header" href="#usage-tips">Usage Tips</a></h3>
-<ul>
-<li><strong>Group Activation:</strong> You can use <code>calc.units</code> to enable all physical measurement units at once.</li>
-<li><strong>Case Insensitive:</strong> You can type <code>KG</code>, <code>Kg</code>, or <code>kg</code> interchangeably.</li>
-<li><strong>Natural Language:</strong> Supports full names (<code>kilograms</code>) as well as shorthand (<code>kg</code>).</li>
-<li><strong>Symbols:</strong> Recognizes standard symbols like <code>$</code> for currency, <code>'</code> for feet, and <code>"</code> for inches.</li>
-</ul>
-<hr>
-<h2 id="category-launcher"><a class="header" href="#category-launcher">Category Launcher</a></h2>
-<p>Groups launchers or commands under a single tile. Activating the tile switches into that launcher’s mode.</p>
-<pre><code class="language-json">{
-    "name": "Categories",
-    "alias": "cat",
-    "type": "categories",
-    "args": {
-        "categories": {
-            "Kill Processes": {
-                "icon": "sherlock-process",
-                "exec": "kill",
-                "search_string": "terminate;kill;process"
-            },
-            "Power Menu": {
-                "icon": "battery-full-symbolic",
-                "exec": "pm",
-                "search_string": "powermenu;"
-            }
-        }
-    },
-    "priority": 3,
-    "home": "Home"
-}
-</code></pre>
-<h3 id="args-2"><a class="header" href="#args-2">args</a></h3>
-<p><strong><code>categories</code></strong> (required) — a map of named entries:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>icon</code></td><td>Icon name to display</td></tr>
-<tr><td><code>exec</code></td><td>Alias of the launcher to activate on return</td></tr>
-<tr><td><code>search_string</code></td><td>String used for fuzzy matching</td></tr>
-<tr><td><code>actions</code></td><td>The actions to be displayed in the context menu.</td></tr>
-</tbody>
-</table>
-</div>
-<hr>
-<h2 id="command-launcher"><a class="header" href="#command-launcher">Command Launcher</a></h2>
-<p>Runs custom shell commands. Supports variable inputs and replacement variables.</p>
-<pre><code class="language-json">{
-    "name": "Utilities",
-    "alias": "ex",
-    "type": "commands",
-    "args": {
-        "commands": {
-            "NordVPN": {
-                "icon": "nordvpn",
-                "exec": "nordvpn c {variable:location}",
-                "search_string": "nordvpn",
-                "variables": [
-                    { "string_input": "location" }
-                ]
-            }
-        }
-    },
-    "priority": 5
-}
-</code></pre>
-<h3 id="args-3"><a class="header" href="#args-3">args</a></h3>
-<p><strong><code>commands</code></strong> (required) — a map of named entries:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>exec</code></td><td>yes</td><td>The command to run</td></tr>
-<tr><td><code>icon</code></td><td>no</td><td>Icon name to display</td></tr>
-<tr><td><code>search_string</code></td><td>no</td><td>String used for fuzzy matching</td></tr>
-<tr><td><code>variables</code></td><td>no</td><td>Variable input fields — see <a href="#variable-inputs">Variable Inputs</a></td></tr>
-</tbody>
-</table>
-</div>
-<hr>
-<h2 id="music-player"><a class="header" href="#music-player">Music Player</a></h2>
-<p>Shows the currently playing track and controls playback via MPRIS over D-Bus.</p>
-<pre><code class="language-json">{
-    "name": "Spotify",
-    "type": "music_player",
-    "args": {},
-    "async": true,
     "priority": 1,
     "home": "Home",
-    "spawn_focus": false,
-    "actions": [
-        {
-            "name": "Skip",
-            "icon": "media-seek-forward",
-            "exec": "playerctl next",
-            "method": "command"
-        }
-    ],
-    "binds": [
-        { "bind": "ctrl-p", "callback": "inner.playpause", "exit": false },
-        { "bind": "ctrl-l", "callback": "inner.next", "exit": false },
-        { "bind": "ctrl-h", "callback": "inner.previous", "exit": false }
-    ]
+    "shortcut": false,
+    "exit": false
 }
 </code></pre>
-<h3 id="inner-functions"><a class="header" href="#inner-functions">Inner functions</a></h3>
+<hr>
+<h2 id="script-launcher"><a class="header" href="#script-launcher">Script Launcher</a></h2>
+<p><code>type = script</code></p>
+<p>Executes commands either on keypress (async) or on return. The results will be displayed within Sherlock.</p>
+<h3 id="args-10"><a class="header" href="#args-10">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Function</th><th>Description</th></tr>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>playpause</code></td><td>Toggle playback</td></tr>
-<tr><td><code>next</code></td><td>Skip to next track</td></tr>
-<tr><td><code>previous</code></td><td>Go to previous track</td></tr>
-<tr><td><code>unbind</code></td><td>Unbind a key (useful to unbind return)</td></tr>
+<tr><td><code>async</code></td><td><code>bool</code></td><td></td><td>true</td><td>If set to true, will run the script on every keypress. If set to false, will wait for the execution of the <code>inner.run</code> command.</td></tr>
+<tr><td><code>exec</code></td><td><code>command</code></td><td></td><td>false</td><td>Wheather a tile should be displayed of the user only wants the alias-based execution.</td></tr>
+<tr><td><code>exec</code></td><td><code>string</code></td><td></td><td></td><td>The arguments to the command. Will replace <code>{keyword}</code> with the actual contents of the search bar.</td></tr>
 </tbody>
 </table>
 </div>
+<h3 id="inner-functions-4"><a class="header" href="#inner-functions-4">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Run</td><td><code>inner.run</code></td><td>Run the current script. (Required if <code>async = false</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-12"><a class="header" href="#examples-12">Examples</a></h3>
+<p><em>Basic process terminator</em></p>
+<pre><code class="language-json">{
+    "name": "Wikipedia Search",
+    "alias": "wiki",
+    "type": "script",
+    "args": {
+        "icon": "wikipedia",
+        "exec": "sherlock-wiki",
+        "exec-args": "'{keyword}'"
+    },
+    "priority": 0,
+    "shortcut": false
+}
+</code></pre>
+<hr>
+<h2 id="theme-picker"><a class="header" href="#theme-picker">Theme Picker</a></h2>
+<p><code>type = theme</code></p>
+<p>Preview and select Sherlock themes.</p>
+<h3 id="args-11"><a class="header" href="#args-11">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>path</code></td><td><code>path</code></td><td></td><td>~/.config/sherlock/themes/</td><td>The path to the Sherlock themes directory.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="inner-functions-5"><a class="header" href="#inner-functions-5">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+<h3 id="examples-13"><a class="header" href="#examples-13">Examples</a></h3>
+<p><em>Basic process terminator</em></p>
+<pre><code class="language-json">{
+    "name": "Theme Picker",
+    "type": "theme",
+    "alias": "themes",
+    "priority": 0,
+    "exit": false
+}
+</code></pre>
+<hr>
+<h2 id="timer-launcher"><a class="header" href="#timer-launcher">Timer Launcher</a></h2>
+<p><code>type = timer</code></p>
+<p>Start and run up to four timers concurrently. Each timer can have a unique action to be run at completion.</p>
+<h3 id="args-12"><a class="header" href="#args-12">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>exec</code></td><td><code>command</code></td><td></td><td></td><td>The command to execute on timer completion.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="inner-functions-6"><a class="header" href="#inner-functions-6">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Toggle</td><td><code>inner.toggle</code></td><td>Toggle all timers</td></tr>
+<tr><td>Reset</td><td><code>inner.reset</code></td><td>Reset all timers</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-14"><a class="header" href="#examples-14">Examples</a></h3>
+<p><em>Basic process terminator</em></p>
+<pre><code class="language-json">{
+    "name": "Timer",
+    "type": "timer",
+    "args": {
+        "exec": "notify-send \"hello\""
+    },
+    "priority": 1,
+    "shortcut": false
+}
+</code></pre>
+<hr>
+<h2 id="translator"><a class="header" href="#translator">Translator</a></h2>
+<p><code>type = translator</code></p>
+<p>Translate your queries into other languages.</p>
+<h3 id="examples-15"><a class="header" href="#examples-15">Examples</a></h3>
+<p><em>Basic translator</em></p>
+<pre><code class="language-json">{
+    "name": "Translator",
+    "alias": "trans",
+    "type": "translator",
+    "args": {},
+    "on_return": "inner.run",
+    "exit": false,
+    "priority": 1,
+    "shortcut": false
+}
+</code></pre>
 <hr>
 <h2 id="weather-launcher"><a class="header" href="#weather-launcher">Weather Launcher</a></h2>
-<p>Shows current weather conditions for a configured location.</p>
+<p><code>type = weather</code></p>
+<p>Display the weather and time in Sherlock.</p>
+<h3 id="args-13"><a class="header" href="#args-13">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>location</code></td><td><code>string</code></td><td>✓</td><td>—</td><td>The location for the weather.</td></tr>
+<tr><td><code>update_interval</code></td><td><code>u64</code></td><td>✓</td><td>—</td><td>The time in minutes after which to invalidate the cached weather condition.</td></tr>
+<tr><td><code>icon_theme</code></td><td><code>string</code></td><td></td><td>—</td><td>The weather icon theme. Can be either <code>None</code> or <code>Sherlock</code></td></tr>
+<tr><td><code>show_datetime</code></td><td><code>bool</code></td><td></td><td>false</td><td>Whether to show a tile with the current date and time.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-16"><a class="header" href="#examples-16">Examples</a></h3>
+<p><em>Basic weather launcher</em></p>
 <pre><code class="language-json">{
     "name": "Weather",
     "type": "weather",
     "args": {
         "location": "berlin",
-        "update_interval": 60,
-        "icon_theme": "Sherlock",
-        "show_datetime": false
+        "update_interval": 120,
+        "show_datetime": true,
+        "icon_theme": "Sherlock"
     },
+    "actions": [
+        {
+            "name": "Show in Web",
+            "exec": "https://www.wttr.in/berlin",
+            "icon": "sherlock-link",
+            "method": "web_launcher"
+        }
+    ],
     "priority": 1,
     "home": "OnlyHome",
-    "async": true,
     "shortcut": false,
     "spawn_focus": false
 }
 </code></pre>
-<h3 id="args-4"><a class="header" href="#args-4">args</a></h3>
+<hr>
+<h2 id="web-launcher"><a class="header" href="#web-launcher">Web Launcher</a></h2>
+<p><code>type = web</code></p>
+<p>Seach the current query in the specified engine using the specified browser.</p>
+<h3 id="args-14"><a class="header" href="#args-14">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>location</code></td><td>yes</td><td>City or region name</td></tr>
-<tr><td><code>update_interval</code></td><td>no</td><td>Cache TTL in minutes</td></tr>
-<tr><td><code>icon_theme</code></td><td>no</td><td><code>Sherlock</code> to use bundled icons, omit for system theme</td></tr>
-<tr><td><code>show_datetime</code></td><td>no</td><td>Show current date and time alongside weather</td></tr>
+<tr><td><code>search_engine</code></td><td><code>string</code></td><td>✓</td><td>—</td><td>The search engine used for the query.</td></tr>
+<tr><td><code>browser</code></td><td><code>u64</code></td><td></td><td>Default Browser</td><td>The browser in which to open the query.</td></tr>
+<tr><td><code>display_name</code></td><td><code>string</code></td><td></td><td>—</td><td>The display name for this tile, replacing <code>{keyword}</code> with the actual contents of the search bar.</td></tr>
 </tbody>
 </table>
 </div>
-<hr>
-<h2 id="web-launcher"><a class="header" href="#web-launcher">Web Launcher</a></h2>
-<p>Opens a search query in the browser using a configured search engine.</p>
+<h3 id="examples-17"><a class="header" href="#examples-17">Examples</a></h3>
+<p><em>Basic web launcher</em></p>
 <pre><code class="language-json">{
     "name": "Web Search",
     "alias": "gg",
     "type": "web",
     "args": {
         "search_engine": "google",
-        "icon": "google"
+        "icon": "google",
+        "display_name": "Google Search {keyword}"
     },
+    "home": "Persist",
     "priority": 100
 }
 </code></pre>
-<h3 id="args-5"><a class="header" href="#args-5">args</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>search_engine</code></td><td>false</td><td>Engine name or a custom URL containing <code>{keyword}</code></td></tr>
-<tr><td><code>icon</code></td><td>false</td><td>Icon name to display</td></tr>
-<tr><td><code>display_name</code></td><td>false</td><td>Display name for, replacing <code>{keyword}</code> with query.</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="built-in-search-engines"><a class="header" href="#built-in-search-engines">Built-in search engines</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Name</th><th>URL</th></tr>
-</thead>
-<tbody>
-<tr><td><code>google</code></td><td><code>https://www.google.com/search?q={keyword}</code></td></tr>
-<tr><td><code>bing</code></td><td><code>https://www.bing.com/search?q={keyword}</code></td></tr>
-<tr><td><code>duckduckgo</code></td><td><code>https://duckduckgo.com/?q={keyword}</code></td></tr>
-<tr><td><code>yahoo</code></td><td><code>https://search.yahoo.com/search?p={keyword}</code></td></tr>
-<tr><td><code>ecosia</code></td><td><code>https://www.ecosia.org/search?q={keyword}</code></td></tr>
-<tr><td><code>startpage</code></td><td><code>https://www.startpage.com/sp/search?q={keyword}</code></td></tr>
-<tr><td><code>qwant</code></td><td><code>https://www.qwant.com/?q={keyword}</code></td></tr>
-<tr><td><code>yandex</code></td><td><code>https://yandex.com/search/?text={keyword}</code></td></tr>
-<tr><td>Custom</td><td>Any URL with <code>{keyword}</code> as the query placeholder</td></tr>
-</tbody>
-</table>
-</div>
 <hr>
-<h2 id="clipboard-launcher"><a class="header" href="#clipboard-launcher">Clipboard Launcher</a></h2>
-<p>Reads the clipboard and acts on its content — opening URLs, displaying colors, or evaluating expressions.</p>
-<pre><code class="language-json">{
-    "name": "Clipboard",
-    "type": "clipboard",
-    "args": {
-        "capabilities": [
-            "url",
-            "colors",
-            "calc.math"
-        ]
-    },
-    "on_return": "copy",
-    "priority": 3,
-    "home": "OnlyHome",
-    "async": true
-}
-</code></pre>
-<h3 id="args-6"><a class="header" href="#args-6">args</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>capabilities</code></td><td>no</td><td>List of enabled features. See <a href="#Capabilities">Capabilities</a></td></tr>
-</tbody>
-</table>
-</div>
-<hr>
-<h2 id="debug-launcher"><a class="header" href="#debug-launcher">Debug Launcher</a></h2>
-<p>Runs internal debug commands such as clearing the cache or resetting launch counts.</p>
-<pre><code class="language-json">{
-    "name": "Debug",
-    "type": "debug",
-    "alias": "debug",
-    "args": {},
-    "priority": 1,
-    "exit": false
-}
-</code></pre>
-<h3 id="functions"><a class="header" href="#functions">Functions</a></h3>
-<ul>
-<li><strong>Clear Cache:</strong> Resets the entire <code>~/.cache/sherlock/</code> directory</li>
-<li><strong>Reset App Count:</strong> Resets the counter for how often an app / command has been launched</li>
-<li><strong>Clear Error Messages:</strong> Will clear all messages from the message view</li>
-<li><strong>Insert Test Error Messages:</strong> Will insert a message per message type (info,
-warning, error) into the error view</li>
-</ul>
-<hr>
-<h2 id="emoji-picker"><a class="header" href="#emoji-picker">Emoji Picker</a></h2>
-<p>Searches and copies emoji characters.</p>
-<pre><code class="language-json">{
-    "name": "Emoji Picker",
-    "alias": "emj",
-    "type": "emoji",
-    "args": {
-        "default_skin_tone": "Light"
-    },
-    "priority": 5,
-    "home": "Home"
-}
-</code></pre>
-<h3 id="args-7"><a class="header" href="#args-7">args</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
-</thead>
-<tbody>
-<tr><td><code>default_skin_tone</code></td><td>no</td><td>Can be either of <code>Simpsons</code>, <code>Light</code>, <code>MediumLight</code>, <code>Medium</code>, <code>MediumDar,</code> <code>Dark</code></td></tr>
-</tbody>
-</table>
-</div>
-<hr>
-<h2 id="script"><a class="header" href="#script">Script</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
-<p>Runs an external script asynchronously and displays its output as a text widget.</p>
-<hr>
-<h2 id="event"><a class="header" href="#event">Event</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
-<p>Shows upcoming Microsoft Teams meetings and joins them on return.</p>
-<hr>
-<h2 id="theme-picker"><a class="header" href="#theme-picker">Theme Picker</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
-<p>Lists available themes and applies them on selection.</p>
-<hr>
-<h2 id="process-terminator"><a class="header" href="#process-terminator">Process Terminator</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
-<p>Lists running user processes and terminates the selected one on return.</p>
-<hr>
-<h2 id="timer"><a class="header" href="#timer">Timer</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
-
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
