@@ -15,8 +15,8 @@
         <link rel="icon" href="favicon-de23e50b.svg">
         <link rel="shortcut icon" href="favicon-8114d1fc.png">
         <link rel="stylesheet" href="css/variables-8adf115d.css">
-        <link rel="stylesheet" href="css/general-2459343d.css">
-        <link rel="stylesheet" href="css/chrome-ae938929.css">
+        <link rel="stylesheet" href="css/general-0392ca55.css">
+        <link rel="stylesheet" href="css/chrome-fc474251.css">
         <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5ca3f0e6.js";
+            window.path_to_searchindex_js = "searchindex-ba7ae583.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-d2a6eaca.js"></script>
+        <script src="toc-ef2cd792.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -181,49 +181,146 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="launchers"><a class="header" href="#launchers">Launchers</a></h1>
-<p>Launchers are the backbone of Sherlock. Each item — applications, custom commands, widgets — is backed by a launcher. The <code>fallback.json</code> file controls which launchers are active and how they behave.</p>
-<p>The default location is <code>~/.config/sherlock/fallback.json</code>.</p>
+<p>Launchers are the backbone for Sherlock’s widget engine. Each displayed widget
+is owned by a launcher. For example:</p>
+<pre><code>[Weather Launcher]
+    [Widget] Weather Display
+[App Launcher] 
+    [Widget] App 1
+    [Widget] App 2
+    [Widget] App 3
+</code></pre>
+<p>A launcher’s widgets will share the same behavious based on the shared launcher configuration.</p>
+<h2 id="shared-launcher-configuration"><a class="header" href="#shared-launcher-configuration">Shared Launcher Configuration</a></h2>
+<h3 id="fields"><a class="header" href="#fields">Fields</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>name</code></td><td><code>string?</code></td><td>Label shown in the UI</td></tr>
+<tr><td><code>alias</code></td><td><code>string?</code></td><td>Keyword that activates focused/alias mode</td></tr>
+<tr><td><code>home</code></td><td><code>HomeType</code></td><td>Controls home screen visibility</td></tr>
+<tr><td><code>priority</code></td><td><code>integer</code></td><td>Sort weight — lower appears first</td></tr>
+<tr><td><code>type</code></td><td><code>LauncherVariant</code></td><td>Launcher kind (e.g. <code>app</code>, <code>weather</code>)</td></tr>
+<tr><td><code>args</code></td><td><code>{}</code></td><td>Launcher-specific configuration options.</td></tr>
+<tr><td><code>async</code></td><td><code>bool</code></td><td>Enable async widget updates</td></tr>
+<tr><td><code>exit</code></td><td><code>bool</code></td><td>Close Sherlock after execution</td></tr>
+<tr><td><code>spawn_focus</code></td><td><code>bool</code></td><td>Allow item to receive automatic focus</td></tr>
+<tr><td><code>shortcut</code></td><td><code>bool</code></td><td>Show a keybind shortcut for this launcher</td></tr>
+<tr><td><code>binds</code></td><td><code>Bind[]?</code></td><td>Keyboard shortcuts</td></tr>
+<tr><td><code>actions</code></td><td><code>Action[]?</code></td><td>Context menu actions (overwrites <code>.desktop</code> file actions)</td></tr>
+<tr><td><code>add_actions</code></td><td><code>Action[]?</code></td><td>Extra actions appended to the context menu</td></tr>
+<tr><td><code>variables</code></td><td><code>ExecVariable[]?</code></td><td>Variables injected into spawned commands</td></tr>
+</tbody>
+</table>
+</div>
 <hr>
-<h2 id="shared-attributes"><a class="header" href="#shared-attributes">Shared Attributes</a></h2>
-<h3 id="required"><a class="header" href="#required">Required</a></h3>
+<h3 id="bind"><a class="header" href="#bind">Bind</a></h3>
+<p>A keyboard shortcut attached to a launcher’s widgets.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Attribute</th><th>Description</th></tr>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>type</code></td><td>The launcher type string (e.g. <code>app_launcher</code>, <code>command</code>)</td></tr>
-<tr><td><code>args</code></td><td>Arguments specific to the launcher type. Can be empty (<code>{}</code>)</td></tr>
-<tr><td><code>priority</code></td><td>Display order at startup. <code>0</code> means the launcher only appears when its <code>alias</code> is active</td></tr>
+<tr><td><code>key</code></td><td><code>string</code></td><td>Key to bind (e.g. <code>ctrl+c</code>)</td></tr>
+<tr><td><code>callback</code></td><td><code>string</code></td><td>Action to invoke (e.g. <code>inner.copy</code>, <code>app_launcher</code>)</td></tr>
+<tr><td><code>exit</code></td><td><code>bool</code></td><td>Close Sherlock after this bind executes</td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="optional"><a class="header" href="#optional">Optional</a></h3>
+<hr>
+<h3 id="action"><a class="header" href="#action">Action</a></h3>
+<p>A context menu entry attached to a launcher’s widgets.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Attribute</th><th>Description</th></tr>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>name</code></td><td>Category label shown under the tile’s name</td></tr>
-<tr><td><code>alias</code></td><td>Prefix used to search within this launcher specifically</td></tr>
-<tr><td><code>home</code></td><td>When to show this launcher. One of <code>Home</code>, <code>OnlyHome</code>, <code>Persist</code>, <code>Search</code> (default)</td></tr>
-<tr><td><code>async</code></td><td>Run the launcher asynchronously</td></tr>
-<tr><td><code>on_return</code></td><td>What happens when return is pressed</td></tr>
-<tr><td><code>spawn_focus</code></td><td>Whether the tile auto-focuses when it appears first in the list</td></tr>
-<tr><td><code>shortcut</code></td><td>Whether to show the shortcut indicator</td></tr>
-<tr><td><code>actions</code></td><td>Custom context menu entries — see <a href="#actions">Actions</a></td></tr>
-<tr><td><code>variables</code></td><td>Runtime input fields in the search bar — see <a href="variable-inputs.html">Variable Inputs</a></td></tr>
+<tr><td><code>name</code></td><td><code>string</code></td><td>Label shown in the context menu</td></tr>
+<tr><td><code>icon</code></td><td><code>string?</code></td><td>The icon name for the application action</td></tr>
+<tr><td><code>method</code></td><td><code>string</code></td><td>Action to invoke (e.g. <code>app_launcher</code>, <code>web_launcher</code>)</td></tr>
+<tr><td><code>exec</code></td><td><code>string?</code></td><td>Command or URL to execute</td></tr>
+<tr><td><code>exit</code></td><td><code>bool</code></td><td>Close Sherlock after this action executes, (default = <code>true</code>)</td></tr>
 </tbody>
 </table>
 </div>
+<hr>
+<h2 id="execvariable"><a class="header" href="#execvariable">ExecVariable</a></h2>
+<p>A variable injected into a command at spawn time. Defined as a tagged variant.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Variant</th><th>Value Type</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>string_input</code></td><td><code>string</code></td><td>Prompts the user for a plain text input</td></tr>
+<tr><td><code>password_input</code></td><td><code>string</code></td><td>Prompts the user for a masked/hidden input</td></tr>
+<tr><td><code>path_input</code></td><td><code>PathData</code></td><td>Prompts the user to select a file or directory path</td></tr>
+<tr><td><code>command_input</code></td><td><code>CommandData</code></td><td>Prompts the user for input passed to a shell command</td></tr>
+</tbody>
+</table>
+</div>
+<blockquote class="blockquote-tag blockquote-tag-tip">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
+<p><code>path_input</code> and <code>command_input</code> have autocompletion. The <code>path_input</code> will
+assume to search in the home directory if the search query does not start
+with <code>/</code></p>
+</blockquote>
+<p><strong>Example:</strong></p>
+<pre><code class="language-json">variables = [
+    { "string_input": "location" },
+    { "password_input": "token" },
+]
+</code></pre>
+<h3 id="example-usage"><a class="header" href="#example-usage">Example Usage</a></h3>
+<pre><code class="language-json">{
+    "name": "Spotify",
+    "type": "music_player",
+    "args": {},
+    "async": true,
+    "priority": 2,
+    "home": "OnlyHome",
+    "spawn_focus": false,
+    "exit": false,
+    "binds": [
+        {
+            "bind": "ctrl-l",
+            "callback": "next",
+            "exit": false
+        },
+        {
+            "bind": "ctrl-h",
+            "callback": "previous",
+            "exit": false
+        }
+    ],
+    "actions": [
+        {
+            "name": "Skip",
+            "icon": "media-seek-forward",
+            "method": "inner.next",
+            "exit": false
+        },
+        {
+            "name": "Previous",
+            "icon": "media-seek-backward",
+            "method": "inner.previous",
+            "exit": false
+        }
+    ]
+}
+</code></pre>
 <hr>
 <h2 id="app-launcher"><a class="header" href="#app-launcher">App Launcher</a></h2>
 <p>Searches and launches installed applications from <code>.desktop</code> files.</p>
 <pre><code class="language-json">{
     "name": "App Launcher",
     "alias": "app",
-    "type": "app_launcher",
+    "type": "apps",
     "args": {
         "use_keywords": true
     },
@@ -295,29 +392,37 @@
 </tbody>
 </table>
 </div>
-<h3 id="capabilities"><a class="header" href="#capabilities">Capabilities</a></h3>
+<h3 id="supported-unit-conversions"><a class="header" href="#supported-unit-conversions"><strong>Supported Unit Conversions</strong></a></h3>
+<p>Sherlock supports natural language conversions across the following categories:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Value</th><th>Enables</th></tr>
+<tr><th>Category</th><th>Supported Units &amp; Aliases</th></tr>
 </thead>
 <tbody>
-<tr><td><code>calc.math</code></td><td>Mathematical expression evaluation</td></tr>
-<tr><td><code>calc.units</code></td><td>All unit conversions</td></tr>
-<tr><td><code>calc.length</code></td><td>Length only</td></tr>
-<tr><td><code>calc.weight</code></td><td>Weight only</td></tr>
-<tr><td><code>calc.volume</code></td><td>Volume only</td></tr>
-<tr><td><code>calc.temperature</code></td><td>Temperature only</td></tr>
-<tr><td><code>calc.pressure</code></td><td>Pressure only</td></tr>
-<tr><td><code>calc.digital</code></td><td>Digital storage only</td></tr>
-<tr><td><code>calc.time</code></td><td>Time only</td></tr>
-<tr><td><code>calc.area</code></td><td>Area only</td></tr>
-<tr><td><code>calc.speed</code></td><td>Speed only</td></tr>
-<tr><td><code>calc.currencies</code></td><td>Currency conversion (fetched from TradingView, cached)</td></tr>
-<tr><td><code>colors</code></td><td>Color space conversion (<code>rgb</code>, <code>hex</code>, <code>hsl</code>, <code>hsv</code>, <code>lab</code>)</td></tr>
+<tr><td><code>calc.math</code></td><td>Basic and advanced mathematical expressions.</td></tr>
+<tr><td><code>colors</code></td><td>Conversion between Hex, RGB, HSL, and other color formats.</td></tr>
+<tr><td><code>calc.currencies</code></td><td>USD ($), EUR (€), JPY (¥), GBP (£), AUD (A$), CAD (C$),</td></tr>
+<tr><td>CHF, CNY (¥), NZD, SEK (kr), NOK, MXN, SGD, HKD, KRW (₩), PLN (zł), PEN (S/).</td><td></td></tr>
+<tr><td><code>calc.length</code></td><td>mm, cm, m, km, inch (“), feet (’), yard, mile, nautical mile.</td></tr>
+<tr><td><code>calc.volume</code></td><td>ml, cl, l, kl, cubic meter, tsp, tbsp, fl oz, cup, pint, quart, gallon, imperial gallon.</td></tr>
+<tr><td><code>calc.weight</code></td><td>mg, g, kg, metric ton, oz, lb, stone, US ton, imperial ton, troy ounce.</td></tr>
+<tr><td><code>calc.temperature</code></td><td>Celsius (°C), Fahrenheit (°F).</td></tr>
+<tr><td><code>calc.pressure</code></td><td>Pascal, kPa, bar, atmosphere, psi, Torr (mmHg).</td></tr>
+<tr><td><code>calc.digital</code></td><td>bit, kb, Mb, Gb, Byte, KB, MB, GB, TB, PB.</td></tr>
+<tr><td><code>calc.time</code></td><td>ms, seconds, minutes, hours, days, weeks, months, years.</td></tr>
+<tr><td><code>calc.area</code></td><td>square meter, square kilometer, square foot, square inch, acre, hectare.</td></tr>
+<tr><td><code>calc.speed</code></td><td>m/s, km/h, mph, knots.</td></tr>
 </tbody>
 </table>
 </div>
+<h3 id="usage-tips"><a class="header" href="#usage-tips">Usage Tips</a></h3>
+<ul>
+<li><strong>Group Activation:</strong> You can use <code>calc.units</code> to enable all physical measurement units at once.</li>
+<li><strong>Case Insensitive:</strong> You can type <code>KG</code>, <code>Kg</code>, or <code>kg</code> interchangeably.</li>
+<li><strong>Natural Language:</strong> Supports full names (<code>kilograms</code>) as well as shorthand (<code>kg</code>).</li>
+<li><strong>Symbols:</strong> Recognizes standard symbols like <code>$</code> for currency, <code>'</code> for feet, and <code>"</code> for inches.</li>
+</ul>
 <hr>
 <h2 id="category-launcher"><a class="header" href="#category-launcher">Category Launcher</a></h2>
 <p>Groups launchers or commands under a single tile. Activating the tile switches into that launcher’s mode.</p>
@@ -348,13 +453,13 @@
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Field</th><th>Required</th><th>Description</th></tr>
+<tr><th>Field</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>icon</code></td><td>no</td><td>Icon name to display</td></tr>
-<tr><td><code>icon_class</code></td><td>no</td><td>CSS class applied to the icon</td></tr>
-<tr><td><code>exec</code></td><td>no</td><td>Alias of the launcher to activate on return</td></tr>
-<tr><td><code>search_string</code></td><td>no</td><td>String used for fuzzy matching</td></tr>
+<tr><td><code>icon</code></td><td>Icon name to display</td></tr>
+<tr><td><code>exec</code></td><td>Alias of the launcher to activate on return</td></tr>
+<tr><td><code>search_string</code></td><td>String used for fuzzy matching</td></tr>
+<tr><td><code>actions</code></td><td>The actions to be displayed in the context menu.</td></tr>
 </tbody>
 </table>
 </div>
@@ -364,7 +469,7 @@
 <pre><code class="language-json">{
     "name": "Utilities",
     "alias": "ex",
-    "type": "command",
+    "type": "commands",
     "args": {
         "commands": {
             "NordVPN": {
@@ -390,11 +495,8 @@
 <tbody>
 <tr><td><code>exec</code></td><td>yes</td><td>The command to run</td></tr>
 <tr><td><code>icon</code></td><td>no</td><td>Icon name to display</td></tr>
-<tr><td><code>icon_class</code></td><td>no</td><td>CSS class applied to the icon</td></tr>
 <tr><td><code>search_string</code></td><td>no</td><td>String used for fuzzy matching</td></tr>
 <tr><td><code>variables</code></td><td>no</td><td>Variable input fields — see <a href="variable-inputs.html">Variable Inputs</a></td></tr>
-<tr><td><code>tag_start</code></td><td>no</td><td>Content shown in the left tag</td></tr>
-<tr><td><code>tag_end</code></td><td>no</td><td>Content shown in the right tag</td></tr>
 </tbody>
 </table>
 </div>
@@ -403,7 +505,7 @@
 <p>Shows the currently playing track and controls playback via MPRIS over D-Bus.</p>
 <pre><code class="language-json">{
     "name": "Spotify",
-    "type": "audio_sink",
+    "type": "music_player",
     "args": {},
     "async": true,
     "priority": 1,
@@ -418,9 +520,9 @@
         }
     ],
     "binds": [
-        { "bind": "control+p", "callback": "playpause", "exit": false },
-        { "bind": "control+l", "callback": "next", "exit": false },
-        { "bind": "control+h", "callback": "previous", "exit": false }
+        { "bind": "ctrl-p", "callback": "inner.playpause", "exit": false },
+        { "bind": "ctrl-l", "callback": "inner.next", "exit": false },
+        { "bind": "ctrl-h", "callback": "inner.previous", "exit": false }
     ]
 }
 </code></pre>
@@ -476,9 +578,8 @@
 <p>Opens a search query in the browser using a configured search engine.</p>
 <pre><code class="language-json">{
     "name": "Web Search",
-    "display_name": "Google Search",
     "alias": "gg",
-    "type": "web_launcher",
+    "type": "web",
     "args": {
         "search_engine": "google",
         "icon": "google"
@@ -493,8 +594,9 @@
 <tr><th>Field</th><th>Required</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>search_engine</code></td><td>yes</td><td>Engine name or a custom URL containing <code>{keyword}</code></td></tr>
-<tr><td><code>icon</code></td><td>yes</td><td>Icon name to display</td></tr>
+<tr><td><code>search_engine</code></td><td>false</td><td>Engine name or a custom URL containing <code>{keyword}</code></td></tr>
+<tr><td><code>icon</code></td><td>false</td><td>Icon name to display</td></tr>
+<tr><td><code>display_name</code></td><td>false</td><td>Display name for, replacing <code>{keyword}</code> with query.</td></tr>
 </tbody>
 </table>
 </div>
@@ -519,30 +621,87 @@
 </div>
 <hr>
 <h2 id="clipboard-launcher"><a class="header" href="#clipboard-launcher">Clipboard Launcher</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
 <p>Reads the clipboard and acts on its content — opening URLs, displaying colors, or evaluating expressions.</p>
+<pre><code class="language-json">{
+    "name": "Clipboard",
+    "type": "clipboard",
+    "args": {
+        "capabilities": [
+            "url",
+            "colors",
+            "calc.math"
+        ]
+    },
+    "on_return": "copy",
+    "priority": 3,
+    "home": "OnlyHome",
+    "async": true
+}
+</code></pre>
+<h3 id="args-6"><a class="header" href="#args-6">args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Required</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>capabilities</code></td><td>no</td><td>List of enabled features. See <a href="#Capabilities">Capabilities</a></td></tr>
+</tbody>
+</table>
+</div>
 <hr>
 <h2 id="debug-launcher"><a class="header" href="#debug-launcher">Debug Launcher</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
 <p>Runs internal debug commands such as clearing the cache or resetting launch counts.</p>
+<pre><code class="language-json">{
+    "name": "Debug",
+    "type": "debug",
+    "alias": "debug",
+    "args": {},
+    "priority": 1,
+    "exit": false
+}
+</code></pre>
+<h3 id="functions"><a class="header" href="#functions">Functions</a></h3>
+<ul>
+<li><strong>Clear Cache:</strong> Resets the entire <code>~/.cache/sherlock/</code> directory</li>
+<li><strong>Reset App Count:</strong> Resets the counter for how often an app / command has been launched</li>
+<li><strong>Clear Error Messages:</strong> Will clear all messages from the message view</li>
+<li><strong>Insert Test Error Messages:</strong> Will insert a message per message type (info,
+warning, error) into the error view</li>
+</ul>
 <hr>
 <h2 id="emoji-picker"><a class="header" href="#emoji-picker">Emoji Picker</a></h2>
-<blockquote>
-<p><strong>Not yet implemented in this version</strong></p>
-</blockquote>
-<p>Searches and inserts emoji characters.</p>
+<p>Searches and copies emoji characters.</p>
+<pre><code class="language-json">{
+    "name": "Emoji Picker",
+    "alias": "emj",
+    "type": "emoji",
+    "args": {
+        "default_skin_tone": "Light"
+    },
+    "priority": 5,
+    "home": "Home"
+}
+</code></pre>
+<h3 id="args-7"><a class="header" href="#args-7">args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Required</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>default_skin_tone</code></td><td>no</td><td>Can be either of <code>Simpsons</code>, <code>Light</code>, <code>MediumLight</code>, <code>Medium</code>, <code>MediumDar,</code> <code>Dark</code></td></tr>
+</tbody>
+</table>
+</div>
 <hr>
-<h2 id="bulk-text"><a class="header" href="#bulk-text">Bulk Text</a></h2>
+<h2 id="script"><a class="header" href="#script">Script</a></h2>
 <blockquote>
 <p><strong>Not yet implemented in this version</strong></p>
 </blockquote>
 <p>Runs an external script asynchronously and displays its output as a text widget.</p>
 <hr>
-<h2 id="teams-event"><a class="header" href="#teams-event">Teams Event</a></h2>
+<h2 id="event"><a class="header" href="#event">Event</a></h2>
 <blockquote>
 <p><strong>Not yet implemented in this version</strong></p>
 </blockquote>
@@ -560,11 +719,10 @@
 </blockquote>
 <p>Lists running user processes and terminates the selected one on return.</p>
 <hr>
-<h2 id="pomodoro-timer"><a class="header" href="#pomodoro-timer">Pomodoro Timer</a></h2>
+<h2 id="timer"><a class="header" href="#timer">Timer</a></h2>
 <blockquote>
 <p><strong>Not yet implemented in this version</strong></p>
 </blockquote>
-<p>Displays a Pomodoro focus timer. Requires the external <a href="https://github.com/Skxxtz/sherlock-pomodoro">sherlock-pomodoro</a> client.</p>
 
                     </main>
 
@@ -604,11 +762,11 @@
 
         <script src="elasticlunr-ef4e11c1.min.js"></script>
         <script src="mark-09e88c2c.min.js"></script>
-        <script src="searcher-c2a407aa.js"></script>
+        <script src="searcher-09f2665d.js"></script>
 
         <script src="clipboard-1626706a.min.js"></script>
         <script src="highlight-abc7f01d.js"></script>
-        <script src="book-a0b12cfe.js"></script>
+        <script src="book-c22b7243.js"></script>
 
         <!-- Custom JS scripts -->
 
