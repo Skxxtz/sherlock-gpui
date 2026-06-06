@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ca990381.js";
+            window.path_to_searchindex_js = "searchindex-fac004b7.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef2cd792.js"></script>
+        <script src="toc-cec86706.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -178,86 +178,180 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="introduction"><a href="#introduction" class="header">Introduction</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="configuration"><a href="#configuration" class="header">Configuration</a></h1>
-<div style="break-before: page; page-break-before: always;"></div>
-<h1 id="variable-inputs"><a class="header" href="#variable-inputs">Variable Inputs</a></h1>
-<p>Variable inputs spawn a text field for each declared variable, collecting user input before the command is executed.</p>
-<hr>
-<h2 id="declaring-variables"><a class="header" href="#declaring-variables">Declaring variables</a></h2>
-<p>Variables are declared per-command in the config:</p>
-<pre><code class="language-json">"Vista": {
-    "variables": [
-        { "path_input": "Select file" }
-    ],
-    "exec": "/usr/bin/vista {variable:Select file}",
-    "search_string": "vista;speed reader"
-}
-</code></pre>
-<hr>
-<h2 id="types"><a class="header" href="#types">Types</a></h2>
-<h3 id="string_input"><a class="header" href="#string_input"><code>string_input</code></a></h3>
-<p>A plain text input field.</p>
-<pre><code class="language-json">{ "string_input": "Enter username" }
-</code></pre>
-<h3 id="password_input"><a class="header" href="#password_input"><code>password_input</code></a></h3>
-<p>Masked text input. When the command contains <code>sudo</code>, the value is automatically piped to stdin via <code>sudo -S</code>.</p>
-<pre><code class="language-json">{ "password_input": "Sudo password" }
-</code></pre>
-<h3 id="path_input"><a class="header" href="#path_input"><code>path_input</code></a></h3>
-<p>A file system path input. The value is normalized before execution:</p>
+                        <h1 id="installation-1"><a href="#installation-1" class="header">Installation</a></h1>
+<h2 id="installation"><a class="header" href="#installation"><ins>Installation</ins></a></h2>
+<p>Sherlock can be installed on a variety of Linux distributions.</p>
+<p>Choose your distribution below to get started:</p>
 <ul>
-<li><code>~</code> expanded to <code>$HOME</code></li>
-<li>Relative paths resolved against <code>$HOME</code></li>
-<li>Absolute paths passed through unchanged</li>
+<li><a href="#arch-linux-1">Arch Linux</a></li>
+<li><a href="#debian--ubuntu">Debian / Ubuntu</a></li>
+<li><a href="#nixos-1">NixOs</a></li>
+<li><a href="#build-from-source">Build from Source</a></li>
 </ul>
-<pre><code class="language-json">{ "path_input": "Select file" }
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="arch-linux-1"><a href="#arch-linux-1" class="header">Arch Linux</a></h1>
+<h3 id="arch-linux"><a class="header" href="#arch-linux"><ins>Arch Linux</ins></a></h3>
+<p>If you’re using Arch Linux, you can install the pre-built binary package with the follwing command:</p>
+<pre><code class="language-bash">yay -S sherlock-launcher-bin
 </code></pre>
-<hr>
-<h2 id="referencing-variables-in-exec"><a class="header" href="#referencing-variables-in-exec">Referencing variables in exec</a></h2>
-<p>Use <code>{variable:label}</code> where <code>label</code> matches the declared variable string exactly:</p>
-<pre><code class="language-json">"exec": "/usr/bin/vista {variable:Select file}"
+<p>Or install the community-maintained <code>git</code> build with the following command:</p>
+<pre><code class="language-bash">yay -S sherlock-launcher-git
 </code></pre>
-<p>Multiple variables:</p>
-<pre><code class="language-json">"variables": [
-    { "string_input": "Host" },
-    { "string_input": "Port" }
-],
-"exec": "ssh {variable:Host} -p {variable:Port}"
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="debian--ubuntu"><a href="#debian--ubuntu" class="header">Debian / Ubuntu</a></h1>
+<h3 id="build-debian-package"><a class="header" href="#build-debian-package"><ins>Build Debian Package</ins></a></h3>
+<p>To build a <code>.deb</code> package directly from source, follow these steps:</p>
+<p>Make sure you have the following dependencies installed:</p>
+<details>
+<summary><strong>Dependencies:</strong></summary>
+<ol>
+<li><code>rust</code> - <a href="https://www.rust-lang.org/tools/install">How to install rust</a></li>
+<li><code>git</code> - <a href="https://github.com/git-guides/install-git">How to install git</a></li>
+<li><code>gtk-4-layer-shell</code> - <a href="https://github.com/wmww/gtk4-layer-shell">GTK4 Layer Shell</a></li>
+<li><code>dbus</code> - (Used to get currently playing song)</li>
+</ol>
+</details>
+<details>
+<summary><strong>Build Steps:</strong></summary>
+<ol>
+<li>
+<p><strong>Install the</strong> <code>cargo-deb</code> <strong>tool:</strong>
+First, you need to install the <code>cargo-deb</code> tool, which specifies packaging Rust projects as Debian packages:</p>
+<pre><code class="language-bash">cargo deb
 </code></pre>
-<hr>
-<h2 id="built-in-substitutions"><a class="header" href="#built-in-substitutions">Built-in substitutions</a></h2>
-<p>These work in any exec string without declaring a variable:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Placeholder</th><th>Resolves to</th></tr>
-</thead>
-<tbody>
-<tr><td><code>{keyword}</code></td><td>The current search query typed by the user</td></tr>
-<tr><td><code>{terminal}</code></td><td>The configured default terminal with <code>-e</code> appended</td></tr>
-</tbody>
-</table>
-</div>
-<pre><code class="language-json">"exec": "{terminal} nvim {variable:File}"
+</li>
+<li>
+<p><strong>Build the Debian package</strong>:
+After installing <code>cargo-deb</code>, run the following command to build the <code>.deb</code> package:</p>
+<pre><code class="language-bash">cargo deb
 </code></pre>
-<hr>
-<h2 id="optional-variables"><a class="header" href="#optional-variables">Optional variables</a></h2>
-<p>Variables are optional — if the user leaves a field empty, the <code>{variable:label}</code> placeholder is left as-is in the exec string. To avoid passing a bare placeholder to the command, wrap optional arguments with a conditional prefix instead of referencing the variable directly.</p>
-<hr>
-<h2 id="conditional-prefix"><a class="header" href="#conditional-prefix">Conditional prefix</a></h2>
-<p>Use <code>{prefix[label]:text}</code> to prepend text only when the variable has a non-empty value:</p>
-<pre><code class="language-json">"variables": [
-    { "string_input": "Port" }
-],
-"exec": "ssh {prefix[Port]:-p }{variable:Port} {variable:Host}"
+</li>
+<li>
+<p><strong>Install the generated</strong> <code>.deb</code> <strong>package</strong>:
+Once the package is built, you can install it using:</p>
+<pre><code class="language-bash">sudo dpkg -i target/debian/sherlock-launcher_v0.2.3_amd64.deb
 </code></pre>
-<p>If <code>Port</code> is empty: <code>ssh myhost</code>
-If <code>Port</code> is <code>22</code>: <code>ssh -p 22 myhost</code></p>
 <blockquote>
-<p>The space is inside the prefix string — there is no space between <code>{prefix[Port]:-p }</code> and <code>{variable:Port}</code>.</p>
+<p>You can also use tab-completion to auto complete the file name.</p>
 </blockquote>
+</li>
+</ol>
+</details><div style="break-before: page; page-break-before: always;"></div>
+<h1 id="nixos-1"><a href="#nixos-1" class="header">NixOs</a></h1>
+<h3 id="nixos"><a class="header" href="#nixos"><ins>NixOs</ins></a></h3>
+<h4 id="non-flake-systems"><a class="header" href="#non-flake-systems">Non-Flake Systems</a></h4>
+<p>Sherlock is available in <code>nixpkgs/unstable</code> as <code>sherlock-launcher</code>. If you’re installing it as a standalone package, you’ll need to do the <a href="#config-setup">config setup</a> yourself.</p>
+<h4 id="flakes--home-manager"><a class="header" href="#flakes--home-manager">Flakes &amp; Home-Manager</a></h4>
+<p>A module for Sherlock is available in home manager. You can find it’s configuration <a href="https://github.com/nix-community/home-manager/blob/master/modules/programs/sherlock.nix">here</a>. If you want to use the lastest updates and module options, follow the steps below.</p>
+<details>
+<summary><strong>Home-Manager Example Configuration</strong></summary>
+<p>Add the floowing <code>inputs</code> of <code>flake.nix</code> if you want to use the lastest upstream version of Sherlock.</p>
+<pre><code class="language-nix">sherlock = {
+    url = "github:Skxxtz/sherlock";
+    inputs.nixpkgs.follows = "nixpkgs";
+};
+</code></pre>
+<p>Home-Manager config:</p>
+<pre><code class="language-nix">programs.sherlock = {
+    enable = true;
+
+    # to run sherlock as a daemon
+    systemd.enable = true;
+
+    # If wanted, you can use this line for the _latest_ package.
+    # Otherwise, you're relying on nixpkgs to update it frequently enough.
+    # For this to work, make sure to add sherlock as a flake input!
+    # package = inputs.sherlock.packages.${pkgs.system}.default;
+
+    # config.toml
+    settings = {};
+
+    # sherlock_alias.json
+    aliases = {
+        vesktop = { name = "Discord"; };
+    };
+
+    # sherlockignore
+    ignore = ''
+        Avahi*
+    '';
+
+    # fallback.json
+    launchers = [
+        {
+            name = "Calculator";
+            type = "calculation";
+            args = {
+                capabilities = [
+                    "calc.math"
+                    "calc.units"
+                ];
+            };
+            priority = 1;
+        }
+        {
+            name = "App Launcher";
+            type = "apps";
+            args = {};
+            priority = 2;
+            home = "Home";
+        }
+    ];
+};
+</code></pre>
+</details>
+<h4 id="flakes-without-home-manager"><a class="header" href="#flakes-without-home-manager">Flakes without Home-Manager</a></h4>
+<p>To install the standalone package, add <code>sherlock.packages.${pkgs.system}.default</code> to <code>environment.systemPackages</code> / <code>home.packages</code>. You will need to create the configuration files yourself, see below.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="build-from-source"><a href="#build-from-source" class="header">Build from Source</a></h1>
+<h3 id="from-source"><a class="header" href="#from-source"><ins>From Source</ins></a></h3>
+<p>To build Sherlock from source, follow these steps.</p>
+<p>Make sure to have the following dependencies installed:</p>
+<details>
+<summary><strong>Dependencies:</strong></summary>
+<ol>
+<li><code>rust</code> - <a href="https://www.rust-lang.org/tools/install">How to install rust</a></li>
+<li><code>git</code> - <a href="https://github.com/git-guides/install-git">How to install git</a></li>
+<li><code>gtk-4-layer-shell</code> - <a href="https://github.com/wmww/gtk4-layer-shell">GTK4 Layer Shell</a></li>
+<li><code>dbus</code> - (Used to get currently playing song)</li>
+</ol>
+</details>
+<details>
+<summary><strong>Build Steps:</strong></summary>
+<ol>
+<li>
+<p><strong>Clone the repository</strong>:</p>
+<pre><code class="language-bash">git clone https://github.com/skxxtz/sherlock.git
+cd sherlock
+</code></pre>
+</li>
+<li>
+<p><strong>Build the project using the following command</strong>:</p>
+<pre><code class="language-bash">cargo build --release
+</code></pre>
+</li>
+<li>
+<p><strong>Install the binary</strong>:
+After the build completes, install the binary to your system:</p>
+<pre><code class="language-bash">sudo cp target/release/sherlock /usr/local/bin/
+</code></pre>
+</li>
+<li>
+<p><strong>(Recommended) Remove the build directory</strong>:
+You can optionally remove the source code directory</p>
+<pre><code class="language-bash">rm -rf /path/to/sherlock
+</code></pre>
+</li>
+</ol>
+</details><div style="break-before: page; page-break-before: always;"></div>
+<h1 id="configuration-1"><a href="#configuration-1" class="header">Configuration</a></h1>
+<h2 id="configuration"><a class="header" href="#configuration"><ins>Configuration</ins></a></h2>
+<p>Sherlock can be customized in many ways.</p>
+<p>Choose one topic to get started:</p>
+<ul>
+<li><a href="#launchers">Launchers</a></li>
+<li><a href="#exec-variables">Exec Variables</a></li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="launchers"><a class="header" href="#launchers">Launchers</a></h1>
 <p>Sherlock separates <strong>Launchers</strong> (The Logic) from <strong>Widgets</strong> (The View). One Launcher configuration can generate multiple Widgets (like a weather tile and a clock tile), but they all follow the same <code>priority</code> and <code>home</code> rules.</p>
@@ -367,28 +461,20 @@ If <code>Port</code> is <code>22</code>: <code>ssh -p 22 myhost</code></p>
 </table>
 </div>
 <details>
-<summary>
-<strong>Capabilities:</strong>
-</summary>
+<summary><strong>Capabilities:</strong></summary>
 <p>Capabilities control what the calculator can compute. Pass them via the <code>capabilities</code> arg:</p>
 <pre><code class="language-json">{ "capabilities": ["calc.math", "calc.units"] }
 </code></pre>
 <details>
-<summary>
-Math
-</summary>
+<summary>Math</summary>
 <p><code>calc.math</code></p>
 </details>
 <details>
-<summary>
-Colors
-</summary>
+<summary>Colors</summary>
 <p><code>colors</code></p>
 </details>
 <details>
-<summary>
-Currency
-</summary>
+<summary>Currency</summary>
 <p><code>calc.currencies</code></p>
 <div class="table-wrapper">
 <table>
@@ -418,9 +504,7 @@ Currency
 </div>
 </details>
 <details>
-<summary>
-Length
-</summary>
+<summary>Length</summary>
 <p><code>calc.length</code></p>
 <div class="table-wrapper">
 <table>
@@ -442,9 +526,7 @@ Length
 </div>
 </details>
 <details>
-<summary>
-Volume
-</summary>
+<summary>Volume</summary>
 <p><code>calc.volume</code></p>
 <div class="table-wrapper">
 <table>
@@ -470,9 +552,7 @@ Volume
 </div>
 </details>
 <details>
-<summary>
-Weight
-</summary>
+<summary>Weight</summary>
 <p><code>calc.weight</code></p>
 <div class="table-wrapper">
 <table>
@@ -495,9 +575,7 @@ Weight
 </div>
 </details>
 <details>
-<summary>
-Temperature
-</summary>
+<summary>Temperature</summary>
 <p><code>calc.temperature</code></p>
 <div class="table-wrapper">
 <table>
@@ -512,9 +590,7 @@ Temperature
 </div>
 </details>
 <details>
-<summary>
-Pressure
-</summary>
+<summary>Pressure</summary>
 <p><code>calc.pressure</code></p>
 <div class="table-wrapper">
 <table>
@@ -533,9 +609,7 @@ Pressure
 </div>
 </details>
 <details>
-<summary>
-Digital
-</summary>
+<summary>Digital</summary>
 <p><code>calc.digital</code></p>
 <div class="table-wrapper">
 <table>
@@ -558,9 +632,7 @@ Digital
 </div>
 </details>
 <details>
-<summary>
-Time
-</summary>
+<summary>Time</summary>
 <p><code>calc.time</code></p>
 <div class="table-wrapper">
 <table>
@@ -581,9 +653,7 @@ Time
 </div>
 </details>
 <details>
-<summary>
-Area
-</summary>
+<summary>Area</summary>
 <p><code>calc.area</code></p>
 <div class="table-wrapper">
 <table>
@@ -602,9 +672,7 @@ Area
 </div>
 </details>
 <details>
-<summary>
-Speed
-</summary>
+<summary>Speed</summary>
 <p><code>calc.speed</code></p>
 <div class="table-wrapper">
 <table>
@@ -718,36 +786,25 @@ Speed
 <tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
 </thead>
 <tbody>
-<tr><td><code>capabilities</code></td><td><code>Capabilities[]</code></td><td></td><td>[</td><td></td></tr>
-<tr><td>“calc.units”,</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>“calc.math”</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>]</td><td>The capabilities the clipboard executor should have.</td><td></td><td></td><td></td></tr>
+<tr><td><code>capabilities</code></td><td><code>Capabilities[]</code></td><td></td><td>[ “calc.units”, “calc.math” ]</td><td>The capabilities the clipboard executor should have.</td></tr>
 </tbody>
 </table>
 </div>
 <details>
-<summary>
-<strong>Capabilities:</strong>
-</summary>
+<summary><strong>Capabilities:</strong></summary>
 <p>Capabilities control what the calculator can compute. Pass them via the <code>capabilities</code> arg:</p>
 <pre><code class="language-json">{ "capabilities": ["calc.math", "calc.units"] }
 </code></pre>
 <details>
-<summary>
-Math
-</summary>
+<summary>Math</summary>
 <p><code>calc.math</code></p>
 </details>
 <details>
-<summary>
-Colors
-</summary>
+<summary>Colors</summary>
 <p><code>colors</code></p>
 </details>
 <details>
-<summary>
-Currency
-</summary>
+<summary>Currency</summary>
 <p><code>calc.currencies</code></p>
 <div class="table-wrapper">
 <table>
@@ -777,9 +834,7 @@ Currency
 </div>
 </details>
 <details>
-<summary>
-Length
-</summary>
+<summary>Length</summary>
 <p><code>calc.length</code></p>
 <div class="table-wrapper">
 <table>
@@ -801,9 +856,7 @@ Length
 </div>
 </details>
 <details>
-<summary>
-Volume
-</summary>
+<summary>Volume</summary>
 <p><code>calc.volume</code></p>
 <div class="table-wrapper">
 <table>
@@ -829,9 +882,7 @@ Volume
 </div>
 </details>
 <details>
-<summary>
-Weight
-</summary>
+<summary>Weight</summary>
 <p><code>calc.weight</code></p>
 <div class="table-wrapper">
 <table>
@@ -854,9 +905,7 @@ Weight
 </div>
 </details>
 <details>
-<summary>
-Temperature
-</summary>
+<summary>Temperature</summary>
 <p><code>calc.temperature</code></p>
 <div class="table-wrapper">
 <table>
@@ -871,9 +920,7 @@ Temperature
 </div>
 </details>
 <details>
-<summary>
-Pressure
-</summary>
+<summary>Pressure</summary>
 <p><code>calc.pressure</code></p>
 <div class="table-wrapper">
 <table>
@@ -892,9 +939,7 @@ Pressure
 </div>
 </details>
 <details>
-<summary>
-Digital
-</summary>
+<summary>Digital</summary>
 <p><code>calc.digital</code></p>
 <div class="table-wrapper">
 <table>
@@ -917,9 +962,7 @@ Digital
 </div>
 </details>
 <details>
-<summary>
-Time
-</summary>
+<summary>Time</summary>
 <p><code>calc.time</code></p>
 <div class="table-wrapper">
 <table>
@@ -940,9 +983,7 @@ Time
 </div>
 </details>
 <details>
-<summary>
-Area
-</summary>
+<summary>Area</summary>
 <p><code>calc.area</code></p>
 <div class="table-wrapper">
 <table>
@@ -961,9 +1002,7 @@ Area
 </div>
 </details>
 <details>
-<summary>
-Speed
-</summary>
+<summary>Speed</summary>
 <p><code>calc.speed</code></p>
 <div class="table-wrapper">
 <table>
@@ -1058,6 +1097,10 @@ Speed
     "exit": false
 }
 </code></pre>
+<hr>
+<h2 id="dmenu-launcher"><a class="header" href="#dmenu-launcher">Dmenu Launcher</a></h2>
+<p><code>type = dmenu</code></p>
+<p>The launcher to handle Dmenu-style piping</p>
 <hr>
 <h2 id="emoji-picker"><a class="header" href="#emoji-picker">Emoji Picker</a></h2>
 <p><code>type = emoji</code></p>
@@ -1162,6 +1205,10 @@ Speed
     "home": "Home"
 }
 </code></pre>
+<hr>
+<h2 id="message-launcher"><a class="header" href="#message-launcher">Message Launcher</a></h2>
+<p><code>type = message</code></p>
+<p>The launcher to provide the message view</p>
 <hr>
 <h2 id="music-player-launcher"><a class="header" href="#music-player-launcher">Music Player Launcher</a></h2>
 <p><code>type = music_player</code></p>
@@ -1301,15 +1348,6 @@ Speed
 </tbody>
 </table>
 </div>
-<h3 id="inner-functions-5"><a class="header" href="#inner-functions-5">Inner Functions</a></h3>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
-</thead>
-<tbody></tbody>
-</table>
-</div>
 <h3 id="examples-13"><a class="header" href="#examples-13">Examples</a></h3>
 <p><em>Basic process terminator</em></p>
 <pre><code class="language-json">{
@@ -1335,7 +1373,7 @@ Speed
 </tbody>
 </table>
 </div>
-<h3 id="inner-functions-6"><a class="header" href="#inner-functions-6">Inner Functions</a></h3>
+<h3 id="inner-functions-5"><a class="header" href="#inner-functions-5">Inner Functions</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1451,7 +1489,133 @@ Speed
     "priority": 100
 }
 </code></pre>
-<hr>
+<hr><div style="break-before: page; page-break-before: always;"></div>
+<h1 id="exec-variables"><a class="header" href="#exec-variables">Exec Variables</a></h1>
+<h2 id="replacement-variable-notation"><a class="header" href="#replacement-variable-notation">Replacement Variable Notation</a></h2>
+<p>The replacement variable notation allows you to dynamically replace tokens in commands with contextual data–such as the user’s active search query, system environment settings or runtime Exec Variables.</p>
+<h3 id="available-tokens"><a class="header" href="#available-tokens">Available Tokens</a></h3>
+<ol>
+<li>
+<p><code>{keyword}</code></p>
+<p>Replaces the token with the exact text currently typed into the search bar.</p>
+<h4 id="syntax-example"><a class="header" href="#syntax-example">Syntax Example:</a></h4>
+<pre><code>https://www.example.com/search?q={keyword}
+</code></pre>
+</li>
+<li>
+<p><code>{terminal}</code></p>
+<p>Automatically resolbes the user-defined or system-detected default terminal emulator.</p>
+<blockquote class="blockquote-tag blockquote-tag-tip">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
+<p>Most terminal emulators close instant once their child process finishes executing. To keep the terminal window open after your command runs,wrap the execution string like this: <code>{terminal} sh -c "&lt;command&gt;; exec $SHELL"</code></p>
+</blockquote>
+<h4 id="syntax-example-1"><a class="header" href="#syntax-example-1">Syntax Example:</a></h4>
+<pre><code class="language-json">{terminal} sh -c \"ssh {variable:user}@{variable:host}; exec $SHELL\"
+</code></pre>
+</li>
+<li>
+<p><code>{variable:&lt;name&gt;}</code></p>
+<p>Inserts the Exec Variable into the command. This token only works if a matching input field is explicitly declared in the configuration’s <code>variables</code> array</p>
+<h4 id="syntax-example-2"><a class="header" href="#syntax-example-2">Syntax Example:</a></h4>
+<pre><code class="language-json">{
+    "variables": [
+        { "string_input": "query" }
+    ],
+    "exec": "https://example.com/search?q={variable:query}"
+}
+</code></pre>
+</li>
+<li>
+<p><code>{prefix[&lt;variable name&gt;]:&lt;prefix text&gt;}</code></p>
+<p>A conditional modifier token used used to handle optional inputs gracefully.</p>
+<ul>
+<li>If the specified variable <strong>contains a value</strong>, the entire token evaluates to the <code>&lt;prefix text&gt;</code>.</li>
+<li>If the variable <strong>is empty or unassigned</strong>, the entire token resolves to an emptry string <code>""</code>.</li>
+</ul>
+<p>This is highly effective for injecting optional CLI flags or toggling between a website’s landing pgae and its search index.</p>
+<h4 id="syntax-example-3"><a class="header" href="#syntax-example-3">Syntax Example:</a></h4>
+<pre><code class="language-json">{
+    "variables": [
+        { "string_input": "query" }
+    ],
+    "exec": "https://example.com/{prefix[query]:search?q=}{variable:query}"
+}
+</code></pre>
+</li>
+</ol>
+<details>
+<summary>**Complete Configuration Example:**</summary>
+<p>Heres a practical look at how there replacement variables mesh inside a launcher configuration file.</p>
+<pre><code class="language-json">{
+    "name": "System &amp; Network Utils",
+    "type": "command",
+    "args": {
+        "commands": {
+            "SSH Tunnel": {
+                "icon": "sherlock-link",
+                "variables": [
+                    { "string_input": "User" },
+                    { "string_input": "Host" }
+                ],
+                "exec": "{terminal} ssh {variable:User}@{variable:Host}",
+                "search_string": "ssh"
+            },
+            "NordVPN Connect": {
+                "icon": "nordvpn",
+                "variables": [
+                    { "choice": { "name": "Server", "choices": ["us", "uk", "de"] } }
+                ],
+                "exec": "{terminal} sh -c \"nordvpn c {variable:Server}; exec $SHELL\"",
+                "search_string": "nordvpn"
+            },
+            "NordVPN Daemon": {
+                "icon": "nordvpn",
+                "exec": "systemctl --user start nordvpnd",
+                "search_string": "nordvpn daemon"
+            }
+        }
+    },
+    "priority": 1
+}
+</code></pre>
+</details>
+<p>In Sherlock <strong>Exec Variables</strong> are dynamic placeholders that allow you to inject real-time arguments into your applications, scripts, and commands right at the moment you launch them. Instead of relying on hardcoded shortcuts, <em>Exec Variables</em> turn your launcher into an interactive CLI shell.</p>
+<h2 id="string-input"><a class="header" href="#string-input">String Input</a></h2>
+<p><code>string_input</code></p>
+<p>A plain text input field.</p>
+<pre><code class="language-json">{ "type": "string_input", "value": "hello world" }
+</code></pre>
+<h2 id="password-input"><a class="header" href="#password-input">Password Input</a></h2>
+<p><code>password_input</code></p>
+<p>Like string_input but the value is masked in the UI.</p>
+<pre><code class="language-json">{ "password_input": "sudo" }
+</code></pre>
+<h2 id="path-input"><a class="header" href="#path-input">Path Input</a></h2>
+<p><code>path_input</code></p>
+<p>A text input featuring path completion. By default, completion paths are resolved relative to the <code>$HOME</code> directory. Starting the input with a <code>/</code> prefix will search from the system root instead.</p>
+<pre><code class="language-json">{ "path_input": "path" }
+</code></pre>
+<h2 id="command-input"><a class="header" href="#command-input">Command Input</a></h2>
+<p><code>command_input</code></p>
+<p>A text input featuring path completion. Unlike <code>path_input</code>, this will only look at executeable files. First, it will look at the <code>$PATH</code>, then it will try to complete like <code>path_input</code>.</p>
+<pre><code class="language-json">{ "command_input": "command" }
+</code></pre>
+<h2 id="choice-input"><a class="header" href="#choice-input">Choice Input</a></h2>
+<p><code>choice</code></p>
+<p>Presents the user with a predefined list of options to select from. Each choice has a <code>label</code> shown in the UI and a <code>value</code> passed to the command.</p>
+<pre><code class="language-json">{
+    "choice": {
+        "name": "temperature",
+        "choices": [
+            {"label": "5000", "value": "5000"},
+            {"label": "6000 &lt;span color='#555555'&gt;&lt;i&gt;default&lt;/i&gt;&lt;/span&gt;", "value": "6000"},
+            {"label": "7000", "value": "7000"},
+            {"label": "8000", "value": "8000"}
+        ]
+    }
+}
+</code></pre>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
