@@ -9,7 +9,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::{
     app::theme::ThemeData,
     launcher::emoji_launcher::ALL_SKIN_TONES,
-    loader::{IconType, resolve_icon_path, utils::ApplicationAction},
+    loader::{
+        IconType, resolve_icon_path,
+        utils::{ApplicationAction, ApplicationActionSerde},
+    },
     ui::widgets::emoji::{EmojiAction, get_emoji, get_selected_skin_tones},
 };
 
@@ -24,6 +27,11 @@ impl From<ApplicationAction> for Arc<ContextMenuAction> {
         Arc::new(ContextMenuAction::App(value))
     }
 }
+impl From<ApplicationActionSerde> for Arc<ContextMenuAction> {
+    fn from(value: ApplicationActionSerde) -> Self {
+        Arc::new(ContextMenuAction::App(value.into()))
+    }
+}
 impl Serialize for ContextMenuAction {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -36,7 +44,6 @@ impl Serialize for ContextMenuAction {
         }
     }
 }
-
 impl<'de> Deserialize<'de> for ContextMenuAction {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

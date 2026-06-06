@@ -93,12 +93,6 @@ impl LauncherView {
         self.update_vars(cx);
         self.active_bar = 0;
 
-        // Handle context menu entries
-        self.has_actions = self
-            .navigation
-            .with_selected_item(cx, |item, cx| item.has_actions(cx))
-            .unwrap_or_default();
-
         cx.notify()
     }
 

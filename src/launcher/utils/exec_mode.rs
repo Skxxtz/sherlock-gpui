@@ -117,7 +117,7 @@ impl ExecMode {
                 action.exec.clone(),
                 data.launcher_type(),
                 action.exit,
-                || data.get_content(cx),
+                || action.exec.clone().or(data.get_content(cx)),
             )
             .unwrap_or_default(),
 

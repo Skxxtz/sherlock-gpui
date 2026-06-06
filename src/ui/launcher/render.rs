@@ -31,6 +31,11 @@ impl Render for LauncherView {
     fn render(&mut self, _win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
+        self.has_actions = self
+            .navigation
+            .with_selected_item(cx, |itm, cx| itm.has_actions(cx))
+            .unwrap_or(false);
+
         div()
             .id("sherlock")
             .flex()

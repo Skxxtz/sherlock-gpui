@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 
 use crate::{
     launcher::{Launcher, utils::exec_mode::ExecMode, variant_type::LauncherType},
-    loader::utils::Priority,
+    loader::utils::{ApplicationActionSerde, Priority},
     ui::{
         launcher::context_menu::ContextMenuAction,
         traits::RenderableChildImpl,
@@ -52,6 +52,29 @@ impl AsyncCommandResponse {
             next_content: None,
             actions: None,
             result: None,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AsyncCommandResponseSerde {
+    pub title: Option<SharedString>,
+    pub content: Option<SharedString>,
+    pub next_content: Option<SharedString>,
+    pub result: Option<SharedString>,
+    pub actions: Option<Vec<ApplicationActionSerde>>,
+}
+
+impl From<AsyncCommandResponseSerde> for AsyncCommandResponse {
+    fn from(s: AsyncCommandResponseSerde) -> Self {
+        Self {
+            title: s.title,
+            content: s.content,
+            next_content: s.next_content,
+            result: s.result,
+            actions: s
+                .actions
+                .map(|actions| actions.into_iter().map(Into::into).collect()),
         }
     }
 }
@@ -319,28 +342,39 @@ impl ScriptData {
 
             match timeout_result {
                 Ok(Ok(output)) => {
+                    let stdout = output.stdout;
+                    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
                     if output.status.success() {
-                        let mut input = output.stdout;
-                        match simd_json::from_slice::<AsyncCommandResponse>(&mut input) {
-                            Ok(res) => Some(res),
-                            Err(_) => {
-                                let mut response = AsyncCommandResponse::new();
-                                response.title = None;
-                                response.content = match String::from_utf8(input) {
-                                    Ok(s) => Some(s.into()),
-                                    Err(_) => Some("Invalid stdout.".into()),
-                                };
-                                Some(response)
-                            }
+                        let mut input = stdout;
+                        match simd_json::from_slice::<AsyncCommandResponseSerde>(&mut input) {
+                            Ok(res) => Some(res.into()),
+                            Err(e) => Some(error_response(
+                                "Failed to parse output",
+                                format!(
+                                    "JSON Error: {:#}\n\nStdout:\n{}\n\nStderr:\n{}",
+                                    e,
+                                    String::from_utf8(input)
+                                        .unwrap_or_else(|_| "Invalid UTF-8".to_string()),
+                                    if stderr.is_empty() {
+                                        "<empty>"
+                                    } else {
+                                        &stderr
+                                    }
+                                ),
+                            )),
                         }
                     } else {
-                        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-                        let mut response = AsyncCommandResponse::new();
-                        response.title = Some("Script Error".into());
-                        response.content = Some(
-                            format!("Exit Status: {}\nStderr: {}", output.status, stderr).into(),
-                        );
-                        Some(response)
+                        let mut content = format!("Exit Status: {}", output.status);
+                        if !stdout.is_empty() {
+                            content.push_str(&format!(
+                                "\n\nStdout:\n{}",
+                                String::from_utf8_lossy(&stdout)
+                            ));
+                        }
+                        if !stderr.is_empty() {
+                            content.push_str(&format!("\n\nStderr:\n{}", stderr));
+                        }
+                        Some(error_response("Script Error", content))
                     }
                 }
                 Ok(Err(e)) => {
@@ -358,5 +392,16 @@ impl ScriptData {
             }
         })
         .await
+    }
+}
+
+fn error_response(
+    title: impl Into<SharedString>,
+    content: impl Into<SharedString>,
+) -> AsyncCommandResponse {
+    AsyncCommandResponse {
+        title: Some(title.into()),
+        content: Some(content.into()),
+        ..AsyncCommandResponse::new()
     }
 }
