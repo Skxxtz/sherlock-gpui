@@ -111,7 +111,13 @@ impl ContextMenuAction {
                     .size(px(16.))
                     .into_any_element()
             })
-            .child(name)
+            .child(
+                div()
+                    .overflow_hidden()
+                    .whitespace_nowrap()
+                    .text_ellipsis()
+                    .child(name),
+            )
     }
     pub fn render_emoji_col(
         &self,

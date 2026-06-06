@@ -405,6 +405,7 @@ impl LauncherView {
                     .flex()
                     .flex_col()
                     .min_w(px(200.))
+                    .max_w(px(250.))
                     .gap(px(5.))
                     .children(self.context_actions.iter().enumerate().map(|(i, child)| {
                         let is_selected = i == active;
