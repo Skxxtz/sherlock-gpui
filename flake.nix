@@ -87,7 +87,7 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = with pkgs; [
-            (rust-bin.nightly."2025-01-15".default.override {
+            (rust-bin.nightly.latest.default.override {
               extensions = [
                 "rust-src"
                 "rust-analyzer"
