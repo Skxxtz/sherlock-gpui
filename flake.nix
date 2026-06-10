@@ -36,11 +36,11 @@
 
           cargoLock.lockFile = ./Cargo.lock;
           cargoLock.outputHashes = {
-            "gpui-0.2.2" = "sha256-uEdle/hvTjzEcV6Hcdo/6TRjJiajCfNO/7sIIqufKMA=";
-            "naga-29.0.0" = "sha256-sNPsB8oFhAkaaSQ5Lb+CbwXsJIyOlnn80OZYmtNWS1I=";
+            "gpui-0.2.2" = "sha256-beyCioHheAV1zQyY1wsdm2TBmLirVWJjcV8iAnUQ3D4=";
+            "naga-29.0.3" = "sha256-jwPdrd2XLvK5ddEutR/39OLMh2JU3UXNWIcJKCndh+U=";
             "suite-223b-0.1.0" = "sha256-vxm9nZOVTcOENRBCPretttY4TF8l1SV8IkW5KP9LI3A=";
-            "wgpu-29.0.0" = "sha256-sNPsB8oFhAkaaSQ5Lb+CbwXsJIyOlnn80OZYmtNWS1I=";
-            "zed-font-kit-0.14.1-zed" = "sha256-rxpumYP0QpHW+4e+J1qo5lEZXfBk1LaL/Y0APkUp9cg=";
+            "wgpu-29.0.3" = "sha256-jwPdrd2XLvK5ddEutR/39OLMh2JU3UXNWIcJKCndh+U=";
+            "zed-font-kit-0.14.1-zed" = "sha256-KXygi0olNQi5yM8eaJVykNDtbPMDjT+cWPBF8UrtXR4=";
             "zed-scap-0.0.8-zed" = "sha256-BihiQHlal/eRsktyf0GI3aSWsUCW7WcICMsC2Xvb7kw=";
           };
 
@@ -87,7 +87,7 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = with pkgs; [
-            (rust-bin.nightly."2025-01-15".default.override {
+            (rust-bin.nightly.latest.default.override {
               extensions = [
                 "rust-src"
                 "rust-analyzer"
