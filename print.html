@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-fac004b7.js";
+            window.path_to_searchindex_js = "searchindex-5aa47549.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cec86706.js"></script>
@@ -238,7 +238,15 @@ Once the package is built, you can install it using:</p>
 </ol>
 </details><div style="break-before: page; page-break-before: always;"></div>
 <h1 id="nixos-1"><a href="#nixos-1" class="header">NixOs</a></h1>
-<h3 id="nixos"><a class="header" href="#nixos"><ins>NixOs</ins></a></h3>
+<h3 id="nixos"><a class="header" href="#nixos"><ins>NixOS</ins></a></h3>
+<h4 id="cachix"><a class="header" href="#cachix">Cachix</a></h4>
+<p>To use pre-built binaries, use: <code>cachix use sherlock</code></p>
+<p>or:</p>
+<pre><code class="language-nix">nix.settings = {
+  substituters = ["https://sherlock.cachix.org"];
+  trusted-public-keys = ["sherlock.cachix.org-1:w6O/gUQB2CRFXKg7NfAAR+FGtotlj0tUi3dscRUKpX0="];
+}
+</code></pre>
 <h4 id="non-flake-systems"><a class="header" href="#non-flake-systems">Non-Flake Systems</a></h4>
 <p>Sherlock is available in <code>nixpkgs/unstable</code> as <code>sherlock-launcher</code>. If you’re installing it as a standalone package, you’ll need to do the <a href="#config-setup">config setup</a> yourself.</p>
 <h4 id="flakes--home-manager"><a class="header" href="#flakes--home-manager">Flakes &amp; Home-Manager</a></h4>
