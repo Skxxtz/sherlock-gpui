@@ -254,8 +254,25 @@ impl Documentation for NixOS {
             )
         );
 
+        let cachix = md!(
+            h4("Cachix"),
+            p!(
+                "To use pre-built binaries, use:",
+                code("cachix use sherlock"),
+                br(),
+                "or:"
+            ),
+            codeblock().lang("nix").content(indoc!{r#"
+                    nix.settings = {
+                      substituters = ["https://sherlock.cachix.org"];
+                      trusted-public-keys = ["sherlock.cachix.org-1:w6O/gUQB2CRFXKg7NfAAR+FGtotlj0tUi3dscRUKpX0="];
+                    }
+                "#})
+        );
+
         md!(
-            h3(html_underline("NixOs")),
+            h3(html_underline("NixOS")),
+            cachix,
             non_flake_systems,
             flakes_with_home_manager,
             flakes_without_home_manager,

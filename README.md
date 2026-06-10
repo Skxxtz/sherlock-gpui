@@ -127,7 +127,20 @@ Make sure to have the following dependencies installed:
 
 </details>
 
-### <ins>NixOs</ins>
+### <ins>NixOS</ins>
+
+#### Cachix
+
+To use pre-built binaries, use: `cachix use sherlock` 
+
+or:
+
+```nix
+nix.settings = {
+  substituters = ["https://sherlock.cachix.org"];
+  trusted-public-keys = ["sherlock.cachix.org-1:w6O/gUQB2CRFXKg7NfAAR+FGtotlj0tUi3dscRUKpX0="];
+}
+```
 
 #### Non-Flake Systems
 

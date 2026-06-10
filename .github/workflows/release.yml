@@ -53,6 +53,12 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
+      # Create cachix binary cache
+      - uses: cachix/cachix-action@v17
+        with:
+          name: sherlock
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
       - name: Build with Nix
         run: nix build .#sherlock-gpui --print-build-logs
 
