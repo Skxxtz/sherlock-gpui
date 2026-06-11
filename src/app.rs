@@ -37,6 +37,7 @@ use crate::{
 pub mod bindings;
 pub mod theme;
 mod updates;
+mod warmup;
 
 pub static LAUNCH_GENERATION: AtomicU32 = AtomicU32::new(0);
 pub fn reset_generation() {
@@ -63,6 +64,8 @@ pub fn run_app(cx: &mut App, result: SetupResult) {
 
     let listener = UnixListener::bind(SOCKET_PATH).unwrap();
     let initial_messages = messages;
+
+    warmup::warmup(cx);
 
     cx.spawn(|cx: &mut AsyncApp| {
         let cx = cx.clone();
