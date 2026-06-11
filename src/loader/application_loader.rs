@@ -116,8 +116,7 @@ impl ApplicationLoader {
         // deterministic output. Instead we will use the system creation timestamp to check for a
         // stale cache. This ensures that all changes made by NixOS will be reflected in sherlock.
         #[cfg(feature = "nixos")]
-        let force_refresh =
-            nixos::system_creation_time().is_some_and(|system| system > last_cache);
+        let force_refresh = nixos::system_creation_time().is_some_and(|system| system > last_cache);
 
         #[cfg(not(feature = "nixos"))]
         let force_refresh = false;
