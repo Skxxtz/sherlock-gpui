@@ -26,6 +26,7 @@ pub struct AppData {
     pub priority: PriorityGuard, // to enable new count instantly having effect
     pub icon: Option<IconType>,
     pub desktop_file: Option<PathBuf>,
+    pub original_name: Option<String>,
     #[serde(default)]
     pub actions: Arc<[Arc<ContextMenuAction>]>,
     #[serde(default)]
@@ -51,9 +52,58 @@ impl AppData {
             priority: PriorityGuard::default(),
             icon: None,
             desktop_file: None,
+            original_name: None,
             actions: Arc::new([]),
             vars: vec![],
             terminal: false,
+        }
+    }
+
+    pub fn apply_alias_raw(&mut self, alias: SherlockAlias, use_keywords: bool) {
+        if let Some(name) = alias.name {
+            self.name = Some(name.into());
+        }
+
+        if let Some(icon) = alias.icon {
+            self.icon = resolve_icon_path(&icon);
+        }
+
+        if let Some(exec) = alias.exec {
+            self.exec = Some(exec);
+        }
+
+        if let Some(vars) = alias.variables {
+            self.vars.extend(vars);
+        }
+
+        if let Some(keywords) = alias.keywords {
+            self.search_string = construct_search(self.name.as_deref(), &keywords, use_keywords);
+        }
+
+        if let Some(add_actions) = alias.add_actions {
+            self.actions = self
+                .actions
+                .iter()
+                .cloned()
+                .chain(add_actions.into_iter().map(|mut a| {
+                    if a.icon.is_none() {
+                        a.icon = self.icon.clone();
+                    }
+                    a.into()
+                }))
+                .collect()
+        }
+
+        if let Some(actions) = alias.actions {
+            self.actions = actions
+                .into_iter()
+                .map(|mut a| {
+                    if a.icon.is_none() {
+                        a.icon = self.icon.clone();
+                    }
+                    a.into()
+                })
+                .collect();
         }
     }
 
@@ -62,70 +112,71 @@ impl AppData {
         launcher: &Arc<Launcher>,
         alias: Option<SherlockAlias>,
         use_keywords: bool,
-        mut buffer: Vec<Arc<ApplicationAction>>,
+        mut buffer: Vec<ApplicationAction>,
     ) {
-        if let Some(alias) = alias {
-            if let Some(alias_name) = alias.name.as_ref() {
-                self.name = Some(SharedString::from(alias_name));
-            }
-
-            if let Some(alias_icon) = alias.icon.as_ref().map(|i| resolve_icon_path(i)) {
-                self.icon = alias_icon;
-            }
-
-            let name: Option<&str> = self
-                .name
-                .as_ref()
-                .map(|s| s.as_str())
-                .or(launcher.name.as_ref().map(|s| s.as_str()));
-            if let Some(alias_keywords) = alias.keywords.as_ref() {
-                self.search_string = construct_search(name, alias_keywords, use_keywords);
-            } else {
-                self.search_string = construct_search(name, &self.search_string, use_keywords);
-            }
-
-            if let Some(alias_exec) = alias.exec.as_ref() {
-                self.exec = Some(alias_exec.to_string());
-            }
-
-            if let Some(add_actions) = alias.add_actions {
-                add_actions.into_iter().for_each(|mut a| {
-                    if a.icon.is_none() {
-                        a.icon = self.icon.clone();
-                    }
-                    buffer.push(a.into());
-                });
-            }
-
-            if let Some(actions) = alias.actions {
-                self.actions = actions
-                    .into_iter()
-                    .map(|mut a| {
-                        if a.icon.is_none() {
-                            a.icon = self.icon.clone();
-                        }
-                        a.into()
-                    })
-                    .collect();
-            } else {
-                self.actions = buffer
-                    .into_iter()
-                    .map(|a| Arc::new(ContextMenuAction::App((*a).clone())))
-                    .collect::<Vec<_>>()
-                    .into();
-            }
-
-            if let Some(variables) = alias.variables {
-                self.vars.extend(variables);
-            }
-        } else {
+        let Some(alias) = alias else {
             let name: Option<&str> = self
                 .name
                 .as_ref()
                 .map(|s| s.as_str())
                 .or(launcher.name.as_ref().map(|s| s.as_str()));
             self.search_string = construct_search(name, &self.search_string, use_keywords);
-            self.actions = buffer.into_iter().map(|a| (*a).clone().into()).collect();
+            self.actions = buffer.into_iter().map(Into::into).collect();
+            return;
+        };
+
+        if let Some(name) = alias.name {
+            self.name = Some(name.into());
+        }
+
+        if let Some(icon) = alias.icon {
+            self.icon = resolve_icon_path(&icon);
+        }
+
+        if let Some(exec) = alias.exec {
+            self.exec = Some(exec);
+        }
+
+        if let Some(vars) = alias.variables {
+            self.vars.extend(vars);
+        }
+
+        let name: Option<&str> = self
+            .name
+            .as_ref()
+            .map(|s| s.as_str())
+            .or(launcher.name.as_ref().map(|s| s.as_str()));
+        if let Some(alias_keywords) = alias.keywords.as_ref() {
+            self.search_string = construct_search(name, alias_keywords, use_keywords);
+        } else {
+            self.search_string = construct_search(name, &self.search_string, use_keywords);
+        }
+
+        if let Some(add_actions) = alias.add_actions {
+            add_actions.into_iter().for_each(|mut a| {
+                if a.icon.is_none() {
+                    a.icon = self.icon.clone();
+                }
+                buffer.push(a);
+            });
+        }
+
+        if let Some(actions) = alias.actions {
+            self.actions = actions
+                .into_iter()
+                .map(|mut a| {
+                    if a.icon.is_none() {
+                        a.icon = self.icon.clone();
+                    }
+                    a.into()
+                })
+                .collect();
+        } else {
+            self.actions = buffer
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<_>>()
+                .into();
         }
     }
     pub fn get_exec(&self, launcher: &Arc<Launcher>) -> Option<String> {

@@ -55,7 +55,7 @@ impl ApplicationLoader {
         use_keywords: bool,
     ) -> Result<Arc<Vec<AppData>>, SherlockMessage> {
         let config = ConfigGuard::read()?;
-        let cache_path: Arc<Path> = config.caching.cache.as_path().into();
+        let cache_path: Arc<Path> = config.caching.cache.clone();
 
         // forces update in case mtime is somehow not availalbe (pretty impossible)
         let last_cached = cache_path.modtime().unwrap_or(SystemTime::UNIX_EPOCH);
@@ -190,7 +190,7 @@ impl ApplicationLoader {
     }
 
     #[inline(always)]
-    fn load_aliases(path: &Path) -> Result<HashMap<String, SherlockAlias>, SherlockMessage> {
+    pub fn load_aliases(path: &Path) -> Result<HashMap<String, SherlockAlias>, SherlockMessage> {
         match File::open(path) {
             Ok(f) => simd_json::from_reader(f).map_err(|e| {
                 sherlock_msg!(

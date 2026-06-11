@@ -1,15 +1,19 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, rc::Rc, sync::Arc};
 
 use gpui::AsyncApp;
 
 use super::{SherlockConfig, watcher::ConfigFileChange};
 use crate::{
-    CONFIG, app::RenderableChildEntity, loader::Loader, ui::launcher::LauncherMode,
-    utils::errors::SherlockMessage,
+    CONFIG,
+    app::RenderableChildEntity,
+    launcher::variant_type::LauncherType,
+    loader::{Loader, application_loader::ApplicationLoader},
+    ui::{launcher::LauncherMode, widgets::RenderableChild},
+    utils::{config::ConfigGuard, errors::SherlockMessage},
 };
 
 pub fn reload(
-    cx: &AsyncApp,
+    cx: &mut AsyncApp,
     data: &RenderableChildEntity,
     initial_messages: &mut Vec<SherlockMessage>,
     changes: HashSet<ConfigFileChange>,
@@ -52,14 +56,36 @@ pub fn reload(
         None // caller keeps existing modes
     };
 
+    // reload aliases
+    if needs.aliases {
+        let _ = reload_aliases(data, cx);
+    }
+
     *initial_messages = messages;
     modes
+}
+
+fn reload_aliases(data: &RenderableChildEntity, cx: &mut AsyncApp) -> Result<(), SherlockMessage> {
+    let alias_path = ConfigGuard::read_with(|cfg| cfg.files.alias.clone())?;
+    let mut aliases = ApplicationLoader::load_aliases(&alias_path)?;
+    data.update(cx, |this, _cx| {
+        for c in Rc::make_mut(this).iter_mut() {
+            if let RenderableChild::App { inner, launcher } = c
+                && let Some(alias) = inner.original_name.as_ref().and_then(|n| aliases.remove(n))
+                && let LauncherType::Apps(launcher) = &launcher.launcher_type
+            {
+                inner.apply_alias_raw(alias, launcher.use_keywords);
+            }
+        }
+    });
+    Ok(())
 }
 
 #[derive(Default)]
 struct ReloadNeeds {
     config: bool,
     launchers: bool,
+    aliases: bool,
     apps: bool,
 }
 
@@ -69,9 +95,9 @@ impl ReloadNeeds {
             match change {
                 ConfigFileChange::Config => needs.config = true,
                 ConfigFileChange::Fallback
-                | ConfigFileChange::Alias
                 | ConfigFileChange::Actions
                 | ConfigFileChange::Ignore => needs.launchers = true,
+                ConfigFileChange::Alias => needs.aliases = true,
                 ConfigFileChange::Apps => needs.apps = true,
                 ConfigFileChange::Other => {}
             }

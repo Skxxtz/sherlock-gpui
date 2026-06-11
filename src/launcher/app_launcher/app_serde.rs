@@ -45,6 +45,7 @@ where
                 pub priority: Option<u16>,
                 pub icon: Option<String>,
                 pub desktop_file: Option<PathBuf>,
+                pub original_name: Option<String>,
                 #[serde(default)]
                 pub actions: Vec<AppActionSerde>,
                 #[serde(default)]
@@ -102,6 +103,7 @@ where
                         .collect(),
                     icon,
                     desktop_file: value.desktop_file,
+                    original_name: value.original_name,
                     vars: value.vars,
                     terminal: value.terminal,
                 });

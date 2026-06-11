@@ -68,7 +68,7 @@ impl<'a> DesktopFileParser<'a> {
             desktop_file: Some(path.into()),
             ..AppData::new()
         };
-        let mut actions: Vec<Arc<ApplicationAction>> = Vec::new();
+        let mut actions: Vec<ApplicationAction> = Vec::new();
         let mut current_action = ApplicationAction::new("app_launcher", "");
         let mut section = Section::Other;
         let mut key_buf = String::with_capacity(32);
@@ -82,7 +82,7 @@ impl<'a> DesktopFileParser<'a> {
             // handle section headers
             if let Some(header) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
                 if section == Section::Action && current_action.is_valid() {
-                    actions.push(Arc::new(current_action));
+                    actions.push(current_action);
                     current_action = ApplicationAction::new("app_launcher", "");
                 }
                 section = Section::from_header(header);
@@ -107,7 +107,7 @@ impl<'a> DesktopFileParser<'a> {
                 Section::Action => {
                     self.handle_action_field(&key_buf, value, &data, &mut current_action);
                     if current_action.is_full() {
-                        actions.push(Arc::new(current_action));
+                        actions.push(current_action);
                         current_action = ApplicationAction::new("app_launcher", "");
                         section = Section::Other;
                     }
@@ -118,7 +118,7 @@ impl<'a> DesktopFileParser<'a> {
 
         // flush
         if section == Section::Action && current_action.is_valid() {
-            actions.push(Arc::new(current_action));
+            actions.push(current_action);
         }
 
         let alias = {
@@ -149,7 +149,11 @@ impl<'a> DesktopFileParser<'a> {
             "name" if should_ignore(self.ignore, value) => {
                 return Some(false);
             }
-            "name" => data.name = Some(SharedString::from(value.to_string())),
+            "name" => {
+                let name = value.to_string();
+                data.name = Some(SharedString::from(name.clone()));
+                data.original_name = Some(name);
+            }
             "icon" => data.icon = resolve_icon_path(value),
             "exec" => data.exec = Some(value.to_string()),
             "terminal" => data.terminal = value.eq_ignore_ascii_case("true"),

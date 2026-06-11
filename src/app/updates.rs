@@ -137,7 +137,7 @@ pub(super) async fn run_event_loop(
             // Config reload
             if let Ok(audit) = watcher.audit()
                 && !audit.is_empty()
-                && let Some(new_modes) = reload(&cx, &data, &mut initial_messages, audit)
+                && let Some(new_modes) = reload(&mut cx, &data, &mut initial_messages, audit)
             {
                 modes = new_modes;
             }
