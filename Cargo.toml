@@ -62,6 +62,7 @@ const-str = "1.1.0"
 [features]
 default = ["wayland"]
 wayland = ["gpui/wayland", "gpui_platform/wayland"]
+nixos = []
 bench = []
 
 [dev-dependencies]

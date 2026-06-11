@@ -22,6 +22,9 @@ use crate::utils::{config::ConfigGuard, errors::SherlockMessage, files::read_lin
 
 mod parser;
 
+#[cfg(feature = "nixos")]
+mod nixos;
+
 pub struct ApplicationLoader;
 impl ApplicationLoader {
     ////// Loads and synchronizes the application registry from disk and cache.
@@ -108,7 +111,17 @@ impl ApplicationLoader {
     }
 
     #[inline]
-    pub fn get_new_apps(since: SystemTime) -> Arc<[PathBuf]> {
+    pub fn get_new_apps(last_cache: SystemTime) -> Arc<[PathBuf]> {
+        // For NixOS, time stamps wont work as the system will use UNIX_EPOCH to ensure a
+        // deterministic output. Instead we will use the system creation timestamp to check for a
+        // stale cache. This ensures that all changes made by NixOS will be reflected in sherlock.
+        #[cfg(feature = "nixos")]
+        let force_refresh =
+            nixos::system_creation_time().is_some_and(|system| system > last_cache);
+
+        #[cfg(not(feature = "nixos"))]
+        let force_refresh = false;
+
         Self::get_applications_dir()
             .iter()
             .flat_map(|p| p.read_dir().into_iter().flatten())
@@ -118,7 +131,7 @@ impl ApplicationLoader {
                 let is_desktop = path
                     .extension()
                     .is_some_and(|ext| ext.eq_ignore_ascii_case("desktop"));
-                let is_new = path.modtime().is_some_and(|t| t > since);
+                let is_new = force_refresh || path.modtime().is_some_and(|t| t > last_cache);
                 (is_desktop && is_new).then_some(path)
             })
             .collect()

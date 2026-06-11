@@ -44,7 +44,7 @@
             "zed-scap-0.0.8-zed" = "sha256-BihiQHlal/eRsktyf0GI3aSWsUCW7WcICMsC2Xvb7kw=";
           };
 
-          buildFeatures = [ "wayland" ];
+          buildFeatures = [ "wayland" "nixos" ];
 
           nativeBuildInputs = with pkgs; [
             pkg-config
