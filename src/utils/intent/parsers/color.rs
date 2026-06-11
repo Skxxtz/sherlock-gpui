@@ -26,7 +26,8 @@ impl ColorParser {
             let hex = cursor.advance().unwrap();
             let (r, g, b) = ColorConverter::hex_to_rgb(hex)?;
             ("hex", smallvec![r, g, b])
-        } else if let Some(space) = color_space(first) {
+        } else {
+            let space = color_space(first)?;
             cursor.advance();
             let mut vals = SmallVec::<[f32; 4]>::new();
             while let Some(t) = cursor.peek() {
@@ -39,8 +40,6 @@ impl ColorParser {
                 cursor.advance();
             }
             (space, vals)
-        } else {
-            return None;
         };
 
         if values.is_empty() {
