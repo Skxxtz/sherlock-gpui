@@ -1,5 +1,11 @@
 use gpui::App;
-use std::{collections::HashMap, io::ErrorKind, path::PathBuf, rc::Rc, sync::Arc};
+use std::{
+    collections::HashMap,
+    io::ErrorKind,
+    path::{Path, PathBuf},
+    rc::Rc,
+    sync::Arc,
+};
 
 use crate::{
     app::RenderableChildEntity,
@@ -147,7 +153,8 @@ impl Loader {
 /// # Returns
 /// A tuple containing the successfully parsed `Vec<RawLauncher>` and
 /// a `Vec<SherlockError>` containing any collected warnings.
-fn parse_launcher_configs(path: &PathBuf) -> (Vec<RawLauncher>, Vec<SherlockMessage>) {
+fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<SherlockMessage>) {
+    let path = p.as_ref();
     let mut warnings = Vec::new();
     let mut launchers = Vec::new();
 
@@ -156,7 +163,7 @@ fn parse_launcher_configs(path: &PathBuf) -> (Vec<RawLauncher>, Vec<SherlockMess
         Err(e) if e.kind() == ErrorKind::NotFound => {
             warnings.push(sherlock_msg!(
                 Info,
-                SherlockErrorType::FileError(FileAction::Find, path.clone()),
+                SherlockErrorType::FileError(FileAction::Find, path.to_path_buf()),
                 "Using default fallback.json configuration."
             ));
             include_bytes!("../../assets/fallback.json").to_vec()
@@ -164,7 +171,7 @@ fn parse_launcher_configs(path: &PathBuf) -> (Vec<RawLauncher>, Vec<SherlockMess
         Err(e) => {
             warnings.push(sherlock_msg!(
                 Error,
-                SherlockErrorType::FileError(FileAction::Read, path.clone()),
+                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
                 e
             ));
             return (launchers, warnings);

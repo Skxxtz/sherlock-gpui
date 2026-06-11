@@ -1,4 +1,9 @@
-use std::{collections::HashMap, path::PathBuf, process::Command};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::Arc,
+};
 
 use gpui::SharedString;
 
@@ -186,25 +191,38 @@ impl AppearanceDefaults {
 
 pub struct FileDefaults {}
 impl FileDefaults {
-    pub fn cache() -> PathBuf {
-        paths::get_cache_dir().unwrap().join("desktop_files.bin")
+    pub fn cache() -> Arc<Path> {
+        paths::get_cache_dir()
+            .unwrap()
+            .join("desktop_files.bin")
+            .into()
     }
-    pub fn config() -> PathBuf {
-        paths::get_config_dir().unwrap().join("config.toml")
+    pub fn config() -> Arc<Path> {
+        paths::get_config_dir().unwrap().join("config.toml").into()
     }
-    pub fn fallback() -> PathBuf {
-        paths::get_config_dir().unwrap().join("fallback.json")
+    pub fn fallback() -> Arc<Path> {
+        paths::get_config_dir()
+            .unwrap()
+            .join("fallback.json")
+            .into()
     }
-    pub fn alias() -> PathBuf {
-        paths::get_config_dir().unwrap().join("sherlock_alias.json")
+    pub fn alias() -> Arc<Path> {
+        paths::get_config_dir()
+            .unwrap()
+            .join("sherlock_alias.json")
+            .into()
     }
-    pub fn ignore() -> PathBuf {
-        paths::get_config_dir().unwrap().join("sherlockignore")
+    pub fn ignore() -> Arc<Path> {
+        paths::get_config_dir()
+            .unwrap()
+            .join("sherlockignore")
+            .into()
     }
-    pub fn actions() -> PathBuf {
+    pub fn actions() -> Arc<Path> {
         paths::get_config_dir()
             .unwrap()
             .join("sherlock_actions.json")
+            .into()
     }
     pub fn icon_paths() -> Vec<PathBuf> {
         vec![

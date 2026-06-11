@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::docs::launcher::{Example, InnerFunctionDoc, LauncherDoc, LauncherDocEntry};
@@ -142,15 +142,16 @@ impl DebugFunctions {
 
     /// Safely removes a file from the file system, skipping files if they dont exist.
     #[inline]
-    fn remove_file_safe(path: PathBuf) -> Result<(), SherlockMessage> {
+    fn remove_file_safe<P: AsRef<Path>>(p: P) -> Result<(), SherlockMessage> {
+        let path = p.as_ref();
         if !path.exists() {
             return Ok(());
         }
 
-        fs::remove_file(&path).map_err(|e| {
+        fs::remove_file(path).map_err(|e| {
             sherlock_msg!(
                 Warning,
-                SherlockErrorType::FileError(FileAction::Remove, path),
+                SherlockErrorType::FileError(FileAction::Remove, path.to_path_buf()),
                 e
             )
         })

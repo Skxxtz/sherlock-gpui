@@ -2,10 +2,14 @@ use gpui::SharedString;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 
-use crate::{loader::utils::deserialize_path_buf, ui::UIFunction};
+use crate::{
+    loader::utils::{deserialize_arc_path, deserialize_path_buf},
+    ui::UIFunction,
+};
 
 mod config_impl;
 mod defaults;
@@ -166,20 +170,20 @@ pub struct ConfigBehavior {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ConfigFiles {
     #[serde(default = "FileDefaults::config")]
-    #[serde(deserialize_with = "deserialize_path_buf")]
-    pub config: PathBuf,
+    #[serde(deserialize_with = "deserialize_arc_path")]
+    pub config: Arc<Path>,
     #[serde(default = "FileDefaults::fallback")]
-    #[serde(deserialize_with = "deserialize_path_buf")]
-    pub fallback: PathBuf,
+    #[serde(deserialize_with = "deserialize_arc_path")]
+    pub fallback: Arc<Path>,
     #[serde(default = "FileDefaults::alias")]
-    #[serde(deserialize_with = "deserialize_path_buf")]
-    pub alias: PathBuf,
+    #[serde(deserialize_with = "deserialize_arc_path")]
+    pub alias: Arc<Path>,
     #[serde(default = "FileDefaults::ignore")]
-    #[serde(deserialize_with = "deserialize_path_buf")]
-    pub ignore: PathBuf,
+    #[serde(deserialize_with = "deserialize_arc_path")]
+    pub ignore: Arc<Path>,
     #[serde(default = "FileDefaults::actions")]
-    #[serde(deserialize_with = "deserialize_path_buf")]
-    pub actions: PathBuf,
+    #[serde(deserialize_with = "deserialize_arc_path")]
+    pub actions: Arc<Path>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -211,8 +215,8 @@ pub struct ConfigCaching {
     #[serde(default = "OtherDefaults::bool_true")]
     pub enable: bool,
     #[serde(default = "FileDefaults::cache")]
-    #[serde(deserialize_with = "deserialize_path_buf")]
-    pub cache: PathBuf,
+    #[serde(deserialize_with = "deserialize_arc_path")]
+    pub cache: Arc<Path>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

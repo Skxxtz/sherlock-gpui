@@ -3,7 +3,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
     fmt::Debug,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
 
@@ -416,4 +416,21 @@ where
     }
 
     Ok(PathBuf::from(s))
+}
+
+pub fn deserialize_arc_path<'de, D>(deserializer: D) -> Result<Arc<Path>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+
+    if let Some(stripped) = s.strip_prefix('~')
+        && let Ok(home) = std::env::var("HOME")
+    {
+        return Ok(PathBuf::from(home)
+            .join(stripped.trim_start_matches('/'))
+            .into());
+    }
+
+    Ok(PathBuf::from(s).into())
 }

@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use crate::utils::{
     config::{
@@ -170,9 +173,9 @@ impl WithRoot for ConfigFiles {
         if root.ends_with("/") {
             root.pop();
         }
-        fn use_root(root: &Path, path: PathBuf) -> PathBuf {
+        fn use_root(root: &Path, path: Arc<Path>) -> Arc<Path> {
             if let Ok(stripped) = path.strip_prefix("~/.config/sherlock") {
-                root.join(stripped)
+                root.join(stripped).into()
             } else {
                 path
             }
