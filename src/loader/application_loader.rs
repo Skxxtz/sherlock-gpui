@@ -16,6 +16,7 @@ use crate::loader::application_loader::parser::DesktopFileParser;
 use crate::prelude::PathHelpers;
 use crate::sherlock_msg;
 use crate::utils::cache::BinaryCache;
+use crate::utils::config::ConfigFileChange;
 use crate::utils::errors::types::{FileAction, SherlockErrorType};
 use crate::utils::files::{expand_path, home_dir};
 use crate::utils::{config::ConfigGuard, errors::SherlockMessage, files::read_lines};
@@ -23,7 +24,7 @@ use crate::utils::{config::ConfigGuard, errors::SherlockMessage, files::read_lin
 mod parser;
 
 #[cfg(feature = "nixos")]
-mod nixos;
+pub mod nixos;
 
 pub struct ApplicationLoader;
 impl ApplicationLoader {
@@ -53,12 +54,16 @@ impl ApplicationLoader {
         launcher: Arc<Launcher>,
         counts: &HashMap<String, u16>,
         use_keywords: bool,
+        changes: Option<ConfigFileChange>,
     ) -> Result<Arc<Vec<AppData>>, SherlockMessage> {
         let config = ConfigGuard::read()?;
         let cache_path: Arc<Path> = config.caching.cache.clone();
 
-        // forces update in case mtime is somehow not availalbe (pretty impossible)
-        let last_cached = cache_path.modtime().unwrap_or(SystemTime::UNIX_EPOCH);
+        // cache invalidation
+        let last_cached = (!changes.is_some_and(|c| c.ignores()))
+            .then(|| cache_path.modtime())
+            .flatten()
+            .unwrap_or(SystemTime::UNIX_EPOCH);
         let need_update = Self::get_new_apps(last_cached);
         let update_lookup = LookupCache::new(&need_update);
 

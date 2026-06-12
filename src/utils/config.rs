@@ -27,7 +27,7 @@ pub use flags::SherlockFlags;
 pub use guard::ConfigGuard;
 pub use reload::reload;
 pub use transformer::repair_config;
-pub use watcher::ConfigWatcher;
+pub use watcher::{ConfigFileChange, ConfigWatcher};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct SherlockConfig {

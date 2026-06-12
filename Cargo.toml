@@ -58,6 +58,7 @@ async-io = "2.6.0"
 procfs = "0.18.0"
 indoc = "2.0.7"
 const-str = "1.1.0"
+bitflags = "2.13.0"
 
 [features]
 default = ["wayland"]

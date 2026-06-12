@@ -81,7 +81,7 @@ fn load_modes(
     data: &RenderableChildEntity,
     messages: &mut Vec<SherlockMessage>,
 ) -> Arc<[LauncherMode]> {
-    match Loader::load_launchers(cx, data.clone()) {
+    match Loader::load_launchers(cx, data.clone(), None) {
         Ok(LauncherLoadResult {
             modes,
             messages: msgs,

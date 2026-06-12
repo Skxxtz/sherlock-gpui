@@ -1,5 +1,7 @@
-use std::{collections::HashSet, path::Path, time::SystemTime};
+use std::{path::Path, time::SystemTime};
 
+#[cfg(feature = "nixos")]
+use crate::loader::application_loader;
 use crate::{
     loader::application_loader::ApplicationLoader,
     sherlock_msg,
@@ -17,6 +19,7 @@ use crate::{
 pub struct ConfigWatcher {
     latest_audit: SystemTime,
     root_dir: Box<Path>,
+    last_audit_result: ConfigFileChange,
 }
 
 impl ConfigWatcher {
@@ -24,12 +27,14 @@ impl ConfigWatcher {
         Self {
             latest_audit: SystemTime::now(),
             root_dir,
+            last_audit_result: ConfigFileChange::empty(),
         }
     }
 
-    pub fn audit(&mut self) -> Result<HashSet<ConfigFileChange>, SherlockMessage> {
+    pub fn audit(&mut self) -> Result<ConfigFileChange, SherlockMessage> {
         let current_audit_time = SystemTime::now();
         let since = self.latest_audit;
+        self.last_audit_result = ConfigFileChange::empty();
 
         // check desktop files
         let app_change =
@@ -49,12 +54,18 @@ impl ConfigWatcher {
             .unwrap_or_default();
 
         // collect out-of-date entries
-        let changes: HashSet<ConfigFileChange> = entries
+        entries
             .filter_map(|entry| entry.ok())
             .filter(|entry| {
+                #[cfg(feature = "nixos")]
+                if application_loader::nixos::system_creation_time().is_some_and(|t| t > since) {
+                    return true;
+                }
+
                 entry
                     .metadata()
                     .and_then(|m| m.modified())
+                    // TODO: make nixos-home-manager compatible
                     .map(|modified| entry.path().is_file() && modified > since)
                     .unwrap_or(false)
             })
@@ -70,21 +81,46 @@ impl ConfigWatcher {
                 }
             })
             .chain(app_change)
-            .collect();
+            .for_each(|change| self.last_audit_result |= change);
 
         self.latest_audit = current_audit_time;
 
-        Ok(changes)
+        Ok(self.last_audit_result)
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Debug)]
-pub enum ConfigFileChange {
-    Actions,
-    Alias,
-    Apps,
-    Config,
-    Ignore,
-    Fallback,
-    Other,
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct ConfigFileChange: u8 {
+        const Actions  = 1 << 0;
+        const Alias    = 1 << 1;
+        const Apps     = 1 << 2;
+        const Config   = 1 << 3;
+        const Ignore   = 1 << 4;
+        const Fallback = 1 << 5;
+        const Other    = 1 << 6;
+    }
+}
+
+impl ConfigFileChange {
+    #[inline(always)]
+    pub fn config(&self) -> bool {
+        self.contains(ConfigFileChange::Config)
+    }
+    #[inline(always)]
+    pub fn aliases(&self) -> bool {
+        self.contains(ConfigFileChange::Alias)
+    }
+    #[inline(always)]
+    pub fn ignores(&self) -> bool {
+        self.contains(ConfigFileChange::Ignore)
+    }
+    #[inline(always)]
+    pub fn apps(&self) -> bool {
+        self.contains(ConfigFileChange::Apps)
+    }
+    #[inline(always)]
+    pub fn launchers(&self) -> bool {
+        self.contains(ConfigFileChange::Fallback | ConfigFileChange::Actions)
+    }
 }

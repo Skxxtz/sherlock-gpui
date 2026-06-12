@@ -1,4 +1,4 @@
-use std::{collections::HashSet, rc::Rc, sync::Arc};
+use std::{rc::Rc, sync::Arc};
 
 use gpui::AsyncApp;
 
@@ -16,12 +16,11 @@ pub fn reload(
     cx: &mut AsyncApp,
     data: &RenderableChildEntity,
     initial_messages: &mut Vec<SherlockMessage>,
-    changes: HashSet<ConfigFileChange>,
+    changes: ConfigFileChange,
 ) -> Option<Arc<[LauncherMode]>> {
-    let needs = ReloadNeeds::from_changes(&changes);
     let mut messages: Vec<SherlockMessage> = Vec::new();
 
-    if needs.config {
+    if changes.config() {
         let mut flags = Loader::load_flags()?.flags;
         let config = match flags.get_config() {
             Err(e) => {
@@ -42,8 +41,8 @@ pub fn reload(
     }
 
     // Reload launchers
-    let modes = if needs.launchers || needs.apps {
-        let result = match cx.update(|cx| Loader::load_launchers(cx, data.clone())) {
+    let modes = if changes.launchers() || changes.apps() || changes.ignores() {
+        let result = match cx.update(|cx| Loader::load_launchers(cx, data.clone(), Some(changes))) {
             Ok(result) => result,
             Err(e) => {
                 messages.push(e);
@@ -57,7 +56,7 @@ pub fn reload(
     };
 
     // reload aliases
-    if needs.aliases {
+    if changes.aliases() {
         let _ = reload_aliases(data, cx);
     }
 
@@ -79,29 +78,4 @@ fn reload_aliases(data: &RenderableChildEntity, cx: &mut AsyncApp) -> Result<(),
         }
     });
     Ok(())
-}
-
-#[derive(Default)]
-struct ReloadNeeds {
-    config: bool,
-    launchers: bool,
-    aliases: bool,
-    apps: bool,
-}
-
-impl ReloadNeeds {
-    fn from_changes(changes: &HashSet<ConfigFileChange>) -> Self {
-        changes.iter().fold(Self::default(), |mut needs, change| {
-            match change {
-                ConfigFileChange::Config => needs.config = true,
-                ConfigFileChange::Fallback
-                | ConfigFileChange::Actions
-                | ConfigFileChange::Ignore => needs.launchers = true,
-                ConfigFileChange::Alias => needs.aliases = true,
-                ConfigFileChange::Apps => needs.apps = true,
-                ConfigFileChange::Other => {}
-            }
-            needs
-        })
-    }
 }

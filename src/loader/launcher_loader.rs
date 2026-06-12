@@ -15,7 +15,7 @@ use crate::{
     ui::{launcher::LauncherMode, widgets::RenderableChild},
     utils::{
         cache::BinaryCache,
-        config::ConfigGuard,
+        config::{ConfigFileChange, ConfigGuard},
         errors::{
             SherlockMessage,
             types::{FileAction, SherlockErrorType},
@@ -29,9 +29,10 @@ use super::utils::CounterReader;
 pub struct LoadContext {
     pub counts: HashMap<String, u16>,
     pub path: PathBuf,
+    pub changes: Option<ConfigFileChange>,
 }
 impl LoadContext {
-    fn new() -> Result<Self, SherlockMessage> {
+    fn new(changes: Option<ConfigFileChange>) -> Result<Self, SherlockMessage> {
         let counter_reader = CounterReader::new()?;
         let counts: HashMap<String, u16> =
             BinaryCache::read(&counter_reader.path).unwrap_or_default();
@@ -39,6 +40,7 @@ impl LoadContext {
         Ok(Self {
             counts,
             path: counter_reader.path,
+            changes,
         })
     }
 }
@@ -51,6 +53,7 @@ impl Loader {
     pub fn load_launchers(
         cx: &mut App,
         data_handle: RenderableChildEntity,
+        changes: Option<ConfigFileChange>,
     ) -> Result<LauncherLoadResult, SherlockMessage> {
         // read config
         let config = ConfigGuard::read()?;
@@ -59,7 +62,7 @@ impl Loader {
         let (raw_launchers, mut messages) = parse_launcher_configs(&config.files.fallback);
 
         // Read cached counter file
-        let ctx = LoadContext::new()?;
+        let ctx = LoadContext::new(changes)?;
 
         // Parse the launchers
         let mut launchers: Vec<(Arc<Launcher>, Arc<serde_json::Value>)> = raw_launchers

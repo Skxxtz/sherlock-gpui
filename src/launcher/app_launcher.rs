@@ -40,16 +40,21 @@ impl LauncherProvider for AppLauncher {
         _messages: &mut Vec<SherlockMessage>,
         _cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
-        ApplicationLoader::load_applications(Arc::clone(&launcher), &ctx.counts, self.use_keywords)
-            .map(|apps| {
-                Arc::unwrap_or_clone(apps)
-                    .into_iter()
-                    .map(|inner| RenderableChild::App {
-                        launcher: Arc::clone(&launcher),
-                        inner,
-                    })
-                    .collect()
-            })
+        ApplicationLoader::load_applications(
+            Arc::clone(&launcher),
+            &ctx.counts,
+            self.use_keywords,
+            ctx.changes,
+        )
+        .map(|apps| {
+            Arc::unwrap_or_clone(apps)
+                .into_iter()
+                .map(|inner| RenderableChild::App {
+                    launcher: Arc::clone(&launcher),
+                    inner,
+                })
+                .collect()
+        })
     }
 }
 
