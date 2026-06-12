@@ -4,11 +4,9 @@ use std::{
     os::unix::process::CommandExt,
     path::PathBuf,
     process::{Child, Command, Stdio},
-    sync::LazyLock,
 };
 
 use gpui::SharedString;
-use regex::{Captures, Regex};
 
 use crate::{
     loader::application_loader::ApplicationLoader,
@@ -34,12 +32,13 @@ use crate::{
 /// # Arguments
 /// * `cmd` -  A string containing the program name followed by its arguments (e.g, `foot -e`).
 pub fn spawn_detached(
-    cmd: &str,
+    input: &str,
     keyword: &str,
     variables: &[(SharedString, SharedString)],
 ) -> Result<(), SherlockMessage> {
     let config = ConfigGuard::read().unwrap();
-    let cmd = parse_variables(cmd, keyword, variables, &config);
+    let mut cmd = String::with_capacity(input.len());
+    parse_variables(input, keyword, variables, &config, &mut cmd);
 
     drop(config);
 
@@ -169,15 +168,6 @@ pub fn split_as_command(cmd: &str) -> Vec<String> {
     args
 }
 
-/// Regex pattern used for parsing variables from a command string
-///
-/// # Groups
-/// Group 1 & 2: `{key:value}`
-/// Group 3 & 4: `{prefix[key]:value}`
-static VAR_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"\{([a-zA-Z_]+)(?::(.*?))?\}|\{prefix\[(.*?)\]:(.*?)\}"#).unwrap()
-});
-
 /// Replaces variables like `{variable:variable name}` and applies prefixes such as `{prefix[variable name]:string}` with
 /// the corresponding values.
 ///
@@ -188,40 +178,74 @@ pub fn parse_variables(
     keyword: &str,
     variables: &[(SharedString, SharedString)],
     config: &SherlockConfig,
-) -> String {
-    VAR_REGEX
-        .replace_all(exec_input, |caps: &Captures| {
-            // Handle prefixes `prefix[for]:text`
-            if let (Some(prefix_for), Some(prefix_text)) = (caps.get(3), caps.get(4)) {
-                let key = prefix_for.as_str();
-                let has_value = variables
-                    .iter()
-                    .any(|(k, v)| k.as_ref() == key && !v.is_empty());
+    out: &mut String, // ← take out by &mut String so callers can pass their buffer
+) {
+    let mut token = String::new();
+    let mut depth = 0u8;
 
-                return if has_value {
-                    prefix_text.as_str().to_string()
-                } else {
-                    String::new()
-                };
-            }
-
-            // Handle vars `{terminal, keyword, or variable:text}`
-            let key = &caps[1];
-            match key {
-                "terminal" => format!("{} -e", config.default_apps.terminal),
-                "keyword" => keyword.to_string(),
-                "variable" => {
-                    let var_name = caps.get(2).map(|m| m.as_str());
-                    variables
-                        .iter()
-                        .find(|(k, _)| Some(k.as_ref()) == var_name)
-                        .map(|v| v.1.to_string())
-                        .unwrap_or_else(|| caps[0].to_string())
+    for c in exec_input.chars() {
+        match c {
+            '{' => {
+                depth += 1;
+                if depth > 1 {
+                    token.push(c);
                 }
-                _ => caps[0].to_string(),
             }
-        })
-        .into_owned()
+            '}' if depth > 0 => {
+                depth -= 1;
+                if depth == 0 {
+                    resolve_token(&token, keyword, variables, config, out);
+                    token.clear();
+                } else {
+                    token.push(c);
+                }
+            }
+            _ if depth > 0 => token.push(c),
+            _ => out.push(c),
+        }
+    }
+
+    if !token.is_empty() {
+        out.push('{');
+        out.push_str(&token);
+    }
+}
+
+fn resolve_token(
+    token: &str,
+    keyword: &str,
+    variables: &[(SharedString, SharedString)],
+    config: &SherlockConfig,
+    out: &mut String,
+) {
+    if token == "keyword" {
+        out.push_str(keyword);
+    } else if token == "terminal" {
+        out.push_str(&config.default_apps.terminal);
+        out.push_str(" -e");
+    } else if let Some(var_name) = token.strip_prefix("variable:") {
+        let value = variables
+            .iter()
+            .find(|(k, _)| k.as_ref() == var_name)
+            .map_or("", |(_, v)| v.as_ref());
+        out.push_str(value);
+    } else if let Some(rest) = token.strip_prefix("prefix[") {
+        if let Some(bracket) = rest.find(']') {
+            let var_name = &rest[..bracket];
+            let prefix_text = rest[bracket + 1..].strip_prefix(':').unwrap_or("");
+            let has_value = variables
+                .iter()
+                .any(|(k, v)| k.as_ref() == var_name && !v.is_empty());
+            if has_value {
+                // ← no longer allocates a String; writes directly into out
+                parse_variables(prefix_text, keyword, variables, config, out);
+            }
+        }
+    } else {
+        out.push('{');
+        out.push_str(token);
+        out.push('}');
+    }
 }
 
 /// Send the sudo password to a child process's stdin.
