@@ -59,6 +59,7 @@ pub enum SherlockMessageLevel {
 pub struct SherlockMessage {
     pub error_type: SherlockErrorType,
     pub level: SherlockMessageLevel,
+    pub location: SharedString,
     pub traceback: SharedString,
 }
 
@@ -90,8 +91,8 @@ impl SherlockMessage {
         Self {
             error_type,
             level,
-            traceback: format!("Location: {file}:{line}\n─────────────────────────\n{source}")
-                .into(),
+            location: format!("{file}:{line}").into(),
+            traceback: source.to_string().into(),
         }
     }
 }

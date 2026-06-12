@@ -59,8 +59,8 @@ impl<'a> RenderableChildImpl<'a> for MessageChild {
             div()
                 .id("dismiss")
                 .absolute()
-                .top(px(6.))
-                .right(px(8.))
+                .top(px(1.))
+                .right(px(1.))
                 .px(px(4.))
                 .py(px(1.))
                 .rounded_sm()
@@ -126,18 +126,37 @@ impl<'a> RenderableChildImpl<'a> for MessageChild {
                         div()
                             .mt_1()
                             .text_size(px(11.))
+                            .line_height(px(12.))
+                            .font_family(theme.font_family.clone())
+                            .text_color(text)
+                            .opacity(0.8)
+                            .child(self.message.location.clone()),
+                    )
+                    .child(
+                        div()
+                            .w(relative(0.9))
+                            .h(px(1.5))
+                            .rounded_full()
+                            .bg(text)
+                            .opacity(0.25)
+                            .mt(px(10.))
+                            .mb(px(10.)),
+                    )
+                    .child(
+                        div()
+                            .mt_1()
+                            .text_size(px(12.))
                             .line_height(px(16.))
                             .font_family(theme.monospace.clone())
-                            .text_color(text)
-                            .opacity(if selection.is_selected { 1.0 } else { 0.8 })
                             .child(self.message.traceback.clone()),
                     ),
             )
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
-        None
+    fn build_exec(&self, launcher: &Arc<Launcher>, cx: &mut App) -> Option<ExecMode> {
+        self.get_content(launcher, cx)
+            .map(|content| ExecMode::Copy { content })
     }
     #[inline(always)]
     fn priority(&self, _launcher: &Arc<Launcher>) -> Priority {
@@ -149,6 +168,6 @@ impl<'a> RenderableChildImpl<'a> for MessageChild {
     }
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
-        Some(self.message.traceback.to_string())
+        Some(self.message.to_string())
     }
 }
