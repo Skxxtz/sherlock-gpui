@@ -1,6 +1,6 @@
 use gpui::{Pixels, ScrollHandle, point, px};
 
-/// Scroll state for the sidebar that remembers the user's position actoss items. 
+/// Scroll state for the sidebar that remembers the user's position actoss items.
 /// Each item is scrolled as far toward that position as its content allows
 #[derive(Default)]
 pub struct SidebarScroll {

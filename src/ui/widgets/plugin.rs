@@ -30,6 +30,7 @@ use crate::{
         },
         traits::RenderableChildImpl,
         utils::selection::Selection,
+        variables::runtime_argument::RuntimeArgument,
     },
     utils::files::{expand_path, home_dir},
 };
@@ -193,7 +194,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         self.meta(cx).is_some_and(|m| !m.actions.is_empty())
     }
     #[inline(always)]
-    fn vars(&self, _cx: &mut App) -> Option<&[crate::loader::utils::ExecVariable]> {
+    fn vars(&self, _cx: &mut App) -> Option<&[RuntimeArgument]> {
         None
     }
     #[inline(always)]

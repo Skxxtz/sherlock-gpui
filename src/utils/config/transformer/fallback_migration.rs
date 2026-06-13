@@ -1,11 +1,18 @@
 use std::sync::Arc;
 
+use gpui::SharedString;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
     launcher::{utils::binds::BindSerde, variant_type::LauncherVariant},
-    loader::utils::{ApplicationActionSerde, ExecVariable, RawLauncher},
+    loader::utils::{ApplicationActionSerde, RawLauncher},
+    ui::{
+        choice::ChoiceOption,
+        variables::runtime_argument::{
+            ChoiceVar, ChoiceVarBody, CommandVar, PasswordVar, PathVar, RuntimeArgument, StringVar,
+        },
+    },
     utils::config::HomeType,
 };
 
@@ -55,15 +62,47 @@ pub struct LegacyRawLauncher {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LegacyExecVariable {
-    StringInput(String),
-    PasswordInput(String),
+    #[serde(rename = "string_input")]
+    String(SharedString),
+    #[serde(rename = "password_input")]
+    Password(SharedString),
+    #[serde(rename = "path_input")]
+    Path(SharedString),
+    #[serde(rename = "command_input")]
+    Command(SharedString),
+    #[serde(rename = "choice")]
+    Choice {
+        name: String,
+        choices: Arc<[ChoiceOption]>,
+    },
 }
 
-impl From<LegacyExecVariable> for ExecVariable {
+impl From<LegacyExecVariable> for RuntimeArgument {
     fn from(value: LegacyExecVariable) -> Self {
         match value {
-            LegacyExecVariable::StringInput(s) => ExecVariable::String(s.into()),
-            LegacyExecVariable::PasswordInput(s) => ExecVariable::Password(s.into()),
+            LegacyExecVariable::String(s) => RuntimeArgument::String(StringVar {
+                string_input: s,
+                ..Default::default()
+            }),
+            LegacyExecVariable::Password(s) => RuntimeArgument::Password(PasswordVar {
+                password_input: s,
+                ..Default::default()
+            }),
+            LegacyExecVariable::Path(s) => RuntimeArgument::Path(PathVar {
+                path_input: s,
+                ..Default::default()
+            }),
+            LegacyExecVariable::Command(s) => RuntimeArgument::Command(CommandVar {
+                command_input: s,
+                ..Default::default()
+            }),
+            LegacyExecVariable::Choice { name, choices } => RuntimeArgument::Choice(ChoiceVar {
+                choice: ChoiceVarBody {
+                    name: name.into(),
+                    choices,
+                    ..Default::default()
+                },
+            }),
         }
     }
 }
@@ -248,7 +287,7 @@ impl LegacyRawLauncher {
             add_actions: self.add_actions,
             variables: self
                 .variables
-                .map(|vars| vars.into_iter().map(ExecVariable::from).collect()),
+                .map(|vars| vars.into_iter().map(RuntimeArgument::from).collect()),
         };
 
         Ok(MigrationResult { launcher, logs })
@@ -321,7 +360,7 @@ mod tests {
             assert_eq!(vars.len(), 1);
             // Ensure the inner enum converted correctly
             match &vars[0] {
-                ExecVariable::String(s) => assert_eq!(s, "username"),
+                RuntimeArgument::String(s) => assert_eq!(s.string_input, "username"),
                 _ => panic!("Variable type mismatch!"),
             }
         } else {

@@ -1,5 +1,6 @@
 pub mod async_update;
 pub mod ease;
+pub mod input_rule;
 pub(super) mod pango;
 pub(super) mod render;
 pub(super) mod scoring;

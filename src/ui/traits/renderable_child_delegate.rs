@@ -9,8 +9,10 @@ use crate::{
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
     },
-    loader::utils::ExecVariable,
-    ui::{launcher::context_menu::ContextMenuAction, utils::selection::Selection},
+    ui::{
+        launcher::context_menu::ContextMenuAction, utils::selection::Selection,
+        variables::runtime_argument::RuntimeArgument,
+    },
     utils::errors::SherlockMessage,
 };
 
@@ -37,7 +39,7 @@ pub trait RenderableChildDelegate<'a> {
     fn search(&'a self) -> &'a str;
 
     /// The variable fields that should be shown next to the search input
-    fn vars(&self, cx: &mut App) -> Option<&[ExecVariable]>;
+    fn vars(&self, cx: &mut App) -> Option<&[RuntimeArgument]>;
 
     /// The context menu actions for this widget. (Gets called on the selected item only if:
     /// self.has_actions == true and the context menu gets opened)

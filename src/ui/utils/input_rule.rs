@@ -1,3 +1,7 @@
+use std::fmt::{Display, Write};
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
+
 /// A compact, zero-allocation character set covering U+0000–U+00FF (Latin-1).
 ///
 /// Backed by a 256-bit flat bitset across four `u64` words.
@@ -30,6 +34,23 @@ pub struct CharSet {
     w: [u64; 4],
 }
 
+impl<'de> Deserialize<'de> for CharSet {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt = String::deserialize(deserializer)?;
+        CharSet::parse(&opt).map_err(de::Error::custom)
+    }
+}
+
+impl Serialize for CharSet {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+#[allow(unused)]
 impl CharSet {
     #[inline(always)]
     pub const fn new() -> Self {
@@ -64,7 +85,9 @@ impl CharSet {
         let end = hi as usize;
         loop {
             self.w[cp / 64] |= 1u64 << (cp % 64);
-            if cp == end { break; }
+            if cp == end {
+                break;
+            }
             cp += 1;
         }
         self
@@ -195,16 +218,16 @@ impl CharSet {
             let &c = chars.get(*i)?;
             if c == '\\' {
                 let escaped = match chars.get(*i + 1) {
-                    Some(&'n')  => '\n',
-                    Some(&'r')  => '\r',
-                    Some(&'t')  => '\t',
+                    Some(&'n') => '\n',
+                    Some(&'r') => '\r',
+                    Some(&'t') => '\t',
                     Some(&'\\') => '\\',
-                    Some(&']')  => ']',
-                    Some(&'[')  => '[',
-                    Some(&'^')  => '^',
-                    Some(&'-')  => '-',
-                    Some(&c)    => c,    // unknown escape → literal
-                    None        => c,    // trailing backslash → literal backslash
+                    Some(&']') => ']',
+                    Some(&'[') => '[',
+                    Some(&'^') => '^',
+                    Some(&'-') => '-',
+                    Some(&c) => c, // unknown escape → literal
+                    None => c,     // trailing backslash → literal backslash
                 };
                 *i += 2;
                 Some(Ok(escaped))
@@ -261,6 +284,59 @@ impl CharSet {
     }
 }
 
+impl Display for CharSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut i = 0usize;
+
+        while i <= 0xFF {
+            if !self.contains_byte(i as u8) {
+                i += 1;
+                continue;
+            }
+
+            // Find the end of this contiguous run.
+            let start = i;
+            while i <= 0xFF && self.contains_byte(i as u8) {
+                i += 1;
+            }
+            let end = i - 1; // inclusive
+
+            let lo = char::from_u32(start as u32).unwrap();
+            let hi = char::from_u32(end as u32).unwrap();
+
+            match end - start {
+                0 => push_escaped(f, lo)?,
+                1 => {
+                    // Two chars — shorter to just emit them literally than `a-b`
+                    push_escaped(f, lo)?;
+                    push_escaped(f, hi)?;
+                }
+                _ => {
+                    push_escaped(f, lo)?;
+                    f.write_char('-')?;
+                    push_escaped(f, hi)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Push a char, escaping the ones that are meaningful inside `[...]`.
+fn push_escaped(out: &mut impl Write, c: char) -> std::fmt::Result {
+    match c {
+        '\\' | ']' | '[' | '^' | '-' => {
+            out.write_char('\\')?;
+            out.write_char(c)
+        }
+        '\n' => out.write_char('\n'),
+        '\r' => out.write_char('\r'),
+        '\t' => out.write_char('\t'),
+        c => out.write_char(c),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CharSetError {
     /// Codepoint is above U+00FF and cannot be stored in this set.
@@ -272,36 +348,41 @@ pub enum CharSetError {
 impl std::fmt::Display for CharSetError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CharSetError::OutOfRange(c) =>
-                write!(f, "codepoint U+{:04X} ('{c}') is above U+00FF", *c as u32),
-            CharSetError::ReversedRange(lo, hi) =>
-                write!(f, "reversed range '{lo}'-'{hi}' in pattern"),
+            CharSetError::OutOfRange(c) => {
+                write!(f, "codepoint U+{:04X} ('{c}') is above U+00FF", *c as u32)
+            }
+            CharSetError::ReversedRange(lo, hi) => {
+                write!(f, "reversed range '{lo}'-'{hi}' in pattern")
+            }
         }
     }
 }
 
 impl std::error::Error for CharSetError {}
 
-pub const ASCII_ALPHA: CharSet = CharSet::new()
-    .with_range(b'a', b'z')
-    .with_range(b'A', b'Z');
-
+#[allow(unused)]
+pub const ASCII_ALPHA: CharSet = CharSet::new().with_range(b'a', b'z').with_range(b'A', b'Z');
+#[allow(unused)]
 pub const ASCII_DIGIT: CharSet = CharSet::new().with_range(b'0', b'9');
+#[allow(unused)]
 pub const ASCII_ALNUM: CharSet = ASCII_ALPHA.union(ASCII_DIGIT);
-pub const ASCII_WORD:  CharSet = ASCII_ALNUM.with_byte(b'_');
-
+#[allow(unused)]
+pub const ASCII_WORD: CharSet = ASCII_ALNUM.with_byte(b'_');
+#[allow(unused)]
 pub const ASCII_WHITESPACE: CharSet = CharSet::new()
-    .with_byte(b' ').with_byte(b'\t').with_byte(b'\n').with_byte(b'\r');
-
+    .with_byte(b' ')
+    .with_byte(b'\t')
+    .with_byte(b'\n')
+    .with_byte(b'\r');
 /// All accented Latin letters in U+00C0–U+00FF (excludes × U+00D7 and ÷ U+00F7).
+#[allow(unused)]
 pub const LATIN_LETTERS: CharSet = ASCII_ALPHA
-    .with_range_char('À', 'Ö')   // U+00C0–U+00D6
-    .with_range_char('Ø', 'ö')   // U+00D8–U+00F6  (skips × U+00D7)
-    .with_range_char('ø', 'ÿ');  // U+00F8–U+00FF  (skips ÷ U+00F7)
-
+    .with_range_char('À', 'Ö') // U+00C0–U+00D6
+    .with_range_char('Ø', 'ö') // U+00D8–U+00F6  (skips × U+00D7)
+    .with_range_char('ø', 'ÿ'); // U+00F8–U+00FF  (skips ÷ U+00F7)
 /// Identifier chars: ASCII word chars + all common accented letters.
+#[allow(unused)]
 pub const UNICODE_WORD: CharSet = ASCII_WORD.union(LATIN_LETTERS);
-
 
 #[cfg(test)]
 mod tests {
@@ -351,10 +432,7 @@ mod tests {
 
     #[test]
     fn above_latin1_rejected() {
-        assert_eq!(
-            CharSet::parse("[a-zЯ]"),
-            Err(CharSetError::OutOfRange('Я'))
-        );
+        assert_eq!(CharSet::parse("[a-zЯ]"), Err(CharSetError::OutOfRange('Я')));
     }
 
     #[test]

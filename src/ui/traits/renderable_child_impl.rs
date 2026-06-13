@@ -9,10 +9,11 @@ use crate::{
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
     },
-    loader::utils::{ExecVariable, Priority},
+    loader::utils::Priority,
     ui::{
         launcher::{context_menu::ContextMenuAction, navigator::views::MoveDirection},
         utils::selection::Selection,
+        variables::runtime_argument::RuntimeArgument,
     },
 };
 
@@ -73,7 +74,7 @@ pub trait RenderableChildImpl<'a> {
     fn reset_inner(&self, _cx: &mut App) {}
     fn update_sync(&self, _query: SharedString, _launcher: &Arc<LauncherConfig>, _cx: &mut App) {}
     fn update_async<C: AppContext>(&self, _launcher: Arc<LauncherConfig>, _cx: &mut C) {}
-    fn vars(&self, _cx: &mut App) -> Option<&[ExecVariable]> {
+    fn vars(&self, _cx: &mut App) -> Option<&[RuntimeArgument]> {
         None
     }
     fn increment_count(&self) {}

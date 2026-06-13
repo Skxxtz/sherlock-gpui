@@ -10,13 +10,23 @@ use gpui::{
 
 use crate::{
     app::theme::ActiveTheme,
-    loader::utils::ExecVariable,
-    ui::{choice::Choice, search_bar::builder::TextInputBuilder, utils::timeout::TimeoutCaller},
+    ui::{
+        choice::Choice, search_bar::builder::TextInputBuilder, utils::timeout::TimeoutCaller,
+        variables::runtime_argument::RuntimeArgument,
+    },
     utils::paths::{get_nth_command_completion, get_nth_path_completion},
 };
 
 pub mod actions;
 mod builder;
+
+#[derive(Default)]
+pub enum ValidityState {
+    #[default]
+    Valid,
+    Invalid,
+    Warning,
+}
 
 // Implement event for mode change
 pub struct EmptyBackspace;
@@ -34,10 +44,12 @@ pub struct TextInput {
     pub last_layout: Option<ShapedLine>,
     pub last_bounds: Option<Bounds<Pixels>>,
     pub is_selecting: bool,
-    pub variable: Option<ExecVariable>,
+    pub variable: Option<RuntimeArgument>,
     pub ghost_text: Option<String>,
     pub _sub: Option<Subscription>,
     pub cursor_timer: TimeoutCaller<bool>,
+
+    pub validity: ValidityState,
 }
 
 impl EntityInputHandler for TextInput {
@@ -86,6 +98,17 @@ impl EntityInputHandler for TextInput {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        // Handle rulesets
+        if let Some(char_set) = self.variable.as_ref().and_then(|v| v.validation())
+            && new_text.chars().all(|c| char_set.contains(c))
+        {
+            self.validity = ValidityState::Invalid;
+            cx.notify();
+            return;
+        } else if !matches!(self.validity, ValidityState::Valid) {
+            self.validity = ValidityState::Valid;
+        }
+
         let range = range_utf16
             .as_ref()
             .map(|range_utf16| self.range_from_utf16(range_utf16))
@@ -219,7 +242,7 @@ impl Element for TextElement {
     ) -> (LayoutId, Self::RequestLayoutState) {
         let input = self.input.read(cx);
         let content: SharedString = match &input.variable {
-            Some(ExecVariable::Password(_)) => "•".repeat(input.content.chars().count()).into(),
+            Some(RuntimeArgument::Password(_)) => "•".repeat(input.content.chars().count()).into(),
             _ => input.content.clone(),
         };
         let style = window.text_style();
@@ -321,7 +344,7 @@ impl Element for TextElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
         // handle password fields
-        if let Some(ExecVariable::Password(_)) = &input.variable {
+        if let Some(RuntimeArgument::Password(_)) = &input.variable {
             cursor = input.content[..cursor].chars().count() * "•".len();
 
             let start = input.content[..selected_range.start].chars().count() * "•".len();
@@ -460,7 +483,11 @@ impl Render for TextInput {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
-            .text_color(theme.secondary_text)
+            .text_color(match self.validity {
+                ValidityState::Invalid => theme.color_err,
+                ValidityState::Warning => theme.color_warn,
+                ValidityState::Valid => theme.secondary_text,
+            })
             .w_auto()
             .child(if self.variable.is_some() {
                 div()
@@ -479,9 +506,13 @@ impl Render for TextInput {
                     .rounded_md()
                     .text_color(theme.tertiary_text)
                     .when(self.focus_handle.is_focused(win), |this| {
-                        this.border_color(theme.border_selected)
-                            .bg(theme.bg_muted)
-                            .text_color(theme.secondary_text)
+                        this.border_color(match self.validity {
+                            ValidityState::Invalid => theme.color_err,
+                            ValidityState::Warning => theme.color_warn,
+                            ValidityState::Valid => theme.border_selected,
+                        })
+                        .bg(theme.bg_muted)
+                        .text_color(theme.secondary_text)
                     })
                     .font_family(theme.font_family.clone())
                     .child(TextElement::new(cx))
@@ -514,28 +545,20 @@ impl TextInput {
     }
     pub(super) fn refresh_ghost_text(&mut self) {
         self.ghost_text = match &mut self.variable {
-            Some(ExecVariable::Path(inner)) => {
+            Some(RuntimeArgument::Path(inner)) => {
                 get_nth_path_completion(self.content.as_str(), inner.index, false)
             }
-            Some(ExecVariable::Command(inner)) => {
-                let Some((i, last)) = self
-                    .content
-                    .trim()
-                    .split(' ')
-                    .enumerate()
-                    .fold(None::<(usize, &str)>, |_, x| Some(x))
-                else {
-                    return;
-                };
-
+            Some(RuntimeArgument::Command(inner))
+                if let Some(last) = self.content.trim().split(' ').next_back() =>
+            {
                 match get_nth_command_completion(last, inner.index) {
                     Some(cmd) => {
-                        inner.is_scoped.insert(i, false);
+                        inner.is_scoped = false;
                         Some(cmd)
                     }
                     None => {
                         let r = get_nth_path_completion(last, inner.index, true);
-                        inner.is_scoped.insert(i, r.is_some());
+                        inner.is_scoped = r.is_some();
                         r
                     }
                 }

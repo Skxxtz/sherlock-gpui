@@ -11,8 +11,8 @@ use md_rs::{
 
 use crate::{
     docs::book::{BookEntry, TopLevelEntry},
-    launcher::LauncherConfig,
-    loader::utils::ExecVariable,
+    launcher::{Launcher, LauncherConfig},
+    ui::variables::runtime_argument::RuntimeArgument,
 };
 
 pub struct Configuration;
@@ -38,7 +38,7 @@ impl TopLevelEntry for Configuration {
             BookEntry::of::<LauncherConfig>()
                 .with_title("Launchers")
                 .with_file("launchers.md"),
-            BookEntry::of::<ExecVariable>()
+            BookEntry::of::<RuntimeArgument>()
                 .with_title("Exec Variables")
                 .with_file("exec-variables.md"),
         ]

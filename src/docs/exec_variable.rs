@@ -13,7 +13,7 @@ use md_rs::{
     list, list_iter, md, p,
 };
 
-use crate::{docs::Documentation, loader::utils::ExecVariable};
+use crate::{docs::Documentation, ui::variables::runtime_argument::RuntimeArgument};
 
 struct ExecVariableDoc {
     title: &'static str,
@@ -94,7 +94,7 @@ const EXEC_VARIABLE_DOCS: &[ExecVariableDoc] = &[
     },
 ];
 
-impl Documentation for ExecVariable {
+impl Documentation for RuntimeArgument {
     type Docs = Container;
     fn docs() -> Self::Docs {
         md().child(h1("Exec Variables"))

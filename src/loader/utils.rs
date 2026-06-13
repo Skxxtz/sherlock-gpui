@@ -11,7 +11,7 @@ use crate::{
     launcher::{LauncherConfig, utils::binds::BindSerde, variant_type::LauncherVariant},
     loader::{IconType, resolve_icon_path},
     sherlock_msg,
-    ui::choice::ChoiceOption,
+    ui::variables::runtime_argument::RuntimeArgument,
     utils::{
         cache::BinaryCache,
         config::HomeType,
@@ -183,75 +183,6 @@ impl From<ApplicationActionSerde> for ApplicationAction {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum ExecVariable {
-    #[serde(rename = "string_input")]
-    String(SharedString),
-    #[serde(rename = "password_input")]
-    Password(SharedString),
-    #[serde(rename = "path_input")]
-    Path(PathData),
-    #[serde(rename = "command_input")]
-    Command(CommandData),
-    #[serde(rename = "choice")]
-    Choice {
-        name: SharedString,
-        choices: Arc<[ChoiceOption]>,
-    },
-}
-
-/// A path placeholder that deserializes from a plain string.
-/// The `index` field tracks cursor position in the UI and is not persisted.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(from = "SharedString")]
-pub struct PathData {
-    pub path: SharedString,
-    #[serde(skip)]
-    pub index: usize,
-}
-
-// Implement the conversion logic
-impl From<SharedString> for PathData {
-    fn from(path: SharedString) -> Self {
-        Self { path, index: 0 }
-    }
-}
-
-/// A command placeholder that deserializes from a plain string.
-/// The `index` field tracks cursor position in the UI and is not persisted.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(from = "SharedString")]
-pub struct CommandData {
-    pub command: SharedString,
-    #[serde(skip)]
-    pub index: usize,
-    #[serde(skip)]
-    pub is_scoped: HashMap<usize, bool>,
-}
-
-// Implement the conversion logic
-impl From<SharedString> for CommandData {
-    fn from(command: SharedString) -> Self {
-        Self {
-            command,
-            index: 0,
-            is_scoped: HashMap::with_capacity(5),
-        }
-    }
-}
-
-impl ExecVariable {
-    pub fn placeholder(&self) -> SharedString {
-        match self {
-            Self::String(s) => s.clone(),
-            Self::Path(p) => p.path.clone(),
-            Self::Password(s) => s.clone(),
-            Self::Command(c) => c.command.clone(),
-            Self::Choice { name, .. } => name.clone(),
-        }
-    }
-}
-
 fn default_true() -> bool {
     true
 }
@@ -313,7 +244,7 @@ pub struct RawLauncher {
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub variables: Option<Vec<ExecVariable>>,
+    pub variables: Option<Vec<RuntimeArgument>>,
 }
 
 fn is_default<T: Default + PartialEq>(t: &T) -> bool {

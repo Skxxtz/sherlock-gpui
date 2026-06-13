@@ -12,9 +12,9 @@ use crate::{
     launcher::{LauncherConfig, variant_type::LauncherType},
     loader::{
         IconType, resolve_icon_path,
-        utils::{ApplicationAction, ExecVariable, PriorityGuard, construct_search},
+        utils::{ApplicationAction, PriorityGuard, construct_search},
     },
-    ui::launcher::context_menu::ContextMenuAction,
+    ui::{launcher::context_menu::ContextMenuAction, variables::runtime_argument::RuntimeArgument},
     utils::config::SherlockAlias,
 };
 
@@ -34,7 +34,7 @@ pub struct AppData {
     pub actions: Arc<[Arc<ContextMenuAction>]>,
     #[serde(default)]
     #[serde(rename = "variables")]
-    pub vars: Vec<ExecVariable>,
+    pub vars: Vec<RuntimeArgument>,
     #[serde(default)]
     pub terminal: bool,
 }

@@ -2,8 +2,9 @@ use serde::Deserialize;
 use std::{collections::HashMap, fs::File, io::ErrorKind};
 
 use crate::{
-    loader::utils::{ApplicationAction, ExecVariable},
+    loader::utils::ApplicationAction,
     sherlock_msg,
+    ui::variables::runtime_argument::RuntimeArgument,
     utils::errors::{
         SherlockMessage,
         types::{FileAction, SherlockErrorType},
@@ -18,7 +19,7 @@ pub struct SherlockAlias {
     pub keywords: Option<String>,
     pub actions: Option<Vec<ApplicationAction>>,
     pub add_actions: Option<Vec<ApplicationAction>>,
-    pub variables: Option<Vec<ExecVariable>>,
+    pub variables: Option<Vec<RuntimeArgument>>,
 }
 
 #[derive(Clone, Copy, Debug)]

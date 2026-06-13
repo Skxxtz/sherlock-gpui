@@ -13,10 +13,11 @@ use crate::{
         LauncherConfig, timer_launcher::TimerLauncherFunctions, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
-    loader::utils::{ExecVariable, Priority},
+    loader::utils::Priority,
     ui::{
         launcher::context_menu::{ContextMenuAction, DynamicFunctionAction},
         utils::{search::SherlockSearch, timeout::Timeout},
+        variables::runtime_argument::RuntimeArgument,
         widgets::{
             RenderableChildImpl, Selection,
             timer::{
@@ -41,12 +42,14 @@ struct TimerEntity {
 #[derive(Clone, Hideable)]
 pub struct TimerChild {
     update_entity: Entity<TimerEntity>,
-    variable: [ExecVariable; 1],
+    variable: [RuntimeArgument; 1],
 }
 impl TimerChild {
     pub fn new(cx: &mut App) -> Self {
         let update_entity = cx.new(|_| TimerEntity::default());
-        let variable = [ExecVariable::Command(SharedString::from("command").into())];
+        let variable = [RuntimeArgument::Command(
+            SharedString::from("command").into(),
+        )];
         Self {
             update_entity,
             variable,
@@ -180,7 +183,7 @@ impl<'a> RenderableChildImpl<'a> for TimerChild {
         Some(false)
     }
     #[inline(always)]
-    fn vars(&self, cx: &mut App) -> Option<&[crate::loader::utils::ExecVariable]> {
+    fn vars(&self, cx: &mut App) -> Option<&[RuntimeArgument]> {
         if let Some(Intent::Timer { .. }) = &self.update_entity.read(cx).intent {
             return Some(&self.variable);
         }

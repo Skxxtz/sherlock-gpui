@@ -18,7 +18,7 @@ use crate::{
         utils::exec_mode::ExecMode,
         variant_type::{LauncherType, QuickActionCapabilities},
     },
-    loader::utils::{CounterReader, ExecVariable},
+    loader::utils::CounterReader,
     sherlock_msg,
     ui::{
         choice::Choice,
@@ -32,6 +32,7 @@ use crate::{
         },
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
         traits::RenderableChildDelegate,
+        variables::runtime_argument::RuntimeArgument,
     },
     utils::{
         command_launch::spawn_detached,
@@ -605,18 +606,17 @@ impl LauncherView {
                     let guard = ent.read(cx);
                     let mut content = guard.content.to_string();
 
-                    if matches!(
-                        &guard.variable,
-                        Some(ExecVariable::Path(_)) | Some(ExecVariable::Command(_))
-                    ) {
+                    // Only transform if it's a PathInput
+                    let needs_expansion = matches!(&guard.variable, Some(RuntimeArgument::Path(_)))
+                        || matches!(&guard.variable, Some(RuntimeArgument::Command(inner)) if inner.is_scoped);
+
+                    if needs_expansion {
                         let home = std::env::var_os("HOME").map(PathBuf::from);
                         let home = home.as_deref().unwrap_or(Path::new("."));
 
-                        let should_expand = |i: usize| match &guard.variable {
-                            Some(ExecVariable::Path(_)) => true,
-                            Some(ExecVariable::Command(inner)) => {
-                                inner.is_scoped.get(&i).is_some_and(|b| *b)
-                            }
+                        let should_expand = || match &guard.variable {
+                            Some(RuntimeArgument::Path(_)) => true,
+                            Some(RuntimeArgument::Command(inner)) => inner.is_scoped,
                             _ => false,
                         };
 
@@ -627,7 +627,7 @@ impl LauncherView {
                                 out.push(' ');
                             }
 
-                            if !should_expand(i) {
+                            if !should_expand() {
                                 out.push_str(part);
                                 continue;
                             }
@@ -757,7 +757,7 @@ impl LauncherView {
             return;
         };
 
-        let needed_vars: Option<Vec<ExecVariable>> = {
+        let needed_vars: Option<Vec<RuntimeArgument>> = {
             self.navigation.with_model_mut(cx, |mdl, cx| {
                 let data_guard = mdl.data().read(cx).clone();
                 data_guard
@@ -772,15 +772,13 @@ impl LauncherView {
                 .into_iter()
                 .map(|var| -> VariableInput {
                     match var {
-                        ExecVariable::Choice { name, choices } => {
-                            VariableInput::Choice(cx.new(|cx| {
-                                Choice::builder()
-                                    .scope("variable")
-                                    .placeholder(name)
-                                    .options(choices.to_vec())
-                                    .build(cx)
-                            }))
-                        }
+                        RuntimeArgument::Choice(c) => VariableInput::Choice(cx.new(|cx| {
+                            Choice::builder()
+                                .scope("variable")
+                                .placeholder(c.choice.name)
+                                .options(c.choice.choices.to_vec())
+                                .build(cx)
+                        })),
                         _ => VariableInput::Text(cx.new(|cx| {
                             TextInput::builder()
                                 .scope("variable")

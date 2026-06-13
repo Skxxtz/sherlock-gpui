@@ -12,6 +12,7 @@ use crate::{
     ui::{
         launcher::context_menu::ContextMenuAction,
         utils::{render::substitute, selection::Selection},
+        variables::runtime_argument::RuntimeArgument,
         widgets::{RenderableChildImpl, app::sidebar::AppDataSidebar},
     },
     utils::config::ConfigGuard,
@@ -114,7 +115,7 @@ impl<'a> RenderableChildImpl<'a> for AppData {
         !self.actions.is_empty()
     }
     #[inline(always)]
-    fn vars(&self, _cx: &mut App) -> Option<&[crate::loader::utils::ExecVariable]> {
+    fn vars(&self, _cx: &mut App) -> Option<&[RuntimeArgument]> {
         Some(&self.vars) // Works for Vec or SmallVec
     }
     #[inline(always)]

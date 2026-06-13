@@ -10,9 +10,9 @@ use crate::{
     launcher::{LauncherConfig, app_launcher::app_data::AppData},
     loader::{
         resolve_icon_path,
-        utils::{ApplicationAction, ExecVariable, PriorityGuard},
+        utils::{ApplicationAction, PriorityGuard},
     },
-    ui::launcher::context_menu::ContextMenuAction,
+    ui::{launcher::context_menu::ContextMenuAction, variables::runtime_argument::RuntimeArgument},
 };
 
 /// Deserializes a map of `{ "App Name": AppData }` where the key becomes
@@ -50,7 +50,7 @@ where
                 pub actions: Vec<AppActionSerde>,
                 #[serde(default)]
                 #[serde(rename = "variables")]
-                pub vars: Vec<ExecVariable>,
+                pub vars: Vec<RuntimeArgument>,
                 #[serde(default)]
                 pub terminal: bool,
             }

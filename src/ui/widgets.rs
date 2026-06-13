@@ -27,11 +27,12 @@ use crate::{
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::{InnerFunction, LauncherType, LauncherVariant},
     },
-    loader::utils::{ExecVariable, Priority},
+    loader::utils::Priority,
     ui::{
         launcher::context_menu::{ContextMenuAction, quick_actions::Hideable},
         traits::{RenderableChildDelegate, RenderableChildImpl},
         utils::selection::Selection,
+        variables::runtime_argument::RuntimeArgument,
         widgets::{
             audio::MusicPlayerWidget, clipboard::ClipWidget, dmenu::DmenuData, event::EventWidget,
             message::MessageChild, plugin::PluginWidget, process::ProcessData, script::ScriptData,
@@ -120,7 +121,7 @@ macro_rules! renderable_enum {
                 }
             }
 
-            fn vars(&self, cx: &mut App) -> Option<&[ExecVariable]> {
+            fn vars(&self, cx: &mut App) -> Option<&[RuntimeArgument]> {
                 match self {
                     $(Self::$variant {inner, ..} => inner.vars(cx)),*
                 }
