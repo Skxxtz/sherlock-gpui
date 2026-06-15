@@ -116,7 +116,15 @@ impl LauncherView {
                         .when(!is_search_mode, |this| {
                             this.when_some(
                                 icon_path.as_deref().and_then(resolve_icon_path),
-                                |this, icon| this.child(img(icon).size(px(icon_size))),
+                                |this, icon| {
+                                    this.child(if let Some(svg) = icon.svg() {
+                                        svg.size(px(icon_size))
+                                            .text_color(theme.secondary_text)
+                                            .into_any_element()
+                                    } else {
+                                        img(icon).size(px(icon_size)).into_any_element()
+                                    })
+                                },
                             )
                         })
                         .when(is_search_mode, |this| {
