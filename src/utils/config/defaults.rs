@@ -179,7 +179,7 @@ impl AppearanceDefaults {
         22
     }
     pub fn search_icon() -> SharedString {
-        SharedString::from("system-search-symbolic")
+        SharedString::from("sherlock-search")
     }
     pub fn search_icon_back() -> SharedString {
         SharedString::from("sherlock-back")
