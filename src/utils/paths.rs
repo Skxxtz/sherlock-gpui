@@ -39,6 +39,14 @@ pub fn get_config_dir() -> Result<PathBuf, crate::utils::errors::SherlockMessage
     Ok(dir)
 }
 
+/// Returns the config directory (usually ~/.config/)
+pub fn get_config_dir_raw() -> Result<PathBuf, crate::utils::errors::SherlockMessage> {
+    let xdg_dirs = xdg::BaseDirectories::new();
+    xdg_dirs
+        .get_config_home()
+        .ok_or_else(|| sherlock_msg!(Warning, SherlockErrorType::EnvError("$HOME".into()), ""))
+}
+
 /// Returns the data directory.
 ///
 /// It first checks for the legacy `~/.sherlock` directory. If it exists, it returns that path.

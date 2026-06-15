@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use crate::loader::icon::ICON_SIZE;
-use crate::utils::paths::get_config_dir;
+use crate::utils::paths::get_config_dir_raw;
 
 static ICON_THEME: OnceLock<Option<String>> = OnceLock::new();
 
@@ -39,19 +39,19 @@ fn parse_ini_value(content: &str, section: &str, key: &str) -> Option<String> {
 }
 
 fn read_kde_icon_theme() -> Option<String> {
-    let config_path = get_config_dir().ok()?.join("kdeglobals");
+    let config_path = get_config_dir_raw().ok()?.join("kdeglobals");
     let content = fs::read_to_string(config_path).ok()?;
     parse_ini_value(&content, "[Icons]", "Theme")
 }
 
 fn read_gtk3_icon_theme() -> Option<String> {
-    let config_path = get_config_dir().ok()?.join("gtk-3.0/settings.ini");
+    let config_path = get_config_dir_raw().ok()?.join("gtk-3.0/settings.ini");
     let content = fs::read_to_string(config_path).ok()?;
     parse_ini_value(&content, "[Settings]", "gtk-icon-theme-name")
 }
 
 fn read_gtk4_icon_theme() -> Option<String> {
-    let config_path = get_config_dir().ok()?.join("gtk-4.0/settings.ini");
+    let config_path = get_config_dir_raw().ok()?.join("gtk-4.0/settings.ini");
     let content = fs::read_to_string(config_path).ok()?;
     parse_ini_value(&content, "[Settings]", "gtk-icon-theme-name")
 }
