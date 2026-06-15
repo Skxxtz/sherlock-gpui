@@ -87,6 +87,18 @@ pub const FLAGS: &[FlagSpec] = &[
         },
     },
     FlagSpec {
+        long: "clear-cache",
+        short: None,
+        section: FlagSection::Basics,
+        help: "Clear Sherlock's cache.",
+        parse: |_args, _iter, _flags, startup| {
+            if startup.is_none() {
+                *startup = Some(DebugAction::ClearCache.into());
+            }
+            Ok(())
+        },
+    },
+    FlagSpec {
         long: "--generate-docs",
         short: None,
         section: FlagSection::None,

@@ -8,6 +8,7 @@ use super::{
 };
 use crate::{
     docs::SherlockDocumentation,
+    launcher::debug_launcher::DebugFunctions,
     utils::config::{SherlockFlags, repair_config},
 };
 
@@ -38,6 +39,11 @@ impl ParsedArgs {
             DebugAction::Version => print_version(),
             DebugAction::GenerateDocs => SherlockDocumentation::generate(),
             DebugAction::Repair => repair_config(&mut self.flags),
+            DebugAction::ClearCache => {
+                if let Err(e) = DebugFunctions::clear_cache() {
+                    eprintln!("{:?}", e);
+                }
+            }
             DebugAction::Init { path, extension } => init_config(&path, &extension),
         }
 

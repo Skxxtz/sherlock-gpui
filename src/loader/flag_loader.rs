@@ -15,6 +15,7 @@ pub enum DebugAction {
     Version,
     GenerateDocs,
     Repair,
+    ClearCache,
     Init { path: PathBuf, extension: String },
 }
 

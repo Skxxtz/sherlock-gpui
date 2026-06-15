@@ -126,7 +126,7 @@ impl LauncherProvider for DebugLauncher {
 }
 
 impl DebugFunctions {
-    fn clear_cache() -> Result<(), SherlockMessage> {
+    pub fn clear_cache() -> Result<(), SherlockMessage> {
         let cache_dir = paths::get_cache_dir()?;
         let app_cache = ConfigGuard::read().map(|c| c.caching.cache.clone())?;
 
