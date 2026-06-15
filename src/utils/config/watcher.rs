@@ -49,9 +49,17 @@ impl ConfigWatcher {
             )
         })?;
 
-        let files = ConfigGuard::read()
-            .map(|c| c.files.clone())
-            .unwrap_or_default();
+        let (config_file, fallback_file, alias_file, ignore_file, actions_file, cache_file) =
+            ConfigGuard::read().map(|c| {
+                (
+                    c.files.config.clone(),
+                    c.files.fallback.clone(),
+                    c.files.alias.clone(),
+                    c.files.ignore.clone(),
+                    c.files.actions.clone(),
+                    c.caching.cache.clone(),
+                )
+            })?;
 
         // collect out-of-date entries
         entries
@@ -72,11 +80,12 @@ impl ConfigWatcher {
             .map(|entry| {
                 let path_buf = entry.path().to_path_buf();
                 match path_buf {
-                    _ if path_buf == files.config.as_ref() => ConfigFileChange::Config,
-                    _ if path_buf == files.fallback.as_ref() => ConfigFileChange::Fallback,
-                    _ if path_buf == files.alias.as_ref() => ConfigFileChange::Alias,
-                    _ if path_buf == files.ignore.as_ref() => ConfigFileChange::Ignore,
-                    _ if path_buf == files.actions.as_ref() => ConfigFileChange::Actions,
+                    _ if path_buf == config_file.as_ref() => ConfigFileChange::Config,
+                    _ if path_buf == fallback_file.as_ref() => ConfigFileChange::Fallback,
+                    _ if path_buf == alias_file.as_ref() => ConfigFileChange::Alias,
+                    _ if path_buf == ignore_file.as_ref() => ConfigFileChange::Ignore,
+                    _ if path_buf == actions_file.as_ref() => ConfigFileChange::Actions,
+                    _ if path_buf == cache_file.as_ref() => ConfigFileChange::Cache,
                     _ => ConfigFileChange::Other,
                 }
             })
@@ -98,7 +107,8 @@ bitflags::bitflags! {
         const Config   = 1 << 3;
         const Ignore   = 1 << 4;
         const Fallback = 1 << 5;
-        const Other    = 1 << 6;
+        const Cache    = 1 << 6;
+        const Other    = 1 << 7;
     }
 }
 
@@ -118,6 +128,10 @@ impl ConfigFileChange {
     #[inline(always)]
     pub fn apps(&self) -> bool {
         self.contains(ConfigFileChange::Apps)
+    }
+    #[inline(always)]
+    pub fn cache(&self) -> bool {
+        self.contains(ConfigFileChange::Cache)
     }
     #[inline(always)]
     pub fn launchers(&self) -> bool {
