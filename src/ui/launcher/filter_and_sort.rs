@@ -166,12 +166,6 @@ impl LauncherView {
                 });
             }
             ModelKind::Standard { data } => {
-                if sync {
-                    self.filter_update_sync(data, query, force, cx);
-                } else {
-                    self.filter_update_async(data, query, force, cx);
-                }
-
                 // drop active tasks
                 self.navigation.with_model_mut(cx, |mdl, _| {
                     if let Model::Standard {
@@ -182,6 +176,12 @@ impl LauncherView {
                         *deferred_render_task = None;
                     }
                 });
+
+                if sync {
+                    self.filter_update_sync(data, query, force, cx);
+                } else {
+                    self.filter_update_async(data, query, force, cx);
+                }
             }
         }
     }
