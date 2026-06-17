@@ -262,9 +262,9 @@ fn open_window(win: &Option<WindowHandle<LauncherView>>, cx: &mut AsyncApp) {
     if let Some(current_window) = win {
         // actually open the window
         let _ = current_window.update(cx, |view, window, cx| {
+            view.filter_and_sort_sync(cx);
             let focus = view.text_input.focus_handle(cx);
             window.on_next_frame(move |window, cx| window.focus(&focus, cx));
-            view.filter_and_sort(cx);
             cx.activate(true);
         });
     }

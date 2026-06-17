@@ -45,10 +45,14 @@ impl Render for Backdrop {
         if let Some(animation_duration) = self.animation_duration {
             div()
                 .size_full()
-                .with_animation("backdrop-fade", Animation::new(Duration::from_millis(animation_duration)), {
-                    let alpha = self.alpha;
-                    move |this, t| this.bg(black().alpha(alpha * t))
-                })
+                .with_animation(
+                    "backdrop-fade",
+                    Animation::new(Duration::from_millis(animation_duration)),
+                    {
+                        let alpha = self.alpha;
+                        move |this, t| this.bg(black().alpha(alpha * t))
+                    },
+                )
                 .into_any_element()
         } else {
             div()
