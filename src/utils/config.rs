@@ -234,7 +234,9 @@ pub struct ConfigBackdrop {
     #[serde(default)]
     pub enable: bool,
     #[serde(default = "OtherDefaults::backdrop_opacity")]
-    pub opacity: f64,
+    pub opacity: f32,
+    #[serde(default)]
+    pub animation_duration: Option<u64>,
     #[serde(default = "OtherDefaults::backdrop_edge")]
     pub edge: String,
 }

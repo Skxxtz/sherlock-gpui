@@ -619,6 +619,11 @@ impl LauncherView {
         // Close window
         win.remove_window();
 
+        // Close backdrop
+        if let Some(backdrop) = self.backdrop {
+            let _ = backdrop.update(cx, |_, win, _| win.remove_window());
+        }
+
         // Propagate state change
         reset_generation();
         cx.notify();

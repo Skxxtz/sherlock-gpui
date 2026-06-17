@@ -245,7 +245,7 @@ impl OtherDefaults {
     pub fn five() -> u8 {
         5
     }
-    pub fn backdrop_opacity() -> f64 {
+    pub fn backdrop_opacity() -> f32 {
         0.6
     }
     pub fn backdrop_edge() -> String {

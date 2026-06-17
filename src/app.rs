@@ -20,6 +20,7 @@ use crate::{
     app::theme::ActiveTheme,
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
+        backdrop::Backdrop,
         launcher::{
             LauncherMode, LauncherView,
             views::{NavigationStack, NavigationViewType},
@@ -110,7 +111,18 @@ fn spawn_launcher(
     initial_messages: Vec<SherlockMessage>,
     response_socket: Option<Arc<UnixStream>>,
 ) -> WindowHandle<LauncherView> {
-    cx.open_window(get_window_options(), |_, cx| {
+    // Create backdrop if enabled
+    let backdrop = ConfigGuard::read()
+        .ok()
+        .filter(|c| c.backdrop.enable)
+        .and_then(|c| {
+            cx.open_window(Backdrop::window_options(), |_, cx| {
+                cx.new(|_| Backdrop::new(c.backdrop.opacity, c.backdrop.animation_duration))
+            })
+            .ok()
+        });
+
+    cx.open_window(get_window_options(), move |_, cx| {
         let text_input = cx.new(|cx| TextInput::builder().placeholder("Search").build(cx));
 
         cx.new(|cx| {
@@ -181,6 +193,7 @@ fn spawn_launcher(
                 limit_cache: Arc::new(HashMap::new()),
                 config_initialized: ConfigGuard::is_initialized(),
                 response_socket,
+                backdrop,
             }
         })
     })

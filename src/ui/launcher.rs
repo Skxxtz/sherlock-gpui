@@ -1,6 +1,7 @@
 use crate::app::{RenderableChildEntity, RenderableChildWeak};
 use crate::launcher::{Launcher, LauncherId, LauncherValues};
 use crate::tokio_utils::SizedMessageObj;
+use crate::ui::backdrop::Backdrop;
 use crate::ui::choice::Choice;
 use crate::ui::traits::RenderableChildDelegate;
 use crate::ui::utils::scoring::SortKey;
@@ -13,9 +14,9 @@ use crate::ui::{
 use crate::utils::config::HomeType;
 use crate::utils::networking::ServerResponse;
 use crate::utils::sized_message_sync::SizedMessage;
-use gpui::WeakEntity;
 use gpui::{AnyElement, AsyncApp, IntoElement};
 use gpui::{App, Context, Entity, FocusHandle, Focusable, SharedString, Subscription};
+use gpui::{WeakEntity, WindowHandle};
 use std::collections::HashMap;
 use std::os::unix::net::UnixStream;
 use std::sync::Arc;
@@ -83,6 +84,8 @@ pub struct LauncherView {
 
     // Responses
     pub response_socket: Option<Arc<UnixStream>>,
+
+    pub backdrop: Option<WindowHandle<Backdrop>>,
 }
 
 impl Focusable for LauncherView {

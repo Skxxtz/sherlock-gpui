@@ -110,6 +110,7 @@ impl Default for ConfigBackdrop {
         Self {
             enable: false,
             opacity: OtherDefaults::backdrop_opacity(),
+            animation_duration: None,
             edge: OtherDefaults::backdrop_edge(),
         }
     }

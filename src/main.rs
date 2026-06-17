@@ -23,6 +23,7 @@ mod prelude;
 mod tokio_utils;
 mod ui;
 mod utils;
+mod wayland;
 
 /// Holds the icon cache, containing all known icon names and their file locations.
 static ICONS: OnceCell<RwLock<CustomIconTheme>> = OnceCell::new();

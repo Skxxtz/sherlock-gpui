@@ -1,3 +1,4 @@
+pub mod backdrop;
 pub mod choice;
 pub mod launcher;
 pub mod model;
