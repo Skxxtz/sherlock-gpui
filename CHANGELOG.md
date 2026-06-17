@@ -40,12 +40,16 @@ run `git log main..dev` for all changes
 
 ## [Unreleased]
 
-* as of **a5bb592f4432fa07e1ec4a1a295073ee9a324a72**
+* as of **22a08f87f26b6b0c9cac4277387b8f70a1a9d83e**
 
 ## [0.2.3-dev] - 03.06.26
 
 ### Added
 
+* **Backdrop:** Added backdrop, including new `animation_duration` key. If left
+  empty, will not animate. (`e2393b2e`)
+* **MD-RS:** Added badge, image, and div components (`051f45e2`, `051f45e2`,
+  `eda442fd`, `fedf0a56`)
 * **Search Results:** Added limiting functionality to restrict the number of
   search results displayed per launcher (`e963bacb`)
 * **Command Completion:** Added support for fetching executable files located
@@ -69,6 +73,18 @@ run `git log main..dev` for all changes
 
 ### improvements
 
+* **Flags:** Added `clear_cache` flag to remove cache. (`b0761f84`)
+* **Icons:** Added new fallback icon for search icon (`sherlock-search`). (`ac2024a5`)
+* **Config Watcher:** Config watcher now also alerts on cache changes. (`1a989d87`)
+* **Variables:** Runtime variables can now be nested. (`13632119`)
+* **Warnings & Errors:** Improved UI design for warnings and errors. (`de88aa04`)
+* **NixOS:**
+  * Added `cachix`. (`f6041508`)
+  * Update hashes. (`20d00580`)
+* **Context Menu Actions:** Limit context menu width to 250px. (`889054f6`)
+* **Documentation:** Added README.md and CONTRIBUTING.md auto-gen. (`9b639fde`, `d5bfeccd`)
+* **MD-RS Crate:** Improved formatting of md-rs create for documentation auto-generation and
+  refactors. (`0a83ea14`, `5bbfa568`, `7a8b0acb`, `36df4464`, `d5bfeccd`)
 * **Changelog:** Configured changelog generation to completely ignore
   unreleased changes (`a5bb592f`)
 * **Client-Server:** Added a server-side `FIN` window-close message, a
@@ -90,6 +106,7 @@ run `git log main..dev` for all changes
 
 ### Removed
 
+* **Flags:** Removed `sherlock docs` flag – only ever used in debug. (`c60bd4f1`)
 * **Cargo Config:** Removed the default target entry from the internal Cargo
   `config.toml` setup (`60a4b49f`)
 * **Icon Cache:** Deleted the obsolete `clear icon cache` utility function
@@ -97,6 +114,26 @@ run `git log main..dev` for all changes
 
 ### Fixed
 
+* **Theme:** Fixed incorrect path to be used in gtk-theme parsing. (`4ff02c72`)
+* **Search Icon:** Fixed symbolic search icons not receiving correct color override. (`95064762`)
+* **Hot-Loading:**
+  * NixOs: Fixed hot-loading of new applications not working on NixOS.
+      (`9e23d618`)
+  * Alias: Fixed alias hot-loading. (`3a3b5c9e`)
+  * Ignore: Fixed sherlockignore hot-loading. (`901c9e88`)
+* **Startup:**
+  * Fixed long startup delay after first Sherlock client call. (`c99f927e`)
+  * Removed flicker due to async filtering, especially noticeable on
+      `Backdrop=enabled`. (`22a08f87`)
+* **Context Menu Actions:**
+  * Fixed `ContextMenuActions` using `get_content` even if valid `exec` is
+      provided. (`842da39d`)
+  * Fixed launcher view not updating when context menus update (for example
+      in script launcher when it supplies new context menu actions).
+      (`842da39d`)
+* **Release Bot:** Release flags were only running when there was an active
+  Sherlock server instance running. Now also works with no server running.
+  (`dba461ae`, `83212d78`)
 * **Variable Input:** Fixed fields to correctly reset focus back to the search
   bar immediately following execution (`2d352980`)
 * **Icons & Assets:** Resolved rendering, asset caching, and color assignment
