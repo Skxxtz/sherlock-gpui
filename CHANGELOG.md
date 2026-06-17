@@ -42,36 +42,14 @@ run `git log main..dev` for all changes
 
 * as of **22a08f87f26b6b0c9cac4277387b8f70a1a9d83e**
 
-## [0.2.3-dev] - 03.06.26
-
 ### Added
 
 * **Backdrop:** Added backdrop, including new `animation_duration` key. If left
   empty, will not animate. (`e2393b2e`)
 * **MD-RS:** Added badge, image, and div components (`051f45e2`, `051f45e2`,
   `eda442fd`, `fedf0a56`)
-* **Search Results:** Added limiting functionality to restrict the number of
-  search results displayed per launcher (`e963bacb`)
-* **Command Completion:** Added support for fetching executable files located
-  outside the standard `$PATH` (`a9071661`)
-* **Search Bar:** Enhanced interface with native PNG/symbolic asset icons, a
-  blinking cursor animation, and a selected field indicator (`31a3c98b`,
-  `4de3e585`, `45e9edc7`, `85e499b2`)
-* **Variable Input:** Added choice dropdown fields to variable input selections
-  (`52185ef7`)
-* **Documentation:** Added automatic documentation generation utilities for
-  launchers and integrated them into the release pipeline (`68194737`,
-  `e330f121`, `c28b6bdd`)
-* **Subcommand:** Added a `sherlock repair` subcommand to fix corrupted
-  `fallback.json` and counter files (`0dbe376f`)
-* **Config Watcher:** Added a dynamic file watcher to notify the system when
-  application configurations change (`c1c77b8f`)
-* **User Actions:** Added mouse click support to focus/execute items and
-  introduced in-place context action executions (`84ee0cff`, `7575d0ce`)
-* **Debug Utility:** Added a built-in debug launcher utility and integrated
-  timer start capabilities from the Sherlock CLI (`3fde4978`, `bd0c766b`)
 
-### improvements
+### Improved
 
 * **Flags:** Added `clear_cache` flag to remove cache. (`b0761f84`)
 * **Icons:** Added new fallback icon for search icon (`sherlock-search`). (`ac2024a5`)
@@ -85,32 +63,10 @@ run `git log main..dev` for all changes
 * **Documentation:** Added README.md and CONTRIBUTING.md auto-gen. (`9b639fde`, `d5bfeccd`)
 * **MD-RS Crate:** Improved formatting of md-rs create for documentation auto-generation and
   refactors. (`0a83ea14`, `5bbfa568`, `7a8b0acb`, `36df4464`, `d5bfeccd`)
-* **Changelog:** Configured changelog generation to completely ignore
-  unreleased changes (`a5bb592f`)
-* **Client-Server:** Added a server-side `FIN` window-close message, a
-  `-w/--wait` flag to pause for output, and direct piping capabilities
-  (`628c4f50`, `74321634`)
-* **Pango Parser:** Optimized rendering performance, added benchmarking suites,
-  and streamlined span state transitions (`b7b61fc0`, `f0b04a3f`)
-* **Timer:** Rewrote system timers to persist and continue running through
-  system sleep mode (`e22f5a64`)
-* **Architecture:** Shifted heavy `RenderableChild` clones to asynchronous
-  context tasks and refactored core layout modules (`b38473b9`, `c617fbd9`,
-  `6f16db3b`)
-* **Binds & Parsing:** Enhanced keybindings to accept outer functions and
-  refactored launcher parsing to map the `name` key directly (`73eed652`,
-  `3e34cbfc`, `6c01dfc7`)
-* **Core Systems:** Improved URL detection accuracy, application loading
-  sequences, error notation layout, and counter tracking (`f167cceb`,
-  `27e0c276`, `18e9fdff`, `dea10500`)
 
 ### Removed
 
 * **Flags:** Removed `sherlock docs` flag – only ever used in debug. (`c60bd4f1`)
-* **Cargo Config:** Removed the default target entry from the internal Cargo
-  `config.toml` setup (`60a4b49f`)
-* **Icon Cache:** Deleted the obsolete `clear icon cache` utility function
-  (`238414d2`)
 
 ### Fixed
 
@@ -134,6 +90,62 @@ run `git log main..dev` for all changes
 * **Release Bot:** Release flags were only running when there was an active
   Sherlock server instance running. Now also works with no server running.
   (`dba461ae`, `83212d78`)
+
+## [0.2.3-dev] - 03.06.26
+
+### Added
+
+* **Search Results:** Added limiting functionality to restrict the number of
+  search results displayed per launcher (`e963bacb`)
+* **Command Completion:** Added support for fetching executable files located
+  outside the standard `$PATH` (`a9071661`)
+* **Search Bar:** Enhanced interface with native PNG/symbolic asset icons, a
+  blinking cursor animation, and a selected field indicator (`31a3c98b`,
+  `4de3e585`, `45e9edc7`, `85e499b2`)
+* **Variable Input:** Added choice dropdown fields to variable input selections
+  (`52185ef7`)
+* **Documentation:** Added automatic documentation generation utilities for
+  launchers and integrated them into the release pipeline (`68194737`,
+  `e330f121`, `c28b6bdd`)
+* **Subcommand:** Added a `sherlock repair` subcommand to fix corrupted
+  `fallback.json` and counter files (`0dbe376f`)
+* **Config Watcher:** Added a dynamic file watcher to notify the system when
+  application configurations change (`c1c77b8f`)
+* **User Actions:** Added mouse click support to focus/execute items and
+  introduced in-place context action executions (`84ee0cff`, `7575d0ce`)
+* **Debug Utility:** Added a built-in debug launcher utility and integrated
+  timer start capabilities from the Sherlock CLI (`3fde4978`, `bd0c766b`)
+
+### improvements
+
+* **Changelog:** Configured changelog generation to completely ignore
+  unreleased changes (`a5bb592f`)
+* **Client-Server:** Added a server-side `FIN` window-close message, a
+  `-w/--wait` flag to pause for output, and direct piping capabilities
+  (`628c4f50`, `74321634`)
+* **Pango Parser:** Optimized rendering performance, added benchmarking suites,
+  and streamlined span state transitions (`b7b61fc0`, `f0b04a3f`)
+* **Timer:** Rewrote system timers to persist and continue running through
+  system sleep mode (`e22f5a64`)
+* **Architecture:** Shifted heavy `RenderableChild` clones to asynchronous
+  context tasks and refactored core layout modules (`b38473b9`, `c617fbd9`,
+  `6f16db3b`)
+* **Binds & Parsing:** Enhanced keybindings to accept outer functions and
+  refactored launcher parsing to map the `name` key directly (`73eed652`,
+  `3e34cbfc`, `6c01dfc7`)
+* **Core Systems:** Improved URL detection accuracy, application loading
+  sequences, error notation layout, and counter tracking (`f167cceb`,
+  `27e0c276`, `18e9fdff`, `dea10500`)
+
+### Removed
+
+* **Cargo Config:** Removed the default target entry from the internal Cargo
+  `config.toml` setup (`60a4b49f`)
+* **Icon Cache:** Deleted the obsolete `clear icon cache` utility function
+  (`238414d2`)
+
+### Fixed
+
 * **Variable Input:** Fixed fields to correctly reset focus back to the search
   bar immediately following execution (`2d352980`)
 * **Icons & Assets:** Resolved rendering, asset caching, and color assignment
