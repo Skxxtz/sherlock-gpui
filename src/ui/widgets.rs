@@ -10,6 +10,7 @@ pub mod emoji;
 pub mod event;
 pub mod file;
 pub mod message;
+pub mod plugin;
 pub mod process;
 pub mod script;
 pub mod theme;
@@ -33,8 +34,8 @@ use crate::{
         utils::selection::Selection,
         widgets::{
             audio::MusicPlayerWidget, clipboard::ClipWidget, dmenu::DmenuData, event::EventWidget,
-            message::MessageChild, process::ProcessData, script::ScriptData, timer::TimerChild,
-            translator::TranslationData, weather::WeatherWidget,
+            message::MessageChild, plugin::PluginWidget, process::ProcessData, script::ScriptData,
+            timer::TimerChild, translator::TranslationData, weather::WeatherWidget,
         },
     },
     utils::{config::HomeType, errors::SherlockMessage},
@@ -279,6 +280,7 @@ renderable_enum! {
         File(FileData),
         Message(MessageChild),
         Music(MusicPlayerWidget),
+        Plugin(PluginWidget),
         Process(ProcessData),
         Script(ScriptData),
         Theme(ThemeWidget),

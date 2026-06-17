@@ -35,6 +35,8 @@ pub enum SherlockErrorType {
     Weather,
 
     // --- Variants with Data ---
+    /// Errors caused by the plugin syste, such as loading
+    Plugin(PluginAction, String),
     /// File-specific issues (read/write/permissions) at the given path.
     FileError(FileAction, PathBuf),
     /// Directory-specific issues (creation/deletion/access) at the given path.
@@ -57,6 +59,12 @@ pub enum SherlockErrorType {
     UnsupportedBrowser(String),
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, StrumDisplay, PartialEq)]
+#[strum(serialize_all = "lowercase")]
+pub enum PluginAction {
+    Load,
+    TileInit,
+}
 #[derive(Debug, Clone, Serialize, Deserialize, StrumDisplay, PartialEq)]
 #[strum(serialize_all = "lowercase")]
 pub enum FileAction {

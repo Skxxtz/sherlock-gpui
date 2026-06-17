@@ -10,6 +10,7 @@ pub mod emoji_launcher;
 pub mod event_launcher;
 pub mod file_launcher;
 pub mod message_launcher;
+pub mod plugin_launcher;
 pub mod process_launcher;
 pub mod script_launcher;
 pub mod system_cmd_launcher;
