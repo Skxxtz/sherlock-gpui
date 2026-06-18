@@ -1,66 +1,56 @@
+use crate::launcher::plugin_launcher::{
+    api::{http::HttpModule, json::JsonModule, log::LogModule, time::TimeModule, ui::UiModule},
+    runtime::TileUpdate,
+};
 use mlua::prelude::*;
 use tokio::sync::mpsc;
 
-use super::ui_schema::PluginUiNode;
-use crate::launcher::plugin_launcher::runtime::TileUpdate;
+mod http;
+mod json;
+mod log;
+mod time;
+mod ui;
+
+/// Shared context passed to every module's `register` call.
+/// Add fields here as new shared resources show up (e.g. an HTTP client,
+/// a config handle, a cancellation token) instead of widening function signatures.
+pub struct ApiContext {
+    pub update_tx: mpsc::UnboundedSender<TileUpdate>,
+}
+
+/// One Lua API domain. Each module owns its own table and its own functions.
+trait SherlockPluginModule {
+    /// The name the module is exposed under, e.g. `sherlock.http`
+    const NAME: &'static str;
+    fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()>;
+}
 
 pub fn setup_global_api(lua: &Lua, update_tx: mpsc::UnboundedSender<TileUpdate>) -> LuaResult<()> {
+    let ctx = ApiContext { update_tx };
     let sherlock = lua.create_table()?;
 
-    sherlock.set(
-        "log",
-        lua.create_function(|_, (level, msg): (String, String)| {
-            match level.as_str() {
-                "error" => eprintln!("[plugin:error] {msg}"),
-                _ => eprintln!("[plugin:info] {msg}"),
-            }
-            Ok(())
-        })?,
-    )?;
-
-    sherlock.set(
-        "http_get",
-        lua.create_async_function(|_lua, url: String| async move {
-            let resp = reqwest::get(&url)
-                .await
-                .map_err(|e| LuaError::RuntimeError(format!("http_get failed: {e}")))?;
-            let body = resp
-                .text()
-                .await
-                .map_err(|e| LuaError::RuntimeError(format!("http_get body failed: {e}")))?;
-            Ok(body)
-        })?,
-    )?;
-
-    sherlock.set(
-        "json_decode",
-        lua.create_function(|lua, input: String| {
-            let value: serde_json::Value =
-                serde_json::from_str(&input).map_err(|e| LuaError::RuntimeError(e.to_string()))?;
-
-            lua.to_value(&value)
-        })?,
-    )?;
-
-    sherlock.set(
-        "sleep_ms",
-        lua.create_async_function(|_lua, ms: u64| async move {
-            tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
-            Ok(())
-        })?,
-    )?;
-
-    // Captures update_tx by move — this is the one and only place this
-    // sender needs to live. Every call from any plugin's live() loop goes
-    // through this same clone-on-call.
-    sherlock.set(
-        "update",
-        lua.create_function(move |_lua, (tile_id, node): (String, PluginUiNode)| {
-            let _ = update_tx.send((tile_id, node));
-            Ok(())
-        })?,
-    )?;
+    register::<LogModule>(lua, &sherlock, &ctx)?;
+    register::<HttpModule>(lua, &sherlock, &ctx)?;
+    register::<JsonModule>(lua, &sherlock, &ctx)?;
+    register::<TimeModule>(lua, &sherlock, &ctx)?;
+    register::<UiModule>(lua, &sherlock, &ctx)?;
 
     lua.globals().set("sherlock", sherlock)?;
     Ok(())
+}
+
+#[inline(always)]
+fn register<M: SherlockPluginModule>(
+    lua: &Lua,
+    sherlock: &LuaTable,
+    ctx: &ApiContext,
+) -> LuaResult<()> {
+    let table = lua.create_table()?;
+    M::register(lua, &table, ctx)?;
+    sherlock.set(M::NAME, table)?;
+    Ok(())
+}
+
+fn lua_err(e: impl std::fmt::Display) -> LuaError {
+    LuaError::RuntimeError(e.to_string())
 }
