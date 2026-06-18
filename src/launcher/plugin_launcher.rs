@@ -2,7 +2,7 @@ use crate::{
     display_name,
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{
-        Launcher, LauncherProvider, LauncherType, LoadContext,
+        Launcher, LauncherConfig, LauncherProvider, LauncherType, LoadContext,
         plugin_launcher::{plugin_tile_state::PluginTileState, runtime::LuaRuntimeHandle},
     },
     loader::utils::RawLauncher,
@@ -44,7 +44,7 @@ impl LauncherProvider for PluginLauncher {
 
     fn objects(
         &self,
-        launcher: Arc<Launcher>,
+        launcher: Arc<LauncherConfig>,
         ctx: &LoadContext,
         _opts: Arc<Value>,
         _messages: &mut Vec<SherlockMessage>,

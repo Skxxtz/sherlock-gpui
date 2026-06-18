@@ -1,7 +1,7 @@
 use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
 use crate::app::{LauncherEntity, LauncherEntityInner, LauncherWeakEntity};
-use crate::launcher::{Launcher, LauncherId, LauncherValues};
+use crate::launcher::{LauncherId, LauncherValues};
 use crate::ui::launcher::views::NavigationViewType;
 use crate::ui::launcher::{LauncherMode, LauncherView, ModeTransition};
 use crate::ui::model::Model;
@@ -10,7 +10,6 @@ use crate::ui::utils::scoring::SortKey;
 use crate::ui::utils::search::SherlockSearch;
 use crate::utils::config::HomeType;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::Arc;
 
 struct FilterResult {

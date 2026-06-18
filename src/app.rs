@@ -17,11 +17,11 @@ use tokio::net::UnixListener;
 use crate::{
     SOCKET_PATH,
     app::theme::ActiveTheme,
+    launcher::Launcher,
     launcher::plugin_launcher::{
         runtime::{LuaRuntimeGlobal, LuaRuntimeHandle},
         subscribers::{TileSubscribers, TileSubscribersGlobal},
     },
-    launcher::Launcher,
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,

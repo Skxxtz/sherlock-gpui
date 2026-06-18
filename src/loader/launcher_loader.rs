@@ -8,16 +8,15 @@ use std::{
 };
 
 use crate::{
+    app::LauncherEntity,
     launcher::{
-        Launcher,
+        Launcher, LauncherConfig,
         plugin_launcher::{
             runtime::{LuaRuntimeGlobal, LuaRuntimeHandle},
             subscribers::{TileSubscribers, TileSubscribersGlobal},
         },
         variant_type::LauncherType,
     },
-    app::LauncherEntity,
-    launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     loader::utils::RawLauncher,
     sherlock_msg,
     ui::launcher::LauncherMode,

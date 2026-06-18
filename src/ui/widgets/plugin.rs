@@ -8,7 +8,7 @@ use gpui::{
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        Launcher,
+        LauncherConfig,
         plugin_launcher::{
             plugin_tile_state::PluginTileState, subscribers::TileSubscribers,
             ui_schema::PluginUiNode,
@@ -32,7 +32,7 @@ pub struct PluginWidget {
 impl<'a> RenderableChildImpl<'a> for PluginWidget {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         _selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -70,25 +70,25 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         render_node(data, &theme)
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         None
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         None
     }
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         "test"
     }
     #[inline(always)]
     fn actions(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         _cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         None
