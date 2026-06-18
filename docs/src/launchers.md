@@ -896,6 +896,37 @@ _Basic music player_
 
 ---
 
+## Plugin Launcher
+
+`type = plugin`
+
+Launches installed desktop applications
+
+### Args
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `use_keywords` | `bool` |  | true | Whether the search should use the keywords defined in the .desktop file. |
+
+### Examples
+
+_Basic app launcher_
+
+```json
+{
+    "name": "App Launcher",
+    "alias": "app",
+    "type": "apps",
+    "args": {
+        "use_keywords": false
+    },
+    "priority": 4,
+    "home": "Home"
+}
+```
+
+---
+
 ## Process Launcher
 
 `type = process`

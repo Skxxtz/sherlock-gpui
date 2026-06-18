@@ -2,7 +2,7 @@ use crate::{
     display_name,
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{
-        Launcher, LauncherConfig, LauncherProvider, LauncherType, LoadContext,
+        LauncherConfig, LauncherProvider, LauncherType, LoadContext,
         plugin_launcher::{plugin_tile_state::PluginTileState, runtime::LuaRuntimeHandle},
     },
     loader::utils::RawLauncher,

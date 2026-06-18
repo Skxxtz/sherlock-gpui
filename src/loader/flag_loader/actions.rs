@@ -1,6 +1,9 @@
-use std::path::Path;
+use std::{env, fs, path::Path};
+
+use indoc::indoc;
 
 use crate::{
+    launcher::plugin_launcher::api::LuaApiDocumentation,
     loader::flag_loader::{DebugAction, flags::FLAGS, utils::FlagSection},
     sherlock_msg,
     tokio_utils::SizedMessageObj,
@@ -68,6 +71,48 @@ impl StartupAction {
 pub(super) fn init_config(path: &Path, extension: &str) {
     if let Err(e) = SherlockConfig::to_file(path, extension) {
         eprintln!("{:?}", e)
+    }
+}
+
+pub(super) fn plugin_init() {
+    let dir = match env::current_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("error: could not determine current directory: {e}");
+            return;
+        }
+    };
+
+    let api_path = dir.join("sherlock-api.lua");
+    let luarc_path = dir.join(".luarc.json");
+
+    let api = LuaApiDocumentation::generate_lua_stub();
+    let ui_source = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/launcher/plugin_launcher/api/assets/ui.lua"
+    ));
+    let combined = format!("{api}\n{ui_source}");
+    if let Err(e) = fs::write(&api_path, combined) {
+        eprintln!("error: failed to write {}: {e}", api_path.display());
+        return;
+    }
+    println!("wrote {}", api_path.display());
+
+    if luarc_path.exists() {
+        println!(
+            "skipped {} (already exists) — add \"./sherlock-api.lua\" to workspace.library manually if needed",
+            luarc_path.display()
+        );
+    } else {
+        let luarc = indoc! {r#"
+            {
+              "workspace.library": ["./sherlock-api.lua"]
+            }"#};
+        if let Err(e) = fs::write(&luarc_path, luarc) {
+            eprintln!("error: failed to write {}: {e}", luarc_path.display());
+            return;
+        }
+        println!("wrote {}", luarc_path.display());
     }
 }
 

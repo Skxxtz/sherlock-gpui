@@ -9,6 +9,7 @@ use super::{
 use crate::{
     docs::SherlockDocumentation,
     launcher::debug_launcher::DebugFunctions,
+    loader::flag_loader::actions::plugin_init,
     utils::config::{SherlockFlags, repair_config},
 };
 
@@ -45,6 +46,7 @@ impl ParsedArgs {
                 }
             }
             DebugAction::Init { path, extension } => init_config(&path, &extension),
+            DebugAction::PluginInit => plugin_init(),
         }
 
         true

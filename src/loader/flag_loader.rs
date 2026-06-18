@@ -17,6 +17,7 @@ pub enum DebugAction {
     Repair,
     ClearCache,
     Init { path: PathBuf, extension: String },
+    PluginInit,
 }
 
 impl Loader {

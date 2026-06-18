@@ -75,6 +75,19 @@ pub const FLAGS: &[FlagSpec] = &[
         },
     },
     FlagSpec {
+        long: "plugin-init",
+        short: None,
+        section: FlagSection::Basics,
+        help: "Write the default files for a new sherlock plugin\
+            (Strongly advised for a seemless plugin development).",
+        parse: |_args, _iter, _flags, startup| {
+            if startup.is_none() {
+                *startup = Some(DebugAction::PluginInit.into());
+            }
+            Ok(())
+        },
+    },
+    FlagSpec {
         long: "repair",
         short: None,
         section: FlagSection::Basics,

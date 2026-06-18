@@ -61,6 +61,7 @@ indoc = "2.0.7"
 const-str = "1.1.0"
 bitflags = "2.13.0"
 mlua = {version = "0.11.6", features = ["lua54", "vendored", "send", "async", "serialize"]}
+inventory = "0.3.24"
 
 [features]
 default = ["wayland"]
