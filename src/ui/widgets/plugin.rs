@@ -1,15 +1,21 @@
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, Entity, IntoElement, ParentElement, Styled, div};
+use gpui::{
+    AnyElement, App, Entity, ImageSource, IntoElement, ParentElement, Styled, StyledText, div, img,
+    px,
+};
 
 use crate::{
     app::theme::ThemeData,
     launcher::{
         Launcher,
-        plugin_launcher::{plugin_tile_state::PluginTileState, subscribers::TileSubscribers},
+        plugin_launcher::{
+            plugin_tile_state::PluginTileState, subscribers::TileSubscribers,
+            ui_schema::PluginUiNode,
+        },
         utils::exec_mode::ExecMode,
     },
-    loader::utils::Priority,
+    loader::{resolve_icon_path, utils::Priority},
     ui::{
         launcher::context_menu::ContextMenuAction, traits::RenderableChildImpl,
         utils::selection::Selection,
@@ -59,20 +65,9 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         }
 
         let Some(data) = &state.data else {
-            return div().into_any_element();
+            return div().child("No Child").into_any_element();
         };
-
-        div()
-            .px_4()
-            .py_2()
-            .w_full()
-            .flex()
-            .gap_5()
-            .text_color(theme.primary_text)
-            .items_center()
-            .child(data.title.clone())
-            .children(data.subtitle.clone().map(|s| div().child(s)))
-            .into_any_element()
+        render_node(data, &theme)
     }
     #[inline(always)]
     fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
@@ -113,5 +108,46 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
 impl Drop for PluginWidget {
     fn drop(&mut self) {
         self.subscribers.unregister(&self.tile_id);
+    }
+}
+
+fn render_node(node: &PluginUiNode, theme: &ThemeData) -> AnyElement {
+    match node {
+        PluginUiNode::Container { style, children } => {
+            let mut el = div();
+            style.apply_to_style_refinement(el.style());
+            el.children(children.iter().map(|c| render_node(c, theme)))
+                .into_any_element()
+        }
+        PluginUiNode::Text { content, style } => {
+            let mut el = div();
+            style.apply_to_style_refinement(el.style());
+            el.child(StyledText::new(content.clone()))
+                .into_any_element()
+        }
+        PluginUiNode::Icon { name, .. } => {
+            if let Some(icon) = resolve_icon_path(name) {
+                if let Some(svg) = icon.svg() {
+                    svg.size(px(36.))
+                        .text_color(theme.primary_text)
+                        .into_any_element()
+                } else {
+                    img(icon.clone()).size(px(36.)).into_any_element()
+                }
+            } else {
+                img(ImageSource::Image(Arc::new(gpui::Image::empty())))
+                    .size(px(36.))
+                    .into_any_element()
+            }
+        }
+        PluginUiNode::Button {
+            label,
+            style,
+            on_click,
+        } => {
+            let mut el = div();
+            style.apply_to_style_refinement(el.style());
+            el.child(label.clone()).into_any_element()
+        }
     }
 }

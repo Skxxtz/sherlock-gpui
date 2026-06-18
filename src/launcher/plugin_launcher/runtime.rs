@@ -1,9 +1,11 @@
 // runtime.rs
 use mlua::prelude::*;
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, path::Path, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::launcher::plugin_launcher::{job_handler::handle_job, registry::PluginRegistry};
+use crate::launcher::plugin_launcher::{
+    job_handler::handle_job, registry::PluginRegistry, ui_schema::PluginUiNode,
+};
 
 #[derive(Clone)]
 pub struct LuaRuntimeGlobal(pub LuaRuntimeHandle);
@@ -18,17 +20,17 @@ pub struct PluginHandle {
 pub enum LuaJob {
     LoadPlugin {
         code: String,
-        name: String,
+        path: Arc<Path>,
         reply: oneshot::Sender<LuaResult<PluginHandle>>,
     },
     CallTiles {
         handle: PluginHandle,
-        reply: oneshot::Sender<LuaResult<Vec<TileDescriptor>>>,
+        reply: oneshot::Sender<LuaResult<Vec<PluginUiNode>>>,
     },
     CallRefresh {
         handle: PluginHandle,
         tile_id: String,
-        reply: oneshot::Sender<LuaResult<TileDescriptor>>,
+        reply: oneshot::Sender<LuaResult<PluginUiNode>>,
     },
     SpawnLive {
         handle: PluginHandle,
@@ -44,38 +46,9 @@ pub enum LuaJob {
     },
 }
 
-#[derive(Clone, Debug)]
-pub struct TileDescriptor {
-    pub id: String,
-    pub title: String,
-    pub subtitle: Option<String>,
-    pub icon: Option<String>,
-}
-
-impl FromLua for TileDescriptor {
-    fn from_lua(value: LuaValue, _lua: &Lua) -> LuaResult<Self> {
-        let table = match value {
-            LuaValue::Table(t) => t,
-            other => {
-                return Err(LuaError::FromLuaConversionError {
-                    from: other.type_name(),
-                    to: "TileDescriptor".to_string(),
-                    message: Some("expected a table".into()),
-                });
-            }
-        };
-        Ok(TileDescriptor {
-            id: table.get("id")?,
-            title: table.get("title")?,
-            subtitle: table.get("subtitle").ok(),
-            icon: table.get("icon").ok(),
-        })
-    }
-}
-
 /// Emitted by `sherlock.update(tile_id, data)` calls from any plugin's
 /// `live()` loop. Consumed by a GPUI-side task that has real `cx` access.
-pub type TileUpdate = (String, TileDescriptor);
+pub type TileUpdate = (String, PluginUiNode);
 
 #[derive(Clone)]
 pub struct LuaRuntimeHandle {
@@ -101,16 +74,16 @@ impl LuaRuntimeHandle {
         (Self { tx }, update_rx)
     }
 
-    pub async fn load_plugin(&self, code: String, name: String) -> LuaResult<PluginHandle> {
+    pub async fn load_plugin(&self, code: String, path: Arc<Path>) -> LuaResult<PluginHandle> {
         let (reply, rx) = oneshot::channel();
         self.tx
-            .send(LuaJob::LoadPlugin { code, name, reply })
+            .send(LuaJob::LoadPlugin { code, path, reply })
             .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
         rx.await
             .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
     }
 
-    pub async fn call_tiles(&self, handle: PluginHandle) -> LuaResult<Vec<TileDescriptor>> {
+    pub async fn call_tiles(&self, handle: PluginHandle) -> LuaResult<Vec<PluginUiNode>> {
         let (reply, rx) = oneshot::channel();
         self.tx
             .send(LuaJob::CallTiles { handle, reply })
@@ -123,7 +96,7 @@ impl LuaRuntimeHandle {
         &self,
         handle: PluginHandle,
         tile_id: String,
-    ) -> LuaResult<TileDescriptor> {
+    ) -> LuaResult<PluginUiNode> {
         let (reply, rx) = oneshot::channel();
         self.tx
             .send(LuaJob::CallRefresh {
@@ -170,7 +143,11 @@ fn run_lua_thread(
     let registry = Arc::new(RefCell::new(PluginRegistry::default()));
 
     let lua = Lua::new_with(
-        LuaStdLib::TABLE | LuaStdLib::STRING | LuaStdLib::MATH | LuaStdLib::COROUTINE,
+        LuaStdLib::TABLE
+            | LuaStdLib::STRING
+            | LuaStdLib::MATH
+            | LuaStdLib::COROUTINE
+            | LuaStdLib::PACKAGE,
         LuaOptions::default(),
     )
     .expect("failed to init Lua runtime");

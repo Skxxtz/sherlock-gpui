@@ -1,7 +1,8 @@
 use mlua::prelude::*;
 use tokio::sync::mpsc;
 
-use crate::launcher::plugin_launcher::runtime::{TileDescriptor, TileUpdate};
+use super::ui_schema::PluginUiNode;
+use crate::launcher::plugin_launcher::runtime::TileUpdate;
 
 pub fn setup_global_api(lua: &Lua, update_tx: mpsc::UnboundedSender<TileUpdate>) -> LuaResult<()> {
     let sherlock = lua.create_table()?;
@@ -32,6 +33,16 @@ pub fn setup_global_api(lua: &Lua, update_tx: mpsc::UnboundedSender<TileUpdate>)
     )?;
 
     sherlock.set(
+        "json_decode",
+        lua.create_function(|lua, input: String| {
+            let value: serde_json::Value =
+                serde_json::from_str(&input).map_err(|e| LuaError::RuntimeError(e.to_string()))?;
+
+            lua.to_value(&value)
+        })?,
+    )?;
+
+    sherlock.set(
         "sleep_ms",
         lua.create_async_function(|_lua, ms: u64| async move {
             tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
@@ -44,14 +55,8 @@ pub fn setup_global_api(lua: &Lua, update_tx: mpsc::UnboundedSender<TileUpdate>)
     // through this same clone-on-call.
     sherlock.set(
         "update",
-        lua.create_function(move |_lua, (tile_id, table): (String, LuaTable)| {
-            let desc = TileDescriptor {
-                id: table.get("id")?,
-                title: table.get("title")?,
-                subtitle: table.get("subtitle").ok(),
-                icon: table.get("icon").ok(),
-            };
-            let _ = update_tx.send((tile_id, desc));
+        lua.create_function(move |_lua, (tile_id, node): (String, PluginUiNode)| {
+            let _ = update_tx.send((tile_id, node));
             Ok(())
         })?,
     )?;

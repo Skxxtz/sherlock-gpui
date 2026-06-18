@@ -58,12 +58,12 @@ pub fn run_app(cx: &mut App, result: SetupResult) {
         let subscribers = subscribers.clone();
         cx.spawn(async move |cx: &mut AsyncApp| {
             while let Some((tile_id, data)) = update_rx.recv().await {
-                if let Some(weak) = subscribers.get(&tile_id) {
-                    if let Some(entity) = weak.upgrade() {
-                        let _ = cx.update(|cx| {
-                            entity.update(cx, |state, cx| state.set_data(data, cx));
-                        });
-                    }
+                if let Some(weak) = subscribers.get(&tile_id)
+                    && let Some(entity) = weak.upgrade()
+                {
+                    cx.update(|cx| {
+                        entity.update(cx, |state, cx| state.set_data(data, cx));
+                    });
                 }
             }
         })

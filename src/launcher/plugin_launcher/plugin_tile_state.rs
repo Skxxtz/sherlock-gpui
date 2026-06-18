@@ -1,15 +1,16 @@
+use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
+
 // ui/widgets/plugin_tile_state.rs
-use super::runtime::TileDescriptor;
 use gpui::Context;
 
 pub struct PluginTileState {
-    pub data: Option<TileDescriptor>,
+    pub data: Option<PluginUiNode>,
     pub loading: bool,
     pub error: Option<String>,
 }
 
 impl PluginTileState {
-    pub fn set_data(&mut self, data: TileDescriptor, cx: &mut Context<Self>) {
+    pub fn set_data(&mut self, data: PluginUiNode, cx: &mut Context<Self>) {
         self.data = Some(data);
         self.loading = false;
         self.error = None;

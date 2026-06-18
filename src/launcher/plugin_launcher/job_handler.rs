@@ -1,18 +1,21 @@
+use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
+
 use super::registry::PluginRegistry;
-use super::runtime::{LuaJob, PluginHandle, TileDescriptor};
+use super::runtime::{LuaJob, PluginHandle};
 use mlua::prelude::*;
 use std::cell::RefCell;
+use std::path::Path;
 use std::sync::Arc;
 
 pub async fn handle_job(lua: Lua, registry: Arc<RefCell<PluginRegistry>>, job: LuaJob) {
     match job {
-        LuaJob::LoadPlugin { code, name, reply } => {
-            let result = load_plugin(&lua, &registry, &code, &name);
+        LuaJob::LoadPlugin { code, path, reply } => {
+            let result = load_plugin(&lua, &registry, &code, &path);
             let _ = reply.send(result);
         }
         LuaJob::CallTiles { handle, reply } => {
             let result =
-                call_plugin_fn_async::<Vec<TileDescriptor>>(&lua, &registry, &handle, "tiles", ())
+                call_plugin_fn_async::<Vec<PluginUiNode>>(&lua, &registry, &handle, "tiles", ())
                     .await;
             let _ = reply.send(result);
         }
@@ -21,10 +24,9 @@ pub async fn handle_job(lua: Lua, registry: Arc<RefCell<PluginRegistry>>, job: L
             tile_id,
             reply,
         } => {
-            let result = call_plugin_fn_async::<TileDescriptor>(
-                &lua, &registry, &handle, "refresh", tile_id,
-            )
-            .await;
+            let result =
+                call_plugin_fn_async::<PluginUiNode>(&lua, &registry, &handle, "refresh", tile_id)
+                    .await;
             let _ = reply.send(result);
         }
         LuaJob::SpawnLive { handle, tile_id } => {
@@ -68,8 +70,23 @@ fn load_plugin(
     lua: &Lua,
     registry: &Arc<RefCell<PluginRegistry>>,
     code: &str,
-    name: &str,
+    path: &Path,
 ) -> LuaResult<PluginHandle> {
+    let name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let root = path.parent().ok_or(LuaError::RuntimeError(format!(
+        "plugin '{}' not loaded",
+        name
+    )))?;
+
+    let package: LuaTable = lua.globals().get("package")?;
+    let current_path: String = package.get("path")?;
+    package.set("path", format!("{}/?.lua;{}", root.display(), current_path))?;
+
     let env: LuaTable = lua
         .load(
             r#"
@@ -81,17 +98,14 @@ fn load_plugin(
         .eval()?;
 
     lua.load(code)
-        .set_name(name)
+        .set_name(&name)
         .set_environment(env.clone())
         .exec()?;
 
     let env_key = lua.create_registry_value(env)?;
-    let id = registry.borrow_mut().insert(name.to_string(), env_key);
+    let id = registry.borrow_mut().insert(name.clone(), env_key);
 
-    Ok(PluginHandle {
-        id,
-        name: name.to_string(),
-    })
+    Ok(PluginHandle { id, name })
 }
 
 /// Calls a plugin function as a coroutine and drives it to completion,
