@@ -9,7 +9,14 @@ use std::{
 
 use crate::{
     app::RenderableChildEntity,
-    launcher::{Launcher, variant_type::LauncherType},
+    launcher::{
+        Launcher,
+        plugin_launcher::{
+            runtime::{LuaRuntimeGlobal, LuaRuntimeHandle},
+            subscribers::{TileSubscribers, TileSubscribersGlobal},
+        },
+        variant_type::LauncherType,
+    },
     loader::utils::RawLauncher,
     sherlock_msg,
     ui::{launcher::LauncherMode, widgets::RenderableChild},
@@ -30,9 +37,17 @@ pub struct LoadContext {
     pub counts: HashMap<String, u16>,
     pub path: PathBuf,
     pub changes: Option<ConfigFileChange>,
+
+    // plugin stuff
+    pub lua_runtime: LuaRuntimeHandle,
+    pub subscribers: TileSubscribers,
 }
 impl LoadContext {
-    fn new(changes: Option<ConfigFileChange>) -> Result<Self, SherlockMessage> {
+    fn new(
+        changes: Option<ConfigFileChange>,
+        lua_runtime: LuaRuntimeHandle,
+        subscribers: TileSubscribers,
+    ) -> Result<Self, SherlockMessage> {
         let counter_reader = CounterReader::new()?;
         let counts: HashMap<String, u16> =
             BinaryCache::read(&counter_reader.path).unwrap_or_default();
@@ -41,6 +56,8 @@ impl LoadContext {
             counts,
             path: counter_reader.path,
             changes,
+            lua_runtime,
+            subscribers,
         })
     }
 }
@@ -62,7 +79,9 @@ impl Loader {
         let (raw_launchers, mut messages) = parse_launcher_configs(&config.files.fallback);
 
         // Read cached counter file
-        let ctx = LoadContext::new(changes)?;
+        let lua_runtime = cx.global::<LuaRuntimeGlobal>().0.clone();
+        let subscribers = cx.global::<TileSubscribersGlobal>().0.clone();
+        let ctx = LoadContext::new(changes, lua_runtime, subscribers)?;
 
         // Parse the launchers
         let mut launchers: Vec<(Arc<Launcher>, Arc<serde_json::Value>)> = raw_launchers

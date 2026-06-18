@@ -17,6 +17,10 @@ use tokio::net::UnixListener;
 use crate::{
     SOCKET_PATH,
     app::theme::ActiveTheme,
+    launcher::plugin_launcher::{
+        runtime::{LuaRuntimeGlobal, LuaRuntimeHandle},
+        subscribers::{TileSubscribers, TileSubscribersGlobal},
+    },
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,
@@ -48,6 +52,26 @@ pub type RenderableChildEntity = Entity<Rc<Vec<RenderableChild>>>;
 pub type RenderableChildWeak = WeakEntity<Rc<Vec<RenderableChild>>>;
 
 pub fn run_app(cx: &mut App, result: SetupResult) {
+    let (lua_runtime, mut update_rx) = LuaRuntimeHandle::spawn();
+    let subscribers = TileSubscribers::default();
+    {
+        let subscribers = subscribers.clone();
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            while let Some((tile_id, data)) = update_rx.recv().await {
+                if let Some(weak) = subscribers.get(&tile_id) {
+                    if let Some(entity) = weak.upgrade() {
+                        let _ = cx.update(|cx| {
+                            entity.update(cx, |state, cx| state.set_data(data, cx));
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
+    }
+    cx.set_global(TileSubscribersGlobal(subscribers));
+    cx.set_global(LuaRuntimeGlobal(lua_runtime));
+
     let SetupResult {
         config_dir,
         mut messages,
