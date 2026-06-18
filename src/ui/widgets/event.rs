@@ -23,7 +23,7 @@ use suite_223b::{
 
 use crate::{
     app::{LAUNCH_GENERATION, theme::ThemeData},
-    launcher::{Launcher, utils::exec_mode::ExecMode, variant_type::LauncherType},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     loader::utils::{ApplicationAction, Priority},
     sherlock_msg,
     ui::{
@@ -46,7 +46,7 @@ pub struct EventData {
 impl Fetchable for EventData {
     type Error = SherlockMessage;
     async fn fetch(
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         _old: Option<Rc<Self>>,
     ) -> Result<Option<Rc<Self>>, Self::Error> {
         let LauncherType::Event(evt) = &launcher.launcher_type else {
@@ -192,7 +192,7 @@ enum AnimState {
 impl<'a> RenderableChildImpl<'a> for EventWidget {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -393,11 +393,11 @@ impl<'a> RenderableChildImpl<'a> for EventWidget {
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         None
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String> {
         let Ok(Some(event_outer)) = self.entity.read(cx) else {
             return None;
         };
@@ -424,17 +424,17 @@ impl<'a> RenderableChildImpl<'a> for EventWidget {
         Some(out)
     }
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         ""
     }
     #[inline(always)]
     fn actions(
         &self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         let event_data = self.entity.read(cx).as_ref().ok()?.as_ref()?;
@@ -480,7 +480,7 @@ impl<'a> RenderableChildImpl<'a> for EventWidget {
     fn based_show<C: AppContext>(&self, _keyword: &str, cx: &mut C) -> Option<bool> {
         Some(self.entity.is_valid(cx))
     }
-    fn update_async<C: AppContext>(&self, launcher: Arc<Launcher>, cx: &mut C) {
+    fn update_async<C: AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
         // debounce logic
         // causes freezes if not applied!!
         if let Some(last_call) = self.last_call.get()

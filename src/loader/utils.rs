@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::{
-    launcher::{Launcher, utils::binds::BindSerde, variant_type::LauncherVariant},
+    launcher::{LauncherConfig, utils::binds::BindSerde, variant_type::LauncherVariant},
     loader::{IconType, resolve_icon_path},
     sherlock_msg,
     ui::choice::ChoiceOption,
@@ -32,7 +32,7 @@ impl Priority {
     pub fn new(base: u16, count: u16) -> Self {
         Self { base, count }
     }
-    pub fn new_with_launcher(launcher: &Launcher, count: u16) -> Self {
+    pub fn new_with_launcher(launcher: &LauncherConfig, count: u16) -> Self {
         Self {
             base: launcher.priority,
             count,
@@ -47,7 +47,7 @@ impl PriorityGuard {
     pub fn new(base: u16, count: u16) -> Self {
         Self(Arc::new(RwLock::new(Priority::new(base, count))))
     }
-    pub fn new_with_launcher(launcher: &Launcher, count: u16) -> Self {
+    pub fn new_with_launcher(launcher: &LauncherConfig, count: u16) -> Self {
         Self(Arc::new(RwLock::new(Priority::new_with_launcher(
             launcher, count,
         ))))
@@ -65,7 +65,7 @@ impl PriorityGuard {
         self.0.write().unwrap().count += 1;
     }
 
-    pub fn set_launcher(&self, launcher: &Launcher, count: u16) {
+    pub fn set_launcher(&self, launcher: &LauncherConfig, count: u16) {
         let mut inner = self.0.write().unwrap();
         inner.base = launcher.priority;
         inner.count = count;

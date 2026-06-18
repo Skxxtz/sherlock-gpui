@@ -1,6 +1,6 @@
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
-    launcher::{Launcher, utils::exec_mode::ExecMode},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::{IconType, resolve_icon_path, utils::Priority},
     ui::{
         launcher::views::NavigationViewType, traits::RenderableChildImpl,
@@ -321,7 +321,7 @@ fn identify_file_type(extension: Option<&str>, is_dir: bool, is_symlink: bool) -
 impl<'a> RenderableChildImpl<'a> for FileData {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -401,7 +401,7 @@ impl<'a> RenderableChildImpl<'a> for FileData {
     }
 
     #[inline(always)]
-    fn build_exec(&self, launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         if self.loc.ends_with('/') {
             return Some(ExecMode::CreateView {
                 mode: NavigationViewType::Files {
@@ -414,17 +414,17 @@ impl<'a> RenderableChildImpl<'a> for FileData {
     }
 
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         None
     }
 
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
 
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         &self.loc
     }
 }

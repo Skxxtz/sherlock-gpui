@@ -1,13 +1,13 @@
 use gpui::App;
 
-use crate::{app::RenderableChildEntity, ui::model::Model};
+use crate::{app::LauncherEntity, ui::model::Model};
 
 pub struct HomeView {
     pub model: Model,
 }
 
 impl HomeView {
-    pub fn new(entity: RenderableChildEntity, cx: &mut App) -> Self {
+    pub fn new(entity: LauncherEntity, cx: &mut App) -> Self {
         Self {
             model: Model::standard_with_entity(entity, cx),
         }

@@ -1,7 +1,7 @@
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
     launcher::{
-        Launcher, process_launcher::ProcessLauncherFunctions, utils::exec_mode::ExecMode,
+        LauncherConfig, process_launcher::ProcessLauncherFunctions, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
     loader::{IconType, resolve_icon_path, utils::Priority},
@@ -76,7 +76,7 @@ struct ProcessMeta {
 impl<'a> RenderableChildImpl<'a> for ProcessData {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -155,7 +155,7 @@ impl<'a> RenderableChildImpl<'a> for ProcessData {
     }
 
     #[inline(always)]
-    fn build_exec(&self, launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         Some(ExecMode::Inner {
             func: InnerFunction::Process(ProcessLauncherFunctions::Quit { pid: self.pid }),
             exit: launcher.exit,
@@ -163,17 +163,17 @@ impl<'a> RenderableChildImpl<'a> for ProcessData {
     }
 
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(self.name.to_string())
     }
 
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
 
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         &self.name
     }
 }

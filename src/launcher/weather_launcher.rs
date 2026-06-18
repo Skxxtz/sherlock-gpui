@@ -9,6 +9,7 @@ use std::time::{Duration, SystemTime};
 use strum::Display;
 
 use crate::docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry};
+use crate::launcher::LauncherConfig;
 use crate::launcher::weather_launcher::utils::transform_weather;
 use crate::launcher::weather_launcher::wttr_serde::WttrResponse;
 use crate::loader::{IconType, resolve_icon_path};
@@ -60,7 +61,7 @@ impl LauncherProvider for WeatherLauncher {
     }
     fn objects(
         &self,
-        launcher: Arc<super::Launcher>,
+        launcher: Arc<LauncherConfig>,
         _ctx: &crate::loader::LoadContext,
         _opts: Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,

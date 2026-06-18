@@ -7,7 +7,7 @@ use serde::{
 };
 
 use crate::{
-    launcher::{Launcher, app_launcher::app_data::AppData},
+    launcher::{LauncherConfig, app_launcher::app_data::AppData},
     loader::{
         resolve_icon_path,
         utils::{ApplicationAction, ExecVariable, PriorityGuard},
@@ -20,13 +20,13 @@ use crate::{
 /// in the config format, not as a field inside the value.
 pub fn deserialize_named_appdata<'de, D>(
     deserializer: D,
-    launcher: &Launcher,
+    launcher: &LauncherConfig,
 ) -> Result<Vec<AppData>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct AppDataMapVisitor<'a> {
-        launcher: &'a Launcher,
+        launcher: &'a LauncherConfig,
     }
 
     impl<'de, 'a> Visitor<'de> for AppDataMapVisitor<'a> {

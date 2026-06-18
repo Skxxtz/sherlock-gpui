@@ -23,7 +23,7 @@ impl LauncherProvider for MessageLauncher {
     }
     fn objects(
         &self,
-        launcher: Arc<super::Launcher>,
+        launcher: Arc<super::LauncherConfig>,
         _ctx: &crate::loader::LoadContext,
         _opts: Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,

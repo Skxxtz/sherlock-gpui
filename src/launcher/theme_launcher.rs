@@ -37,7 +37,7 @@ impl LauncherProvider for ThemePicker {
     }
     fn objects(
         &self,
-        launcher: std::sync::Arc<super::Launcher>,
+        launcher: std::sync::Arc<super::LauncherConfig>,
         _ctx: &crate::loader::LoadContext,
         opts: std::sync::Arc<serde_json::Value>,
         messages: &mut Vec<SherlockMessage>,

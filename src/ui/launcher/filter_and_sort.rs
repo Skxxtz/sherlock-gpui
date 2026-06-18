@@ -1,21 +1,20 @@
 use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
-use crate::app::{RenderableChildEntity, RenderableChildWeak};
-use crate::launcher::{LauncherId, LauncherValues};
+use crate::app::{LauncherEntity, LauncherEntityInner, LauncherWeakEntity};
+use crate::launcher::{Launcher, LauncherId, LauncherValues};
 use crate::ui::launcher::views::NavigationViewType;
 use crate::ui::launcher::{LauncherMode, LauncherView, ModeTransition};
 use crate::ui::model::Model;
 use crate::ui::traits::RenderableChildDelegate;
 use crate::ui::utils::scoring::SortKey;
 use crate::ui::utils::search::SherlockSearch;
-use crate::ui::widgets::RenderableChild;
 use crate::utils::config::HomeType;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
 struct FilterResult {
-    index: usize,
+    index: (usize, usize),
     prio: SortKey,
     limiter: Option<(LauncherId, u16)>,
 }
@@ -23,7 +22,7 @@ struct FilterResult {
 impl LauncherView {
     pub fn apply_results(
         &mut self,
-        results: Arc<[usize]>,
+        results: Arc<[(usize, usize)]>,
         query: impl Into<SharedString>,
         force: bool,
         cx: &mut Context<Self>,
@@ -124,11 +123,11 @@ impl LauncherView {
 
         enum ModelKind {
             BufferedSearch {
-                weak_data: RenderableChildWeak,
+                weak_data: LauncherWeakEntity,
                 last_query: Option<SharedString>,
             },
             Standard {
-                data: RenderableChildEntity,
+                data: LauncherEntity,
             },
         }
 
@@ -187,7 +186,7 @@ impl LauncherView {
     }
     fn filter_update_sync(
         &mut self,
-        data: RenderableChildEntity,
+        data: LauncherEntity,
         query: SharedString,
         force: bool,
         cx: &mut Context<Self>,
@@ -199,7 +198,7 @@ impl LauncherView {
     }
     fn filter_update_async(
         &mut self,
-        data: RenderableChildEntity,
+        data: LauncherEntity,
         query: SharedString,
         force: bool,
         cx: &mut Context<Self>,
@@ -240,60 +239,75 @@ impl LauncherView {
         })
     }
     fn compute_filtered_results<C: AppContext>(
-        data_arc: Rc<Vec<RenderableChild>>,
+        data_arc: LauncherEntityInner,
         mode: &str,
         query: &SharedString,
         mut limit_cache: HashMap<LauncherId, u16>,
         cx: &mut C,
-    ) -> Arc<[usize]> {
+    ) -> Arc<[(usize, usize)]> {
         let is_home = query.is_empty() && mode == "all";
 
         // collects Vec<(index, priority)>
         let mut results: Vec<FilterResult> = (0..data_arc.len())
             .map(|i| (i, &data_arc[i]))
-            .filter(|(_, data)| {
-                let home = data.home();
+            .filter(|(_, launcher)| {
                 // [Rule 1]
                 // Case 1: Early return if mode applies but item is not assigned to that mode
                 // Case 2: Early return if current mode is not required mode for item
-                if Some(mode) != data.alias() && (mode != "all" || data.priority().base < 1) {
+                if Some(mode) != launcher.config.alias.as_deref()
+                    && (mode != "all" || launcher.config.priority < 1)
+                {
                     return false;
                 }
 
                 // [Rule 2]
-                // Early return if item should always show (websearch for example)
-                if home == HomeType::Persist {
-                    return true;
+                // Early return if not home but item is assigned to only show on home
+                if !is_home && launcher.config.home == HomeType::OnlyHome {
+                    return false;
                 }
 
                 // [Rule 3]
-                // Early return if not home but item is assigned to only show on home
-                if !is_home && home == HomeType::OnlyHome {
+                // Early return if item should only show on search but mode is home
+                if is_home && launcher.config.home == HomeType::Search {
                     return false;
                 }
 
+                true
+            })
+            .flat_map(|(launcher_idx, launcher)| {
+                launcher
+                    .children
+                    .iter()
+                    .enumerate()
+                    .map(move |(child_idx, child)| {
+                        (launcher_idx, launcher.config.clone(), child_idx, child)
+                    })
+            })
+            .filter(|(_, launcher, _, child)| {
                 // [Rule 4]
-                // Early return if based show (calc for example) applies
-                if let Some(based) = data.based_show(query, cx) {
-                    return based;
+                // Early return if item should always show (websearch for example)
+                if launcher.home == HomeType::Persist {
+                    return true;
                 }
 
                 // [Rule 5]
-                // Early return if item should only show on search but mode is home
-                if is_home && home == HomeType::Search {
-                    return false;
+                // Early return if based show (calc for example) applies
+                if let Some(based) = child.based_show(query, cx) {
+                    return based;
                 }
-
                 // [Rule 6]
                 // Check if query matches
-                data.search().fuzzy_match(query)
+                child.search().fuzzy_match(query)
             })
-            .map(|(index, data)| FilterResult {
-                index,
-                prio: data.priority().sort_key(query, data.search()),
-                limiter: data
-                    .with_launcher(|l| l.limit.map(|limit| (LauncherId::from(l.as_ref()), limit))),
-            })
+            .map(
+                |(launcher_idx, launcher_config, child_idx, child)| FilterResult {
+                    index: (launcher_idx, child_idx),
+                    prio: child.priority().sort_key(query, child.search()),
+                    limiter: launcher_config
+                        .limit
+                        .map(|limit| (LauncherId::from(launcher_config.as_ref()), limit)),
+                },
+            )
             .collect();
 
         // sort based on priority
@@ -321,16 +335,12 @@ impl LauncherView {
     /// Returns: Data, Mode, LimitCache
     fn prepare_filter_inputs(
         &self,
-        data: &RenderableChildEntity,
+        data: &LauncherEntity,
         cx: &Context<Self>,
-    ) -> (
-        Rc<Vec<RenderableChild>>,
-        LauncherMode,
-        HashMap<LauncherId, u16>,
-    ) {
+    ) -> (LauncherEntityInner, LauncherMode, HashMap<LauncherId, u16>) {
         let mode = self.navigation.current().mode.clone();
-        let data_arc = data.read(cx).clone();
+        let data_rc = data.read(cx).clone();
         let limit_cache = HashMap::new();
-        (data_arc, mode, limit_cache)
+        (data_rc, mode, limit_cache)
     }
 }

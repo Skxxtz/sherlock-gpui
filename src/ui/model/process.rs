@@ -1,6 +1,6 @@
-use crate::app::RenderableChildWeak;
+use crate::app::LauncherWeakEntity;
 use crate::launcher::process_launcher::ProcessLauncher;
-use crate::launcher::{Launcher, variant_type::LauncherType};
+use crate::launcher::{LauncherConfig, variant_type::LauncherType};
 use crate::ui::launcher::LauncherView;
 use crate::ui::model::process::backends::ProcessBackend;
 use crate::ui::widgets::RenderableChild;
@@ -18,14 +18,14 @@ pub mod view;
 #[derive(Default)]
 pub struct ProcessModel {
     backend: ProcessBackend,
-    launcher: Arc<Launcher>,
+    launcher: Arc<LauncherConfig>,
     results: Vec<ProcessResult>,
     cancel_tx: Option<mpsc::Sender<()>>,
     _poll_task: Option<Task<()>>,
 }
 
 impl ProcessModel {
-    pub fn new(launcher: Arc<Launcher>) -> Self {
+    pub fn new(launcher: Arc<LauncherConfig>) -> Self {
         if let LauncherType::Process(ProcessLauncher { max_results }) = launcher.launcher_type {
             Self {
                 launcher,
@@ -44,7 +44,7 @@ impl ProcessModel {
     pub fn search(
         &mut self,
         query_lower: Arc<str>,
-        result_entity: RenderableChildWeak,
+        result_entity: LauncherWeakEntity,
         launcher_weak: WeakEntity<LauncherView>,
         cx: &mut App,
     ) {
@@ -73,22 +73,26 @@ impl ProcessModel {
                 .await;
 
             let count = results.len();
-            let children = Rc::new(
-                results
-                    .into_iter()
-                    .map(|r| RenderableChild::Process {
-                        launcher: Arc::clone(&launcher),
-                        inner: ProcessData::new(r.name.clone(), r.pid, r.ppid)
-                            .with_icon_name("sherlock-process"),
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            let indices: Arc<[usize]> = (0..count).collect::<Vec<_>>().into();
+            let children = results
+                .into_iter()
+                .map(|r| RenderableChild::Process {
+                    launcher: Arc::clone(&launcher),
+                    inner: ProcessData::new(r.name.clone(), r.pid, r.ppid)
+                        .with_icon_name("sherlock-process"),
+                })
+                .collect::<Vec<_>>();
+            let indices: Arc<[(usize, usize)]> =
+                (0..count).map(|c| (0, c)).collect::<Vec<_>>().into(); // MAY-ERR
             if let Some(view) = launcher_weak.upgrade() {
                 cx.update(|cx| {
                     view.update(cx, |this, cx| {
                         if let Some(entity) = result_entity.upgrade() {
-                            entity.update(cx, |e, _| *e = children);
+                            entity.update(cx, |e, _| {
+                                let data = Rc::make_mut(e);
+                                if let Some(launcher) = data.get_mut(0) {
+                                    launcher.children = children;
+                                }
+                            });
                         }
                         this.apply_results(indices, query_lower, false, cx);
                     });

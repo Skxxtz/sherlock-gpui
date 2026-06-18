@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{Launcher, utils::exec_mode::ExecMode, variant_type::LauncherType},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     loader::{
         resolve_icon_path,
         utils::{ApplicationAction, Priority},
@@ -36,7 +36,7 @@ pub struct ClipData {
 impl Fetchable for ClipData {
     type Error = SherlockMessage;
     async fn fetch(
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         old: Option<Rc<Self>>,
     ) -> Result<Option<Rc<Self>>, Self::Error> {
         let LauncherType::Clipboard(clp) = &launcher.launcher_type else {
@@ -101,7 +101,7 @@ impl ClipWidget {
 impl<'a> RenderableChildImpl<'a> for ClipWidget {
     fn render(
         &self,
-        _launcher: &std::sync::Arc<crate::launcher::Launcher>,
+        _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -133,11 +133,11 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
         }
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &'a str {
         ""
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
         if let Some((intent, res)) = self
             .entity
             .read(cx)
@@ -162,7 +162,7 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
     }
 
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String> {
         let (intent, result) = self
             .entity
             .read(cx)
@@ -181,13 +181,13 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
     }
 
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
     fn actions(
         &self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         if let Some(own_actions) = self
@@ -233,7 +233,7 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
         }))
     }
     #[inline(always)]
-    fn update_async<C: AppContext>(&self, launcher: Arc<Launcher>, cx: &mut C) {
+    fn update_async<C: AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
         self.entity.update_async(launcher, cx);
     }
 }

@@ -21,7 +21,7 @@ pub mod weather;
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        ExecEffect, Launcher, LauncherValues,
+        ExecEffect, LauncherConfig, LauncherValues,
         app_launcher::app_data::AppData,
         emoji_launcher::EmojiData,
         utils::{binds::Bind, exec_mode::ExecMode},
@@ -65,7 +65,7 @@ macro_rules! renderable_enum {
         pub enum $name {
             $(
                 $variant {
-                    launcher: Arc<Launcher>,
+                    launcher: Arc<LauncherConfig>,
                     inner: $inner,
                 }
             ),*
@@ -198,11 +198,11 @@ macro_rules! renderable_enum {
 
         impl<'a> LauncherValues<'a> for $name {
             fn name(&'a self) -> Option<&'a str> {
-                self.launcher().name.as_ref().map(|s| s.as_str())
+                self.launcher_config().name.as_ref().map(|s| s.as_str())
             }
 
             fn home(&self) -> HomeType {
-                self.launcher().home
+                self.launcher_config().home
             }
 
             fn is_async(&self) -> bool {
@@ -223,7 +223,7 @@ macro_rules! renderable_enum {
             }
 
             fn alias(&'a self) -> Option<&'a str> {
-                self.launcher().alias.as_deref()
+                self.launcher_config().alias.as_deref()
             }
 
             fn priority(&self) -> Priority {
@@ -233,25 +233,25 @@ macro_rules! renderable_enum {
             }
 
             fn spawn_focus(&self) -> bool {
-                self.launcher().spawn_focus
+                self.launcher_config().spawn_focus
             }
 
             fn launcher_type(&self) -> &LauncherType {
-                &self.launcher().launcher_type
+                &self.launcher_config().launcher_type
             }
 
             fn launcher_variant(&self) -> LauncherVariant {
-                self.launcher().launcher_type.as_ref().into()
+                self.launcher_config().launcher_type.as_ref().into()
             }
 
             fn shortcut(&self) -> bool {
-                self.launcher().shortcut
+                self.launcher_config().shortcut
             }
         }
 
         impl <'a> $name {
             #[inline(always)]
-            fn launcher(&'a self) -> &'a Launcher {
+            fn launcher_config(&'a self) -> &'a LauncherConfig {
                 match self {
                     $(Self::$variant {launcher, ..} => &launcher),*
                 }
@@ -259,7 +259,7 @@ macro_rules! renderable_enum {
 
             pub fn with_launcher<F, R>(&self, f: F) -> R
             where
-                F: FnOnce(&Arc<Launcher>) -> R
+                F: FnOnce(&Arc<LauncherConfig>) -> R
             {
                 match self {
                     $(Self::$variant { launcher, .. } => f(launcher)),*

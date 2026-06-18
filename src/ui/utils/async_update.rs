@@ -2,18 +2,18 @@ use std::{rc::Rc, sync::Arc};
 
 use gpui::{App, AppContext, AsyncApp, Entity, Task, WeakEntity};
 
-use crate::launcher::Launcher;
+use crate::launcher::LauncherConfig;
 
 pub trait Fetchable: Sized + Send + 'static {
     type Error: Send;
     async fn fetch(
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         old: Option<Rc<Self>>,
     ) -> Result<Option<Rc<Self>>, Self::Error>;
 }
 
 pub trait AsyncUpdate {
-    fn update_async(&self, launcher: Arc<Launcher>, cx: &mut impl AppContext);
+    fn update_async(&self, launcher: Arc<LauncherConfig>, cx: &mut impl AppContext);
 }
 
 #[derive(Clone)]
@@ -61,7 +61,7 @@ impl<T: Fetchable> Default for AsyncUpdateEntityInner<T> {
 }
 
 impl<T: Fetchable> AsyncUpdate for AsyncUpdateEntity<T> {
-    fn update_async(&self, launcher: Arc<Launcher>, cx: &mut impl AppContext) {
+    fn update_async(&self, launcher: Arc<LauncherConfig>, cx: &mut impl AppContext) {
         self.entity.update(cx, |this, cx| {
             // reset task
             this.task = None;

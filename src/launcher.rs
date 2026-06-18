@@ -51,7 +51,7 @@ pub trait LauncherProvider {
     fn parse(raw: &RawLauncher) -> LauncherType;
     fn objects(
         &self,
-        launcher: Arc<Launcher>,
+        launcher: Arc<LauncherConfig>,
         ctx: &LoadContext,
         opts: Arc<serde_json::Value>,
         messages: &mut Vec<SherlockMessage>,
@@ -75,8 +75,8 @@ pub trait LauncherProvider {
     }
 }
 
-#[derive(Debug, PartialEq, Default)]
-pub struct Launcher {
+#[derive(Debug, Default, PartialEq)]
+pub struct LauncherConfig {
     /// The name of the launcher. Might get displayed in the widget
     pub name: Option<SharedString>,
 
@@ -118,6 +118,12 @@ pub struct Launcher {
     pub add_actions: Option<Arc<[Arc<ContextMenuAction>]>>,
 }
 
+#[derive(Clone, Debug)]
+pub struct Launcher {
+    pub config: Arc<LauncherConfig>,
+    pub children: Vec<RenderableChild>,
+}
+
 #[allow(dead_code)]
 pub trait LauncherValues<'a> {
     fn name(&'a self) -> Option<&'a str>;
@@ -131,7 +137,7 @@ pub trait LauncherValues<'a> {
     fn shortcut(&self) -> bool;
 }
 
-impl Launcher {
+impl LauncherConfig {
     pub fn from_raw(raw: RawLauncher, launcher_type: LauncherType, icon: Option<String>) -> Self {
         let icon = icon.as_deref().and_then(resolve_icon_path);
 
@@ -181,7 +187,7 @@ impl Launcher {
         )
     }
 }
-impl Display for Launcher {
+impl Display for LauncherConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(name) = self.name.as_ref() {
             return f.write_str(name);
@@ -191,7 +197,7 @@ impl Display for Launcher {
     }
 }
 
-impl Hash for Launcher {
+impl Hash for LauncherConfig {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
         self.name.hash(h);
         self.alias.hash(h);
@@ -202,8 +208,8 @@ impl Hash for Launcher {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LauncherId(u64);
-impl From<&Launcher> for LauncherId {
-    fn from(value: &Launcher) -> Self {
+impl From<&LauncherConfig> for LauncherId {
+    fn from(value: &LauncherConfig) -> Self {
         let mut hasher = DefaultHasher::new();
         value.hash(&mut hasher);
         Self(hasher.finish())

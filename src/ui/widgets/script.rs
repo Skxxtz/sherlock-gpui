@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::process::{Command, Stdio};
 
 use crate::{
-    launcher::{Launcher, utils::exec_mode::ExecMode, variant_type::LauncherType},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     loader::utils::{ApplicationActionSerde, Priority},
     ui::{
         launcher::context_menu::ContextMenuAction,
@@ -82,7 +82,7 @@ impl From<AsyncCommandResponseSerde> for AsyncCommandResponse {
 impl<'a> RenderableChildImpl<'a> for ScriptData {
     fn render(
         &self,
-        _launcher: &std::sync::Arc<crate::launcher::Launcher>,
+        _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
         _selection: Selection,
         _query: &str,
         theme: std::sync::Arc<crate::app::theme::ThemeData>,
@@ -157,16 +157,20 @@ impl<'a> RenderableChildImpl<'a> for ScriptData {
             )
             .into_any_element()
     }
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
-    fn search(&'a self, _launcher: &std::sync::Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &std::sync::Arc<LauncherConfig>) -> &'a str {
         ""
     }
-    fn build_exec(&self, _launcher: &std::sync::Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(
+        &self,
+        _launcher: &std::sync::Arc<LauncherConfig>,
+        _cx: &mut App,
+    ) -> Option<ExecMode> {
         None
     }
-    fn get_content(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String> {
         self.update_entity
             .read(cx)
             .result
@@ -187,7 +191,7 @@ impl<'a> RenderableChildImpl<'a> for ScriptData {
     }
     fn actions(
         &self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         let actions = self
@@ -218,7 +222,7 @@ impl<'a> RenderableChildImpl<'a> for ScriptData {
 
         Some(combined.into())
     }
-    fn update_sync(&self, query: SharedString, launcher: &Arc<Launcher>, cx: &mut App) {
+    fn update_sync(&self, query: SharedString, launcher: &Arc<LauncherConfig>, cx: &mut App) {
         self.update_entity.update(cx, |this, cx| {
             if query.is_empty() {
                 this.task = None;
@@ -242,7 +246,7 @@ impl<'a> RenderableChildImpl<'a> for ScriptData {
             self.update_async(launcher.clone(), cx);
         }
     }
-    fn update_async<C: AppContext>(&self, _launcher: Arc<Launcher>, cx: &mut C) {
+    fn update_async<C: AppContext>(&self, _launcher: Arc<LauncherConfig>, cx: &mut C) {
         self.update_entity.update(cx, |this, cx| {
             this.task = None;
 

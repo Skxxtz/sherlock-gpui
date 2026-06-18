@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        Launcher, timer_launcher::TimerLauncherFunctions, utils::exec_mode::ExecMode,
+        LauncherConfig, timer_launcher::TimerLauncherFunctions, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
     loader::utils::{ExecVariable, Priority},
@@ -75,7 +75,7 @@ impl TimerChild {
 impl<'a> RenderableChildImpl<'a> for TimerChild {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         _selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -132,7 +132,7 @@ impl<'a> RenderableChildImpl<'a> for TimerChild {
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
         if let Some(Intent::Timer { duration }) = self.update_entity.read(cx).intent.clone() {
             return Some(ExecMode::Inner {
                 func: InnerFunction::Timer(TimerLauncherFunctions::NewTimer { duration }),
@@ -145,15 +145,15 @@ impl<'a> RenderableChildImpl<'a> for TimerChild {
         })
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         None
     }
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         ""
     }
     #[inline(always)]
@@ -191,7 +191,7 @@ impl<'a> RenderableChildImpl<'a> for TimerChild {
     }
     fn actions(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         cx: &mut App,
     ) -> Option<Arc<[Arc<crate::ui::launcher::context_menu::ContextMenuAction>]>> {
         // TODO: idea: make a context_menu action type parameter that allows for a binary option

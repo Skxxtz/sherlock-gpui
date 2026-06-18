@@ -8,7 +8,7 @@ use gpui::{
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        Launcher,
+        LauncherConfig,
         audio_launcher::{AudioLauncherFunctions, MusicPlayerFunctions, utils::MprisState},
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
@@ -39,7 +39,7 @@ impl MusicPlayerWidget {
 impl Fetchable for MprisState {
     type Error = SherlockMessage;
     async fn fetch(
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         old: Option<Rc<Self>>,
     ) -> Result<Option<Rc<Self>>, Self::Error> {
         let launcher = AudioLauncherFunctions::new()?;
@@ -70,7 +70,7 @@ impl Fetchable for MprisState {
 impl<'a> RenderableChildImpl<'a> for MusicPlayerWidget {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -135,25 +135,25 @@ impl<'a> RenderableChildImpl<'a> for MusicPlayerWidget {
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         Some(ExecMode::Inner {
             func: InnerFunction::MusicPlayer(MusicPlayerFunctions::TogglePlayback),
             exit: launcher.exit,
         })
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String> {
         let Ok(Some(inner)) = self.entity.read(cx) else {
             return None;
         };
         inner.raw.as_ref().and_then(|m| m.metadata.title.clone())
     }
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         ""
     }
     #[inline(always)]
@@ -165,11 +165,11 @@ impl<'a> RenderableChildImpl<'a> for MusicPlayerWidget {
         }
     }
     #[inline(always)]
-    fn binds(&self, launcher: &Arc<Launcher>, _cx: &mut App) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<Arc<Vec<Bind>>> {
         launcher.launcher_type.binds()
     }
     #[inline(always)]
-    fn update_async<C: AppContext>(&self, launcher: Arc<Launcher>, cx: &mut C) {
+    fn update_async<C: AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
         self.entity.update_async(launcher, cx);
     }
 }

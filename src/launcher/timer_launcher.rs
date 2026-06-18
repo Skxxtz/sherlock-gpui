@@ -10,7 +10,8 @@ use crate::{
     docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
     ensure_func,
     launcher::{
-        ExecEffect, LauncherProvider, LauncherType, LoadContext, variant_type::InnerFunction,
+        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, LoadContext,
+        variant_type::InnerFunction,
     },
     loader::utils::RawLauncher,
     sherlock_msg, skip_func_if_nav,
@@ -46,7 +47,7 @@ impl LauncherProvider for TimerLauncher {
     }
     fn objects(
         &self,
-        launcher: Arc<super::Launcher>,
+        launcher: Arc<LauncherConfig>,
         _ctx: &LoadContext,
         _opts: Arc<Value>,
         _messages: &mut Vec<SherlockMessage>,

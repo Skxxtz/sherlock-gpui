@@ -1,7 +1,7 @@
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        Launcher, theme_launcher::ThemePickerFunctions, utils::exec_mode::ExecMode,
+        LauncherConfig, theme_launcher::ThemePickerFunctions, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
     loader::utils::Priority,
@@ -58,7 +58,7 @@ impl<'a> RenderableChildImpl<'a> for ThemeWidget {
     const HANDLES_BORDERS: bool = true;
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         global_theme: Arc<ThemeData>,
@@ -138,7 +138,7 @@ impl<'a> RenderableChildImpl<'a> for ThemeWidget {
     }
 
     #[inline(always)]
-    fn build_exec(&self, launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         Some(ExecMode::Inner {
             func: InnerFunction::Theme(ThemePickerFunctions::Pick {
                 theme: self.theme.clone(),
@@ -148,17 +148,17 @@ impl<'a> RenderableChildImpl<'a> for ThemeWidget {
     }
 
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(self.name.to_string())
     }
 
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
 
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         &self.name
     }
 }

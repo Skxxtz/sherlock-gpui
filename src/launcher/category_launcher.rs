@@ -25,7 +25,7 @@ impl LauncherProvider for CategoryLauncher {
     }
     fn objects(
         &self,
-        launcher: std::sync::Arc<super::Launcher>,
+        launcher: std::sync::Arc<super::LauncherConfig>,
         ctx: &crate::loader::LoadContext,
         opts: std::sync::Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,

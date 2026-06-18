@@ -1,6 +1,6 @@
-use crate::app::RenderableChildWeak;
+use crate::app::LauncherWeakEntity;
 use crate::launcher::file_launcher::FileLauncher;
-use crate::launcher::{Launcher, variant_type::LauncherType};
+use crate::launcher::{LauncherConfig, variant_type::LauncherType};
 use crate::ui::launcher::LauncherView;
 use crate::ui::model::utils::CiUtils;
 use crate::ui::widgets::RenderableChild;
@@ -23,7 +23,7 @@ pub use backends::FileSearchBackend;
 #[derive(Default)]
 pub struct FileSearchModel {
     backend: FileSearchBackend,
-    launcher: Arc<Launcher>,
+    launcher: Arc<LauncherConfig>,
     results: Vec<FileResult>,
     poll_interval: u64,
     paths: Arc<Vec<PathBuf>>,
@@ -34,7 +34,7 @@ pub struct FileSearchModel {
 pub(super) const MAX_SEARCH_DEPTH: usize = 6;
 
 impl FileSearchModel {
-    pub fn new(launcher: Arc<Launcher>, dir: Option<SharedString>) -> Self {
+    pub fn new(launcher: Arc<LauncherConfig>, dir: Option<SharedString>) -> Self {
         if let LauncherType::Files(FileLauncher {
             ref backend,
             ref loc,
@@ -69,7 +69,7 @@ impl FileSearchModel {
     pub fn search(
         &mut self,
         query_lower: Arc<str>,
-        result_entity: RenderableChildWeak,
+        result_entity: LauncherWeakEntity,
         launcher_weak: WeakEntity<LauncherView>,
         cx: &mut App,
     ) {
@@ -126,18 +126,16 @@ impl FileSearchModel {
 
                 if let Some(snapshot) = latest {
                     let count = snapshot.len();
-                    let children = Rc::new(
-                        snapshot
-                            .into_iter()
-                            .map(|r| RenderableChild::File {
-                                launcher: Arc::clone(&launcher),
-                                inner: FileData::new(r.path.clone())
-                                    .with_icon_name(r.get_icon_name()),
-                            })
-                            .collect::<Vec<_>>(),
-                    );
+                    let children = snapshot
+                        .into_iter()
+                        .map(|r| RenderableChild::File {
+                            launcher: Arc::clone(&launcher),
+                            inner: FileData::new(r.path.clone()).with_icon_name(r.get_icon_name()),
+                        })
+                        .collect::<Vec<_>>();
 
-                    let indices: Arc<[usize]> = (0..count).collect::<Vec<_>>().into();
+                    let indices: Arc<[(usize, usize)]> =
+                        (0..count).map(|c| (0, c)).collect::<Vec<_>>().into();
 
                     if let Some(view) = launcher_weak.upgrade() {
                         cx.update({
@@ -146,7 +144,12 @@ impl FileSearchModel {
                                 view.update(cx, |this, cx| {
                                     // Swap the entity data directly
                                     if let Some(entity) = result_entity.upgrade() {
-                                        entity.update(cx, |e, _| *e = children);
+                                        entity.update(cx, |e, _| {
+                                            let data = Rc::make_mut(e);
+                                            if let Some(launcher) = data.get_mut(0) {
+                                                launcher.children = children;
+                                            }
+                                        });
                                     }
                                     // Reuse the exact same apply_results path as regular search
                                     this.apply_results(indices, query_lower, false, cx);

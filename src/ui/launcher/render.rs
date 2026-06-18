@@ -237,7 +237,10 @@ impl LauncherView {
                                     None => return div().into_any_element(),
                                 };
                                 let data_snapshot = data.read(cx).clone();
-                                let child = match data_snapshot.get(data_idx) {
+                                let child = match data_snapshot
+                                    .get(data_idx.0)
+                                    .and_then(|l| l.children.get(data_idx.1))
+                                {
                                     Some(c) => c,
                                     None => return div().into_any_element(),
                                 };
@@ -248,7 +251,9 @@ impl LauncherView {
                                         let count = indices[..idx.min(indices.len())]
                                             .iter()
                                             .filter(|&&i| {
-                                                data_snapshot.get(i).is_some_and(|c| c.shortcut())
+                                                data_snapshot
+                                                    .get(i.0)
+                                                    .is_some_and(|l| l.config.shortcut)
                                             })
                                             .take(max_shortcuts)
                                             .count();
@@ -362,7 +367,9 @@ impl LauncherView {
 
                                                 if let Some(&data_idx) = indices.get(item_idx) {
                                                     let data_snapshot = data.read(cx).clone();
-                                                    if let Some(child) = data_snapshot.get(data_idx)
+                                                    if let Some(child) = data_snapshot
+                                                        .get(data_idx.0)
+                                                        .and_then(|l| l.children.get(data_idx.1))
                                                     {
                                                         return div()
                                                             .w_0()
@@ -538,7 +545,7 @@ impl LauncherView {
         let idx = selection.data_idx;
         div()
             .relative()
-            .id(selection.data_idx)
+            .id(idx.0 << 32 | idx.1)
             .w_full()
             .on_click(move |evt: &ClickEvent, win, cx: &mut App| {
                 if !evt.standard_click() && !evt.is_keyboard() {

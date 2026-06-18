@@ -14,12 +14,15 @@ use tokio::{
     sync::Notify,
 };
 
+use crate::app::LauncherEntity;
+use crate::launcher::Launcher;
+use crate::launcher::variant_type::LauncherType;
 use crate::utils::intent::Intent;
 use crate::utils::intent::cursor::Cursor;
 use crate::utils::intent::parsers::timer::TimerParser;
 use crate::{
-    app::{RenderableChildEntity, run_async_updates, spawn_launcher},
-    launcher::Launcher,
+    app::{run_async_updates, spawn_launcher},
+    launcher::LauncherConfig,
     sherlock_msg,
     tokio_utils::AsyncSizedMessage,
     ui::{
@@ -38,7 +41,7 @@ use crate::{
 
 pub(super) async fn run_event_loop(
     mut cx: AsyncApp,
-    data: RenderableChildEntity,
+    data: LauncherEntity,
     mut modes: Arc<[LauncherMode]>,
     mut watcher: ConfigWatcher,
     listener: UnixListener,
@@ -116,9 +119,11 @@ pub(super) async fn run_event_loop(
                     data.update(&mut cx, |this, cx| {
                         let timer = this
                             .iter()
-                            .find(|&w| matches!(w, RenderableChild::Timer { .. }));
+                            .find(|l| matches!(l.config.launcher_type, LauncherType::Timer(_)));
 
-                        if let Some(RenderableChild::Timer { inner, .. }) = timer {
+                        if let Some(RenderableChild::Timer { inner, .. }) =
+                            timer.and_then(|t| t.children.first())
+                        {
                             inner.new_timer(duration, command.clone(), cx);
                         }
                     })
@@ -160,16 +165,19 @@ pub(super) async fn run_event_loop(
             // Parse potential initial data such as dmenu piped input
             if let ClientMessage::Dmenu(items) = &msg {
                 let entity = cx.new(move |_| {
-                    let launcher = Arc::new(Launcher::default_dmenu());
-                    Rc::new(
-                        items
-                            .iter()
-                            .map(|s| RenderableChild::Dmenu {
-                                launcher: launcher.clone(),
-                                inner: s.into(),
-                            })
-                            .collect(),
-                    )
+                    let launcher_config = Arc::new(LauncherConfig::default_dmenu());
+                    let children = items
+                        .iter()
+                        .map(|s| RenderableChild::Dmenu {
+                            launcher: launcher_config.clone(),
+                            inner: s.into(),
+                        })
+                        .collect();
+
+                    Rc::new(vec![Launcher {
+                        config: launcher_config,
+                        children,
+                    }])
                 });
 
                 add_data_page(entity, &win, &mut cx);
@@ -232,7 +240,7 @@ where
 }
 
 fn refresh_launcher_view(
-    data: RenderableChildEntity,
+    data: LauncherEntity,
     modes: Arc<[LauncherMode]>,
     initial_messages: &[SherlockMessage],
     response_socket: Option<Arc<StdUnixStream>>,
@@ -271,13 +279,13 @@ fn open_window(win: &Option<WindowHandle<LauncherView>>, cx: &mut AsyncApp) {
 }
 
 fn add_data_page(
-    entity: RenderableChildEntity,
+    entity: LauncherEntity,
     win: &Option<WindowHandle<LauncherView>>,
     cx: &mut AsyncApp,
 ) {
     if let Some(current_window) = win {
         let _ = current_window.update(cx, |this, _win, cx| {
-            let launcher = Arc::new(Launcher::default_dmenu());
+            let launcher = Arc::new(LauncherConfig::default_dmenu());
             this.navigation
                 .push(NavigationViewType::Dmenu { entity }.create_view(launcher, cx));
         });

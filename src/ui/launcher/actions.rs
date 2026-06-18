@@ -8,7 +8,9 @@ use smallvec::SmallVec;
 
 use crate::{
     app::reset_generation,
-    launcher::{ExecEffect, LauncherValues, utils::exec_mode::ExecMode},
+    launcher::{
+        ExecEffect, LauncherValues, utils::exec_mode::ExecMode, variant_type::LauncherType,
+    },
     loader::utils::{CounterReader, ExecVariable},
     sherlock_msg,
     ui::{
@@ -65,9 +67,11 @@ impl LauncherView {
         // Find the first focusable item
         if let Some(n) = {
             let data_guard = data_entity.read(cx);
-            indices
-                .iter()
-                .position(|&idx| data_guard.get(idx).is_some_and(|child| child.spawn_focus()))
+            indices.iter().position(|&idx| {
+                data_guard
+                    .get(idx.0)
+                    .is_some_and(|launcher| launcher.config.spawn_focus)
+            })
         } {
             self.focus_nth(n, cx);
         }
@@ -639,7 +643,8 @@ impl LauncherView {
             self.navigation.with_model_mut(cx, |mdl, cx| {
                 let data_guard = mdl.data().read(cx).clone();
                 data_guard
-                    .get(idx)
+                    .get(idx.0)
+                    .and_then(|l| l.children.get(idx.1))
                     .and_then(|data| data.vars(cx).map(|slice| slice.to_vec()))
             })
         };
@@ -678,7 +683,20 @@ impl LauncherView {
         let data_snapshot_rc = data.read(cx).clone();
         data_snapshot_rc
             .iter()
-            .filter(|item| item.is_async())
+            .filter_map(|launcher| {
+                if matches!(
+                    launcher.config.launcher_type,
+                    LauncherType::Weather(_)
+                        | LauncherType::MusicPlayer(_)
+                        | LauncherType::Clipboard(_)
+                        | LauncherType::Event(_)
+                ) {
+                    Some(launcher.children.iter())
+                } else {
+                    None
+                }
+            })
+            .flatten()
             .for_each(|item| item.update_async(cx));
     }
 
@@ -689,7 +707,7 @@ impl LauncherView {
         let filtered_indices_arc = self.navigation.with_model(cx, |mdl| mdl.filtered_indices());
         filtered_indices_arc
             .iter()
-            .filter_map(|i| data_snapshot_arc.get(*i))
+            .filter_map(|i| data_snapshot_arc.get(i.0).and_then(|l| l.children.get(i.1)))
             .for_each(|render_child| render_child.update_sync(query.clone(), cx));
     }
 }

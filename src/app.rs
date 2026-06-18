@@ -21,6 +21,7 @@ use crate::{
         runtime::{LuaRuntimeGlobal, LuaRuntimeHandle},
         subscribers::{TileSubscribers, TileSubscribersGlobal},
     },
+    launcher::Launcher,
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,
@@ -30,7 +31,6 @@ use crate::{
         },
         model::Model,
         search_bar::{EmptyBackspace, TextInput},
-        widgets::RenderableChild,
     },
     utils::{
         config::{ConfigGuard, ConfigWatcher},
@@ -48,8 +48,9 @@ pub fn reset_generation() {
     LAUNCH_GENERATION.fetch_add(1, Ordering::Relaxed);
 }
 
-pub type RenderableChildEntity = Entity<Rc<Vec<RenderableChild>>>;
-pub type RenderableChildWeak = WeakEntity<Rc<Vec<RenderableChild>>>;
+pub type LauncherEntity = Entity<LauncherEntityInner>;
+pub type LauncherWeakEntity = WeakEntity<LauncherEntityInner>;
+pub type LauncherEntityInner = Rc<Vec<Launcher>>;
 
 pub fn run_app(cx: &mut App, result: SetupResult) {
     let (lua_runtime, mut update_rx) = LuaRuntimeHandle::spawn();
@@ -83,7 +84,7 @@ pub fn run_app(cx: &mut App, result: SetupResult) {
     let theme = ActiveTheme::default();
     cx.set_global(theme);
 
-    let data: RenderableChildEntity = cx.new(|_| Rc::new(Vec::new()));
+    let data: LauncherEntity = cx.new(|_| Rc::new(Vec::new()));
     let modes = load_modes(cx, &data, &mut messages);
 
     let listener = UnixListener::bind(SOCKET_PATH).unwrap();
@@ -102,7 +103,7 @@ pub fn run_app(cx: &mut App, result: SetupResult) {
 
 fn load_modes(
     cx: &mut App,
-    data: &RenderableChildEntity,
+    data: &LauncherEntity,
     messages: &mut Vec<SherlockMessage>,
 ) -> Arc<[LauncherMode]> {
     match Loader::load_launchers(cx, data.clone(), None) {
@@ -129,7 +130,7 @@ pub async fn run_async_updates(cx: &mut AsyncApp, win: WindowHandle<LauncherView
 
 fn spawn_launcher(
     cx: &mut App,
-    data: RenderableChildEntity,
+    data: LauncherEntity,
     modes: Arc<[LauncherMode]>,
     initial_messages: Vec<SherlockMessage>,
     response_socket: Option<Arc<UnixStream>>,

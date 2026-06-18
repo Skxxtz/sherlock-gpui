@@ -5,8 +5,8 @@ use gpui::AsyncApp;
 use super::{SherlockConfig, watcher::ConfigFileChange};
 use crate::{
     CONFIG,
-    app::RenderableChildEntity,
-    launcher::variant_type::LauncherType,
+    app::LauncherEntity,
+    launcher::variant_type::{LauncherType, LauncherVariant},
     loader::{Loader, application_loader::ApplicationLoader},
     ui::{launcher::LauncherMode, widgets::RenderableChild},
     utils::{config::ConfigGuard, errors::SherlockMessage},
@@ -14,7 +14,7 @@ use crate::{
 
 pub fn reload(
     cx: &mut AsyncApp,
-    data: &RenderableChildEntity,
+    data: &LauncherEntity,
     initial_messages: &mut Vec<SherlockMessage>,
     changes: ConfigFileChange,
 ) -> Option<Arc<[LauncherMode]>> {
@@ -64,16 +64,22 @@ pub fn reload(
     modes
 }
 
-fn reload_aliases(data: &RenderableChildEntity, cx: &mut AsyncApp) -> Result<(), SherlockMessage> {
+fn reload_aliases(data: &LauncherEntity, cx: &mut AsyncApp) -> Result<(), SherlockMessage> {
     let alias_path = ConfigGuard::read_with(|cfg| cfg.files.alias.clone())?;
     let mut aliases = ApplicationLoader::load_aliases(&alias_path)?;
     data.update(cx, |this, _cx| {
-        for c in Rc::make_mut(this).iter_mut() {
-            if let RenderableChild::App { inner, launcher } = c
-                && let Some(alias) = inner.original_name.as_ref().and_then(|n| aliases.remove(n))
-                && let LauncherType::Apps(launcher) = &launcher.launcher_type
-            {
-                inner.apply_alias_raw(alias, launcher.use_keywords);
+        for launcher in Rc::make_mut(this)
+            .iter_mut()
+            .filter(|l| matches!(l.config.launcher_type.variant(), LauncherVariant::Apps))
+        {
+            for child in launcher.children.iter_mut() {
+                if let RenderableChild::App { inner, launcher } = child
+                    && let Some(alias) =
+                        inner.original_name.as_ref().and_then(|n| aliases.remove(n))
+                    && let LauncherType::Apps(launcher) = &launcher.launcher_type
+                {
+                    inner.apply_alias_raw(alias, launcher.use_keywords);
+                }
             }
         }
     });

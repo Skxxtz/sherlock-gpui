@@ -123,9 +123,12 @@ macro_rules! create_variants {
         }
 
         impl $name {
+            pub fn variant(&self) -> LauncherVariant {
+                LauncherVariant::from(self)
+            }
             pub fn get_render_obj(
                 &self,
-                launcher: std::sync::Arc<crate::launcher::Launcher>,
+                launcher: std::sync::Arc<crate::launcher::LauncherConfig>,
                 ctx: &crate::loader::LoadContext,
                 opts: std::sync::Arc<serde_json::Value>,
                 messages: &mut Vec<SherlockMessage>,

@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{Launcher, app_launcher::app_data::AppData, utils::exec_mode::ExecMode},
+    launcher::{LauncherConfig, app_launcher::app_data::AppData, utils::exec_mode::ExecMode},
     loader::utils::Priority,
     ui::{
         launcher::context_menu::ContextMenuAction,
@@ -20,7 +20,7 @@ use crate::{
 impl<'a> RenderableChildImpl<'a> for AppData {
     fn render(
         &self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         selection: Selection,
         query: &str,
         theme: Arc<ThemeData>,
@@ -79,11 +79,11 @@ impl<'a> RenderableChildImpl<'a> for AppData {
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         Some(ExecMode::from_appdata(self, launcher))
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         let config = ConfigGuard::read().ok();
         let field = config.as_ref().and_then(|c| c.runtime.field.as_deref());
         match field {
@@ -92,17 +92,17 @@ impl<'a> RenderableChildImpl<'a> for AppData {
         }
     }
     #[inline(always)]
-    fn priority(&self, _launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, _launcher: &Arc<LauncherConfig>) -> Priority {
         self.priority.get()
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         &self.search_string
     }
     #[inline(always)]
     fn actions(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         _cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         Some(self.actions.clone())

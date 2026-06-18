@@ -5,7 +5,7 @@ use gpui::{AnyElement, App, AppContext, SharedString};
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        ExecEffect, Launcher,
+        ExecEffect, LauncherConfig,
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
     },
@@ -18,19 +18,19 @@ pub trait RenderableChildImpl<'a> {
     const HANDLES_BORDERS: bool = false;
     fn render(
         &self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         selection: Selection,
         query: &str,
         theme: Arc<ThemeData>,
         cx: &mut App,
     ) -> AnyElement;
-    fn build_exec(&self, launcher: &Arc<Launcher>, cx: &mut App) -> Option<ExecMode>;
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority;
-    fn search(&'a self, launcher: &Arc<Launcher>) -> &'a str;
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode>;
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority;
+    fn search(&'a self, launcher: &Arc<LauncherConfig>) -> &'a str;
     /// Will only get called once the context menu gets opened
     fn actions(
         &self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         _cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         launcher.actions.clone()
@@ -39,13 +39,13 @@ pub trait RenderableChildImpl<'a> {
     fn has_actions(&self, _cx: &mut App) -> bool {
         false
     }
-    fn binds(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<Arc<Vec<Bind>>> {
         None
     }
     fn execute_function(
         &self,
         _func: &InnerFunction,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         _variables: &[(SharedString, SharedString)],
         _cx: &mut App,
     ) -> Option<ExecEffect> {
@@ -57,13 +57,13 @@ pub trait RenderableChildImpl<'a> {
     fn sidebar(&self, _cx: &mut App) -> Option<AnyElement> {
         None
     }
-    fn update_sync(&self, _query: SharedString, _launcher: &Arc<Launcher>, _cx: &mut App) {}
-    fn update_async<C: AppContext>(&self, _launcher: Arc<Launcher>, _cx: &mut C) {}
+    fn update_sync(&self, _query: SharedString, _launcher: &Arc<LauncherConfig>, _cx: &mut App) {}
+    fn update_async<C: AppContext>(&self, _launcher: Arc<LauncherConfig>, _cx: &mut C) {}
     fn vars(&self, _cx: &mut App) -> Option<&[ExecVariable]> {
         None
     }
     fn increment_count(&self) {}
-    fn get_content(&self, launcher: &Arc<Launcher>, cx: &mut App) -> Option<String>;
+    fn get_content(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String>;
 }
 
 // To make compatible with Boxed data

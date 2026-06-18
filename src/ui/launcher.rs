@@ -1,4 +1,4 @@
-use crate::launcher::Launcher;
+use crate::launcher::LauncherConfig;
 use crate::tokio_utils::SizedMessageObj;
 use crate::ui::backdrop::Backdrop;
 use crate::ui::choice::Choice;
@@ -117,13 +117,13 @@ pub enum LauncherMode {
     Alias {
         short: SharedString,
         name: SharedString,
-        launcher: Arc<Launcher>,
+        launcher: Arc<LauncherConfig>,
     },
 }
 
 pub enum ModeTransition {
     None,
-    PushStack(Arc<Launcher>),
+    PushStack(Arc<LauncherConfig>),
     ClearInput,
 }
 
