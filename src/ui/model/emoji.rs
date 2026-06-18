@@ -4,7 +4,7 @@ use gpui::App;
 
 use crate::{
     launcher::{
-        Launcher,
+        Launcher, LauncherConfig,
         emoji_launcher::{EmojiData, data::EMOJIS},
     },
     ui::{model::Model, widgets::RenderableChild},
@@ -15,17 +15,22 @@ pub struct EmojiView {
 }
 
 impl EmojiView {
-    pub fn new(launcher: Arc<Launcher>, cx: &mut App) -> Self {
+    pub fn new(config: Arc<LauncherConfig>, cx: &mut App) -> Self {
         let data: Vec<RenderableChild> = EMOJIS
             .iter()
             .map(|entry| RenderableChild::Emoji {
-                launcher: launcher.clone(),
+                launcher: config.clone(),
                 inner: EmojiData { entry },
             })
             .collect();
 
+        let launcher_vec = vec![Launcher {
+            config,
+            children: data,
+        }];
+
         Self {
-            model: Model::standard(data, cx),
+            model: Model::standard(launcher_vec, cx),
         }
     }
 }

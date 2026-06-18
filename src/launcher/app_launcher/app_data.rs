@@ -8,7 +8,7 @@ use gpui::SharedString;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    launcher::{Launcher, variant_type::LauncherType},
+    launcher::{LauncherConfig, variant_type::LauncherType},
     loader::{
         IconType, resolve_icon_path,
         utils::{ApplicationAction, ExecVariable, PriorityGuard, SherlockAlias, construct_search},
@@ -109,7 +109,7 @@ impl AppData {
 
     pub fn apply_alias(
         &mut self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         alias: Option<SherlockAlias>,
         use_keywords: bool,
         mut buffer: Vec<ApplicationAction>,
@@ -179,7 +179,7 @@ impl AppData {
                 .into();
         }
     }
-    pub fn get_exec(&self, launcher: &Arc<Launcher>) -> Option<String> {
+    pub fn get_exec(&self, launcher: &Arc<LauncherConfig>) -> Option<String> {
         match &launcher.launcher_type {
             LauncherType::Web(web) => Some(format!("websearch-{}", web.engine)),
 

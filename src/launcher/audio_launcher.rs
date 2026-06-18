@@ -58,7 +58,7 @@ impl LauncherProvider for MusicPlayerLauncher {
     }
     fn objects(
         &self,
-        launcher: Arc<super::Launcher>,
+        launcher: Arc<super::LauncherConfig>,
         _: &crate::loader::LoadContext,
         _opts: Arc<Value>,
         _messages: &mut Vec<SherlockMessage>,

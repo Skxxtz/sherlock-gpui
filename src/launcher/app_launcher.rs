@@ -34,7 +34,7 @@ impl LauncherProvider for AppLauncher {
     }
     fn objects(
         &self,
-        launcher: Arc<super::Launcher>,
+        launcher: Arc<super::LauncherConfig>,
         ctx: &LoadContext,
         _opts: Arc<Value>,
         _messages: &mut Vec<SherlockMessage>,

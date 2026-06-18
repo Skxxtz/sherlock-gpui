@@ -6,8 +6,8 @@ use simd_json::prelude::{ArrayTrait, Indexed};
 use std::sync::Arc;
 
 use crate::{
-    app::RenderableChildEntity,
-    launcher::{Launcher, LauncherValues, variant_type::LauncherType},
+    app::LauncherEntity,
+    launcher::{LauncherConfig, variant_type::LauncherType},
     ui::{
         launcher::{LauncherMode, context_menu::ContextMenuAction},
         model::{
@@ -33,7 +33,7 @@ pub struct NavigationStack {
 
 impl NavigationStack {
     pub fn new(
-        initial: RenderableChildEntity,
+        initial: LauncherEntity,
         messages: Vec<SherlockMessage>,
         len: usize,
         cx: &mut App,
@@ -232,7 +232,7 @@ impl NavigationStack {
             }
         }
     }
-    pub fn selected_item_index(&self, cx: &mut App) -> Option<usize> {
+    pub fn selected_item_index(&self, cx: &mut App) -> Option<(usize, usize)> {
         let current = self.current();
         let ui_idx = current.style.selected_index()?;
 
@@ -249,7 +249,10 @@ impl NavigationStack {
     pub fn selected_item_ref<'a>(&self, cx: &'a App) -> Option<&'a RenderableChild> {
         let idx = self.selected_data_idx(cx)?;
         let data_entity = self.with_model(cx, |mdl| mdl.data());
-        data_entity.read(cx).get(idx)
+        data_entity
+            .read(cx)
+            .get(idx.0)
+            .and_then(|l| l.children.get(idx.1))
     }
 
     pub fn with_selected_item<R>(
@@ -260,9 +263,13 @@ impl NavigationStack {
         let idx = self.selected_data_idx(cx)?;
         let data_entity = self.with_model(cx, |mdl| mdl.data());
 
-        data_entity.update(cx, |data, cx| data.get(idx).map(|item| f(item, cx)))
+        data_entity.update(cx, |data, cx| {
+            data.get(idx.0)
+                .and_then(|l| l.children.get(idx.1))
+                .map(|item| f(item, cx))
+        })
     }
-    fn selected_data_idx(&self, cx: &App) -> Option<usize> {
+    fn selected_data_idx(&self, cx: &App) -> Option<(usize, usize)> {
         let ui_idx = self.current().style.selected_index()?;
         let (data, filtered_indices) =
             self.with_model(cx, |mdl| (mdl.data(), mdl.filtered_indices()));
@@ -273,7 +280,7 @@ impl NavigationStack {
         let safe_ui_idx = ui_idx.min(filtered_indices.len() - 1);
         filtered_indices.get(safe_ui_idx).copied()
     }
-    pub fn set_selected_data_idx(&mut self, data_idx: usize, cx: &mut App) {
+    pub fn set_selected_data_idx(&mut self, data_idx: (usize, usize), cx: &mut App) {
         let filtered_indices = self.with_model(cx, |mdl| mdl.filtered_indices());
 
         let Some(safe_ui_idx) = filtered_indices.iter().position(|i| *i == data_idx) else {
@@ -303,14 +310,19 @@ impl NavigationStack {
             let item_idx = filtered_indices
                 .iter()
                 .copied()
-                .filter(|i| data.get(*i).is_some_and(|item| item.shortcut()))
+                .filter(|i| {
+                    data.get(i.0)
+                        .is_some_and(|launcher| launcher.config.shortcut)
+                })
                 .nth(idx - 1);
 
             (item_idx, data_entity)
         });
 
         let idx = data_idx?;
-        data_entity.update(cx, |data, cx| f(data.get(idx), cx))
+        data_entity.update(cx, |data, cx| {
+            f(data.get(idx.0).and_then(|l| l.children.get(idx.1)), cx)
+        })
     }
     pub fn current_actions(&self, cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         self.with_selected_item(cx, |item, cx| item.actions(cx))
@@ -440,12 +452,12 @@ pub enum NavigationViewType {
     Process,
     Message,
     Home,
-    Dmenu { entity: RenderableChildEntity },
+    Dmenu { entity: LauncherEntity },
     Files { dir: Option<SharedString> },
 }
 
 impl NavigationViewType {
-    pub fn create_view(&self, launcher: Arc<Launcher>, cx: &mut App) -> NavigationView {
+    pub fn create_view(&self, launcher: Arc<LauncherConfig>, cx: &mut App) -> NavigationView {
         match self {
             Self::Emoji => {
                 let view = cx.new(|cx| EmojiView::new(launcher, cx));

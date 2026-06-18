@@ -9,7 +9,7 @@ use gpui::{AnyElement, App, IntoElement, ParentElement, Styled, div, px};
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        Launcher,
+        LauncherConfig,
         emoji_launcher::{
             EmojiData, SkinTone,
             data::{EMOJIS, EmojiEntry},
@@ -88,7 +88,7 @@ pub fn apply_skin_tones(template: &str, tones: &[SkinTone]) -> ArrayString<64> {
 impl<'a> RenderableChildImpl<'a> for EmojiData {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -131,7 +131,7 @@ impl<'a> RenderableChildImpl<'a> for EmojiData {
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         Some(ExecMode::Copy {
             content: get_emoji(self.entry, &get_selected_skin_tones())
                 .as_str()
@@ -139,7 +139,7 @@ impl<'a> RenderableChildImpl<'a> for EmojiData {
         })
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(
             get_emoji(self.entry, &get_selected_skin_tones())
                 .as_str()
@@ -147,17 +147,17 @@ impl<'a> RenderableChildImpl<'a> for EmojiData {
         )
     }
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         self.entry.keywords
     }
     #[inline(always)]
     fn actions(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         _cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
         let num_tones = self.entry.skin_tones as usize;

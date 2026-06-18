@@ -9,7 +9,7 @@ use std::{rc::Rc, sync::Arc, time::Duration};
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        Launcher, utils::exec_mode::ExecMode, variant_type::LauncherType,
+        LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType,
         weather_launcher::WeatherData,
     },
     loader::utils::Priority,
@@ -30,7 +30,7 @@ use crate::{
 impl Fetchable for WeatherData {
     type Error = SherlockMessage;
     async fn fetch(
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         _old: Option<Rc<Self>>,
     ) -> Result<Option<Rc<Self>>, Self::Error> {
         let LauncherType::Weather(wttr) = &launcher.launcher_type else {
@@ -67,7 +67,7 @@ impl<'a> RenderableChildImpl<'a> for WeatherWidget {
     const HANDLES_BORDERS: bool = true;
     fn render(
         &self,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -238,11 +238,11 @@ impl<'a> RenderableChildImpl<'a> for WeatherWidget {
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         None
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String> {
         let Ok(Some(entity_inner)) = self.entity.read(cx) else {
             return None;
         };
@@ -257,15 +257,15 @@ impl<'a> RenderableChildImpl<'a> for WeatherWidget {
         ))
     }
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         ""
     }
     #[inline(always)]
-    fn update_async<C: AppContext>(&self, launcher: Arc<Launcher>, cx: &mut C) {
+    fn update_async<C: AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
         self.entity.update_async(launcher, cx);
     }
 }

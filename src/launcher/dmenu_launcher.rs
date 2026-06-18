@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     display_name,
     docs::launcher::{LauncherDoc, LauncherDocEntry},
-    launcher::{Launcher, LauncherProvider, LauncherType},
+    launcher::{LauncherConfig, LauncherProvider, LauncherType},
     ui::widgets::RenderableChild,
     utils::errors::SherlockMessage,
     variant_name,
@@ -20,7 +20,7 @@ impl LauncherProvider for DmenuLauncher {
 
     fn objects(
         &self,
-        _launcher: Arc<Launcher>,
+        _launcher: Arc<LauncherConfig>,
         _ctx: &crate::loader::LoadContext,
         _opts: std::sync::Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,

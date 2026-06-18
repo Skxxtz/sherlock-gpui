@@ -8,7 +8,8 @@ use crate::{
     display_name,
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{
-        Launcher, LauncherProvider, app_launcher::app_data::AppData, variant_type::LauncherType,
+        LauncherConfig, LauncherProvider, app_launcher::app_data::AppData,
+        variant_type::LauncherType,
     },
     loader::{
         resolve_icon_path,
@@ -71,7 +72,7 @@ impl LauncherProvider for FileLauncher {
 
     fn objects(
         &self,
-        launcher: Arc<Launcher>,
+        launcher: Arc<LauncherConfig>,
         _ctx: &crate::loader::LoadContext,
         _opts: std::sync::Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,

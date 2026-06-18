@@ -7,13 +7,13 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{Launcher, utils::exec_mode::ExecMode},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::utils::Priority,
     ui::{traits::RenderableChildImpl, widgets::Selection},
     utils::errors::{SherlockMessage, SherlockMessageLevel},
 };
 
-type DismissFunction = Arc<dyn Fn(&mut gpui::App, usize) + Send + Sync + 'static>;
+type DismissFunction = Arc<dyn Fn(&mut gpui::App, (usize, usize)) + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct MessageChild {
@@ -30,7 +30,10 @@ impl MessageChild {
             count: 1,
         }
     }
-    pub fn on_dismiss(mut self, f: impl Fn(&mut gpui::App, usize) + Send + Sync + 'static) -> Self {
+    pub fn on_dismiss(
+        mut self,
+        f: impl Fn(&mut gpui::App, (usize, usize)) + Send + Sync + 'static,
+    ) -> Self {
         self.on_dismiss = Some(std::sync::Arc::new(f));
         self
     }
@@ -40,7 +43,7 @@ impl<'a> RenderableChildImpl<'a> for MessageChild {
     const HANDLES_BORDERS: bool = true;
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -154,20 +157,20 @@ impl<'a> RenderableChildImpl<'a> for MessageChild {
             .into_any_element()
     }
     #[inline(always)]
-    fn build_exec(&self, launcher: &Arc<Launcher>, cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
         self.get_content(launcher, cx)
             .map(|content| ExecMode::Copy { content })
     }
     #[inline(always)]
-    fn priority(&self, _launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, _launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new(1, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         &self.message.traceback
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(self.message.to_string())
     }
 }

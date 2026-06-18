@@ -6,7 +6,7 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{Launcher, utils::exec_mode::ExecMode},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::utils::Priority,
     ui::widgets::{RenderableChildImpl, Selection},
 };
@@ -19,7 +19,7 @@ pub struct DmenuData {
 impl<'a> RenderableChildImpl<'a> for DmenuData {
     fn render(
         &self,
-        _launcher: &Arc<Launcher>,
+        _launcher: &Arc<LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
@@ -49,19 +49,19 @@ impl<'a> RenderableChildImpl<'a> for DmenuData {
             )
             .into_any_element()
     }
-    fn build_exec(&self, launcher: &Arc<Launcher>, cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
         self.get_content(launcher, cx)
             .map(|content| ExecMode::Print { content })
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(self.name.to_string())
     }
-    fn priority(&self, launcher: &Arc<Launcher>) -> Priority {
+    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
         &self.name
     }
 }

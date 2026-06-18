@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use super::utils::SherlockAlias;
-use crate::launcher::Launcher;
+use crate::launcher::LauncherConfig;
 use crate::launcher::app_launcher::app_data::AppData;
 use crate::loader::application_loader::parser::DesktopFileParser;
 use crate::prelude::PathHelpers;
@@ -51,7 +51,7 @@ impl ApplicationLoader {
     /// Returns a `SherlockMessage` if configuration is unreachable or disk parsing
     /// fails critically.
     pub fn load_applications(
-        launcher: Arc<Launcher>,
+        launcher: Arc<LauncherConfig>,
         counts: &HashMap<String, u16>,
         use_keywords: bool,
         changes: Option<ConfigFileChange>,
@@ -143,7 +143,7 @@ impl ApplicationLoader {
 
     fn load_applications_from_disk(
         files: Arc<[PathBuf]>,
-        launcher: &Arc<Launcher>,
+        launcher: &Arc<LauncherConfig>,
         counts: &HashMap<String, u16>,
         use_keywords: bool,
     ) -> Result<Vec<AppData>, SherlockMessage> {

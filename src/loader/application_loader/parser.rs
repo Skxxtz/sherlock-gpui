@@ -8,7 +8,7 @@ use glob::Pattern;
 use gpui::SharedString;
 
 use crate::{
-    launcher::{Launcher, app_launcher::app_data::AppData},
+    launcher::{LauncherConfig, app_launcher::app_data::AppData},
     loader::{
         application_loader::should_ignore,
         resolve_icon_path,
@@ -36,7 +36,7 @@ impl Section {
 }
 
 pub struct DesktopFileParser<'a> {
-    launcher: &'a Arc<Launcher>,
+    launcher: &'a Arc<LauncherConfig>,
     ignore: &'a [Pattern],
     counts: &'a HashMap<String, u16>,
     use_keywords: bool,
@@ -44,7 +44,7 @@ pub struct DesktopFileParser<'a> {
 
 impl<'a> DesktopFileParser<'a> {
     pub fn new(
-        launcher: &'a Arc<Launcher>,
+        launcher: &'a Arc<LauncherConfig>,
         ignore: &'a [Pattern],
         counts: &'a HashMap<String, u16>,
         use_keywords: bool,

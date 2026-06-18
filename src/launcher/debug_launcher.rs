@@ -39,7 +39,7 @@ impl LauncherProvider for DebugLauncher {
     }
     fn objects(
         &self,
-        launcher: std::sync::Arc<super::Launcher>,
+        launcher: std::sync::Arc<super::LauncherConfig>,
         _ctx: &crate::loader::LoadContext,
         _opts: std::sync::Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,

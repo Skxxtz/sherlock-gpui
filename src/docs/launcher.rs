@@ -18,7 +18,7 @@ use md_rs::{
 
 use crate::{
     docs::Documentation,
-    launcher::{Launcher, variant_type::LauncherType},
+    launcher::{LauncherConfig, variant_type::LauncherType},
     utils::intent::CAPABILITY_DOCS,
 };
 
@@ -252,7 +252,7 @@ fn function_table(functions: &[InnerFunctionDoc]) -> Table {
     )
 }
 
-impl Documentation for Launcher {
+impl Documentation for LauncherConfig {
     type Docs = Container;
     fn docs() -> Self::Docs {
         fn get_intro() -> Paragraph {

@@ -8,11 +8,11 @@ use std::{
 };
 
 use crate::{
-    app::RenderableChildEntity,
-    launcher::{Launcher, variant_type::LauncherType},
+    app::LauncherEntity,
+    launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     loader::utils::RawLauncher,
     sherlock_msg,
-    ui::{launcher::LauncherMode, widgets::RenderableChild},
+    ui::launcher::LauncherMode,
     utils::{
         cache::BinaryCache,
         config::{ConfigFileChange, ConfigGuard},
@@ -52,7 +52,7 @@ pub struct LauncherLoadResult {
 impl Loader {
     pub fn load_launchers(
         cx: &mut App,
-        data_handle: RenderableChildEntity,
+        data_handle: LauncherEntity,
         changes: Option<ConfigFileChange>,
     ) -> Result<LauncherLoadResult, SherlockMessage> {
         // read config
@@ -65,7 +65,7 @@ impl Loader {
         let ctx = LoadContext::new(changes)?;
 
         // Parse the launchers
-        let mut launchers: Vec<(Arc<Launcher>, Arc<serde_json::Value>)> = raw_launchers
+        let mut launchers: Vec<(Arc<LauncherConfig>, Arc<serde_json::Value>)> = raw_launchers
             .into_iter()
             .map(|raw| {
                 let launcher_type: LauncherType = raw.r#type.into_launcher_type(&raw);
@@ -78,14 +78,17 @@ impl Loader {
 
                 let opts = Arc::clone(&raw.args);
 
-                (Arc::new(Launcher::from_raw(raw, launcher_type, icon)), opts)
+                (
+                    Arc::new(LauncherConfig::from_raw(raw, launcher_type, icon)),
+                    opts,
+                )
             })
             .collect();
 
         launchers.sort_by_key(|(l, _)| l.priority);
 
         let mut modes = Vec::with_capacity(launchers.len());
-        let renders: Vec<RenderableChild> = launchers
+        let renders: Vec<Launcher> = launchers
             .into_iter()
             .inspect(|(launcher, _)| {
                 // Collect modes
@@ -98,7 +101,7 @@ impl Loader {
                 }
             })
             .filter_map(|(launcher, opts)| {
-                match launcher.launcher_type.get_render_obj(
+                let children = match launcher.launcher_type.get_render_obj(
                     Arc::clone(&launcher),
                     &ctx,
                     opts,
@@ -110,9 +113,13 @@ impl Loader {
                         messages.push(e);
                         None
                     }
-                }
+                }?;
+
+                Some(Launcher {
+                    config: launcher,
+                    children,
+                })
             })
-            .flatten()
             .collect();
 
         Self::sync_cache_if_empty(&ctx, &renders, &mut messages);
@@ -130,12 +137,13 @@ impl Loader {
 
     fn sync_cache_if_empty(
         ctx: &LoadContext,
-        renders: &[RenderableChild],
+        renders: &[Launcher],
         warnings: &mut Vec<SherlockMessage>,
     ) {
         if ctx.counts.is_empty() {
             let counts: HashMap<String, u16> = renders
                 .iter()
+                .flat_map(|l| l.children.iter())
                 .filter_map(|render| render.get_exec())
                 .map(|exec| (exec, 0))
                 .collect();

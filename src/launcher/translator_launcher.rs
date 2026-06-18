@@ -24,7 +24,7 @@ impl LauncherProvider for Translator {
     }
     fn objects(
         &self,
-        launcher: Arc<super::Launcher>,
+        launcher: Arc<super::LauncherConfig>,
         _ctx: &LoadContext,
         _opts: Arc<Value>,
         _messages: &mut Vec<SherlockMessage>,

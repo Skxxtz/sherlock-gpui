@@ -11,7 +11,7 @@ use md_rs::{
 
 use crate::{
     docs::book::{BookEntry, TopLevelEntry},
-    launcher::Launcher,
+    launcher::LauncherConfig,
     loader::utils::ExecVariable,
 };
 
@@ -35,7 +35,7 @@ impl TopLevelEntry for Configuration {
     }
     fn children() -> impl Iterator<Item = BookEntry> + 'static {
         [
-            BookEntry::of::<Launcher>()
+            BookEntry::of::<LauncherConfig>()
                 .with_title("Launchers")
                 .with_file("launchers.md"),
             BookEntry::of::<ExecVariable>()

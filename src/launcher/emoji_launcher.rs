@@ -8,7 +8,7 @@ use crate::{
     display_name,
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{
-        Launcher, LauncherProvider, LauncherType, app_launcher::app_data::AppData,
+        LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData,
         emoji_launcher::data::EmojiEntry,
     },
     loader::{resolve_icon_path, utils::PriorityGuard},
@@ -40,7 +40,7 @@ impl LauncherProvider for EmojiPicker {
 
     fn objects(
         &self,
-        launcher: Arc<Launcher>,
+        launcher: Arc<LauncherConfig>,
         _ctx: &crate::loader::LoadContext,
         opts: std::sync::Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,

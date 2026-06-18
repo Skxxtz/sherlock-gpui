@@ -7,7 +7,7 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{Launcher, utils::exec_mode::ExecMode},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::utils::Priority,
     ui::{traits::RenderableChildImpl, utils::selection::Selection},
     utils::intent::{Capabilities, Intent, IntentResult},
@@ -38,11 +38,11 @@ impl CalcData {
 
 impl<'a> RenderableChildImpl<'a> for CalcData {
     #[inline(always)]
-    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &'a str {
         ""
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         let lock = self.result.read().ok()?;
         let (_, res) = lock.as_ref()?;
         Some(ExecMode::Copy {
@@ -50,7 +50,7 @@ impl<'a> RenderableChildImpl<'a> for CalcData {
         })
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         if let (_, IntentResult::String(s)) = self.result.read().unwrap().as_ref()? {
             Some(s.to_string())
         } else {
@@ -58,12 +58,12 @@ impl<'a> RenderableChildImpl<'a> for CalcData {
         }
     }
     #[inline(always)]
-    fn priority(&self, launcher: &std::sync::Arc<crate::launcher::Launcher>) -> Priority {
+    fn priority(&self, launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     fn render(
         &self,
-        _launcher: &std::sync::Arc<crate::launcher::Launcher>,
+        _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,

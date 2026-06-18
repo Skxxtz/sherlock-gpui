@@ -4,7 +4,7 @@ use gpui::{App, SharedString};
 
 use crate::{
     launcher::{
-        Launcher, LauncherValues,
+        LauncherConfig, LauncherValues,
         app_launcher::app_data::AppData,
         utils::binds::Bind,
         variant_type::{InnerFunction, LauncherType},
@@ -38,7 +38,7 @@ pub enum ExecMode {
     },
     CreateView {
         mode: NavigationViewType,
-        launcher: Arc<Launcher>,
+        launcher: Arc<LauncherConfig>,
     },
     DynamicContextMenuFunc {
         action: Arc<ContextMenuAction>,
@@ -134,7 +134,7 @@ impl ExecMode {
         }
     }
 
-    pub fn from_appdata(app_data: &AppData, launcher: &Arc<Launcher>) -> Self {
+    pub fn from_appdata(app_data: &AppData, launcher: &Arc<LauncherConfig>) -> Self {
         match &launcher.launcher_type {
             LauncherType::Apps(_) => Self::App {
                 exec: app_data.exec.clone().unwrap_or_default(),

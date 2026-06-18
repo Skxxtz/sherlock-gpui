@@ -3,7 +3,9 @@ use std::{cell::Cell, rc::Rc, sync::Arc};
 use gpui::{App, Context, WeakEntity};
 
 use crate::{
-    launcher::{Launcher, message_launcher::MessageLauncher, variant_type::LauncherType},
+    launcher::{
+        Launcher, LauncherConfig, message_launcher::MessageLauncher, variant_type::LauncherType,
+    },
     ui::{
         model::Model,
         widgets::{RenderableChild, message::MessageChild},
@@ -12,14 +14,14 @@ use crate::{
 };
 
 pub struct MessageView {
-    pub launcher: Arc<Launcher>,
+    pub launcher_config: Arc<LauncherConfig>,
     pub count: Cell<usize>,
     pub model: Model,
 }
 
 impl MessageView {
     pub fn new(data: Vec<SherlockMessage>, cx: &mut Context<Self>) -> Self {
-        let launcher = Arc::new(Launcher {
+        let config = Arc::new(LauncherConfig {
             name: Some("Errors".into()),
             icon: None,
             alias: None,
@@ -46,16 +48,22 @@ impl MessageView {
                     }
                 });
                 RenderableChild::Message {
-                    launcher: Arc::clone(&launcher),
+                    launcher: Arc::clone(&config),
                     inner,
                 }
             })
             .collect();
 
+        let count = messages.len();
+        let launcher_vec = vec![Launcher {
+            config: config.clone(),
+            children: messages,
+        }];
+
         Self {
-            launcher,
-            count: Cell::new(messages.len()),
-            model: Model::standard(messages, cx),
+            launcher_config: config,
+            count: Cell::new(count),
+            model: Model::standard(launcher_vec, cx),
         }
     }
     /// This adds a message from the Model. It requires a filter and sort afterwards
@@ -67,9 +75,10 @@ impl MessageView {
     ) {
         self.model.data().update(cx, |this, _| {
             let data = Rc::make_mut(this);
+            let message_launcher = &mut data[0];
 
             // increment existing error
-            for item in data.iter_mut() {
+            for item in message_launcher.children.iter_mut() {
                 if let RenderableChild::Message { inner, .. } = item
                     && inner.message == message
                 {
@@ -79,8 +88,8 @@ impl MessageView {
             }
 
             // no duplicates
-            data.push(RenderableChild::Message {
-                launcher: self.launcher.clone(),
+            message_launcher.children.push(RenderableChild::Message {
+                launcher: self.launcher_config.clone(),
                 inner: MessageChild::new(message).on_dismiss(move |cx, idx| {
                     if let Some(entity) = weak.upgrade() {
                         entity.update(cx, |message_view, cx| {
@@ -93,7 +102,7 @@ impl MessageView {
         self.count.update(|i| i + 1);
     }
     /// This removes a message from the Model. It requires a filter and sort afterwards
-    pub fn remove_message(&mut self, idx: usize, cx: &mut App) {
+    pub fn remove_message(&mut self, idx: (usize, usize), cx: &mut App) {
         let Model::Standard {
             data,
             filtered_indices,
@@ -104,9 +113,9 @@ impl MessageView {
         };
 
         let removed = data.update(cx, |this, _| {
-            if idx < this.len() {
+            if this.get(idx.0).is_some_and(|l| idx.1 < l.children.len()) {
                 let data = Rc::make_mut(this);
-                Some(data.remove(idx))
+                data.get_mut(idx.0).map(|l| l.children.remove(idx.1))
             } else {
                 None
             }
@@ -119,8 +128,8 @@ impl MessageView {
             }
 
             for val in vec.iter_mut() {
-                if *val > idx {
-                    *val -= 1;
+                if val.1 > idx.1 {
+                    val.1 -= 1;
                 }
             }
 

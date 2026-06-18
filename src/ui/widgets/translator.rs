@@ -10,7 +10,7 @@ mod utils;
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{Launcher, utils::exec_mode::ExecMode},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::utils::Priority,
     sherlock_msg,
     ui::{
@@ -48,15 +48,15 @@ impl TranslationData {
 
 impl<'a> RenderableChildImpl<'a> for TranslationData {
     #[inline(always)]
-    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::Launcher>) -> &'a str {
+    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &'a str {
         ""
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<Launcher>, _cx: &mut App) -> Option<ExecMode> {
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         None
     }
     #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<Launcher>, cx: &mut App) -> Option<String> {
+    fn get_content(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String> {
         if let TranslationResult { api, .. } = self.update_entity.read(cx)
             && let ApiStatus::Done { res } = api
             && let IntentResult::String(st) = res
@@ -67,12 +67,12 @@ impl<'a> RenderableChildImpl<'a> for TranslationData {
         None
     }
     #[inline(always)]
-    fn priority(&self, launcher: &std::sync::Arc<crate::launcher::Launcher>) -> Priority {
+    fn priority(&self, launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
     fn render(
         &self,
-        _launcher: &std::sync::Arc<crate::launcher::Launcher>,
+        _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
         selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
