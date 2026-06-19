@@ -1,7 +1,12 @@
 use gpui::{App, AsyncApp};
 // runtime.rs
 use mlua::prelude::*;
-use std::{cell::RefCell, path::Path, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    path::Path,
+    rc::Rc,
+    sync::{Arc, atomic::AtomicBool},
+};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::launcher::plugin_launcher::{
@@ -54,6 +59,9 @@ pub enum LuaJob {
 /// `live()` loop. Consumed by a GPUI-side task that has real `cx` access.
 pub type TileUpdate = (String, PluginUiNode);
 
+/// Guard to ensure only one Lua runtime is ever spawned.
+static RUNTIMESPAWNED: AtomicBool = AtomicBool::new(false);
+
 #[derive(Clone)]
 pub struct LuaRuntimeHandle {
     tx: mpsc::UnboundedSender<LuaJob>,
@@ -65,6 +73,10 @@ impl LuaRuntimeHandle {
     /// end of the tile-update stream — the caller (GPUI side, which has
     /// `cx`) is responsible for draining that into entity updates.
     pub fn spawn(cx: &mut App) {
+        if RUNTIMESPAWNED.swap(true, std::sync::atomic::Ordering::AcqRel) {
+            panic!("LuaRuntimeHandle::spawn called more than once!");
+        }
+
         let (tx, rx) = mpsc::unbounded_channel::<LuaJob>();
         let (update_tx, mut update_rx) = mpsc::unbounded_channel::<TileUpdate>();
 
