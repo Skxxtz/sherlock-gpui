@@ -5,7 +5,7 @@ use std::{
     cell::RefCell,
     path::Path,
     rc::Rc,
-    sync::{Arc, atomic::AtomicBool},
+    sync::{Arc, OnceLock},
 };
 use tokio::sync::{mpsc, oneshot};
 
@@ -16,11 +16,7 @@ use crate::launcher::plugin_launcher::{
     ui_schema::PluginUiNode,
 };
 
-#[derive(Clone)]
-pub struct LuaRuntimeGlobal(pub LuaRuntimeHandle);
-impl gpui::Global for LuaRuntimeGlobal {}
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PluginHandle {
     pub id: u64,
     pub name: String,
@@ -33,25 +29,25 @@ pub enum LuaJob {
         reply: oneshot::Sender<LuaResult<PluginHandle>>,
     },
     CallTiles {
-        handle: PluginHandle,
+        handle: Arc<PluginHandle>,
         reply: oneshot::Sender<LuaResult<Vec<PluginUiNode>>>,
     },
     CallRefresh {
-        handle: PluginHandle,
+        handle: Arc<PluginHandle>,
         tile_id: String,
         reply: oneshot::Sender<LuaResult<PluginUiNode>>,
     },
     SpawnLive {
-        handle: PluginHandle,
+        handle: Arc<PluginHandle>,
         tile_id: String,
     },
     HasFn {
-        handle: PluginHandle,
+        handle: Arc<PluginHandle>,
         func_name: String,
         reply: oneshot::Sender<bool>,
     },
     Unload {
-        handle: PluginHandle,
+        handle: Arc<PluginHandle>,
     },
 }
 
@@ -59,8 +55,7 @@ pub enum LuaJob {
 /// `live()` loop. Consumed by a GPUI-side task that has real `cx` access.
 pub type TileUpdate = (String, PluginUiNode);
 
-/// Guard to ensure only one Lua runtime is ever spawned.
-static RUNTIMESPAWNED: AtomicBool = AtomicBool::new(false);
+pub static LUA_RUNTIME: OnceLock<LuaRuntimeHandle> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct LuaRuntimeHandle {
@@ -68,12 +63,18 @@ pub struct LuaRuntimeHandle {
 }
 
 impl LuaRuntimeHandle {
+    pub fn get() -> &'static Self {
+        match LUA_RUNTIME.get() {
+            Some(rt) => rt,
+            None => panic!("LuaRuntimeHandle::get called before it was initialized."),
+        }
+    }
     /// Spawns the dedicated OS thread that owns the Lua VM. Call once at
     /// startup. Returns both the handle for sending jobs, and the receiving
     /// end of the tile-update stream — the caller (GPUI side, which has
     /// `cx`) is responsible for draining that into entity updates.
     pub fn spawn(cx: &mut App) {
-        if RUNTIMESPAWNED.swap(true, std::sync::atomic::Ordering::AcqRel) {
+        if LUA_RUNTIME.get().is_some() {
             panic!("LuaRuntimeHandle::spawn called more than once!");
         }
 
@@ -105,7 +106,8 @@ impl LuaRuntimeHandle {
             .detach();
         }
         cx.set_global(TileSubscribersGlobal(subscribers));
-        cx.set_global(LuaRuntimeGlobal(Self { tx }));
+
+        let _ = LUA_RUNTIME.set(LuaRuntimeHandle { tx });
     }
 
     pub async fn load_plugin(&self, code: String, path: Arc<Path>) -> LuaResult<PluginHandle> {
@@ -117,7 +119,7 @@ impl LuaRuntimeHandle {
             .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
     }
 
-    pub async fn call_tiles(&self, handle: PluginHandle) -> LuaResult<Vec<PluginUiNode>> {
+    pub async fn call_tiles(&self, handle: Arc<PluginHandle>) -> LuaResult<Vec<PluginUiNode>> {
         let (reply, rx) = oneshot::channel();
         self.tx
             .send(LuaJob::CallTiles { handle, reply })
@@ -128,7 +130,7 @@ impl LuaRuntimeHandle {
 
     pub async fn call_refresh(
         &self,
-        handle: PluginHandle,
+        handle: Arc<PluginHandle>,
         tile_id: String,
     ) -> LuaResult<PluginUiNode> {
         let (reply, rx) = oneshot::channel();
@@ -145,15 +147,15 @@ impl LuaRuntimeHandle {
 
     /// Fire-and-forget: starts the plugin's `live(tile_id)` loop. Does not
     /// wait for it to finish — it may run forever.
-    pub fn spawn_live(&self, handle: PluginHandle, tile_id: String) {
+    pub fn spawn_live(&self, handle: Arc<PluginHandle>, tile_id: String) {
         let _ = self.tx.send(LuaJob::SpawnLive { handle, tile_id });
     }
 
-    pub fn unload(&self, handle: PluginHandle) {
+    pub fn unload(&self, handle: Arc<PluginHandle>) {
         let _ = self.tx.send(LuaJob::Unload { handle });
     }
 
-    pub async fn has_fn(&self, handle: PluginHandle, func_name: &str) -> bool {
+    pub async fn has_fn(&self, handle: Arc<PluginHandle>, func_name: &str) -> bool {
         let (reply, rx) = oneshot::channel();
         let _ = self.tx.send(LuaJob::HasFn {
             handle,

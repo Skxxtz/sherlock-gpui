@@ -3,7 +3,10 @@ use crate::{
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{
         LauncherConfig, LauncherProvider, LauncherType, LoadContext,
-        plugin_launcher::{plugin_tile_state::PluginTileState, runtime::LuaRuntimeHandle},
+        plugin_launcher::{
+            plugin_tile_state::PluginTileState,
+            runtime::{LuaRuntimeHandle, PluginHandle},
+        },
     },
     loader::utils::RawLauncher,
     sherlock_msg,
@@ -16,7 +19,6 @@ use crate::{
 };
 use gpui::{AppContext, AsyncApp};
 use indoc::indoc;
-use serde::Deserialize;
 use serde_json::Value;
 use std::{path::Path, sync::Arc};
 
@@ -29,17 +31,45 @@ pub mod subscribers;
 pub mod ui;
 pub mod ui_schema;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct PluginLauncher {
     pub path: Arc<Path>,
+    pub handle: Arc<PluginHandle>,
 }
 
 impl LauncherProvider for PluginLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
-        match serde_json::from_value::<PluginLauncher>(raw.args.as_ref().clone()) {
-            Ok(launcher) => LauncherType::Plugin(launcher),
-            Err(_) => LauncherType::Empty,
-        }
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        let Some(path) = raw.args.get("path").and_then(|p| p.as_str()) else {
+            return Err(sherlock_msg!(
+                Warning,
+                SherlockErrorType::InvalidData,
+                format!(
+                    "Field `path` missing on `{}`",
+                    raw.name.as_deref().unwrap_or("PluginLauncher")
+                )
+            ));
+        };
+        let path: Arc<Path> = Arc::from(Path::new(path));
+
+        let runtime = LuaRuntimeHandle::get();
+        let code = std::fs::read_to_string(&path).map_err(|e| {
+            sherlock_msg!(
+                Error,
+                SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                format!("failed to read plugin file: {e}")
+            )
+        })?;
+        let handle = Arc::new(
+            futures::executor::block_on(runtime.load_plugin(code, path.clone())).map_err(|e| {
+                sherlock_msg!(
+                    Error,
+                    SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                    e
+                )
+            })?,
+        );
+
+        Ok(LauncherType::Plugin(Self { path, handle }))
     }
 
     fn objects(
@@ -50,41 +80,9 @@ impl LauncherProvider for PluginLauncher {
         _messages: &mut Vec<SherlockMessage>,
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
-        let runtime: LuaRuntimeHandle = ctx.lua_runtime.clone();
-
-        // 1. Read + load the plugin source. Loading is comparatively fast
-        //    (parsing/executing top-level plugin code), so we still do this
-        //    as a blocking-ish round trip through the channel, but it runs
-        //    on the lua thread, never on the GPUI thread, and never under a
-        //    contended global mutex.
-        let code = std::fs::read_to_string(&self.path).map_err(|e| {
-            sherlock_msg!(
-                Error,
-                SherlockErrorType::Plugin(PluginAction::Load, self.path.display().to_string()),
-                format!("failed to read plugin file: {e}")
-            )
-        })?;
-
-        let handle = futures::executor::block_on(runtime.load_plugin(code, self.path.clone()))
+        let lua_runtime = LuaRuntimeHandle::get();
+        let tiles = futures::executor::block_on(lua_runtime.call_tiles(self.handle.clone()))
             .map_err(|e| {
-                sherlock_msg!(
-                    Error,
-                    SherlockErrorType::Plugin(PluginAction::Load, self.path.display().to_string()),
-                    e
-                )
-            })?;
-
-        // 2. Create one entity per tile *before* we know its real content,
-        //    so the UI can render immediately in a loading state.
-        //    We don't know tile count yet either — so the very first
-        //    `tiles()` call is the one exception that we eagerly await,
-        //    but it runs on the dedicated lua thread, not under a shared
-        //    lock, so it doesn't block other plugins or the UI thread
-        //    indefinitely. If you want even this to be non-blocking, see
-        //    the note below about returning a single "loading" tile
-        //    immediately and populating the list asynchronously instead.
-        let tiles =
-            futures::executor::block_on(runtime.call_tiles(handle.clone())).map_err(|e| {
                 sherlock_msg!(
                     Error,
                     SherlockErrorType::Plugin(
@@ -110,17 +108,17 @@ impl LauncherProvider for PluginLauncher {
                 ctx.subscribers.register(tile_id.clone(), weak.clone());
 
                 let has_live =
-                    futures::executor::block_on(ctx.lua_runtime.has_fn(handle.clone(), "live"));
+                    futures::executor::block_on(lua_runtime.has_fn(self.handle.clone(), "live"));
                 if has_live {
-                    ctx.lua_runtime.spawn_live(handle.clone(), tile_id.clone());
+                    lua_runtime.spawn_live(self.handle.clone(), tile_id.clone());
                 }
 
                 let has_refresh =
-                    futures::executor::block_on(ctx.lua_runtime.has_fn(handle.clone(), "refresh"));
+                    futures::executor::block_on(lua_runtime.has_fn(self.handle.clone(), "refresh"));
                 if has_refresh {
                     cx.spawn({
-                        let rt = ctx.lua_runtime.clone();
-                        let handle = handle.clone();
+                        let rt = lua_runtime.clone();
+                        let handle = self.handle.clone();
                         let tile_id = tile_id.clone();
                         let weak = weak.clone();
                         async move |cx: &mut AsyncApp| {
