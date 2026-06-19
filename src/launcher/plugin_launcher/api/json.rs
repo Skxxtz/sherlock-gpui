@@ -15,7 +15,7 @@ impl SherlockPluginModule for JsonModule {
     }
 }
 
-pub struct Decode;
+struct Decode;
 impl SherlockPluginFn for Decode {
     const NAME: &'static str = "decode";
     const PARAMS: &'static [(&'static str, &'static str)] = &[("input", "string")];
