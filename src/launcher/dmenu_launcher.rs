@@ -1,7 +1,13 @@
 use std::sync::Arc;
 
 use crate::{
-    display_name, docs::launcher::{LauncherDoc, LauncherDocEntry}, launcher::{LauncherConfig, LauncherProvider, LauncherType}, loader::utils::RawLauncher, ui::widgets::RenderableChild, utils::errors::SherlockMessage, variant_name
+    display_name,
+    docs::launcher::{LauncherDoc, LauncherDocEntry},
+    launcher::{LauncherConfig, LauncherProvider, LauncherType},
+    loader::utils::RawLauncher,
+    ui::widgets::RenderableChild,
+    utils::errors::SherlockMessage,
+    variant_name,
 };
 
 /// No user-side arguments

@@ -96,13 +96,13 @@ impl LauncherProvider for PluginLauncher {
         let children = tiles
             .into_iter()
             .map(|tile| {
+                let (tile_id, data) = (tile.id, tile.node);
                 let entity = cx.new(|_cx| PluginTileState {
-                    data: Some(tile.clone()),
+                    data: Some(data),
                     loading: false,
                     error: None,
                 });
 
-                let tile_id = "TODO".to_string();
                 let weak = entity.downgrade();
 
                 ctx.subscribers.register(tile_id.clone(), weak.clone());

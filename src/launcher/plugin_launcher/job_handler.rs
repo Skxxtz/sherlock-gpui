@@ -1,4 +1,4 @@
-use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
+use crate::launcher::plugin_launcher::ui_schema::{PluginNodeRegistration, PluginUiNode};
 
 use super::registry::PluginRegistry;
 use super::runtime::{LuaJob, PluginHandle};
@@ -14,9 +14,14 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             let _ = reply.send(result);
         }
         LuaJob::CallTiles { handle, reply } => {
-            let result =
-                call_plugin_fn_async::<Vec<PluginUiNode>>(&lua, &registry, &handle, "tiles", ())
-                    .await;
+            let result = call_plugin_fn_async::<Vec<PluginNodeRegistration>>(
+                &lua,
+                &registry,
+                &handle,
+                "tiles",
+                (),
+            )
+            .await;
             let _ = reply.send(result);
         }
         LuaJob::CallRefresh {

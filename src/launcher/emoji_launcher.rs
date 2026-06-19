@@ -11,7 +11,10 @@ use crate::{
         LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData,
         emoji_launcher::data::EmojiEntry,
     },
-    loader::{resolve_icon_path, utils::{PriorityGuard, RawLauncher}},
+    loader::{
+        resolve_icon_path,
+        utils::{PriorityGuard, RawLauncher},
+    },
     ui::widgets::{RenderableChild, emoji::set_selected_skin_tone},
     utils::errors::SherlockMessage,
     variant_name,

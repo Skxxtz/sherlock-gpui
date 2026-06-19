@@ -13,7 +13,7 @@ use crate::launcher::plugin_launcher::{
     job_handler::handle_job,
     registry::PluginRegistry,
     subscribers::{TileSubscribers, TileSubscribersGlobal},
-    ui_schema::PluginUiNode,
+    ui_schema::{PluginNodeRegistration, PluginUiNode},
 };
 
 #[derive(Clone, Debug)]
@@ -30,7 +30,7 @@ pub enum LuaJob {
     },
     CallTiles {
         handle: Arc<PluginHandle>,
-        reply: oneshot::Sender<LuaResult<Vec<PluginUiNode>>>,
+        reply: oneshot::Sender<LuaResult<Vec<PluginNodeRegistration>>>,
     },
     CallRefresh {
         handle: Arc<PluginHandle>,
@@ -119,7 +119,10 @@ impl LuaRuntimeHandle {
             .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
     }
 
-    pub async fn call_tiles(&self, handle: Arc<PluginHandle>) -> LuaResult<Vec<PluginUiNode>> {
+    pub async fn call_tiles(
+        &self,
+        handle: Arc<PluginHandle>,
+    ) -> LuaResult<Vec<PluginNodeRegistration>> {
         let (reply, rx) = oneshot::channel();
         self.tx
             .send(LuaJob::CallTiles { handle, reply })
