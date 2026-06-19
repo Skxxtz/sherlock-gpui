@@ -32,8 +32,8 @@ pub enum PluginUiNode {
         label: String,
         #[serde(default)]
         style: PluginStyle,
-        #[serde(default)]
-        on_click: Option<String>, // callback id, looked up in plugin env
+        // #[serde(default)]
+        // on_click: Option<String>, // callback id, looked up in plugin env
     },
 }
 

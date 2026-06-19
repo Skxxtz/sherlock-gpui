@@ -22,6 +22,7 @@ pub struct PluginHandle {
     pub name: String,
 }
 
+#[allow(unused)]
 pub enum LuaJob {
     LoadPlugin {
         code: String,
@@ -154,6 +155,7 @@ impl LuaRuntimeHandle {
         let _ = self.tx.send(LuaJob::SpawnLive { handle, tile_id });
     }
 
+    #[allow(unused)]
     pub fn unload(&self, handle: Arc<PluginHandle>) {
         let _ = self.tx.send(LuaJob::Unload { handle });
     }

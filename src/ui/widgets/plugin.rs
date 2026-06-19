@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, Entity, ImageSource, IntoElement, ParentElement, Styled, StyledText, div, img,
-    px,
 };
 
 use crate::{
@@ -35,7 +34,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         _launcher: &Arc<LauncherConfig>,
         _selection: Selection,
         _query: &str,
-        theme: Arc<ThemeData>,
+        _theme: Arc<ThemeData>,
         cx: &mut App,
     ) -> AnyElement {
         let state = self.state.read(cx);
@@ -67,7 +66,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         let Some(data) = &state.data else {
             return div().child("No Child").into_any_element();
         };
-        render_node(data, &theme)
+        render_node(data)
     }
     #[inline(always)]
     fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
@@ -111,12 +110,12 @@ impl Drop for PluginWidget {
     }
 }
 
-fn render_node(node: &PluginUiNode, theme: &ThemeData) -> AnyElement {
+fn render_node(node: &PluginUiNode) -> AnyElement {
     match node {
         PluginUiNode::Container { style, children } => {
             let mut el = div();
             style.apply_to_style_refinement(el.style());
-            el.children(children.iter().map(|c| render_node(c, theme)))
+            el.children(children.iter().map(render_node))
                 .into_any_element()
         }
         PluginUiNode::Text { content, style } => {
@@ -125,26 +124,23 @@ fn render_node(node: &PluginUiNode, theme: &ThemeData) -> AnyElement {
             el.child(StyledText::new(content.clone()))
                 .into_any_element()
         }
-        PluginUiNode::Icon { name, .. } => {
+        PluginUiNode::Icon { name, style } => {
             if let Some(icon) = resolve_icon_path(name) {
-                if let Some(svg) = icon.svg() {
-                    svg.size(px(36.))
-                        .text_color(theme.primary_text)
-                        .into_any_element()
+                if let Some(mut svg) = icon.svg() {
+                    style.apply_to_style_refinement(svg.style());
+                    svg.into_any_element()
                 } else {
-                    img(icon.clone()).size(px(36.)).into_any_element()
+                    let mut el = img(icon.clone());
+                    style.apply_to_style_refinement(el.style());
+                    el.into_any_element()
                 }
             } else {
-                img(ImageSource::Image(Arc::new(gpui::Image::empty())))
-                    .size(px(36.))
-                    .into_any_element()
+                let mut el = img(ImageSource::Image(Arc::new(gpui::Image::empty())));
+                style.apply_to_style_refinement(el.style());
+                el.into_any_element()
             }
         }
-        PluginUiNode::Button {
-            label,
-            style,
-            on_click,
-        } => {
+        PluginUiNode::Button { label, style } => {
             let mut el = div();
             style.apply_to_style_refinement(el.style());
             el.child(label.clone()).into_any_element()
