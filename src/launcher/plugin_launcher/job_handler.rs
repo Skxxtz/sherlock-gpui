@@ -1,8 +1,10 @@
-use crate::launcher::plugin_launcher::api::init_local_api;
-use crate::launcher::plugin_launcher::ui_schema::{PluginNodeRegistration, PluginUiNode};
-
-use super::registry::PluginRegistry;
-use super::runtime::{LuaJob, PluginHandle};
+use super::{
+    api::init_local_api,
+    capabilities::PluginCapability,
+    registry::PluginRegistry,
+    runtime::{LuaJob, PluginHandle},
+    ui_schema::{PluginNodeRegistration, PluginUiNode},
+};
 use mlua::prelude::*;
 use std::cell::RefCell;
 use std::path::Path;
@@ -10,8 +12,13 @@ use std::rc::Rc;
 
 pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: LuaJob) {
     match job {
-        LuaJob::LoadPlugin { code, path, reply } => {
-            let result = load_plugin(&lua, &registry, &code, &path);
+        LuaJob::LoadPlugin {
+            code,
+            path,
+            reply,
+            capabilities,
+        } => {
+            let result = load_plugin(&lua, &registry, &code, &path, capabilities);
             let _ = reply.send(result);
         }
         LuaJob::CallTiles { handle, reply } => {
@@ -77,6 +84,7 @@ fn load_plugin(
     registry: &Rc<RefCell<PluginRegistry>>,
     code: &str,
     path: &Path,
+    capabilities: PluginCapability,
 ) -> LuaResult<PluginHandle> {
     let name = path
         .file_stem()
@@ -103,7 +111,7 @@ fn load_plugin(
         )
         .eval()?;
 
-    if let Err(e) = init_local_api(lua, &env) {
+    if let Err(e) = init_local_api(lua, &env, capabilities) {
         package.set("path", prev_path)?;
         return Err(e);
     };

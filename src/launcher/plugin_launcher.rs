@@ -4,6 +4,8 @@ use crate::{
     launcher::{
         LauncherConfig, LauncherProvider, LauncherType, LoadContext,
         plugin_launcher::{
+            api::capabilities_from_names,
+            capabilities::PluginCapability,
             plugin_tile_state::PluginTileState,
             runtime::{LuaRuntimeHandle, PluginHandle},
         },
@@ -23,6 +25,7 @@ use serde_json::Value;
 use std::{path::Path, sync::Arc};
 
 pub mod api;
+pub mod capabilities;
 pub mod job_handler;
 pub mod plugin_tile_state;
 pub mod registry;
@@ -51,6 +54,13 @@ impl LauncherProvider for PluginLauncher {
         };
         let path: Arc<Path> = Arc::from(Path::new(path));
 
+        let caps = raw
+            .args
+            .get("capabilities")
+            .and_then(|p| p.as_array())
+            .map(|v| capabilities_from_names(v.iter().filter_map(|v| v.as_str())))
+            .unwrap_or(PluginCapability::NONE);
+
         let runtime = LuaRuntimeHandle::get();
         let code = std::fs::read_to_string(&path).map_err(|e| {
             sherlock_msg!(
@@ -60,13 +70,15 @@ impl LauncherProvider for PluginLauncher {
             )
         })?;
         let handle = Arc::new(
-            futures::executor::block_on(runtime.load_plugin(code, path.clone())).map_err(|e| {
-                sherlock_msg!(
-                    Error,
-                    SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
-                    e
-                )
-            })?,
+            futures::executor::block_on(runtime.load_plugin(code, path.clone(), caps)).map_err(
+                |e| {
+                    sherlock_msg!(
+                        Error,
+                        SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                        e
+                    )
+                },
+            )?,
         );
 
         Ok(LauncherType::Plugin(Self { path, handle }))

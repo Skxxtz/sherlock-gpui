@@ -1,64 +1,30 @@
-use crate::launcher::plugin_launcher::{
-    api::{
-        clipboard::ClipboardModule, http::HttpModule, json::JsonModule, log::LogModule,
-        time::TimeModule, ui::UiModule,
-    },
-    runtime::TileUpdate,
-};
+use super::capabilities::{HasCapabilityBit, PluginCapability};
+use crate::launcher::plugin_launcher::runtime::TileUpdate;
 use mlua::prelude::*;
 use std::{fmt::Write, sync::OnceLock};
 use tokio::sync::mpsc;
 
-mod clipboard;
-mod http;
-mod json;
-mod log;
-mod time;
-mod ui;
+pub mod clipboard;
+pub mod http;
+pub mod json;
+pub mod log;
+pub mod time;
+pub mod ui;
 
 static UI_UPDATE_CHANNEL: OnceLock<mpsc::UnboundedSender<TileUpdate>> = OnceLock::new();
 
-/// Shared context passed to every module's `register` call.
-/// Add fields here as new shared resources show up (e.g. an HTTP client,
-/// a config handle, a cancellation token) instead of widening function signatures.
 pub struct ApiContext {
     pub update_tx: &'static mpsc::UnboundedSender<TileUpdate>,
 }
 
-pub struct FnEntry {
-    pub name: &'static str,
-    pub register: fn(&Lua, &LuaTable, &ApiContext) -> LuaResult<()>,
-    pub docs: fn() -> LuaApiDoc,
-}
-
-#[macro_export]
-macro_rules! fn_list {
-    ($($fn:ty),*) => {
-        &[$($crate::launcher::plugin_launcher::api::FnEntry {
-            name: <$fn as SherlockPluginFn>::NAME,
-            register: <$fn as SherlockPluginFn>::register,
-            docs: <$fn as SherlockPluginFn>::docs,
-        }),*]
-    }
-}
-
-/// One Lua API domain. Each module owns its own table and its own functions.
-trait PluginModuleDeclaration {
-    const NAME: &'static str;
-    const FUNCTIONS: &'static [FnEntry];
-    const RESTRICTED: &'static [FnEntry];
-}
-
-/// Every Lua-exposed function is a zero-sized type implementing this trait.
-/// The trait carries both the doc metadata (compile-time, always available)
-/// and the actual registration logic (only runs when `register` is called).
-pub trait SherlockPluginFn {
+pub trait SherlockPluginFn: HasCapabilityBit {
     const NAME: &'static str;
     const PARAMS: &'static [(&'static str, &'static str)];
     const RETURNS: &'static str;
     const DOC: &'static str;
 
     fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()>;
+
     fn docs() -> LuaApiDoc {
         LuaApiDoc {
             name: Self::NAME,
@@ -69,31 +35,7 @@ pub trait SherlockPluginFn {
     }
 }
 
-#[inline(always)]
-fn register<M: PluginModuleDeclaration>(
-    lua: &Lua,
-    table: &LuaTable,
-    ctx: &ApiContext,
-) -> LuaResult<()> {
-    for func in M::FUNCTIONS {
-        (func.register)(lua, table, ctx)?;
-    }
-    Ok(())
-}
-
-#[inline(always)]
-fn register_restricted<M: PluginModuleDeclaration>(
-    lua: &Lua,
-    table: &LuaTable,
-    ctx: &ApiContext,
-) -> LuaResult<()> {
-    for func in M::RESTRICTED {
-        (func.register)(lua, table, ctx)?;
-    }
-    Ok(())
-}
-
-fn lua_err(e: impl std::fmt::Display) -> LuaError {
+pub fn lua_err(e: impl std::fmt::Display) -> LuaError {
     LuaError::RuntimeError(e.to_string())
 }
 
@@ -104,9 +46,6 @@ pub struct LuaApiDoc {
     pub doc: &'static str,
 }
 
-/// Defines a Lua-callable function and simultaneously records its signature
-/// for LSP stub generation. Expands to a `lua.create_function` registration
-/// plus an entry in the global `LUA_API_DOCS` registry (used by `gen-lua-defs`).
 #[macro_export]
 macro_rules! lua_fn {
     // sync
@@ -119,8 +58,7 @@ macro_rules! lua_fn {
             $lua.create_function(move |$lua_arg, ($($arg,)*): ($($argty,)*)| $body)?,
         )
     };
-
-    // async — distinguished by leading `@async` marker, not a bare keyword
+    // async
     (
         @async
         $table:expr, $lua:expr,
@@ -133,60 +71,144 @@ macro_rules! lua_fn {
     };
 }
 
+/// generate_modules!
+///
+/// Syntax:
+///   generate_modules! {
+///       ModuleType("name") => [path::FnA, path::FnB],
+///       ...
+///   }
+///
+/// Emits:
+///   - Per function:  impl HasCapabilityBit (sequential bits, declaration order)
+///   - Per module:    pub struct + NAME + register(caps) + docs()
+///   - Global:        setup_global_api, init_local_api(lua, env, caps),
+///                    capabilities_from_names, LuaApiDocumentation
 macro_rules! generate_modules {
-    ( $( $variant:ident ),* $(,)? ) => {
-        #[allow(dead_code)]
-        fn _assert_plugin_module_impls() {
-            fn assert<T: PluginModuleDeclaration>() {}
-            $( assert::<$variant>(); )*
+    (
+        $( $module:ident ( $name:literal ) => [ $( $fn_path:path ),* $(,)? ] ),* $(,)?
+    ) => {
+        generate_modules!(@bits 0u64; $( $( $fn_path, )* )* );
+        generate_modules!(@build $( $module($name) => [ $($fn_path),* ] ),* );
+    };
+
+    (@bits $n:expr; ) => {};
+    (@bits $n:expr; $head:path, $($tail:path,)*) => {
+        impl $crate::launcher::plugin_launcher::api::HasCapabilityBit for $head {
+            const CAPABILITY: $crate::launcher::plugin_launcher::api::PluginCapability =
+                $crate::launcher::plugin_launcher::api::PluginCapability::from_bit($n);
         }
+        generate_modules!(@bits $n + 1u64; $($tail,)*);
+    };
+
+    (@build $( $module:ident($name:literal) => [ $($fn_path:path),* ] ),* ) => {
+
+        $(
+            pub struct $module;
+
+            impl $module {
+                pub const NAME: &'static str = $name;
+
+                pub fn register(
+                    lua: &mlua::Lua,
+                    table: &mlua::Table,
+                    ctx: &$crate::launcher::plugin_launcher::api::ApiContext,
+                    caps: $crate::launcher::plugin_launcher::api::PluginCapability,
+                ) -> mlua::Result<()> {
+                    use $crate::launcher::plugin_launcher::api::{HasCapabilityBit, SherlockPluginFn};
+                    $(
+                        if caps.allows(<$fn_path as HasCapabilityBit>::CAPABILITY) {
+                            <$fn_path as SherlockPluginFn>::register(lua, table, ctx)?;
+                        }
+                    )*
+                    Ok(())
+                }
+
+                pub fn docs() -> Vec<$crate::launcher::plugin_launcher::api::LuaApiDoc> {
+                    use $crate::launcher::plugin_launcher::api::SherlockPluginFn;
+                    vec![ $( <$fn_path>::docs(), )* ]
+                }
+            }
+        )*
 
         pub fn setup_global_api(
-            lua: &Lua,
-            update_tx: mpsc::UnboundedSender<TileUpdate>,
-        ) -> LuaResult<()> {
-            if let Err(_) = UI_UPDATE_CHANNEL.set(update_tx) {
-                panic!("Tried to set lua globals more than once.")
+            lua: &mlua::Lua,
+            update_tx: tokio::sync::mpsc::UnboundedSender<
+                $crate::launcher::plugin_launcher::runtime::TileUpdate,
+            >,
+        ) -> mlua::Result<()> {
+            let _ = lua;
+            if UI_UPDATE_CHANNEL.set(update_tx).is_err() {
+                panic!("Tried to set lua globals more than once.");
             }
             Ok(())
         }
 
-        pub fn init_local_api(lua: &Lua, local_env: &LuaTable) -> LuaResult<()> {
+        pub fn init_local_api(
+            lua: &mlua::Lua,
+            local_env: &mlua::Table,
+            caps: $crate::launcher::plugin_launcher::api::PluginCapability,
+        ) -> mlua::Result<()> {
             let Some(update_tx) = UI_UPDATE_CHANNEL.get() else {
                 panic!("Tried to initialize local lua env before globals have been set.");
             };
-            let ctx = ApiContext { update_tx };
+            let ctx = $crate::launcher::plugin_launcher::api::ApiContext { update_tx };
             let sherlock = lua.create_table()?;
             $(
                 let t = lua.create_table()?;
-                register::<$variant>(lua, &t, &ctx)?;       // unrestricted
-                register_restricted::<$variant>(lua, &t, &ctx)?; // restricted
-                sherlock.set($variant::NAME, t)?;
+                $module::register(lua, &t, &ctx, caps)?;
+                sherlock.set($module::NAME, t)?;
             )*
             local_env.set("sherlock", sherlock)?;
             Ok(())
         }
 
+        pub fn capabilities_from_names<'a>(
+            names: impl IntoIterator<Item = &'a str>,
+        ) -> PluginCapability {
+            names.into_iter().fold(PluginCapability::NONE, |acc, name| {
+                acc | match name.split_once('.') {
+                    // "http.get" — single function
+                    Some((module, func)) => {
+                        match module {
+                            $(
+                                $name => match func {
+                                    $(
+                                        _ if func == <$fn_path as SherlockPluginFn>::NAME =>
+                                        <$fn_path as HasCapabilityBit>::CAPABILITY,
+                                    )*
+                                        _ => PluginCapability::NONE,
+                                },
+                            )*
+                                _ => PluginCapability::NONE,
+                        }
+                    }
+                    // "http" — whole module
+                    None => {
+                        match name {
+                            $(
+                                $name => {
+                                    let mut cap = PluginCapability::NONE;
+                                    $( cap |= <$fn_path as HasCapabilityBit>::CAPABILITY; )*
+                                        cap
+                                    }
+                            )*
+                                _ => PluginCapability::NONE,
+                        }
+                    }
+                }
+            })
+        }
+
         pub struct LuaApiDocumentation;
+
         impl LuaApiDocumentation {
-            pub fn gather_docs() -> Vec<(&'static str, Vec<LuaApiDoc>)> {
-                vec![
-                    $(
-                        (
-                            $variant::NAME,
-                            $variant::FUNCTIONS
-                                .iter()
-                                .chain($variant::RESTRICTED.iter())
-                                .map(|f| (f.docs)())
-                                .collect::<Vec<_>>(),
-                        )
-                    ),*
-                ]
+            pub fn gather_docs() -> Vec<(&'static str, Vec<$crate::launcher::plugin_launcher::api::LuaApiDoc>)> {
+                vec![ $( ($module::NAME, $module::docs()), )* ]
             }
 
             pub fn generate_lua_stub() -> String {
                 let by_module = Self::gather_docs();
-
                 let mut out = String::from("---@meta sherlock\n\n");
                 writeln!(out, "---@class sherlock").unwrap();
                 writeln!(out, "sherlock = {{}}").unwrap();
@@ -206,7 +228,7 @@ macro_rules! generate_modules {
                             "function sherlock.{}.{}({}) end\n",
                             namespace,
                             doc.name,
-                            doc.params.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", ")
+                            doc.params.iter().map(|(n, _)| *n).collect::<Vec<_>>().join(", "),
                         ).unwrap();
                     }
                 }
@@ -217,10 +239,10 @@ macro_rules! generate_modules {
 }
 
 generate_modules! {
-    ClipboardModule,
-    HttpModule,
-    JsonModule,
-    LogModule,
-    TimeModule,
-    UiModule,
+    ClipboardModule("clipboard") => [clipboard::Get],
+    HttpModule("http")           => [http::Get, http::Post],
+    JsonModule("json")           => [json::Decode],
+    LogModule("log")             => [log::Info, log::Error],
+    TimeModule("time")           => [time::Sleep],
+    UiModule("ui")               => [ui::Update],
 }

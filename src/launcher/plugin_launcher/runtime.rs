@@ -9,7 +9,8 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 
-use crate::launcher::plugin_launcher::{
+use super::{
+    capabilities::PluginCapability,
     job_handler::handle_job,
     registry::PluginRegistry,
     subscribers::{TileSubscribers, TileSubscribersGlobal},
@@ -25,6 +26,7 @@ pub struct PluginHandle {
 #[allow(unused)]
 pub enum LuaJob {
     LoadPlugin {
+        capabilities: PluginCapability,
         code: String,
         path: Arc<Path>,
         reply: oneshot::Sender<LuaResult<PluginHandle>>,
@@ -111,10 +113,20 @@ impl LuaRuntimeHandle {
         let _ = LUA_RUNTIME.set(LuaRuntimeHandle { tx });
     }
 
-    pub async fn load_plugin(&self, code: String, path: Arc<Path>) -> LuaResult<PluginHandle> {
+    pub async fn load_plugin(
+        &self,
+        code: String,
+        path: Arc<Path>,
+        capabilities: PluginCapability,
+    ) -> LuaResult<PluginHandle> {
         let (reply, rx) = oneshot::channel();
         self.tx
-            .send(LuaJob::LoadPlugin { code, path, reply })
+            .send(LuaJob::LoadPlugin {
+                code,
+                path,
+                reply,
+                capabilities,
+            })
             .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
         rx.await
             .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?

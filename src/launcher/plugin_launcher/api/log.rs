@@ -1,18 +1,10 @@
 use crate::{
-    fn_list,
-    launcher::plugin_launcher::api::{ApiContext, PluginModuleDeclaration, SherlockPluginFn},
+    launcher::plugin_launcher::api::{ApiContext, SherlockPluginFn},
     lua_fn,
 };
 use mlua::prelude::{Lua, LuaResult, LuaTable};
 
-pub struct LogModule;
-impl PluginModuleDeclaration for LogModule {
-    const NAME: &'static str = "log";
-    const FUNCTIONS: &'static [super::FnEntry] = fn_list![Info, Error];
-    const RESTRICTED: &'static [super::FnEntry] = &[];
-}
-
-struct Info;
+pub struct Info;
 impl SherlockPluginFn for Info {
     const NAME: &'static str = "info";
     const PARAMS: &'static [(&'static str, &'static str)] = &[("msg", "string")];
@@ -29,7 +21,7 @@ impl SherlockPluginFn for Info {
     }
 }
 
-struct Error;
+pub struct Error;
 impl SherlockPluginFn for Error {
     const NAME: &'static str = "error";
     const PARAMS: &'static [(&'static str, &'static str)] = &[("msg", "string")];
