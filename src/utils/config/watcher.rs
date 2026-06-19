@@ -135,6 +135,6 @@ impl ConfigFileChange {
     }
     #[inline(always)]
     pub fn launchers(&self) -> bool {
-        self.contains(ConfigFileChange::Fallback | ConfigFileChange::Actions)
+        self.intersects(ConfigFileChange::Fallback | ConfigFileChange::Actions)
     }
 }
