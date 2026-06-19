@@ -1,22 +1,15 @@
 use crate::{
-    launcher::plugin_launcher::api::{ApiContext, SherlockPluginFn, SherlockPluginModule},
+    fn_list,
+    launcher::plugin_launcher::api::{ApiContext, PluginModuleDeclaration, SherlockPluginFn},
     lua_fn,
 };
 use mlua::prelude::{Lua, LuaResult, LuaTable};
 
 pub struct LogModule;
-impl SherlockPluginModule for LogModule {
+impl PluginModuleDeclaration for LogModule {
     const NAME: &'static str = "log";
-    fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()> {
-        Info::register(lua, table, ctx)?;
-        Error::register(lua, table, ctx)?;
-
-        Ok(())
-    }
-
-    fn docs() -> Vec<super::LuaApiDoc> {
-        vec![Info::docs(), Error::docs()]
-    }
+    const FUNCTIONS: &'static [super::FnEntry] = fn_list![Info, Error];
+    const RESTRICTED: &'static [super::FnEntry] = &[];
 }
 
 struct Info;

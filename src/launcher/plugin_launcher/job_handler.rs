@@ -1,3 +1,4 @@
+use crate::launcher::plugin_launcher::api::init_local_api;
 use crate::launcher::plugin_launcher::ui_schema::{PluginNodeRegistration, PluginUiNode};
 
 use super::registry::PluginRegistry;
@@ -89,8 +90,8 @@ fn load_plugin(
     )))?;
 
     let package: LuaTable = lua.globals().get("package")?;
-    let current_path: String = package.get("path")?;
-    package.set("path", format!("{}/?.lua;{}", root.display(), current_path))?;
+    let prev_path: String = package.get("path")?;
+    package.set("path", format!("{}/?.lua;{}", root.display(), prev_path))?;
 
     let env: LuaTable = lua
         .load(
@@ -98,14 +99,23 @@ fn load_plugin(
             local env = {}
             setmetatable(env, { __index = _G })
             return env
-            "#,
+        "#,
         )
         .eval()?;
 
-    lua.load(code)
+    if let Err(e) = init_local_api(lua, &env) {
+        package.set("path", prev_path)?;
+        return Err(e);
+    };
+
+    let plugin_result = lua
+        .load(code)
         .set_name(&name)
         .set_environment(env.clone())
-        .exec()?;
+        .exec();
+
+    package.set("path", prev_path)?;
+    plugin_result?;
 
     let env_key = lua.create_registry_value(env)?;
     let id = registry.borrow_mut().insert(name.clone(), env_key);

@@ -1,18 +1,16 @@
-use crate::launcher::plugin_launcher::api::{
-    ApiContext, SherlockPluginFn, SherlockPluginModule, lua_err,
+use crate::{
+    fn_list,
+    launcher::plugin_launcher::api::{
+        ApiContext, PluginModuleDeclaration, SherlockPluginFn, lua_err,
+    },
 };
 use mlua::prelude::{Lua, LuaResult, LuaSerdeExt, LuaTable};
 
 pub struct JsonModule;
-impl SherlockPluginModule for JsonModule {
+impl PluginModuleDeclaration for JsonModule {
     const NAME: &'static str = "json";
-    fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()> {
-        Decode::register(lua, table, ctx)?;
-        Ok(())
-    }
-    fn docs() -> Vec<super::LuaApiDoc> {
-        vec![Decode::docs()]
-    }
+    const FUNCTIONS: &'static [super::FnEntry] = fn_list![Decode];
+    const RESTRICTED: &'static [super::FnEntry] = &[];
 }
 
 struct Decode;

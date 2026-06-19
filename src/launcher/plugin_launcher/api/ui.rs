@@ -1,6 +1,7 @@
 use crate::{
+    fn_list,
     launcher::plugin_launcher::{
-        api::{ApiContext, SherlockPluginFn, SherlockPluginModule},
+        api::{ApiContext, PluginModuleDeclaration, SherlockPluginFn},
         ui_schema::PluginUiNode,
     },
     lua_fn,
@@ -8,15 +9,10 @@ use crate::{
 use mlua::prelude::{Lua, LuaResult, LuaTable};
 
 pub struct UiModule;
-impl SherlockPluginModule for UiModule {
+impl PluginModuleDeclaration for UiModule {
     const NAME: &'static str = "ui";
-    fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()> {
-        Update::register(lua, table, ctx)
-    }
-
-    fn docs() -> Vec<super::LuaApiDoc> {
-        vec![Update::docs()]
-    }
+    const FUNCTIONS: &'static [super::FnEntry] = fn_list![Update];
+    const RESTRICTED: &'static [super::FnEntry] = &[];
 }
 
 struct Update;

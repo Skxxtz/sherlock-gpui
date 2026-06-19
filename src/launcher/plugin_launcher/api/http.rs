@@ -1,22 +1,18 @@
 use crate::{
-    launcher::plugin_launcher::api::{ApiContext, SherlockPluginFn, SherlockPluginModule, lua_err},
+    fn_list,
+    launcher::plugin_launcher::api::{
+        ApiContext, PluginModuleDeclaration, SherlockPluginFn, lua_err,
+    },
     lua_fn,
 };
 use mlua::prelude::{Lua, LuaResult, LuaTable};
 use reqwest::Client;
 
 pub struct HttpModule;
-impl SherlockPluginModule for HttpModule {
+impl PluginModuleDeclaration for HttpModule {
     const NAME: &'static str = "http";
-    fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()> {
-        Get::register(lua, table, ctx)?;
-        Post::register(lua, table, ctx)?;
-
-        Ok(())
-    }
-    fn docs() -> Vec<super::LuaApiDoc> {
-        vec![Get::docs(), Post::docs()]
-    }
+    const FUNCTIONS: &'static [super::FnEntry] = &[];
+    const RESTRICTED: &'static [super::FnEntry] = fn_list![Get, Post];
 }
 
 struct Get;

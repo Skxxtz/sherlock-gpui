@@ -1,19 +1,15 @@
 use crate::{
-    launcher::plugin_launcher::api::{ApiContext, SherlockPluginFn, SherlockPluginModule},
+    fn_list,
+    launcher::plugin_launcher::api::{ApiContext, PluginModuleDeclaration, SherlockPluginFn},
     lua_fn,
 };
 use mlua::prelude::{Lua, LuaResult, LuaTable};
 
 pub struct TimeModule;
-impl SherlockPluginModule for TimeModule {
+impl PluginModuleDeclaration for TimeModule {
     const NAME: &'static str = "time";
-    fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()> {
-        Sleep::register(lua, table, ctx)
-    }
-
-    fn docs() -> Vec<super::LuaApiDoc> {
-        vec![Sleep::docs()]
-    }
+    const FUNCTIONS: &'static [super::FnEntry] = fn_list![Sleep];
+    const RESTRICTED: &'static [super::FnEntry] = &[];
 }
 
 struct Sleep;
