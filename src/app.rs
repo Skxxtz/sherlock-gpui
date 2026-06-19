@@ -18,10 +18,7 @@ use crate::{
     SOCKET_PATH,
     app::theme::ActiveTheme,
     launcher::Launcher,
-    launcher::plugin_launcher::{
-        runtime::{LuaRuntimeGlobal, LuaRuntimeHandle},
-        subscribers::{TileSubscribers, TileSubscribersGlobal},
-    },
+    launcher::plugin_launcher::runtime::LuaRuntimeHandle,
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,
@@ -53,25 +50,7 @@ pub type LauncherWeakEntity = WeakEntity<LauncherEntityInner>;
 pub type LauncherEntityInner = Rc<Vec<Launcher>>;
 
 pub fn run_app(cx: &mut App, result: SetupResult) {
-    let (lua_runtime, mut update_rx) = LuaRuntimeHandle::spawn();
-    let subscribers = TileSubscribers::default();
-    {
-        let subscribers = subscribers.clone();
-        cx.spawn(async move |cx: &mut AsyncApp| {
-            while let Some((tile_id, data)) = update_rx.recv().await {
-                if let Some(weak) = subscribers.get(&tile_id)
-                    && let Some(entity) = weak.upgrade()
-                {
-                    cx.update(|cx| {
-                        entity.update(cx, |state, cx| state.set_data(data, cx));
-                    });
-                }
-            }
-        })
-        .detach();
-    }
-    cx.set_global(TileSubscribersGlobal(subscribers));
-    cx.set_global(LuaRuntimeGlobal(lua_runtime));
+    LuaRuntimeHandle::spawn(cx);
 
     let SetupResult {
         config_dir,

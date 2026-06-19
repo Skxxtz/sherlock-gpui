@@ -1,10 +1,14 @@
+use gpui::{App, AsyncApp};
 // runtime.rs
 use mlua::prelude::*;
-use std::{cell::RefCell, path::Path, sync::Arc};
+use std::{cell::RefCell, path::Path, rc::Rc, sync::Arc};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::launcher::plugin_launcher::{
-    job_handler::handle_job, registry::PluginRegistry, ui_schema::PluginUiNode,
+    job_handler::handle_job,
+    registry::PluginRegistry,
+    subscribers::{TileSubscribers, TileSubscribersGlobal},
+    ui_schema::PluginUiNode,
 };
 
 #[derive(Clone)]
@@ -60,9 +64,9 @@ impl LuaRuntimeHandle {
     /// startup. Returns both the handle for sending jobs, and the receiving
     /// end of the tile-update stream — the caller (GPUI side, which has
     /// `cx`) is responsible for draining that into entity updates.
-    pub fn spawn() -> (Self, mpsc::UnboundedReceiver<TileUpdate>) {
+    pub fn spawn(cx: &mut App) {
         let (tx, rx) = mpsc::unbounded_channel::<LuaJob>();
-        let (update_tx, update_rx) = mpsc::unbounded_channel::<TileUpdate>();
+        let (update_tx, mut update_rx) = mpsc::unbounded_channel::<TileUpdate>();
 
         std::thread::Builder::new()
             .name("lua-runtime".into())
@@ -71,7 +75,25 @@ impl LuaRuntimeHandle {
             })
             .expect("failed to spawn lua-runtime thread");
 
-        (Self { tx }, update_rx)
+        // Handle messages from the lua-runtime thread (via channels)
+        let subscribers = TileSubscribers::default();
+        {
+            let subscribers = subscribers.clone();
+            cx.spawn(async move |cx: &mut AsyncApp| {
+                while let Some((tile_id, data)) = update_rx.recv().await {
+                    if let Some(weak) = subscribers.get(&tile_id)
+                        && let Some(entity) = weak.upgrade()
+                    {
+                        cx.update(|cx| {
+                            entity.update(cx, |state, cx| state.set_data(data, cx));
+                        });
+                    }
+                }
+            })
+            .detach();
+        }
+        cx.set_global(TileSubscribersGlobal(subscribers));
+        cx.set_global(LuaRuntimeGlobal(Self { tx }));
     }
 
     pub async fn load_plugin(&self, code: String, path: Arc<Path>) -> LuaResult<PluginHandle> {
@@ -140,7 +162,7 @@ fn run_lua_thread(
         .build()
         .expect("failed to build lua-thread tokio runtime");
 
-    let registry = Arc::new(RefCell::new(PluginRegistry::default()));
+    let registry = Rc::new(RefCell::new(PluginRegistry::default()));
 
     let lua = Lua::new_with(
         LuaStdLib::TABLE
@@ -159,7 +181,7 @@ fn run_lua_thread(
     rt.block_on(local.run_until(async move {
         while let Some(job) = rx.recv().await {
             let lua = lua.clone();
-            let registry = Arc::clone(&registry);
+            let registry = Rc::clone(&registry);
             tokio::task::spawn_local(async move {
                 handle_job(lua, registry, job).await;
             });

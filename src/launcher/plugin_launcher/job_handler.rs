@@ -5,9 +5,9 @@ use super::runtime::{LuaJob, PluginHandle};
 use mlua::prelude::*;
 use std::cell::RefCell;
 use std::path::Path;
-use std::sync::Arc;
+use std::rc::Rc;
 
-pub async fn handle_job(lua: Lua, registry: Arc<RefCell<PluginRegistry>>, job: LuaJob) {
+pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: LuaJob) {
     match job {
         LuaJob::LoadPlugin { code, path, reply } => {
             let result = load_plugin(&lua, &registry, &code, &path);
@@ -31,7 +31,7 @@ pub async fn handle_job(lua: Lua, registry: Arc<RefCell<PluginRegistry>>, job: L
         }
         LuaJob::SpawnLive { handle, tile_id } => {
             let lua = lua.clone();
-            let registry = Arc::clone(&registry);
+            let registry = Rc::clone(&registry);
             tokio::task::spawn_local(async move {
                 let result =
                     call_plugin_fn_unit(&lua, &registry, &handle, "live", tile_id.clone()).await;
@@ -68,7 +68,7 @@ pub async fn handle_job(lua: Lua, registry: Arc<RefCell<PluginRegistry>>, job: L
 
 fn load_plugin(
     lua: &Lua,
-    registry: &Arc<RefCell<PluginRegistry>>,
+    registry: &Rc<RefCell<PluginRegistry>>,
     code: &str,
     path: &Path,
 ) -> LuaResult<PluginHandle> {
@@ -115,7 +115,7 @@ fn load_plugin(
 /// other spawn_local jobs still get polled while we're waiting.
 async fn call_plugin_fn_async<R>(
     lua: &Lua,
-    registry: &Arc<RefCell<PluginRegistry>>,
+    registry: &Rc<RefCell<PluginRegistry>>,
     handle: &PluginHandle,
     func_name: &str,
     args: impl IntoLuaMulti + Clone,
@@ -147,7 +147,7 @@ where
 // job_handler.rs — a variant that doesn't try to convert the return value
 async fn call_plugin_fn_unit(
     lua: &Lua,
-    registry: &Arc<RefCell<PluginRegistry>>,
+    registry: &Rc<RefCell<PluginRegistry>>,
     handle: &PluginHandle,
     func_name: &str,
     args: impl IntoLuaMulti,
