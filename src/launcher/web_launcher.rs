@@ -3,8 +3,9 @@ use crate::{
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{LauncherProvider, LauncherType, app_launcher::app_data::AppData},
     loader::utils::{PriorityGuard, RawLauncher},
+    sherlock_msg,
     ui::widgets::RenderableChild,
-    utils::errors::SherlockMessage,
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
     variant_name,
 };
 use gpui::SharedString;
@@ -25,11 +26,10 @@ pub struct WebLauncher {
 }
 
 impl LauncherProvider for WebLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
-        match serde_json::from_value::<WebLauncher>(raw.args.as_ref().clone()) {
-            Ok(launcher) => LauncherType::Web(launcher),
-            Err(_) => LauncherType::Empty,
-        }
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        serde_json::from_value::<WebLauncher>(raw.args.as_ref().clone())
+            .map(LauncherType::Web)
+            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
     }
     fn objects(
         &self,

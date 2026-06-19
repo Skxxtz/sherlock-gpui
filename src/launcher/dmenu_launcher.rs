@@ -1,12 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    display_name,
-    docs::launcher::{LauncherDoc, LauncherDocEntry},
-    launcher::{LauncherConfig, LauncherProvider, LauncherType},
-    ui::widgets::RenderableChild,
-    utils::errors::SherlockMessage,
-    variant_name,
+    display_name, docs::launcher::{LauncherDoc, LauncherDocEntry}, launcher::{LauncherConfig, LauncherProvider, LauncherType}, loader::utils::RawLauncher, ui::widgets::RenderableChild, utils::errors::SherlockMessage, variant_name
 };
 
 /// No user-side arguments
@@ -14,8 +9,8 @@ use crate::{
 pub struct DmenuLauncher {}
 
 impl LauncherProvider for DmenuLauncher {
-    fn parse(_raw: &crate::loader::utils::RawLauncher) -> super::LauncherType {
-        LauncherType::Dmenu(Self {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Dmenu(Self {}))
     }
 
     fn objects(

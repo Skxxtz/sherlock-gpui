@@ -44,7 +44,7 @@ pub struct ProcessLauncher {
 }
 
 impl LauncherProvider for ProcessLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let max_results = raw
             .args
             .get("max_results")
@@ -52,7 +52,7 @@ impl LauncherProvider for ProcessLauncher {
             .map(|v| v as usize)
             .unwrap_or(50);
 
-        LauncherType::Process(ProcessLauncher { max_results })
+        Ok(LauncherType::Process(ProcessLauncher { max_results }))
     }
     fn objects(
         &self,

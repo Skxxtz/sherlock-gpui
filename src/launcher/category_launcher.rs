@@ -20,8 +20,8 @@ use crate::{display_name, sherlock_msg, variant_name};
 pub struct CategoryLauncher {}
 
 impl LauncherProvider for CategoryLauncher {
-    fn parse(_raw: &RawLauncher) -> LauncherType {
-        LauncherType::Categories(CategoryLauncher {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Categories(CategoryLauncher {}))
     }
     fn objects(
         &self,

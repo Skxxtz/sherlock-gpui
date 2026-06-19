@@ -32,8 +32,8 @@ define_inner_functions! {
 pub struct ThemePicker {}
 
 impl LauncherProvider for ThemePicker {
-    fn parse(_raw: &RawLauncher) -> LauncherType {
-        LauncherType::Theme(ThemePicker {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Theme(ThemePicker {}))
     }
     fn objects(
         &self,

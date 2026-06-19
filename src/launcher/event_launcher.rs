@@ -45,7 +45,7 @@ pub struct EventLauncher {
 }
 
 impl LauncherProvider for EventLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let look_back_raw = raw
             .args
             .get("look_back")
@@ -61,10 +61,10 @@ impl LauncherProvider for EventLauncher {
         let look_back = parse_dynamic_time(look_back_raw).unwrap_or(Duration::from_hours(6));
         let look_ahead = parse_dynamic_time(look_ahead_raw).unwrap_or(Duration::from_hours(4));
 
-        LauncherType::Event(Self {
+        Ok(LauncherType::Event(Self {
             look_back,
             look_ahead,
-        })
+        }))
     }
     fn objects(
         &self,

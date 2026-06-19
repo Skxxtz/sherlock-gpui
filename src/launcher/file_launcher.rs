@@ -34,7 +34,7 @@ pub struct FileLauncher {
 }
 
 impl LauncherProvider for FileLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let backend = raw
             .args
             .get("backend")
@@ -62,12 +62,12 @@ impl LauncherProvider for FileLauncher {
             .to_string()
             .into();
 
-        LauncherType::Files(Self {
+        Ok(LauncherType::Files(Self {
             backend,
             loc,
             poll_interval,
             max_results,
-        })
+        }))
     }
 
     fn objects(

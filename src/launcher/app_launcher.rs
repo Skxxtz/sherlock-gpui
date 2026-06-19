@@ -9,8 +9,9 @@ use crate::{
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{LauncherProvider, LauncherType, LoadContext},
     loader::{application_loader::ApplicationLoader, utils::RawLauncher},
+    sherlock_msg,
     ui::widgets::RenderableChild,
-    utils::errors::SherlockMessage,
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
     variant_name,
 };
 
@@ -26,11 +27,10 @@ pub struct AppLauncher {
 }
 
 impl LauncherProvider for AppLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
-        match serde_json::from_value::<AppLauncher>(raw.args.as_ref().clone()) {
-            Ok(launcher) => LauncherType::Apps(launcher),
-            Err(_) => LauncherType::Empty,
-        }
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        serde_json::from_value::<AppLauncher>(raw.args.as_ref().clone())
+            .map(LauncherType::Apps)
+            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
     }
     fn objects(
         &self,

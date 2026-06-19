@@ -32,18 +32,15 @@ define_inner_functions! {
 /// - `exec`: Default command to execute on timer end
 #[derive(Clone, Debug, Deserialize)]
 pub struct TimerLauncher {
+    #[serde(default)]
     command: Option<SharedString>,
 }
 
 impl LauncherProvider for TimerLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
-        let command = raw
-            .args
-            .get("exec")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string().into());
-        let launcher = TimerLauncher { command };
-        LauncherType::Timer(launcher)
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        serde_json::from_value::<TimerLauncher>(raw.args.as_ref().clone())
+            .map(LauncherType::Timer)
+            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
     }
     fn objects(
         &self,

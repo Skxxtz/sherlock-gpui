@@ -18,7 +18,7 @@ pub struct ClipboardLauncher {
     pub capabilities: Capabilities,
 }
 impl LauncherProvider for ClipboardLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let caps: Vec<String> = match raw.args.get("capabilities") {
             Some(Value::Array(arr)) => arr
                 .iter()
@@ -27,7 +27,7 @@ impl LauncherProvider for ClipboardLauncher {
             _ => vec![String::from("calc.math"), String::from("calc.units")],
         };
         let capabilities = Capabilities::from_strings(&caps);
-        LauncherType::Clipboard(ClipboardLauncher { capabilities })
+        Ok(LauncherType::Clipboard(ClipboardLauncher { capabilities }))
     }
     fn objects(
         &self,

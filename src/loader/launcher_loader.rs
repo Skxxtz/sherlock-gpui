@@ -11,11 +11,7 @@ use crate::{
     app::LauncherEntity,
     launcher::{
         Launcher, LauncherConfig,
-        plugin_launcher::{
-            runtime::{LuaRuntimeGlobal, LuaRuntimeHandle},
-            subscribers::{TileSubscribers, TileSubscribersGlobal},
-        },
-        variant_type::LauncherType,
+        plugin_launcher::subscribers::{TileSubscribers, TileSubscribersGlobal},
     },
     loader::utils::RawLauncher,
     sherlock_msg,
@@ -39,13 +35,11 @@ pub struct LoadContext {
     pub changes: Option<ConfigFileChange>,
 
     // plugin stuff
-    pub lua_runtime: LuaRuntimeHandle,
     pub subscribers: TileSubscribers,
 }
 impl LoadContext {
     fn new(
         changes: Option<ConfigFileChange>,
-        lua_runtime: LuaRuntimeHandle,
         subscribers: TileSubscribers,
     ) -> Result<Self, SherlockMessage> {
         let counter_reader = CounterReader::new()?;
@@ -56,7 +50,6 @@ impl LoadContext {
             counts,
             path: counter_reader.path,
             changes,
-            lua_runtime,
             subscribers,
         })
     }
@@ -79,15 +72,20 @@ impl Loader {
         let (raw_launchers, mut messages) = parse_launcher_configs(&config.files.fallback);
 
         // Read cached counter file
-        let lua_runtime = cx.global::<LuaRuntimeGlobal>().0.clone();
         let subscribers = cx.global::<TileSubscribersGlobal>().0.clone();
-        let ctx = LoadContext::new(changes, lua_runtime, subscribers)?;
+        let ctx = LoadContext::new(changes, subscribers)?;
 
         // Parse the launchers
         let mut launchers: Vec<(Arc<LauncherConfig>, Arc<serde_json::Value>)> = raw_launchers
             .into_iter()
-            .map(|raw| {
-                let launcher_type: LauncherType = raw.r#type.into_launcher_type(&raw);
+            .filter_map(|raw| {
+                let launcher_type = match raw.r#type.try_into_launcher_type(&raw) {
+                    Ok(t) => t,
+                    Err(e) => {
+                        messages.push(e);
+                        return None;
+                    }
+                };
 
                 let icon = raw
                     .args
@@ -97,10 +95,10 @@ impl Loader {
 
                 let opts = Arc::clone(&raw.args);
 
-                (
+                Some((
                     Arc::new(LauncherConfig::from_raw(raw, launcher_type, icon)),
                     opts,
-                )
+                ))
             })
             .collect();
 

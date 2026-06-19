@@ -43,7 +43,7 @@ pub struct ScriptLauncher {
 }
 
 impl LauncherProvider for ScriptLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let binds = raw
             .binds
             .as_ref()
@@ -55,7 +55,7 @@ impl LauncherProvider for ScriptLauncher {
             .and_then(Value::as_bool)
             .unwrap_or(true);
 
-        LauncherType::Script(ScriptLauncher { r#async, binds })
+        Ok(LauncherType::Script(ScriptLauncher { r#async, binds }))
     }
     fn objects(
         &self,

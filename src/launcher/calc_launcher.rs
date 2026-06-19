@@ -25,7 +25,7 @@ pub static CURRENCIES: OnceLock<Option<Currency>> = OnceLock::new();
 pub struct CalculatorLauncher {}
 
 impl LauncherProvider for CalculatorLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         // initialize currencies
         let update_interval = raw
             .args
@@ -44,7 +44,7 @@ impl LauncherProvider for CalculatorLauncher {
             }
         });
 
-        LauncherType::Calculator(CalculatorLauncher {})
+        Ok(LauncherType::Calculator(CalculatorLauncher {}))
     }
     fn objects(
         &self,

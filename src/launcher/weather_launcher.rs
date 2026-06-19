@@ -53,11 +53,10 @@ pub struct WeatherLauncher {
 }
 
 impl LauncherProvider for WeatherLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
-        match serde_json::from_value::<WeatherLauncher>(raw.args.as_ref().clone()) {
-            Ok(launcher) => LauncherType::Weather(launcher),
-            Err(_) => LauncherType::Empty,
-        }
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        serde_json::from_value::<WeatherLauncher>(raw.args.as_ref().clone())
+            .map(LauncherType::Weather)
+            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
     }
     fn objects(
         &self,

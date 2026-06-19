@@ -11,7 +11,7 @@ use crate::{
         LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData,
         emoji_launcher::data::EmojiEntry,
     },
-    loader::{resolve_icon_path, utils::PriorityGuard},
+    loader::{resolve_icon_path, utils::{PriorityGuard, RawLauncher}},
     ui::widgets::{RenderableChild, emoji::set_selected_skin_tone},
     utils::errors::SherlockMessage,
     variant_name,
@@ -34,8 +34,8 @@ pub static ALL_SKIN_TONES: [SkinTone; 6] = [
 pub struct EmojiPicker {}
 
 impl LauncherProvider for EmojiPicker {
-    fn parse(_raw: &crate::loader::utils::RawLauncher) -> super::LauncherType {
-        LauncherType::Emoji(Self {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Emoji(Self {}))
     }
 
     fn objects(

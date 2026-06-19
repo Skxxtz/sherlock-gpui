@@ -34,8 +34,8 @@ define_inner_functions! {
 pub struct DebugLauncher {}
 
 impl LauncherProvider for DebugLauncher {
-    fn parse(_raw: &RawLauncher) -> LauncherType {
-        LauncherType::Debug(DebugLauncher {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Debug(DebugLauncher {}))
     }
     fn objects(
         &self,

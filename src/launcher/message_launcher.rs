@@ -18,8 +18,8 @@ use crate::{
 #[derive(Clone, Debug, Deserialize)]
 pub struct MessageLauncher {}
 impl LauncherProvider for MessageLauncher {
-    fn parse(_raw: &RawLauncher) -> LauncherType {
-        LauncherType::Message(Self {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Message(Self {}))
     }
     fn objects(
         &self,

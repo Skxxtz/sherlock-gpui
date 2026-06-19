@@ -48,7 +48,7 @@ use std::{
 };
 
 pub trait LauncherProvider {
-    fn parse(raw: &RawLauncher) -> LauncherType;
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage>;
     fn objects(
         &self,
         launcher: Arc<LauncherConfig>,

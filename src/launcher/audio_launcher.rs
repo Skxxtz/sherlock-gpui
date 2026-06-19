@@ -49,12 +49,12 @@ define_inner_functions! {
 }
 
 impl LauncherProvider for MusicPlayerLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let binds = raw
             .binds
             .as_ref()
             .map(|vec| Arc::new(vec.iter().filter_map(|b| Bind::try_from(b).ok()).collect()));
-        LauncherType::MusicPlayer(MusicPlayerLauncher { binds })
+        Ok(LauncherType::MusicPlayer(MusicPlayerLauncher { binds }))
     }
     fn objects(
         &self,

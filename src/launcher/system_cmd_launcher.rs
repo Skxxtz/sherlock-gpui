@@ -22,8 +22,8 @@ use crate::{
 pub struct CommandLauncher {}
 
 impl LauncherProvider for CommandLauncher {
-    fn parse(_raw: &RawLauncher) -> LauncherType {
-        LauncherType::Commands(CommandLauncher {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Commands(CommandLauncher {}))
     }
 
     fn objects(

@@ -37,8 +37,8 @@ pub struct BookmarkLauncher {
 }
 
 impl LauncherProvider for BookmarkLauncher {
-    fn parse(raw: &RawLauncher) -> LauncherType {
-        let browser_target = raw
+    fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        let target_browser = raw
             .args
             .get("browser")
             .and_then(|s| s.as_str().map(|str| str.to_string()))
@@ -47,12 +47,17 @@ impl LauncherProvider for BookmarkLauncher {
                     .ok()
                     .and_then(|c| c.default_apps.browser.clone())
             })
-            .or_else(|| ConstantDefaults::browser().ok());
+            .or_else(|| ConstantDefaults::browser().ok())
+            .ok_or(sherlock_msg!(
+                Warning,
+                SherlockErrorType::InvalidData,
+                format!(
+                    "Failed to fetch browser for `{}`",
+                    raw.name.as_deref().unwrap_or("BookmarkLauncher")
+                )
+            ))?;
 
-        match browser_target {
-            Some(target_browser) => LauncherType::Bookmarks(BookmarkLauncher { target_browser }),
-            None => LauncherType::Empty,
-        }
+        Ok(LauncherType::Bookmarks(BookmarkLauncher { target_browser }))
     }
     fn objects(
         &self,

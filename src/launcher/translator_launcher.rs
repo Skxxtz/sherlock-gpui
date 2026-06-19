@@ -19,8 +19,8 @@ use crate::{
 pub struct Translator {}
 
 impl LauncherProvider for Translator {
-    fn parse(_raw: &RawLauncher) -> LauncherType {
-        LauncherType::Translator(Translator {})
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Translator(Translator {}))
     }
     fn objects(
         &self,

@@ -179,12 +179,12 @@ macro_rules! create_variants {
                     Self::Empty => false,
                 }
             }
-            pub fn into_launcher_type(self, raw: &RawLauncher) -> $name {
+            pub fn try_into_launcher_type(self, raw: &RawLauncher) -> Result<$name, SherlockMessage> {
                 match self {
                     $(
-                        Self::$variant => <$inner as LauncherProvider>::parse(raw),
+                        Self::$variant => <$inner as LauncherProvider>::try_parse(raw),
                     )*
-                    Self::Empty => $name::Empty
+                    Self::Empty => Ok($name::Empty)
                 }
             }
         }
@@ -247,9 +247,9 @@ macro_rules! create_variants {
                             .unwrap_or_else(|e| panic!(
                                 "{:?} example '{}' is not valid RawLauncher: {}", var, example.description, e
                             ));
-                        let launcher = var.into_launcher_type(&raw);
+                        let launcher = var.try_into_launcher_type(&raw);
                         assert!(
-                            !matches!(launcher, LauncherType::Empty),
+                            launcher.is_ok(),
                             "{:?} example '{}' parsed to Empty — args schema mismatch", var, example.description
                         );
                     }
