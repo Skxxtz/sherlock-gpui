@@ -37,6 +37,7 @@ pub mod ui_schema;
 #[derive(Clone, Debug)]
 pub struct PluginLauncher {
     pub path: Arc<Path>,
+    pub capabilities: PluginCapability,
     pub handle: Arc<PluginHandle>,
 }
 
@@ -54,7 +55,7 @@ impl LauncherProvider for PluginLauncher {
         };
         let path: Arc<Path> = Arc::from(Path::new(path));
 
-        let caps = raw
+        let capabilities = raw
             .args
             .get("capabilities")
             .and_then(|p| p.as_array())
@@ -62,15 +63,8 @@ impl LauncherProvider for PluginLauncher {
             .unwrap_or(PluginCapability::NONE);
 
         let runtime = LuaRuntimeHandle::get();
-        let code = std::fs::read_to_string(&path).map_err(|e| {
-            sherlock_msg!(
-                Error,
-                SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
-                format!("failed to read plugin file: {e}")
-            )
-        })?;
         let handle = Arc::new(
-            futures::executor::block_on(runtime.load_plugin(code, path.clone(), caps)).map_err(
+            futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities)).map_err(
                 |e| {
                     sherlock_msg!(
                         Error,
@@ -81,7 +75,7 @@ impl LauncherProvider for PluginLauncher {
             )?,
         );
 
-        Ok(LauncherType::Plugin(Self { path, handle }))
+        Ok(LauncherType::Plugin(Self { path, capabilities, handle }))
     }
 
     fn objects(

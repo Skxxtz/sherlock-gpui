@@ -1,30 +1,38 @@
 use mlua::prelude::*;
-use std::collections::HashMap;
-
-pub struct LoadedPlugin {
-    pub env_key: LuaRegistryKey,
-    pub name: String,
-}
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 #[derive(Default)]
 pub struct PluginRegistry {
-    next_id: u64,
-    plugins: HashMap<u64, LoadedPlugin>,
+    plugins: HashMap<PathBuf, LoadedPlugin>,
+}
+
+pub struct LoadedPlugin {
+    pub env_key: LuaRegistryKey,
 }
 
 impl PluginRegistry {
-    pub fn insert(&mut self, name: String, env_key: LuaRegistryKey) -> u64 {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.plugins.insert(id, LoadedPlugin { env_key, name });
-        id
+    /// Returns `Ok(())` on success, `Err(())` if already loaded.
+    pub fn insert(&mut self, path: &Path, env_key: LuaRegistryKey) -> Result<(), ()> {
+        if self.plugins.contains_key(path) {
+            return Err(());
+        }
+        self.plugins
+            .insert(path.to_owned(), LoadedPlugin { env_key });
+        Ok(())
     }
 
-    pub fn get(&self, id: u64) -> Option<&LoadedPlugin> {
-        self.plugins.get(&id)
+    pub fn get(&self, path: &Path) -> Option<&LoadedPlugin> {
+        self.plugins.get(path)
     }
 
-    pub fn remove(&mut self, id: u64) -> Option<LoadedPlugin> {
-        self.plugins.remove(&id)
+    pub fn remove(&mut self, path: &Path) -> Option<LoadedPlugin> {
+        self.plugins.remove(path)
+    }
+
+    pub fn is_loaded(&self, path: &Path) -> bool {
+        self.plugins.contains_key(path)
     }
 }

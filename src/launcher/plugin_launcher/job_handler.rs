@@ -13,12 +13,11 @@ use std::rc::Rc;
 pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: LuaJob) {
     match job {
         LuaJob::LoadPlugin {
-            code,
             path,
             reply,
             capabilities,
         } => {
-            let result = load_plugin(&lua, &registry, &code, &path, capabilities);
+            let result = load_plugin(&lua, &registry, &path, capabilities);
             let _ = reply.send(result);
         }
         LuaJob::CallTiles { handle, reply } => {
@@ -61,7 +60,7 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             let result = (|| -> LuaResult<bool> {
                 let reg = registry.borrow();
                 let plugin = reg
-                    .get(handle.id)
+                    .get(&handle.id)
                     .ok_or_else(|| LuaError::RuntimeError("plugin not loaded".into()))?;
                 let env: LuaTable = lua.registry_value(&plugin.env_key)?;
                 Ok(matches!(
@@ -71,21 +70,21 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             })();
             let _ = reply.send(result.unwrap_or(false));
         }
-        LuaJob::Unload { handle } => {
-            if let Some(plugin) = registry.borrow_mut().remove(handle.id) {
-                let _ = lua.remove_registry_value(plugin.env_key);
-            }
-        }
+        LuaJob::Unload { handle } => unload_plugin(&lua, &registry, &handle.id),
     }
 }
 
 fn load_plugin(
     lua: &Lua,
     registry: &Rc<RefCell<PluginRegistry>>,
-    code: &str,
     path: &Path,
     capabilities: PluginCapability,
 ) -> LuaResult<PluginHandle> {
+    let code = std::fs::read_to_string(path)?;
+    if registry.borrow().is_loaded(path) {
+        unload_plugin(lua, registry, path);
+    }
+
     let name = path
         .file_stem()
         .and_then(|s| s.to_str())
@@ -126,9 +125,23 @@ fn load_plugin(
     plugin_result?;
 
     let env_key = lua.create_registry_value(env)?;
-    let id = registry.borrow_mut().insert(name.clone(), env_key);
 
-    Ok(PluginHandle { id, name })
+    registry
+        .borrow_mut()
+        .insert(path, env_key)
+        .expect("Tried to set new env where one alredy exists.");
+
+    Ok(PluginHandle {
+        id: path.to_path_buf(),
+        name,
+    })
+}
+
+#[inline(always)]
+pub fn unload_plugin(lua: &Lua, registry: &Rc<RefCell<PluginRegistry>>, id: &Path) {
+    if let Some(plugin) = registry.borrow_mut().remove(id) {
+        let _ = lua.remove_registry_value(plugin.env_key);
+    }
 }
 
 /// Calls a plugin function as a coroutine and drives it to completion,
@@ -148,7 +161,7 @@ where
 {
     let env: LuaTable = {
         let reg = registry.borrow();
-        let plugin = reg.get(handle.id).ok_or_else(|| {
+        let plugin = reg.get(&handle.id).ok_or_else(|| {
             LuaError::RuntimeError(format!("plugin '{}' not loaded", handle.name))
         })?;
         lua.registry_value(&plugin.env_key)?
@@ -177,7 +190,7 @@ async fn call_plugin_fn_unit(
 ) -> LuaResult<()> {
     let env: LuaTable = {
         let reg = registry.borrow();
-        let plugin = reg.get(handle.id).ok_or_else(|| {
+        let plugin = reg.get(&handle.id).ok_or_else(|| {
             LuaError::RuntimeError(format!("plugin '{}' not loaded", handle.name))
         })?;
         lua.registry_value(&plugin.env_key)?

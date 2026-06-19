@@ -3,7 +3,7 @@ use gpui::{App, AsyncApp};
 use mlua::prelude::*;
 use std::{
     cell::RefCell,
-    path::Path,
+    path::{Path, PathBuf},
     rc::Rc,
     sync::{Arc, OnceLock},
 };
@@ -19,7 +19,7 @@ use super::{
 
 #[derive(Clone, Debug)]
 pub struct PluginHandle {
-    pub id: u64,
+    pub id: PathBuf,
     pub name: String,
 }
 
@@ -27,7 +27,6 @@ pub struct PluginHandle {
 pub enum LuaJob {
     LoadPlugin {
         capabilities: PluginCapability,
-        code: String,
         path: Arc<Path>,
         reply: oneshot::Sender<LuaResult<PluginHandle>>,
     },
@@ -115,14 +114,12 @@ impl LuaRuntimeHandle {
 
     pub async fn load_plugin(
         &self,
-        code: String,
         path: Arc<Path>,
         capabilities: PluginCapability,
     ) -> LuaResult<PluginHandle> {
         let (reply, rx) = oneshot::channel();
         self.tx
             .send(LuaJob::LoadPlugin {
-                code,
                 path,
                 reply,
                 capabilities,

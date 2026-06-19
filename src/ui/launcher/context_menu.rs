@@ -1,8 +1,8 @@
 use std::{fmt::Debug, sync::Arc};
 
 use gpui::{
-    App, ImageSource, InteractiveElement, IntoElement, ParentElement, SharedString, Styled, div,
-    img, prelude::FluentBuilder, px, relative,
+    Context, ImageSource, InteractiveElement, IntoElement, ParentElement, SharedString, Styled,
+    div, img, prelude::FluentBuilder, px, relative,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -13,7 +13,10 @@ use crate::{
         IconType, resolve_icon_path,
         utils::{ApplicationAction, ApplicationActionSerde},
     },
-    ui::widgets::emoji::{EmojiAction, get_emoji, get_selected_skin_tones},
+    ui::{
+        launcher::LauncherView,
+        widgets::emoji::{EmojiAction, get_emoji, get_selected_skin_tones},
+    },
 };
 
 #[derive(Debug, PartialEq)]
@@ -192,12 +195,13 @@ impl ContextMenuAction {
     }
 }
 
-type ContextFunction = Box<dyn Fn(&mut App) + Send + Sync + 'static>;
+pub type ContextFunction = dyn Fn(&mut Context<LauncherView>) + Send + Sync + 'static;
+
 pub struct DynamicFunctionAction {
     pub name: SharedString,
     pub icon: Option<IconType>,
     pub exit: bool,
-    pub func: Option<ContextFunction>,
+    pub func: Option<Box<ContextFunction>>,
 }
 impl Debug for DynamicFunctionAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -222,7 +226,7 @@ impl DynamicFunctionAction {
 
     pub fn on_exec<F>(mut self, f: F) -> Self
     where
-        F: Fn(&mut App) + Send + Sync + 'static,
+        F: Fn(&mut Context<LauncherView>) + Send + Sync + 'static,
     {
         self.func = Some(Box::new(f));
         self
