@@ -1,17 +1,20 @@
 use crate::{
-    display_name,
+    define_inner_functions, display_name,
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+    ensure_func,
     launcher::{
-        LauncherConfig, LauncherProvider, LauncherType, LoadContext,
+        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, LoadContext,
         plugin_launcher::{
             api::capabilities_from_names,
             capabilities::PluginCapability,
             plugin_tile_state::PluginTileState,
             runtime::{LuaRuntimeHandle, PluginHandle},
+            subscribers::TileSubscribers,
         },
+        variant_type::InnerFunction,
     },
     loader::utils::RawLauncher,
-    sherlock_msg,
+    sherlock_msg, skip_func_if_nav,
     ui::widgets::{RenderableChild, plugin::PluginWidget},
     utils::errors::{
         SherlockMessage,
@@ -19,7 +22,7 @@ use crate::{
     },
     variant_name,
 };
-use gpui::{AppContext, AsyncApp};
+use gpui::{App, AppContext, AsyncApp, SharedString};
 use indoc::indoc;
 use serde_json::Value;
 use std::{path::Path, sync::Arc};
@@ -33,6 +36,12 @@ pub mod runtime;
 pub mod subscribers;
 pub mod ui;
 pub mod ui_schema;
+
+define_inner_functions! {
+    pub enum PluginFunctions {
+        Reload,
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct PluginLauncher {
@@ -90,6 +99,32 @@ impl LauncherProvider for PluginLauncher {
         _messages: &mut Vec<SherlockMessage>,
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
+        self.reload_objects(launcher, ctx.subscribers.clone(), cx)
+    }
+
+    fn execute_function(
+        &self,
+        func: super::variant_type::InnerFunction,
+        _child: &RenderableChild,
+        _variables: &[(SharedString, SharedString)],
+        _cx: &mut App,
+    ) -> Result<ExecEffect, SherlockMessage> {
+        skip_func_if_nav!(func);
+        let func = ensure_func!(func, InnerFunction::Plugin);
+        match func {
+            PluginFunctions::Reload => {}
+        }
+        Ok(ExecEffect::None)
+    }
+}
+
+impl PluginLauncher {
+    pub fn reload_objects(
+        &self,
+        launcher: Arc<LauncherConfig>,
+        subscribers: TileSubscribers,
+        cx: &mut gpui::App,
+    ) -> Result<Vec<RenderableChild>, SherlockMessage> {
         let lua_runtime = LuaRuntimeHandle::get();
         let tiles = futures::executor::block_on(lua_runtime.call_tiles(self.handle.clone()))
             .map_err(|e| {
@@ -103,7 +138,7 @@ impl LauncherProvider for PluginLauncher {
                 )
             })?;
 
-        let children = tiles
+        Ok(tiles
             .into_iter()
             .map(|tile| {
                 let (tile_id, data) = (tile.id, tile.node);
@@ -115,7 +150,7 @@ impl LauncherProvider for PluginLauncher {
 
                 let weak = entity.downgrade();
 
-                ctx.subscribers.register(tile_id.clone(), weak.clone());
+                subscribers.register(tile_id.clone(), weak.clone());
 
                 let has_live =
                     futures::executor::block_on(lua_runtime.has_fn(self.handle.clone(), "live"));
@@ -151,12 +186,11 @@ impl LauncherProvider for PluginLauncher {
                     inner: PluginWidget {
                         state: entity,
                         tile_id: tile_id.clone(),
-                        subscribers: ctx.subscribers.clone(),
+                        subscribers: subscribers.clone(),
                     },
                 }
             })
-            .collect();
-        Ok(children)
+            .collect())
     }
 }
 

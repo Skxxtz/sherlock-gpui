@@ -75,7 +75,7 @@ pub trait LauncherProvider {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct LauncherConfig {
     /// The name of the launcher. Might get displayed in the widget
     pub name: Option<SharedString>,
