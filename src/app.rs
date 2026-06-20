@@ -5,6 +5,7 @@ use gpui::{
     point, px,
 };
 use std::{
+    collections::HashMap,
     os::unix::net::UnixStream,
     rc::Rc,
     sync::{
@@ -17,8 +18,7 @@ use tokio::net::UnixListener;
 use crate::{
     SOCKET_PATH,
     app::theme::ActiveTheme,
-    launcher::Launcher,
-    launcher::plugin_launcher::runtime::LuaRuntimeHandle,
+    launcher::{Launcher, LauncherId, plugin_launcher::runtime::LuaRuntimeHandle},
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,
@@ -47,7 +47,7 @@ pub fn reset_generation() {
 
 pub type LauncherEntity = Entity<LauncherEntityInner>;
 pub type LauncherWeakEntity = WeakEntity<LauncherEntityInner>;
-pub type LauncherEntityInner = Rc<Vec<Launcher>>;
+pub type LauncherEntityInner = Rc<HashMap<LauncherId, Launcher>>;
 
 pub fn run_app(cx: &mut App, result: SetupResult) {
     LuaRuntimeHandle::spawn(cx);
@@ -63,7 +63,7 @@ pub fn run_app(cx: &mut App, result: SetupResult) {
     let theme = ActiveTheme::default();
     cx.set_global(theme);
 
-    let data: LauncherEntity = cx.new(|_| Rc::new(Vec::new()));
+    let data: LauncherEntity = cx.new(|_| Rc::new(HashMap::new()));
     let modes = load_modes(cx, &data, &mut messages);
 
     let listener = UnixListener::bind(SOCKET_PATH).unwrap();

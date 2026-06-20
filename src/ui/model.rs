@@ -1,10 +1,10 @@
 use crate::{
     app::LauncherEntity,
-    launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
+    launcher::{Launcher, LauncherConfig, LauncherId, variant_type::LauncherType},
     ui::model::{file::FileSearchModel, process::ProcessModel},
 };
 use gpui::{App, AppContext, SharedString, Task};
-use std::{rc::Rc, sync::Arc};
+use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 pub mod emoji;
 pub mod file;
@@ -16,19 +16,19 @@ mod utils;
 pub enum Model {
     Standard {
         data: LauncherEntity,
-        filtered_indices: Arc<[(usize, usize)]>,
+        filtered_indices: Arc<[(LauncherId, usize)]>,
         last_query: Option<SharedString>,
         deferred_render_task: Option<Task<Option<()>>>,
     },
     FileSearch {
         data: LauncherEntity,
-        filtered_indices: Arc<[(usize, usize)]>,
+        filtered_indices: Arc<[(LauncherId, usize)]>,
         last_query: Option<SharedString>,
         search: FileSearchModel,
     },
     Process {
         data: LauncherEntity,
-        filtered_indices: Arc<[(usize, usize)]>,
+        filtered_indices: Arc<[(LauncherId, usize)]>,
         last_query: Option<SharedString>,
         search: ProcessModel,
     },
@@ -36,13 +36,12 @@ pub enum Model {
 
 impl Model {
     pub fn standard_with_entity(entity: LauncherEntity, cx: &mut App) -> Self {
-        let range: Arc<[(usize, usize)]> = entity
+        let range: Arc<[(LauncherId, usize)]> = entity
             .read(cx)
             .iter()
-            .enumerate()
-            .flat_map(|(i, launcher)| {
+            .flat_map(|(id, launcher)| {
                 (0..launcher.children.len())
-                    .map(|c| (i, c))
+                    .map(|c| (*id, c))
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>()
@@ -55,13 +54,12 @@ impl Model {
             deferred_render_task: None,
         }
     }
-    pub fn standard(data: Vec<Launcher>, cx: &mut App) -> Self {
-        let range: Arc<[(usize, usize)]> = data
+    pub fn standard(data: HashMap<LauncherId, Launcher>, cx: &mut App) -> Self {
+        let range: Arc<[(LauncherId, usize)]> = data
             .iter()
-            .enumerate()
-            .flat_map(|(i, launcher)| {
+            .flat_map(|(id, launcher)| {
                 (0..launcher.children.len())
-                    .map(|c| (i, c))
+                    .map(|c| (*id, c))
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>()
@@ -78,13 +76,16 @@ impl Model {
     pub fn process(launcher: Arc<LauncherConfig>, cx: &mut App) -> Self {
         Self::Process {
             data: cx.new(|_| {
-                Rc::new(vec![Launcher {
-                    config: launcher.clone(),
-                    children: match &launcher.launcher_type {
-                        LauncherType::Process(proc) => Vec::with_capacity(proc.max_results),
-                        _ => Vec::new(),
+                Rc::new(HashMap::from([(
+                    launcher.id(),
+                    Launcher {
+                        config: launcher.clone(),
+                        children: match &launcher.launcher_type {
+                            LauncherType::Process(proc) => Vec::with_capacity(proc.max_results),
+                            _ => Vec::new(),
+                        },
                     },
-                }])
+                )]))
             }),
             filtered_indices: Arc::from([]),
             last_query: None,
@@ -99,13 +100,16 @@ impl Model {
     ) -> Self {
         Self::FileSearch {
             data: cx.new(|_| {
-                Rc::new(vec![Launcher {
-                    config: launcher.clone(),
-                    children: match &launcher.launcher_type {
-                        LauncherType::Files(fs) => Vec::with_capacity(fs.max_results),
-                        _ => Vec::new(),
+                Rc::new(HashMap::from([(
+                    launcher.id(),
+                    Launcher {
+                        config: launcher.clone(),
+                        children: match &launcher.launcher_type {
+                            LauncherType::Files(fs) => Vec::with_capacity(fs.max_results),
+                            _ => Vec::new(),
+                        },
                     },
-                }])
+                )]))
             }),
             filtered_indices: Arc::from([]),
             last_query: None,
@@ -135,7 +139,7 @@ impl Model {
         }
     }
 
-    pub fn filtered_indices(&self) -> Arc<[(usize, usize)]> {
+    pub fn filtered_indices(&self) -> Arc<[(LauncherId, usize)]> {
         match self {
             Self::Standard {
                 filtered_indices, ..

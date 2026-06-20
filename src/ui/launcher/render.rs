@@ -1,8 +1,8 @@
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, Entity, FontWeight,
-    InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, Window, deferred, div, img, list, prelude::FluentBuilder,
-    px, relative,
+    Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, Entity,
+    FontWeight, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render,
+    SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img, list,
+    prelude::FluentBuilder, px, relative,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -238,7 +238,7 @@ impl LauncherView {
                                 };
                                 let data_snapshot = data.read(cx).clone();
                                 let child = match data_snapshot
-                                    .get(data_idx.0)
+                                    .get(&data_idx.0)
                                     .and_then(|l| l.children.get(data_idx.1))
                                 {
                                     Some(c) => c,
@@ -252,7 +252,7 @@ impl LauncherView {
                                             .iter()
                                             .filter(|&&i| {
                                                 data_snapshot
-                                                    .get(i.0)
+                                                    .get(&i.0)
                                                     .is_some_and(|l| l.config.shortcut)
                                             })
                                             .take(max_shortcuts)
@@ -368,7 +368,7 @@ impl LauncherView {
                                                 if let Some(&data_idx) = indices.get(item_idx) {
                                                     let data_snapshot = data.read(cx).clone();
                                                     if let Some(child) = data_snapshot
-                                                        .get(data_idx.0)
+                                                        .get(&data_idx.0)
                                                         .and_then(|l| l.children.get(data_idx.1))
                                                     {
                                                         return div()
@@ -543,9 +543,10 @@ impl LauncherView {
         cx: &mut App,
     ) -> AnyElement {
         let idx = selection.data_idx;
+        let id = idx.0.0 ^ (idx.1 as u64);
         div()
             .relative()
-            .id(idx.0 << 32 | idx.1)
+            .id(ElementId::Integer(id))
             .w_full()
             .on_click(move |evt: &ClickEvent, win, cx: &mut App| {
                 if !evt.standard_click() && !evt.is_keyboard() {

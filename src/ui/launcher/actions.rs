@@ -69,7 +69,7 @@ impl LauncherView {
             let data_guard = data_entity.read(cx);
             indices.iter().position(|&idx| {
                 data_guard
-                    .get(idx.0)
+                    .get(&idx.0)
                     .is_some_and(|launcher| launcher.config.spawn_focus)
             })
         } {
@@ -643,7 +643,7 @@ impl LauncherView {
             self.navigation.with_model_mut(cx, |mdl, cx| {
                 let data_guard = mdl.data().read(cx).clone();
                 data_guard
-                    .get(idx.0)
+                    .get(&idx.0)
                     .and_then(|l| l.children.get(idx.1))
                     .and_then(|data| data.vars(cx).map(|slice| slice.to_vec()))
             })
@@ -682,7 +682,7 @@ impl LauncherView {
         let data = self.navigation.with_model(cx, |mdl| mdl.data());
         let data_snapshot_rc = data.read(cx).clone();
         data_snapshot_rc
-            .iter()
+            .values()
             .filter_map(|launcher| {
                 if matches!(
                     launcher.config.launcher_type,
@@ -707,7 +707,11 @@ impl LauncherView {
         let filtered_indices_arc = self.navigation.with_model(cx, |mdl| mdl.filtered_indices());
         filtered_indices_arc
             .iter()
-            .filter_map(|i| data_snapshot_arc.get(i.0).and_then(|l| l.children.get(i.1)))
+            .filter_map(|i| {
+                data_snapshot_arc
+                    .get(&i.0)
+                    .and_then(|l| l.children.get(i.1))
+            })
             .for_each(|render_child| render_child.update_sync(query.clone(), cx));
     }
 }

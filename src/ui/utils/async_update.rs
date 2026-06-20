@@ -4,6 +4,7 @@ use gpui::{App, AppContext, AsyncApp, Entity, Task, WeakEntity};
 
 use crate::launcher::LauncherConfig;
 
+#[allow(async_fn_in_trait)]
 pub trait Fetchable: Sized + Send + 'static {
     type Error: Send;
     async fn fetch(

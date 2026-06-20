@@ -1,10 +1,11 @@
-use std::{cell::Cell, rc::Rc, sync::Arc};
+use std::{cell::Cell, collections::HashMap, rc::Rc, sync::Arc};
 
 use gpui::{App, Context, WeakEntity};
 
 use crate::{
     launcher::{
-        Launcher, LauncherConfig, message_launcher::MessageLauncher, variant_type::LauncherType,
+        Launcher, LauncherConfig, LauncherId, message_launcher::MessageLauncher,
+        variant_type::LauncherType,
     },
     ui::{
         model::Model,
@@ -55,15 +56,18 @@ impl MessageView {
             .collect();
 
         let count = messages.len();
-        let launcher_vec = vec![Launcher {
-            config: config.clone(),
-            children: messages,
-        }];
+        let launchers = HashMap::from([(
+            config.id(),
+            Launcher {
+                config: config.clone(),
+                children: messages,
+            },
+        )]);
 
         Self {
             launcher_config: config,
             count: Cell::new(count),
-            model: Model::standard(launcher_vec, cx),
+            model: Model::standard(launchers, cx),
         }
     }
     /// This adds a message from the Model. It requires a filter and sort afterwards
@@ -73,9 +77,12 @@ impl MessageView {
         weak: WeakEntity<MessageView>,
         cx: &mut App,
     ) {
+        let id = self.launcher_config.id();
         self.model.data().update(cx, |this, _| {
             let data = Rc::make_mut(this);
-            let message_launcher = &mut data[0];
+            let Some(message_launcher) = data.get_mut(&id) else {
+                return;
+            };
 
             // increment existing error
             for item in message_launcher.children.iter_mut() {
@@ -102,7 +109,7 @@ impl MessageView {
         self.count.update(|i| i + 1);
     }
     /// This removes a message from the Model. It requires a filter and sort afterwards
-    pub fn remove_message(&mut self, idx: (usize, usize), cx: &mut App) {
+    pub fn remove_message(&mut self, idx: (LauncherId, usize), cx: &mut App) {
         let Model::Standard {
             data,
             filtered_indices,
@@ -113,9 +120,9 @@ impl MessageView {
         };
 
         let removed = data.update(cx, |this, _| {
-            if this.get(idx.0).is_some_and(|l| idx.1 < l.children.len()) {
+            if this.get(&idx.0).is_some_and(|l| idx.1 < l.children.len()) {
                 let data = Rc::make_mut(this);
-                data.get_mut(idx.0).map(|l| l.children.remove(idx.1))
+                data.get_mut(&idx.0).map(|l| l.children.remove(idx.1))
             } else {
                 None
             }
@@ -147,7 +154,7 @@ impl MessageView {
             return;
         };
 
-        data.update(cx, |this, _| *this = Rc::new(Vec::new()));
+        data.update(cx, |this, _| *this = Rc::new(HashMap::new()));
         *filtered_indices = Arc::from([]);
 
         self.count.set(0);

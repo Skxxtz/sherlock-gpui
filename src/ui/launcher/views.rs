@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::{
     app::LauncherEntity,
-    launcher::{LauncherConfig, variant_type::LauncherType},
+    launcher::{LauncherConfig, LauncherId, variant_type::LauncherType},
     ui::{
         launcher::{LauncherMode, context_menu::ContextMenuAction},
         model::{
@@ -232,7 +232,7 @@ impl NavigationStack {
             }
         }
     }
-    pub fn selected_item_index(&self, cx: &mut App) -> Option<(usize, usize)> {
+    pub fn selected_item_index(&self, cx: &mut App) -> Option<(LauncherId, usize)> {
         let current = self.current();
         let ui_idx = current.style.selected_index()?;
 
@@ -251,7 +251,7 @@ impl NavigationStack {
         let data_entity = self.with_model(cx, |mdl| mdl.data());
         data_entity
             .read(cx)
-            .get(idx.0)
+            .get(&idx.0)
             .and_then(|l| l.children.get(idx.1))
     }
 
@@ -264,12 +264,12 @@ impl NavigationStack {
         let data_entity = self.with_model(cx, |mdl| mdl.data());
 
         data_entity.update(cx, |data, cx| {
-            data.get(idx.0)
+            data.get(&idx.0)
                 .and_then(|l| l.children.get(idx.1))
                 .map(|item| f(item, cx))
         })
     }
-    fn selected_data_idx(&self, cx: &App) -> Option<(usize, usize)> {
+    fn selected_data_idx(&self, cx: &App) -> Option<(LauncherId, usize)> {
         let ui_idx = self.current().style.selected_index()?;
         let (data, filtered_indices) =
             self.with_model(cx, |mdl| (mdl.data(), mdl.filtered_indices()));
@@ -280,7 +280,7 @@ impl NavigationStack {
         let safe_ui_idx = ui_idx.min(filtered_indices.len() - 1);
         filtered_indices.get(safe_ui_idx).copied()
     }
-    pub fn set_selected_data_idx(&mut self, data_idx: (usize, usize), cx: &mut App) {
+    pub fn set_selected_data_idx(&mut self, data_idx: (LauncherId, usize), cx: &mut App) {
         let filtered_indices = self.with_model(cx, |mdl| mdl.filtered_indices());
 
         let Some(safe_ui_idx) = filtered_indices.iter().position(|i| *i == data_idx) else {
@@ -311,7 +311,7 @@ impl NavigationStack {
                 .iter()
                 .copied()
                 .filter(|i| {
-                    data.get(i.0)
+                    data.get(&i.0)
                         .is_some_and(|launcher| launcher.config.shortcut)
                 })
                 .nth(idx - 1);
@@ -321,7 +321,7 @@ impl NavigationStack {
 
         let idx = data_idx?;
         data_entity.update(cx, |data, cx| {
-            f(data.get(idx.0).and_then(|l| l.children.get(idx.1)), cx)
+            f(data.get(&idx.0).and_then(|l| l.children.get(idx.1)), cx)
         })
     }
     pub fn current_actions(&self, cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {

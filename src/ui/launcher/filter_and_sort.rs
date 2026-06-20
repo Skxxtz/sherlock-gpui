@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 struct FilterResult {
-    index: (usize, usize),
+    index: (LauncherId, usize),
     prio: SortKey,
     limiter: Option<(LauncherId, u16)>,
 }
@@ -21,7 +21,7 @@ struct FilterResult {
 impl LauncherView {
     pub fn apply_results(
         &mut self,
-        results: Arc<[(usize, usize)]>,
+        results: Arc<[(LauncherId, usize)]>,
         query: impl Into<SharedString>,
         force: bool,
         cx: &mut Context<Self>,
@@ -243,12 +243,12 @@ impl LauncherView {
         query: &SharedString,
         mut limit_cache: HashMap<LauncherId, u16>,
         cx: &mut C,
-    ) -> Arc<[(usize, usize)]> {
+    ) -> Arc<[(LauncherId, usize)]> {
         let is_home = query.is_empty() && mode == "all";
 
         // collects Vec<(index, priority)>
-        let mut results: Vec<FilterResult> = (0..data_arc.len())
-            .map(|i| (i, &data_arc[i]))
+        let mut results: Vec<FilterResult> = data_arc
+            .iter()
             .filter(|(_, launcher)| {
                 // [Rule 1]
                 // Case 1: Early return if mode applies but item is not assigned to that mode
@@ -300,7 +300,7 @@ impl LauncherView {
             })
             .map(
                 |(launcher_idx, launcher_config, child_idx, child)| FilterResult {
-                    index: (launcher_idx, child_idx),
+                    index: (*launcher_idx, child_idx),
                     prio: child.priority().sort_key(query, child.search()),
                     limiter: launcher_config
                         .limit

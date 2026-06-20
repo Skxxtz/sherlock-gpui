@@ -10,7 +10,7 @@ use std::{
 use crate::{
     app::LauncherEntity,
     launcher::{
-        Launcher, LauncherConfig,
+        Launcher, LauncherConfig, LauncherId,
         plugin_launcher::subscribers::{TileSubscribers, TileSubscribersGlobal},
     },
     loader::utils::RawLauncher,
@@ -105,7 +105,7 @@ impl Loader {
         launchers.sort_by_key(|(l, _)| l.priority);
 
         let mut modes = Vec::with_capacity(launchers.len());
-        let renders: Vec<Launcher> = launchers
+        let renders: HashMap<LauncherId, Launcher> = launchers
             .into_iter()
             .inspect(|(launcher, _)| {
                 // Collect modes
@@ -132,14 +132,18 @@ impl Loader {
                     }
                 }?;
 
-                Some(Launcher {
-                    config: launcher,
-                    children,
-                })
+                let id = launcher.id();
+                Some((
+                    id,
+                    Launcher {
+                        config: launcher,
+                        children,
+                    },
+                ))
             })
             .collect();
 
-        Self::sync_cache_if_empty(&ctx, &renders, &mut messages);
+        Self::sync_cache_if_empty(&ctx, renders.values(), &mut messages);
 
         data_handle.update(cx, |items, cx| {
             *items = Rc::new(renders);
@@ -152,14 +156,13 @@ impl Loader {
         })
     }
 
-    fn sync_cache_if_empty(
+    fn sync_cache_if_empty<'a>(
         ctx: &LoadContext,
-        renders: &[Launcher],
+        renders: impl Iterator<Item = &'a Launcher>,
         warnings: &mut Vec<SherlockMessage>,
     ) {
         if ctx.counts.is_empty() {
             let counts: HashMap<String, u16> = renders
-                .iter()
                 .flat_map(|l| l.children.iter())
                 .filter_map(|render| render.get_exec())
                 .map(|exec| (exec, 0))

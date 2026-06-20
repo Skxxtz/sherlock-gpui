@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use gpui::App;
 
@@ -24,13 +24,16 @@ impl EmojiView {
             })
             .collect();
 
-        let launcher_vec = vec![Launcher {
-            config,
-            children: data,
-        }];
+        let launchers = HashMap::from([(
+            config.id(),
+            Launcher {
+                config,
+                children: data,
+            },
+        )]);
 
         Self {
-            model: Model::standard(launcher_vec, cx),
+            model: Model::standard(launchers, cx),
         }
     }
 }

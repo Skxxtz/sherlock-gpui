@@ -1,4 +1,5 @@
 use crate::app::LauncherWeakEntity;
+use crate::launcher::LauncherId;
 use crate::launcher::process_launcher::ProcessLauncher;
 use crate::launcher::{LauncherConfig, variant_type::LauncherType};
 use crate::ui::launcher::LauncherView;
@@ -58,6 +59,7 @@ impl ProcessModel {
         let backend = self.backend.clone();
         let cap = self.results.capacity();
         let launcher = Arc::clone(&self.launcher);
+        let id = launcher.id();
 
         let poll_task = cx.spawn(async move |cx| {
             let results = cx
@@ -81,15 +83,15 @@ impl ProcessModel {
                         .with_icon_name("sherlock-process"),
                 })
                 .collect::<Vec<_>>();
-            let indices: Arc<[(usize, usize)]> =
-                (0..count).map(|c| (0, c)).collect::<Vec<_>>().into(); // MAY-ERR
+            let indices: Arc<[(LauncherId, usize)]> =
+                (0..count).map(|c| (id, c)).collect::<Vec<_>>().into(); // MAY-ERR
             if let Some(view) = launcher_weak.upgrade() {
                 cx.update(|cx| {
                     view.update(cx, |this, cx| {
                         if let Some(entity) = result_entity.upgrade() {
                             entity.update(cx, |e, _| {
                                 let data = Rc::make_mut(e);
-                                if let Some(launcher) = data.get_mut(0) {
+                                if let Some(launcher) = data.get_mut(&id) {
                                     launcher.children = children;
                                 }
                             });

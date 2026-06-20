@@ -1,4 +1,5 @@
 use crate::app::LauncherWeakEntity;
+use crate::launcher::LauncherId;
 use crate::launcher::file_launcher::FileLauncher;
 use crate::launcher::{LauncherConfig, variant_type::LauncherType};
 use crate::ui::launcher::LauncherView;
@@ -100,6 +101,7 @@ impl FileSearchModel {
         });
 
         let launcher = Arc::clone(&self.launcher);
+        let id = launcher.id();
         let poll_interval = self.poll_interval;
         let poll_task = cx.spawn(async move |cx| {
             loop {
@@ -134,8 +136,8 @@ impl FileSearchModel {
                         })
                         .collect::<Vec<_>>();
 
-                    let indices: Arc<[(usize, usize)]> =
-                        (0..count).map(|c| (0, c)).collect::<Vec<_>>().into();
+                    let indices: Arc<[(LauncherId, usize)]> =
+                        (0..count).map(|c| (id, c)).collect::<Vec<_>>().into();
 
                     if let Some(view) = launcher_weak.upgrade() {
                         cx.update({
@@ -146,7 +148,7 @@ impl FileSearchModel {
                                     if let Some(entity) = result_entity.upgrade() {
                                         entity.update(cx, |e, _| {
                                             let data = Rc::make_mut(e);
-                                            if let Some(launcher) = data.get_mut(0) {
+                                            if let Some(launcher) = data.get_mut(&id) {
                                                 launcher.children = children;
                                             }
                                         });

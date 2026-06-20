@@ -82,8 +82,8 @@ macro_rules! lua_fn {
 /// Emits:
 ///   - Per function:  impl HasCapabilityBit (sequential bits, declaration order)
 ///   - Per module:    pub struct + NAME + register(caps) + docs()
-///   - Global:        setup_global_api, init_local_api(lua, env, caps),
-///                    capabilities_from_names, LuaApiDocumentation
+///   - Global:        setup_global_api, init_local_api(lua, env, caps), capabilities_from_names,
+///     LuaApiDocumentation
 macro_rules! generate_modules {
     (
         $( $module:ident ( $name:literal ) => [ $( $fn_path:path ),* $(,)? ] ),* $(,)?

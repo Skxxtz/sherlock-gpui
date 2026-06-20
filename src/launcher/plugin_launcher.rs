@@ -75,7 +75,11 @@ impl LauncherProvider for PluginLauncher {
             )?,
         );
 
-        Ok(LauncherType::Plugin(Self { path, capabilities, handle }))
+        Ok(LauncherType::Plugin(Self {
+            path,
+            capabilities,
+            handle,
+        }))
     }
 
     fn objects(

@@ -7,13 +7,13 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
+    launcher::{LauncherConfig, LauncherId, utils::exec_mode::ExecMode},
     loader::utils::Priority,
     ui::{traits::RenderableChildImpl, widgets::Selection},
     utils::errors::{SherlockMessage, SherlockMessageLevel},
 };
 
-type DismissFunction = Arc<dyn Fn(&mut gpui::App, (usize, usize)) + Send + Sync + 'static>;
+type DismissFunction = Arc<dyn Fn(&mut gpui::App, (LauncherId, usize)) + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct MessageChild {
@@ -32,7 +32,7 @@ impl MessageChild {
     }
     pub fn on_dismiss(
         mut self,
-        f: impl Fn(&mut gpui::App, (usize, usize)) + Send + Sync + 'static,
+        f: impl Fn(&mut gpui::App, (LauncherId, usize)) + Send + Sync + 'static,
     ) -> Self {
         self.on_dismiss = Some(std::sync::Arc::new(f));
         self

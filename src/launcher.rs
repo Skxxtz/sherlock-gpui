@@ -138,6 +138,9 @@ pub trait LauncherValues<'a> {
 }
 
 impl LauncherConfig {
+    pub fn id(&self) -> LauncherId {
+        LauncherId::from(self)
+    }
     pub fn from_raw(raw: RawLauncher, launcher_type: LauncherType, icon: Option<String>) -> Self {
         let icon = icon.as_deref().and_then(resolve_icon_path);
 
@@ -197,6 +200,12 @@ impl Display for LauncherConfig {
     }
 }
 
+impl Hash for Launcher {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.config.hash(state);
+    }
+}
+
 impl Hash for LauncherConfig {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
         self.name.hash(h);
@@ -207,7 +216,7 @@ impl Hash for LauncherConfig {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LauncherId(u64);
+pub struct LauncherId(pub u64);
 impl From<&LauncherConfig> for LauncherId {
     fn from(value: &LauncherConfig) -> Self {
         let mut hasher = DefaultHasher::new();

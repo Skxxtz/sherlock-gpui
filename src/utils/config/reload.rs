@@ -69,7 +69,7 @@ fn reload_aliases(data: &LauncherEntity, cx: &mut AsyncApp) -> Result<(), Sherlo
     let mut aliases = ApplicationLoader::load_aliases(&alias_path)?;
     data.update(cx, |this, _cx| {
         for launcher in Rc::make_mut(this)
-            .iter_mut()
+            .values_mut()
             .filter(|l| matches!(l.config.launcher_type.variant(), LauncherVariant::Apps))
         {
             for child in launcher.children.iter_mut() {

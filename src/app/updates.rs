@@ -1,6 +1,7 @@
 use gpui::{AppContext, AsyncApp, Focusable, WindowHandle};
 use serde::de::DeserializeOwned;
 use smallvec::SmallVec;
+use std::collections::HashMap;
 use std::os::unix::net::UnixStream as StdUnixStream;
 use std::{
     collections::VecDeque,
@@ -118,7 +119,7 @@ pub(super) async fn run_event_loop(
                 if let Some(Intent::Timer { duration }) = TimerParser::parse_intent(cur) {
                     data.update(&mut cx, |this, cx| {
                         let timer = this
-                            .iter()
+                            .values()
                             .find(|l| matches!(l.config.launcher_type, LauncherType::Timer(_)));
 
                         if let Some(RenderableChild::Timer { inner, .. }) =
@@ -174,10 +175,13 @@ pub(super) async fn run_event_loop(
                         })
                         .collect();
 
-                    Rc::new(vec![Launcher {
-                        config: launcher_config,
-                        children,
-                    }])
+                    Rc::new(HashMap::from([(
+                        launcher_config.id(),
+                        Launcher {
+                            config: launcher_config,
+                            children,
+                        },
+                    )]))
                 });
 
                 add_data_page(entity, &win, &mut cx);
