@@ -128,7 +128,9 @@ macro_rules! renderable_enum {
 
             fn actions(&self, cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {
                 match self {
-                    $(Self::$variant {inner, launcher} => inner.actions(launcher, cx)),*
+                    $(Self::$variant {inner, launcher} => {
+                        inner.actions(launcher, cx)
+                    }),*
                 }
             }
 

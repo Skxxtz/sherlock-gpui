@@ -1,35 +1,24 @@
-use std::{path::Path, rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, AsyncApp, Entity, ImageSource, IntoElement, ParentElement, Styled, StyledText,
-    WeakEntity, div, img,
+    AnyElement, App, Entity, ImageSource, IntoElement, ParentElement, Styled, StyledText, div, img,
 };
 
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        LauncherConfig, LauncherId,
+        LauncherConfig,
         plugin_launcher::{
-            capabilities::PluginCapability,
-            plugin_tile_state::PluginTileState,
-            runtime::LuaRuntimeHandle,
-            subscribers::{TileSubscribers, TileSubscribersGlobal},
+            plugin_tile_state::PluginTileState, subscribers::TileSubscribers,
             ui_schema::PluginUiNode,
         },
         utils::exec_mode::ExecMode,
-        variant_type::LauncherType,
     },
     loader::{resolve_icon_path, utils::Priority},
-    sherlock_msg,
     ui::{
-        launcher::{
-            LauncherView,
-            context_menu::{ContextMenuAction, DynamicFunctionAction},
-        },
-        traits::RenderableChildImpl,
+        launcher::context_menu::ContextMenuAction, traits::RenderableChildImpl,
         utils::selection::Selection,
     },
-    utils::errors::types::{PluginAction, SherlockErrorType},
 };
 
 #[derive(Clone)]
@@ -101,32 +90,18 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         launcher: &Arc<LauncherConfig>,
         _cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
-        let LauncherType::Plugin(plg) = &launcher.launcher_type else {
-            return None;
-        };
-        let caps = plg.capabilities;
-        let path = plg.path.clone();
-        let launcher_id = launcher.id();
-        Some(Arc::from([Arc::new(ContextMenuAction::Fn(
-            DynamicFunctionAction::new("Reload Plugin")
-                .icon_name("sherlock-dev")
-                .on_exec(move |cx| {
-                    let path = path.clone();
-                    cx.spawn(
-                            move |weak_self: WeakEntity<LauncherView>, cx: &mut AsyncApp| {
-                                let cx = cx.clone();
-                                async move {
-                                    reload_plugin(&launcher_id, path, caps, weak_self, cx).await
-                                }
-                            },
-                        )
-                        .detach();
-                }),
-        ))]))
+        if let Some(actions) = &launcher.actions {
+            Some(actions.clone())
+        } else {
+            launcher
+                .add_actions
+                .as_ref()
+                .map(|add_actions| add_actions.clone())
+        }
     }
     #[inline(always)]
     fn has_actions(&self, _cx: &mut App) -> bool {
-        true
+        false
     }
     #[inline(always)]
     fn vars(&self, _cx: &mut App) -> Option<&[crate::loader::utils::ExecVariable]> {
@@ -178,55 +153,4 @@ fn render_node(node: &PluginUiNode) -> AnyElement {
             el.child(label.clone()).into_any_element()
         }
     }
-}
-
-async fn reload_plugin(
-    launcher_id: &LauncherId,
-    path: Arc<Path>,
-    caps: PluginCapability,
-    weak_self: WeakEntity<LauncherView>,
-    mut cx: AsyncApp,
-) {
-    let rt = LuaRuntimeHandle::get();
-    let handle = match rt.load_plugin(path.clone(), caps).await {
-        Ok(h) => h,
-        Err(e) => {
-            let _ = weak_self.update(&mut cx, |this, cx| {
-                this.navigation.push_message(
-                    sherlock_msg!(
-                        Warning,
-                        SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
-                        e
-                    ),
-                    cx,
-                );
-            });
-            return;
-        }
-    };
-
-    let Ok(data_entity) = weak_self.read_with(&cx, |this, cx| {
-        this.navigation.with_model(cx, |mdl| mdl.data())
-    }) else {
-        return;
-    };
-
-    data_entity.update(&mut cx, |data, cx| {
-        let data_raw = Rc::make_mut(data);
-        let Some(launcher) = data_raw.get_mut(launcher_id) else {
-            return;
-        };
-
-        let config = Arc::make_mut(&mut launcher.config);
-        if let LauncherType::Plugin(plg) = &mut config.launcher_type {
-            plg.handle = Arc::new(handle);
-        }
-
-        let subs = cx.global::<TileSubscribersGlobal>().0.clone();
-        if let LauncherType::Plugin(plg) = &launcher.config.launcher_type
-            && let Ok(children) = plg.reload_objects(launcher.config.clone(), subs, cx)
-        {
-            launcher.children = children;
-        }
-    });
 }

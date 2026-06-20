@@ -1,21 +1,25 @@
 use crate::{
+    app::LauncherEntityGlobal,
     define_inner_functions, display_name,
     docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, LoadContext,
+        ExecEffect, LauncherConfig, LauncherId, LauncherProvider, LauncherType, LoadContext,
         plugin_launcher::{
             api::capabilities_from_names,
             capabilities::PluginCapability,
             plugin_tile_state::PluginTileState,
             runtime::{LuaRuntimeHandle, PluginHandle},
-            subscribers::TileSubscribers,
+            subscribers::{TileSubscribers, TileSubscribersGlobal},
         },
         variant_type::InnerFunction,
     },
     loader::utils::RawLauncher,
     sherlock_msg, skip_func_if_nav,
-    ui::widgets::{RenderableChild, plugin::PluginWidget},
+    ui::{
+        launcher::views::MessageViewGlobal,
+        widgets::{RenderableChild, plugin::PluginWidget},
+    },
     utils::errors::{
         SherlockMessage,
         types::{PluginAction, SherlockErrorType},
@@ -25,7 +29,7 @@ use crate::{
 use gpui::{App, AppContext, AsyncApp, SharedString};
 use indoc::indoc;
 use serde_json::Value;
-use std::{path::Path, sync::Arc};
+use std::{path::Path, rc::Rc, sync::Arc};
 
 pub mod api;
 pub mod capabilities;
@@ -105,14 +109,32 @@ impl LauncherProvider for PluginLauncher {
     fn execute_function(
         &self,
         func: super::variant_type::InnerFunction,
-        _child: &RenderableChild,
+        child: &RenderableChild,
         _variables: &[(SharedString, SharedString)],
-        _cx: &mut App,
+        cx: &mut App,
     ) -> Result<ExecEffect, SherlockMessage> {
         skip_func_if_nav!(func);
         let func = ensure_func!(func, InnerFunction::Plugin);
+
+        let RenderableChild::Plugin { launcher, .. } = child else {
+            return Err(sherlock_msg!(
+                Warning,
+                SherlockErrorType::Unreachable,
+                format!("Tried to unpack plugin tile but received: {:?}", child)
+            ));
+        };
+
         match func {
-            PluginFunctions::Reload => {}
+            PluginFunctions::Reload => {
+                let path = self.path.clone();
+                let caps = self.capabilities;
+                let id = launcher.id();
+                cx.spawn(move |cx: &mut AsyncApp| {
+                    let cx = cx.clone();
+                    async move { reload_plugin(id, path, caps, cx).await }
+                })
+                .detach();
+            }
         }
         Ok(ExecEffect::None)
     }
@@ -192,6 +214,53 @@ impl PluginLauncher {
             })
             .collect())
     }
+}
+async fn reload_plugin(
+    launcher_id: LauncherId,
+    path: Arc<Path>,
+    caps: PluginCapability,
+    mut cx: AsyncApp,
+) {
+    let send_message = |message: SherlockMessage| {
+        cx.update(|cx| {
+            cx.global::<MessageViewGlobal>()
+                .clone()
+                .push_message(message, cx)
+        });
+    };
+
+    let rt = LuaRuntimeHandle::get();
+    let handle = match rt.load_plugin(path.clone(), caps).await {
+        Ok(h) => h,
+        Err(e) => {
+            send_message(sherlock_msg!(
+                Warning,
+                SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                e
+            ));
+            return;
+        }
+    };
+
+    let data_entity = cx.update(|cx| cx.global::<LauncherEntityGlobal>().0.clone());
+    let _ = data_entity.update(&mut cx, |data, cx| {
+        let data_raw = Rc::make_mut(data);
+        let Some(launcher) = data_raw.get_mut(&launcher_id) else {
+            return;
+        };
+
+        let config = Arc::make_mut(&mut launcher.config);
+        if let LauncherType::Plugin(plg) = &mut config.launcher_type {
+            plg.handle = Arc::new(handle);
+        }
+
+        let subs = cx.global::<TileSubscribersGlobal>().0.clone();
+        if let LauncherType::Plugin(plg) = &launcher.config.launcher_type
+            && let Ok(children) = plg.reload_objects(launcher.config.clone(), subs, cx)
+        {
+            launcher.children = children;
+        }
+    });
 }
 
 impl LauncherDoc for PluginLauncher {

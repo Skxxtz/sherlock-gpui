@@ -1,6 +1,6 @@
 use gpui::{
-    App, AppContext, AsyncApp, Bounds, Entity, Size, WeakEntity, WindowBackgroundAppearance,
-    WindowBounds, WindowHandle, WindowKind, WindowOptions,
+    App, AppContext, AsyncApp, Bounds, Entity, Global, Size, WeakEntity,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
     layer_shell::{Layer, LayerShellOptions},
     point, px,
 };
@@ -49,6 +49,10 @@ pub type LauncherEntity = Entity<LauncherEntityInner>;
 pub type LauncherWeakEntity = WeakEntity<LauncherEntityInner>;
 pub type LauncherEntityInner = Rc<HashMap<LauncherId, Launcher>>;
 
+#[derive(Clone)]
+pub struct LauncherEntityGlobal(pub LauncherWeakEntity);
+impl Global for LauncherEntityGlobal {}
+
 pub fn run_app(cx: &mut App, result: SetupResult) {
     LuaRuntimeHandle::spawn(cx);
 
@@ -65,6 +69,7 @@ pub fn run_app(cx: &mut App, result: SetupResult) {
 
     let data: LauncherEntity = cx.new(|_| Rc::new(HashMap::new()));
     let modes = load_modes(cx, &data, &mut messages);
+    cx.set_global(LauncherEntityGlobal(data.downgrade()));
 
     let listener = UnixListener::bind(SOCKET_PATH).unwrap();
     let initial_messages = messages;

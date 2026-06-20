@@ -1,6 +1,6 @@
 use gpui::{
-    AnyEntity, App, AppContext, ListState, ScrollStrategy, SharedString, UniformListScrollHandle,
-    px,
+    AnyEntity, App, AppContext, Global, ListState, ScrollStrategy, SharedString,
+    UniformListScrollHandle, WeakEntity, px,
 };
 use simd_json::prelude::{ArrayTrait, Indexed};
 use std::sync::Arc;
@@ -26,6 +26,17 @@ use crate::{
 /// `[Errors, Home, .. ]` => **2** Persistent views
 static REMAINING_VIEWS: usize = 2;
 
+#[derive(Clone)]
+pub struct MessageViewGlobal(WeakEntity<MessageView>);
+impl Global for MessageViewGlobal {}
+impl MessageViewGlobal {
+    pub fn push_message<C: AppContext>(&self, message: SherlockMessage, cx: &mut C) {
+        let _ = self.0.update(cx, |this, cx| {
+            this.push_message(message, cx.weak_entity(), cx);
+        });
+    }
+}
+
 pub struct NavigationStack {
     stack: Vec<NavigationView>,
     active_idx: Option<usize>,
@@ -48,8 +59,10 @@ impl NavigationStack {
             mode: LauncherMode::Home,
         };
         let message_len = messages.len();
+        let message_view = cx.new(|cx| MessageView::new(messages, cx));
+        let message_view_weak = message_view.downgrade();
         let errors = NavigationView {
-            view: cx.new(|cx| MessageView::new(messages, cx)).into(),
+            view: message_view.into(),
             style: EntityStyle::Row {
                 state: ListState::new(message_len, gpui::ListAlignment::Top, px(100.)),
                 selected_index: 0,
@@ -57,6 +70,8 @@ impl NavigationStack {
             kind: NavigationViewType::Message,
             mode: LauncherMode::Home,
         };
+
+        cx.set_global(MessageViewGlobal(message_view_weak));
 
         Self {
             stack: vec![errors, home],
@@ -75,10 +90,8 @@ impl NavigationStack {
     pub fn push_message(&self, message: SherlockMessage, cx: &mut App) {
         if let Some(message_view) = self.get_message_view() {
             let view = message_view.view.clone().downcast::<MessageView>().unwrap();
-            let weak_entity = view.downgrade();
-
             view.update(cx, |this, cx| {
-                this.push_message(message, weak_entity, cx);
+                this.push_message(message, cx.weak_entity(), cx);
             });
         }
     }
