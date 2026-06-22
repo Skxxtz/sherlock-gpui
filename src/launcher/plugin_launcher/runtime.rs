@@ -9,6 +9,8 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 
+use crate::launcher::plugin_launcher::api::protocol::PluginDeferFunction;
+
 use super::{
     capabilities::PluginCapability,
     job_handler::handle_job,
@@ -53,10 +55,6 @@ pub enum LuaJob {
     },
 }
 
-/// Emitted by `sherlock.update(tile_id, data)` calls from any plugin's
-/// `live()` loop. Consumed by a GPUI-side task that has real `cx` access.
-pub type TileUpdate = (String, PluginUiNode);
-
 pub static LUA_RUNTIME: OnceLock<LuaRuntimeHandle> = OnceLock::new();
 
 #[derive(Clone)]
@@ -81,7 +79,7 @@ impl LuaRuntimeHandle {
         }
 
         let (tx, rx) = mpsc::unbounded_channel::<LuaJob>();
-        let (update_tx, mut update_rx) = mpsc::unbounded_channel::<TileUpdate>();
+        let (update_tx, mut update_rx) = mpsc::unbounded_channel::<PluginDeferFunction>();
 
         std::thread::Builder::new()
             .name("lua-runtime".into())
@@ -95,13 +93,20 @@ impl LuaRuntimeHandle {
         {
             let subscribers = subscribers.clone();
             cx.spawn(async move |cx: &mut AsyncApp| {
-                while let Some((tile_id, data)) = update_rx.recv().await {
-                    if let Some(weak) = subscribers.get(&tile_id)
-                        && let Some(entity) = weak.upgrade()
-                    {
-                        cx.update(|cx| {
-                            entity.update(cx, |state, cx| state.set_data(data, cx));
-                        });
+                while let Some(defer_fn) = update_rx.recv().await {
+                    match defer_fn {
+                        PluginDeferFunction::WriteClipboard(content) => {
+                            let _ = cx.update(|cx| cx.write_to_clipboard(content.into()));
+                        }
+                        PluginDeferFunction::Update { tile_id, node } => {
+                            if let Some(weak) = subscribers.get(&tile_id)
+                                && let Some(entity) = weak.upgrade()
+                            {
+                                cx.update(|cx| {
+                                    entity.update(cx, |state, cx| state.set_data(node, cx));
+                                });
+                            }
+                        }
                     }
                 }
             })
@@ -182,7 +187,7 @@ impl LuaRuntimeHandle {
 
 fn run_lua_thread(
     mut rx: mpsc::UnboundedReceiver<LuaJob>,
-    update_tx: mpsc::UnboundedSender<TileUpdate>,
+    update_tx: mpsc::UnboundedSender<PluginDeferFunction>,
 ) {
     let local = tokio::task::LocalSet::new();
     let rt = tokio::runtime::Builder::new_current_thread()

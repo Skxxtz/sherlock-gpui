@@ -164,8 +164,8 @@ impl PluginLauncher {
             .into_iter()
             .map(|tile| {
                 let (tile_id, data) = (tile.id, tile.node);
-                let entity = cx.new(|_cx| PluginTileState {
-                    data: Some(data),
+                let entity = cx.new(|_| PluginTileState {
+                    data: Some(Box::new(data)),
                     loading: false,
                     error: None,
                 });
@@ -193,7 +193,7 @@ impl PluginLauncher {
                             if let Some(entity) = weak.upgrade() {
                                 cx.update(|cx| {
                                     entity.update(cx, |state, cx| match result {
-                                        Ok(data) => state.set_data(data, cx),
+                                        Ok(data) => state.set_data(data.into(), cx),
                                         Err(e) => state.set_error(e.to_string(), cx),
                                     });
                                 });

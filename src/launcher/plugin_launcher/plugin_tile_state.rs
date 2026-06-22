@@ -1,16 +1,14 @@
-use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
-
-// ui/widgets/plugin_tile_state.rs
 use gpui::Context;
 
+use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
 pub struct PluginTileState {
-    pub data: Option<PluginUiNode>,
+    pub data: Option<Box<PluginUiNode>>,
     pub loading: bool,
     pub error: Option<String>,
 }
 
 impl PluginTileState {
-    pub fn set_data(&mut self, data: PluginUiNode, cx: &mut Context<Self>) {
+    pub fn set_data(&mut self, data: Box<PluginUiNode>, cx: &mut Context<Self>) {
         self.data = Some(data);
         self.loading = false;
         self.error = None;

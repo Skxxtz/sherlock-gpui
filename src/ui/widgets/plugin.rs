@@ -66,6 +66,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         let Some(data) = &state.data else {
             return div().child("No Child").into_any_element();
         };
+
         render_node(data)
     }
     #[inline(always)]

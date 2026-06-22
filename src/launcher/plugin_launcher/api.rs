@@ -1,5 +1,5 @@
 use super::capabilities::{HasCapabilityBit, PluginCapability};
-use crate::launcher::plugin_launcher::runtime::TileUpdate;
+use crate::launcher::plugin_launcher::api::protocol::PluginDeferFunction;
 use mlua::prelude::*;
 use std::{fmt::Write, sync::OnceLock};
 use tokio::sync::mpsc;
@@ -8,13 +8,14 @@ pub mod clipboard;
 pub mod http;
 pub mod json;
 pub mod log;
+pub mod protocol;
 pub mod time;
 pub mod ui;
 
-static UI_UPDATE_CHANNEL: OnceLock<mpsc::UnboundedSender<TileUpdate>> = OnceLock::new();
+static UI_UPDATE_CHANNEL: OnceLock<mpsc::UnboundedSender<PluginDeferFunction>> = OnceLock::new();
 
 pub struct ApiContext {
-    pub update_tx: &'static mpsc::UnboundedSender<TileUpdate>,
+    pub update_tx: &'static mpsc::UnboundedSender<PluginDeferFunction>,
 }
 
 pub trait SherlockPluginFn: HasCapabilityBit {
@@ -134,7 +135,7 @@ macro_rules! generate_modules {
         pub fn setup_global_api(
             lua: &mlua::Lua,
             update_tx: tokio::sync::mpsc::UnboundedSender<
-                $crate::launcher::plugin_launcher::runtime::TileUpdate,
+                $crate::launcher::plugin_launcher::api::protocol::PluginDeferFunction,
             >,
         ) -> mlua::Result<()> {
             let _ = lua;
@@ -239,7 +240,7 @@ macro_rules! generate_modules {
 }
 
 generate_modules! {
-    ClipboardModule("clipboard") => [clipboard::Get],
+    ClipboardModule("clipboard") => [clipboard::Get, clipboard::Set],
     HttpModule("http")           => [http::Get, http::Post],
     JsonModule("json")           => [json::Decode],
     LogModule("log")             => [log::Info, log::Error],

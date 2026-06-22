@@ -1,6 +1,6 @@
 use crate::{
     launcher::plugin_launcher::{
-        api::{ApiContext, SherlockPluginFn},
+        api::{ApiContext, SherlockPluginFn, protocol::PluginDeferFunction},
         ui_schema::PluginUiNode,
     },
     lua_fn,
@@ -19,7 +19,10 @@ impl SherlockPluginFn for Update {
         lua_fn!(
             table, lua,
             |_lua, (tile_id: String, node: PluginUiNode)| {
-                let _ = update_tx.send((tile_id, node));
+                let _ = update_tx.send(PluginDeferFunction::Update {
+                    tile_id,
+                    node: Box::new(node),
+                });
                 Ok(())
             }
         )
