@@ -518,19 +518,49 @@ impl LauncherView {
                     let guard = ent.read(cx);
                     let mut content = guard.content.to_string();
 
-                    // Only transform if it's a PathInput
-                    let needs_expansion = matches!(&guard.variable, Some(ExecVariable::Path(_)))
-                        || matches!(&guard.variable, Some(ExecVariable::Command(inner)) if inner.is_scoped);
-
-                    if needs_expansion {
+                    if matches!(
+                        &guard.variable,
+                        Some(ExecVariable::Path(_)) | Some(ExecVariable::Command(_))
+                    ) {
                         let home = std::env::var_os("HOME").map(PathBuf::from);
                         let home = home.as_deref().unwrap_or(Path::new("."));
 
-                        content = match content.chars().next() {
-                            Some('~') => expand_path(content, home).to_string_lossy().into_owned(),
-                            Some('/') => content,
-                            _ => home.join(&content).to_string_lossy().into_owned(),
+                        let should_expand = |i: usize| match &guard.variable {
+                            Some(ExecVariable::Path(_)) => true,
+                            Some(ExecVariable::Command(inner)) => {
+                                inner.is_scoped.get(&i).is_some_and(|b| *b)
+                            }
+                            _ => false,
                         };
+
+                        let mut out = String::with_capacity(content.len());
+
+                        for (i, part) in content.split(' ').enumerate() {
+                            if i > 0 {
+                                out.push(' ');
+                            }
+
+                            if !should_expand(i) {
+                                out.push_str(part);
+                                continue;
+                            }
+
+                            match part.chars().next() {
+                                Some('~') => {
+                                    out.push_str(&expand_path(part, home).to_string_lossy());
+                                }
+                                Some('/') => {
+                                    out.push_str(part);
+                                }
+                                _ => {
+                                    out.push_str(home.to_string_lossy().as_ref());
+                                    out.push('/');
+                                    out.push_str(part);
+                                }
+                            }
+                        }
+
+                        content = out;
                     }
 
                     variables.push((guard.placeholder.clone(), SharedString::from(content)));

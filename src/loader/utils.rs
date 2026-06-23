@@ -237,7 +237,7 @@ pub struct CommandData {
     #[serde(skip)]
     pub index: usize,
     #[serde(skip)]
-    pub is_scoped: bool,
+    pub is_scoped: HashMap<usize, bool>,
 }
 
 // Implement the conversion logic
@@ -246,7 +246,7 @@ impl From<SharedString> for CommandData {
         Self {
             command,
             index: 0,
-            is_scoped: false,
+            is_scoped: HashMap::with_capacity(5),
         }
     }
 }
