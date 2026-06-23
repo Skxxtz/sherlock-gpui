@@ -517,17 +517,26 @@ impl TextInput {
             Some(ExecVariable::Path(inner)) => {
                 get_nth_path_completion(self.content.as_str(), inner.index, false)
             }
-            Some(ExecVariable::Command(inner))
-                if let Some(last) = self.content.trim().split(' ').next_back() =>
-            {
+            Some(ExecVariable::Command(inner)) => {
+                let Some((i, last)) = self
+                    .content
+                    .trim()
+                    .split(' ')
+                    .enumerate()
+                    .fold(None::<(usize, &str)>, |_, x| Some(x))
+                else {
+                    return;
+                };
+
                 match get_nth_command_completion(last, inner.index) {
                     Some(cmd) => {
-                        inner.is_scoped = false;
+                        inner.is_scoped.insert(i, false);
                         Some(cmd)
                     }
                     None => {
-                        inner.is_scoped = true;
-                        get_nth_path_completion(last, inner.index, true)
+                        let r = get_nth_path_completion(last, inner.index, true);
+                        inner.is_scoped.insert(i, r.is_some());
+                        r
                     }
                 }
             }
