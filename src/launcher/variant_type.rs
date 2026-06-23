@@ -217,8 +217,8 @@ macro_rules! create_variants {
             use super::*;
             use crate::docs::launcher::LauncherDocEntry;
 
-            #[tokio::test]
-            async fn test_all_docs_valid() {
+            #[test]
+            fn test_all_docs_valid() {
                 let pairs: &[(LauncherVariant, fn() -> LauncherDocEntry)] = &[
                     $(
                         (LauncherVariant::$variant, <$inner>::doc),
@@ -250,7 +250,10 @@ macro_rules! create_variants {
                         let launcher = var.try_into_launcher_type(&raw);
                         assert!(
                             launcher.is_ok(),
-                            "{:?} example '{}' parsed to Empty — args schema mismatch", var, example.description
+                            "{:?} example '{}' failed to parse: {:?}",
+                            var,
+                            example.description,
+                            launcher.err(),
                         );
                     }
                 }

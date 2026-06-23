@@ -1,5 +1,8 @@
 use super::capabilities::{HasCapabilityBit, PluginCapability};
-use crate::launcher::plugin_launcher::api::protocol::PluginDeferFunction;
+use crate::{
+    docs::launcher::plugin_launcher::{PluginCapabilityFunctionDoc, PluginCapabilityModuleDoc},
+    launcher::plugin_launcher::api::protocol::PluginDeferFunction,
+};
 use mlua::prelude::*;
 use std::{fmt::Write, sync::OnceLock};
 use tokio::sync::mpsc;
@@ -199,6 +202,23 @@ macro_rules! generate_modules {
                     }
                 }
             })
+        }
+        pub fn plugin_capability_docs() -> &'static [PluginCapabilityModuleDoc] {
+            &[
+                $(
+                    PluginCapabilityModuleDoc {
+                        module: $name,
+                        functions: &[
+                            $(
+                                PluginCapabilityFunctionDoc {
+                                    name: <$fn_path as SherlockPluginFn>::NAME,
+                                    doc: <$fn_path as SherlockPluginFn>::DOC,
+                                },
+                            )*
+                        ],
+                    },
+                )*
+            ]
         }
 
         pub struct LuaApiDocumentation;

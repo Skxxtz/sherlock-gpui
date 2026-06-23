@@ -1,7 +1,10 @@
 use crate::{
     app::LauncherEntityGlobal,
     define_inner_functions, display_name,
-    docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+    docs::launcher::{
+        Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry,
+        plugin_launcher::plugin_capabilities_section,
+    },
     ensure_func,
     launcher::{
         ExecEffect, LauncherConfig, LauncherId, LauncherProvider, LauncherType, LoadContext,
@@ -20,9 +23,12 @@ use crate::{
         launcher::views::MessageViewGlobal,
         widgets::{RenderableChild, plugin::PluginWidget},
     },
-    utils::errors::{
-        SherlockMessage,
-        types::{PluginAction, SherlockErrorType},
+    utils::{
+        errors::{
+            SherlockMessage,
+            types::{PluginAction, SherlockErrorType},
+        },
+        files::{expand_path, home_dir},
     },
     variant_name,
 };
@@ -54,9 +60,34 @@ pub struct PluginLauncher {
     pub handle: Arc<PluginHandle>,
 }
 
+fn load_plugin(
+    path: Arc<Path>,
+    capabilities: PluginCapability,
+) -> Result<Arc<PluginHandle>, SherlockMessage> {
+    #[cfg(test)]
+    return Ok(Arc::new(PluginHandle::default()));
+
+    let runtime = LuaRuntimeHandle::get();
+    futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities))
+        .map_err(|e| {
+            sherlock_msg!(
+                Error,
+                SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                e
+            )
+        })
+        .map(Arc::new)
+}
+
 impl LauncherProvider for PluginLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
-        let Some(path) = raw.args.get("path").and_then(|p| p.as_str()) else {
+        let home = home_dir()?;
+        let Some(path) = raw
+            .args
+            .get("path")
+            .and_then(|p| p.as_str())
+            .map(|s| expand_path(s, &home))
+        else {
             return Err(sherlock_msg!(
                 Warning,
                 SherlockErrorType::InvalidData,
@@ -66,7 +97,7 @@ impl LauncherProvider for PluginLauncher {
                 )
             ));
         };
-        let path: Arc<Path> = Arc::from(Path::new(path));
+        let path: Arc<Path> = Arc::from(path);
 
         let capabilities = raw
             .args
@@ -75,18 +106,7 @@ impl LauncherProvider for PluginLauncher {
             .map(|v| capabilities_from_names(v.iter().filter_map(|v| v.as_str())))
             .unwrap_or(PluginCapability::NONE);
 
-        let runtime = LuaRuntimeHandle::get();
-        let handle = Arc::new(
-            futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities)).map_err(
-                |e| {
-                    sherlock_msg!(
-                        Error,
-                        SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
-                        e
-                    )
-                },
-            )?,
-        );
+        let handle = load_plugin(path.clone(), capabilities)?;
 
         Ok(LauncherType::Plugin(Self {
             path,
@@ -268,29 +288,54 @@ impl LauncherDoc for PluginLauncher {
         LauncherDocEntry {
             name: display_name!(PluginLauncher),
             variant_name: variant_name!(Plugin),
-            description: "Launches installed desktop applications",
-            args: &[FieldDoc {
-                name: "use_keywords",
-                ty: "bool",
-                required: false,
-                default: Some("true"),
-                description: "Whether the search should use the keywords defined in the .desktop file.",
+            description: "The harness for custom plugins. Allow access to specific user plugins.",
+            args: &[
+                FieldDoc {
+                    name: "path",
+                    ty: "Path",
+                    required: true,
+                    default: None,
+                    description: "The location of the plugin `init.lua` file.",
+                },
+                FieldDoc {
+                    name: "capabilities",
+                    ty: "PluginCapability",
+                    required: false,
+                    default: Some("PluginCapability::None"),
+                    description: "The allowed scopes, the plugin can access.",
+                },
+            ],
+            inner_functions: &[InnerFunctionDoc {
+                name: "Reload",
+                identifier: "inner.reload",
+                description: "Reload plugin and its environment.",
+                user_facing: true,
             }],
             examples: &[Example {
-                description: "Basic app launcher",
+                description: "Basic plugin launcher",
                 json: indoc! {
                     r#"{
-                        "name": "App Launcher",
-                        "alias": "app",
-                        "type": "apps",
+                        "type": "plugin",
+                        "name": "Quote Plugin",
                         "args": {
-                            "use_keywords": false
+                            "path": "~/.config/sherlock/plugins/quote.lua",
+                            "capabilities": ["http.get", "json.decode"]
                         },
-                        "priority": 4,
-                        "home": "Home"
+                        "actions": [
+                            {
+                                "name": "Reload",
+                                "icon": "sherlock-devtools",
+                                "method": "inner.reload"
+                            }
+                        ],
+                        "home": "OnlyHome",
+                        "shortcut": false,
+                        "spawn_focus": false,
+                        "priority": 1
                     }"#
                 },
             }],
+            args_explanations: &[plugin_capabilities_section],
             ..LauncherDocEntry::new()
         }
     }

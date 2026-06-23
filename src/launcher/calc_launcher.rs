@@ -33,16 +33,8 @@ impl LauncherProvider for CalculatorLauncher {
             .and_then(|interval| interval.as_u64())
             .unwrap_or(1440);
 
-        tokio::spawn(async move {
-            match Currency::get_exchange(update_interval).await {
-                Ok(r) => {
-                    let _result = CURRENCIES.set(Some(r));
-                }
-                Err(e) => {
-                    eprintln!("{:?}", e);
-                }
-            }
-        });
+        #[cfg(not(test))]
+        spawn_currency_update(update_interval);
 
         Ok(LauncherType::Calculator(CalculatorLauncher {}))
     }
@@ -66,6 +58,20 @@ impl LauncherProvider for CalculatorLauncher {
 
         Ok(vec![RenderableChild::Calc { launcher, inner }])
     }
+}
+
+#[cfg(not(test))]
+fn spawn_currency_update(update_interval: u64) {
+    tokio::spawn(async move {
+        match Currency::get_exchange(update_interval).await {
+            Ok(r) => {
+                let _result = CURRENCIES.set(Some(r));
+            }
+            Err(e) => {
+                eprintln!("{:?}", e);
+            }
+        }
+    });
 }
 
 // DOCS

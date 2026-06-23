@@ -19,7 +19,7 @@ use super::{
     ui_schema::{PluginNodeRegistration, PluginUiNode},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct PluginHandle {
     pub id: PathBuf,
     pub name: String,

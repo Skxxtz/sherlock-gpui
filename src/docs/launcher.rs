@@ -22,6 +22,8 @@ use crate::{
     utils::intent::CAPABILITY_DOCS,
 };
 
+pub mod plugin_launcher;
+
 pub const BASE_FIELDS: &[FieldDoc] = &[
     FieldDoc {
         name: "name",
