@@ -8,16 +8,30 @@ use reqwest::Client;
 pub struct Get;
 impl SherlockPluginFn for Get {
     const NAME: &'static str = "get";
-    const PARAMS: &'static [(&'static str, &'static str)] = &[("url", "string")];
+    const PARAMS: &'static [(&'static str, &'static str)] =
+        &[("url", "string"), ("headers", "table?")];
     const RETURNS: &'static str = "string";
     const DOC: &'static str = "Performs an HTTP GET request and returns the response body.";
     fn register(lua: &Lua, table: &LuaTable, _ctx: &ApiContext) -> LuaResult<()> {
         lua_fn!(
             @async
             table, lua,
-            |_lua, (url: String)| async move {
-                let resp = reqwest::get(&url).await.map_err(lua_err)?;
-                resp.text().await.map_err(lua_err)
+            |_lua, (url: String, headers: Option<LuaTable>)| {
+                let client = Client::new();
+
+                async move {
+                    let mut req = client.get(&url);
+
+                    if let Some(headers) = headers {
+                        for pair in headers.pairs::<String, String>() {
+                            let (k, v) = pair.map_err(lua_err)?;
+                            req = req.header(&k, v);
+                        }
+                    }
+
+                    let resp = req.send().await.map_err(lua_err)?;
+                    resp.text().await.map_err(lua_err)
+                }
             }
         )
     }
