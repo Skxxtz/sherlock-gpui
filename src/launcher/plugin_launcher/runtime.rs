@@ -9,7 +9,7 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 
-use crate::launcher::plugin_launcher::api::protocol::PluginDeferFunction;
+use crate::{app::theme::ThemeData, launcher::plugin_launcher::api::protocol::PluginDeferFunction};
 
 use super::{
     capabilities::PluginCapability,
@@ -41,6 +41,11 @@ pub enum LuaJob {
         tile_id: String,
         reply: oneshot::Sender<LuaResult<PluginUiNode>>,
     },
+    CallInit {
+        handle: Arc<PluginHandle>,
+        theme: Arc<ThemeData>,
+        reply: oneshot::Sender<LuaResult<()>>,
+    },
     SpawnLive {
         handle: Arc<PluginHandle>,
         tile_id: String,
@@ -68,6 +73,16 @@ impl LuaRuntimeHandle {
             Some(rt) => rt,
             None => panic!("LuaRuntimeHandle::get called before it was initialized."),
         }
+    }
+    async fn send_and_recv<T>(
+        &self,
+        job: LuaJob,
+        rx: oneshot::Receiver<LuaResult<T>>,
+    ) -> LuaResult<T> {
+        self.tx.send(job)
+            .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
+        rx.await
+            .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
     }
     /// Spawns the dedicated OS thread that owns the Lua VM. Call once at
     /// startup. Returns both the handle for sending jobs, and the receiving
@@ -161,6 +176,15 @@ impl LuaRuntimeHandle {
             .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
         rx.await
             .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
+    }
+
+    pub async fn call_init(
+        &self,
+        handle: Arc<PluginHandle>,
+        theme: Arc<ThemeData>,
+    ) -> LuaResult<()> {
+        let (reply, rx) = oneshot::channel();
+        self.send_and_recv(LuaJob::CallInit { handle, theme, reply }, rx).await
     }
 
     /// Fire-and-forget: starts the plugin's `live(tile_id)` loop. Does not

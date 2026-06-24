@@ -1,5 +1,5 @@
 use crate::{
-    app::LauncherEntityGlobal,
+    app::{LauncherEntityGlobal, theme::ActiveTheme},
     define_inner_functions, ensure_func,
     launcher::{
         ExecEffect, LauncherConfig, LauncherId, LauncherProvider, LauncherType, LoadContext,
@@ -161,6 +161,19 @@ impl PluginLauncher {
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
         let lua_runtime = LuaRuntimeHandle::get();
+        let theme = cx.global::<ActiveTheme>().0.clone();
+        futures::executor::block_on(lua_runtime.call_init(self.handle.clone(), theme)).map_err(
+            |e| {
+                sherlock_msg!(
+                    Error,
+                    SherlockErrorType::Plugin(
+                        PluginAction::TileInit,
+                        self.path.display().to_string()
+                    ),
+                    e
+                )
+            },
+        )?;
         let tiles = futures::executor::block_on(lua_runtime.call_tiles(self.handle.clone()))
             .map_err(|e| {
                 sherlock_msg!(

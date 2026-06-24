@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use gpui::{Hsla, SharedString, hsla};
-use serde::{Deserialize, Deserializer};
+use mlua::{IntoLua, LuaSerdeExt};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Clone)]
 pub struct ActiveTheme(pub Arc<ThemeData>);
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct ThemeData {
     pub font_family: SharedString,
     pub monospace: SharedString,
@@ -86,6 +87,12 @@ impl Default for ActiveTheme {
 impl Default for ThemeData {
     fn default() -> Self {
         Self::dark()
+    }
+}
+
+impl IntoLua for &ThemeData {
+    fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+        lua.to_value(self)
     }
 }
 
