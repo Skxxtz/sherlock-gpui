@@ -47,11 +47,14 @@ pub fn plugin_capabilities_section() -> Raw {
                     .content(r#"{ "capabilities": ["calc.math", "calc.units"] }"#),
             )
             .children(plugin_capability_docs().iter().map(|cap| {
-                details().summary(cap.module).children(
-                    cap.functions
-                        .iter()
-                        .map(|func| md!(h4(format!("{}.{}", cap.module, func.name)), func.doc)),
-                )
+                details()
+                    .summary(cap.module)
+                    .children(cap.functions.iter().map(|func| {
+                        md!(
+                            h4(p!(code(format!("{}.{}", cap.module, func.name)))),
+                            func.doc
+                        )
+                    }))
             })),
         ))
     )
