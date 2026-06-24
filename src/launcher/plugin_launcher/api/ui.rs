@@ -13,7 +13,7 @@ impl SherlockPluginFn for Update {
     const PARAMS: &'static [(&'static str, &'static str)] =
         &[("tile_id", "string"), ("node", "table")];
     const RETURNS: &'static str = "nil";
-    const DOC: &'static str = "Updates the UI tile identified by <tile_id> with the given node.";
+    const DOC: &'static str = "Updates the UI tile identified by `<tile_id>` with the given node.";
     fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()> {
         let update_tx = ctx.update_tx.clone();
         lua_fn!(
