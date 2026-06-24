@@ -1,13 +1,10 @@
 use gpui::SharedString;
-use indoc::indoc;
 use rusqlite::Connection;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::{
-    display_name,
-    docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData},
     loader::{
         application_loader::file_has_changed,
@@ -26,7 +23,6 @@ use crate::{
         files::home_dir,
         paths::get_cache_dir,
     },
-    variant_name,
 };
 
 /// The following arguments are available to users:
@@ -385,23 +381,32 @@ impl ChromeParser {
 }
 
 // DOCS
-impl LauncherDoc for BookmarkLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(BookmarkLauncher),
-            variant_name: variant_name!(Bookmarks),
-            description: "Launches browser bookmarks in your default browser.",
-            args: &[FieldDoc {
-                name: "browser",
-                ty: "string",
-                required: false,
-                default: Some("Default browser"),
-                description: "The browser from which the bookmarks should be parsed",
-            }],
-            examples: &[Example {
-                description: "Basic bookmarks launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::BookmarkLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+    impl LauncherDoc for BookmarkLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(BookmarkLauncher),
+                variant_name: variant_name!(Bookmarks),
+                description: "Launches browser bookmarks in your default browser.",
+                args: &[FieldDoc {
+                    name: "browser",
+                    ty: "string",
+                    required: false,
+                    default: Some("Default browser"),
+                    description: "The browser from which the bookmarks should be parsed",
+                }],
+                examples: &[Example {
+                    description: "Basic bookmarks launcher",
+                    json: indoc! {
+                        r#"{
                         "name": "Bookmarks",
                         "type": "bookmarks",
                         "alias": "bm",
@@ -410,9 +415,10 @@ impl LauncherDoc for BookmarkLauncher {
                         },
                         "priority": 7
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

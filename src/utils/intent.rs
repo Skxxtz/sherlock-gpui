@@ -24,7 +24,9 @@ pub mod translation;
 mod units;
 mod utils;
 
-pub use units::{CAPABILITY_DOCS, Capabilities};
+pub use units::Capabilities;
+#[cfg(feature = "docs")]
+pub use units::docs::CAPABILITY_DOCS;
 pub use utils::IntentResult;
 
 #[derive(Clone, Debug, PartialEq)]

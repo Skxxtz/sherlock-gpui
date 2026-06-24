@@ -1,14 +1,10 @@
-use indoc::indoc;
 use serde_json::Value;
 
 use crate::{
-    display_name,
-    docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry, capabilities_section},
     launcher::{LauncherProvider, LauncherType},
     loader::utils::RawLauncher,
     ui::widgets::{RenderableChild, clipboard::ClipWidget},
     utils::{errors::SherlockMessage, intent::Capabilities},
-    variant_name,
 };
 
 /// The following arguments are available to users:
@@ -45,24 +41,34 @@ impl LauncherProvider for ClipboardLauncher {
 }
 
 // DOCS
-impl LauncherDoc for ClipboardLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(ClipboardLauncher),
-            variant_name: variant_name!(Clipboard),
-            description: "Executes commands based on the clipboard content.",
-            args: &[FieldDoc {
-                name: "capabilities",
-                ty: "Capabilities[]",
-                required: false,
-                default: Some(r#"[ "calc.units", "calc.math" ]"#),
-                description: "The capabilities the clipboard executor should have.",
-            }],
-            args_explanations: &[capabilities_section],
-            examples: &[Example {
-                description: "Power Menu Example",
-                json: indoc! {
-                    r#" {
+#[cfg(feature = "docs")]
+mod docs {
+    use super::ClipboardLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry, capabilities_section},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for ClipboardLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(ClipboardLauncher),
+                variant_name: variant_name!(Clipboard),
+                description: "Executes commands based on the clipboard content.",
+                args: &[FieldDoc {
+                    name: "capabilities",
+                    ty: "Capabilities[]",
+                    required: false,
+                    default: Some(r#"[ "calc.units", "calc.math" ]"#),
+                    description: "The capabilities the clipboard executor should have.",
+                }],
+                args_explanations: &[capabilities_section],
+                examples: &[Example {
+                    description: "Power Menu Example",
+                    json: indoc! {
+                        r#" {
                         "name": "Clipboard",
                         "type": "clipboard",
                         "args": {
@@ -76,9 +82,10 @@ impl LauncherDoc for ClipboardLauncher {
                         "priority": 3,
                         "home": "OnlyHome"
                     } "#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

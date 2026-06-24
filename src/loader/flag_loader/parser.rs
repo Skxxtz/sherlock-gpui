@@ -6,8 +6,9 @@ use super::{
     flags::FLAGS,
     utils::{FlagSection, ParseError},
 };
+#[cfg(feature = "docs")]
+use crate::docs::SherlockDocumentation;
 use crate::{
-    docs::SherlockDocumentation,
     launcher::debug_launcher::DebugFunctions,
     loader::flag_loader::actions::plugin_init,
     utils::config::{SherlockFlags, repair_config},
@@ -38,7 +39,6 @@ impl ParsedArgs {
         match action {
             DebugAction::Help => flag_documentation(),
             DebugAction::Version => print_version(),
-            DebugAction::GenerateDocs => SherlockDocumentation::generate(),
             DebugAction::Repair => repair_config(&mut self.flags),
             DebugAction::ClearCache => {
                 if let Err(e) = DebugFunctions::clear_cache() {
@@ -47,6 +47,8 @@ impl ParsedArgs {
             }
             DebugAction::Init { path, extension } => init_config(&path, &extension),
             DebugAction::PluginInit => plugin_init(),
+            #[cfg(feature = "docs")]
+            DebugAction::GenerateDocs => SherlockDocumentation::generate(),
         }
 
         true

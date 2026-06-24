@@ -11,7 +11,7 @@ use md_rs::{
     md, p,
 };
 
-use crate::launcher::plugin_launcher::api::plugin_capability_docs;
+use crate::launcher::plugin_launcher::api::docs::plugin_capability_docs;
 
 pub struct PluginCapabilityFunctionDoc {
     pub name: &'static str,

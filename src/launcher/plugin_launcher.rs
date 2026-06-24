@@ -1,11 +1,6 @@
 use crate::{
     app::LauncherEntityGlobal,
-    define_inner_functions, display_name,
-    docs::launcher::{
-        Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry,
-        plugin_launcher::plugin_capabilities_section,
-    },
-    ensure_func,
+    define_inner_functions, ensure_func,
     launcher::{
         ExecEffect, LauncherConfig, LauncherId, LauncherProvider, LauncherType, LoadContext,
         plugin_launcher::{
@@ -30,10 +25,8 @@ use crate::{
         },
         files::{expand_path, home_dir},
     },
-    variant_name,
 };
 use gpui::{App, AppContext, AsyncApp, SharedString};
-use indoc::indoc;
 use serde_json::Value;
 use std::{path::Path, rc::Rc, sync::Arc};
 
@@ -283,38 +276,51 @@ async fn reload_plugin(
     });
 }
 
-impl LauncherDoc for PluginLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(PluginLauncher),
-            variant_name: variant_name!(Plugin),
-            description: "The harness for custom plugins. Allow access to specific user plugins.",
-            args: &[
-                FieldDoc {
-                    name: "path",
-                    ty: "Path",
-                    required: true,
-                    default: None,
-                    description: "The location of the plugin `init.lua` file.",
-                },
-                FieldDoc {
-                    name: "capabilities",
-                    ty: "PluginCapability",
-                    required: false,
-                    default: Some("PluginCapability::None"),
-                    description: "The allowed scopes, the plugin can access.",
-                },
-            ],
-            inner_functions: &[InnerFunctionDoc {
-                name: "Reload",
-                identifier: "inner.reload",
-                description: "Reload plugin and its environment.",
-                user_facing: true,
-            }],
-            examples: &[Example {
-                description: "Basic plugin launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::PluginLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{
+            Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry,
+            plugin_launcher::plugin_capabilities_section,
+        },
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for PluginLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(PluginLauncher),
+                variant_name: variant_name!(Plugin),
+                description: "The harness for custom plugins. Allow access to specific user plugins.",
+                args: &[
+                    FieldDoc {
+                        name: "path",
+                        ty: "Path",
+                        required: true,
+                        default: None,
+                        description: "The location of the plugin `init.lua` file.",
+                    },
+                    FieldDoc {
+                        name: "capabilities",
+                        ty: "PluginCapability",
+                        required: false,
+                        default: Some("PluginCapability::None"),
+                        description: "The allowed scopes, the plugin can access.",
+                    },
+                ],
+                inner_functions: &[InnerFunctionDoc {
+                    name: "Reload",
+                    identifier: "inner.reload",
+                    description: "Reload plugin and its environment.",
+                    user_facing: true,
+                }],
+                examples: &[Example {
+                    description: "Basic plugin launcher",
+                    json: indoc! {
+                        r#"{
                         "type": "plugin",
                         "name": "Quote Plugin",
                         "args": {
@@ -333,10 +339,11 @@ impl LauncherDoc for PluginLauncher {
                         "spawn_focus": false,
                         "priority": 1
                     }"#
-                },
-            }],
-            args_explanations: &[plugin_capabilities_section],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                args_explanations: &[plugin_capabilities_section],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

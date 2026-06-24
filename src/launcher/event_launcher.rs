@@ -1,12 +1,9 @@
 use std::time::Duration;
 
 use gpui::{App, SharedString};
-use indoc::indoc;
 use serde::Deserialize;
 
 use crate::{
-    display_name,
-    docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
     ensure_func,
     launcher::{
         ExecEffect, LauncherProvider,
@@ -20,7 +17,6 @@ use crate::{
         errors::{SherlockMessage, types::SherlockErrorType},
         websearch::websearch,
     },
-    variant_name,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::VariantNames, strum::EnumString)]
@@ -209,46 +205,56 @@ mod tests {
 }
 
 // DOCS
-impl LauncherDoc for EventLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(EventLauncher),
-            variant_name: variant_name!(Event),
-            description: "Shows upcoming events and joins them on return.",
-            args: &[
-                FieldDoc {
-                    name: "look_back",
-                    ty: "Time",
-                    required: false,
-                    default: Some("10mins"),
-                    description: "The duration events should stay visible after already having started.",
-                },
-                FieldDoc {
-                    name: "look_ahead",
-                    ty: "Time",
-                    required: false,
-                    default: Some("1h"),
-                    description: "The duration events should show before having started.",
-                },
-            ],
-            inner_functions: &[
-                InnerFunctionDoc {
-                    name: "Hard Refresh",
-                    identifier: "inner.hard_refresh",
-                    description: "Refetch the events from the server.",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "Join Meeting",
-                    identifier: "inner.join_meeting",
-                    description: "Only acailable if its actually a meeting. Will join a meeting using the application provided by a mime-type lookup.",
-                    user_facing: true,
-                },
-            ],
-            examples: &[Example {
-                description: "Basic event launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::EventLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for EventLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(EventLauncher),
+                variant_name: variant_name!(Event),
+                description: "Shows upcoming events and joins them on return.",
+                args: &[
+                    FieldDoc {
+                        name: "look_back",
+                        ty: "Time",
+                        required: false,
+                        default: Some("10mins"),
+                        description: "The duration events should stay visible after already having started.",
+                    },
+                    FieldDoc {
+                        name: "look_ahead",
+                        ty: "Time",
+                        required: false,
+                        default: Some("1h"),
+                        description: "The duration events should show before having started.",
+                    },
+                ],
+                inner_functions: &[
+                    InnerFunctionDoc {
+                        name: "Hard Refresh",
+                        identifier: "inner.hard_refresh",
+                        description: "Refetch the events from the server.",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Join Meeting",
+                        identifier: "inner.join_meeting",
+                        description: "Only acailable if its actually a meeting. Will join a meeting using the application provided by a mime-type lookup.",
+                        user_facing: true,
+                    },
+                ],
+                examples: &[Example {
+                    description: "Basic event launcher",
+                    json: indoc! {
+                        r#"{
                         "type": "event",
                         "args": {
                             "look_ahead": "5 hours",
@@ -259,9 +265,10 @@ impl LauncherDoc for EventLauncher {
                         "spawn_focus": false,
                         "shortcut": false
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

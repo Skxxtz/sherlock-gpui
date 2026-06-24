@@ -16,6 +16,7 @@ use crate::{
 };
 
 mod app;
+#[cfg(feature = "docs")]
 mod docs;
 mod launcher;
 mod loader;

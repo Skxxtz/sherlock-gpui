@@ -1,18 +1,14 @@
 use std::sync::Arc;
 
-use indoc::indoc;
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    display_name,
-    docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{LauncherProvider, LauncherType, LoadContext},
     loader::{application_loader::ApplicationLoader, utils::RawLauncher},
     sherlock_msg,
     ui::widgets::RenderableChild,
     utils::errors::{SherlockMessage, types::SherlockErrorType},
-    variant_name,
 };
 
 pub mod app_data;
@@ -59,23 +55,33 @@ impl LauncherProvider for AppLauncher {
 }
 
 // DOCS
-impl LauncherDoc for AppLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(AppLauncher),
-            variant_name: variant_name!(Apps),
-            description: "Launches installed desktop applications",
-            args: &[FieldDoc {
-                name: "use_keywords",
-                ty: "bool",
-                required: false,
-                default: Some("true"),
-                description: "Whether the search should use the keywords defined in the .desktop file.",
-            }],
-            examples: &[Example {
-                description: "Basic app launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::AppLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for AppLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(AppLauncher),
+                variant_name: variant_name!(Apps),
+                description: "Launches installed desktop applications",
+                args: &[FieldDoc {
+                    name: "use_keywords",
+                    ty: "bool",
+                    required: false,
+                    default: Some("true"),
+                    description: "Whether the search should use the keywords defined in the .desktop file.",
+                }],
+                examples: &[Example {
+                    description: "Basic app launcher",
+                    json: indoc! {
+                        r#"{
                         "name": "App Launcher",
                         "alias": "app",
                         "type": "apps",
@@ -85,9 +91,10 @@ impl LauncherDoc for AppLauncher {
                         "priority": 4,
                         "home": "Home"
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

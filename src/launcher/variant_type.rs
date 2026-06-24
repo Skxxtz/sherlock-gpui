@@ -1,5 +1,4 @@
 use gpui::{App, SharedString};
-use md_rs::components::{ParentComponentExt, container::Container};
 use std::mem;
 use std::sync::Arc;
 
@@ -7,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 
 use crate::{
-    docs::{Documentation, launcher::LauncherDoc},
     launcher::{
         Bind, ExecEffect, LauncherProvider,
         app_launcher::AppLauncher,
@@ -43,14 +41,6 @@ macro_rules! create_variants {
             $( $variant:ident( $inner:ty $(, $extra:ty)* ) ),* $(,)?
         }
     ) => {
-        //trait enforced
-        #[allow(dead_code)]
-        fn _assert_launcher_docs() {
-            fn assert_launcher_doc<T: LauncherDoc>() {}
-            $(
-                assert_launcher_doc::<$inner>();
-            )*
-        }
 
         #[derive(Clone, Debug, Default)]
         pub enum $name {
@@ -110,15 +100,6 @@ macro_rules! create_variants {
         impl PartialEq for $name {
             fn eq(&self, other: &Self) -> bool {
                 mem::discriminant(self) == mem::discriminant(other)
-            }
-        }
-
-        impl Documentation for LauncherType {
-            type Docs = Container;
-            fn docs() -> Self::Docs {
-                Container::default().children(
-                    [ $( <$inner>::doc(),)* ].iter().map(Container::from)
-                )
             }
         }
 
@@ -212,49 +193,74 @@ macro_rules! create_variants {
             }
         }
 
-        #[cfg(test)]
-        mod launcher_doc_tests {
+        #[cfg(feature = "docs")]
+        mod docs {
             use super::*;
-            use crate::docs::launcher::LauncherDocEntry;
+            use crate::docs::{Documentation, launcher::LauncherDoc};
+            use md_rs::components::{ParentComponentExt, container::Container};
 
-            #[test]
-            fn test_all_docs_valid() {
-                let pairs: &[(LauncherVariant, fn() -> LauncherDocEntry)] = &[
-                    $(
-                        (LauncherVariant::$variant, <$inner>::doc),
-                    )*
-                ];
+            //trait enforced
+            #[allow(dead_code)]
+            fn _assert_launcher_docs() {
+                fn assert_launcher_doc<T: LauncherDoc>() {}
+                $(
+                    assert_launcher_doc::<$inner>();
+                )*
+            }
 
-                for (var, doc_fn) in pairs {
-                    let doc = doc_fn();
+            impl Documentation for LauncherType {
+                type Docs = Container;
+                fn docs() -> Self::Docs {
+                    Container::default().children(
+                        [ $( <$inner>::doc(),)* ].iter().map(Container::from)
+                    )
+                }
+            }
 
-                    // check functions match
-                    if var.supports_functions() {
-                        assert!(
-                            !doc.inner_functions.is_empty(),
-                            "{:?} supports functions but doc lists none", var
-                        );
-                    } else {
-                        assert!(
-                            doc.inner_functions.is_empty(),
-                            "{:?} has no functions but doc lists some", var
-                        );
-                    }
+            #[cfg(test)]
+            mod launcher_doc_tests {
+                use super::*;
+                use crate::docs::launcher::LauncherDocEntry;
 
-                    // parse every example
-                    for example in doc.examples {
-                        let raw: RawLauncher = serde_json::from_str(example.json)
-                            .unwrap_or_else(|e| panic!(
-                                "{:?} example '{}' is not valid RawLauncher: {}", var, example.description, e
-                            ));
-                        let launcher = var.try_into_launcher_type(&raw);
-                        assert!(
-                            launcher.is_ok(),
-                            "{:?} example '{}' failed to parse: {:?}",
-                            var,
-                            example.description,
-                            launcher.err(),
-                        );
+                #[test]
+                fn test_all_docs_valid() {
+                    let pairs: &[(LauncherVariant, fn() -> LauncherDocEntry)] = &[
+                        $(
+                            (LauncherVariant::$variant, <$inner>::doc),
+                        )*
+                    ];
+
+                    for (var, doc_fn) in pairs {
+                        let doc = doc_fn();
+
+                        // check functions match
+                        if var.supports_functions() {
+                            assert!(
+                                !doc.inner_functions.is_empty(),
+                                "{:?} supports functions but doc lists none", var
+                            );
+                        } else {
+                            assert!(
+                                doc.inner_functions.is_empty(),
+                                "{:?} has no functions but doc lists some", var
+                            );
+                        }
+
+                        // parse every example
+                        for example in doc.examples {
+                            let raw: RawLauncher = serde_json::from_str(example.json)
+                                .unwrap_or_else(|e| panic!(
+                                    "{:?} example '{}' is not valid RawLauncher: {}", var, example.description, e
+                                ));
+                            let launcher = var.try_into_launcher_type(&raw);
+                            assert!(
+                                launcher.is_ok(),
+                                "{:?} example '{}' failed to parse: {:?}",
+                                var,
+                                example.description,
+                                launcher.err(),
+                            );
+                        }
                     }
                 }
             }

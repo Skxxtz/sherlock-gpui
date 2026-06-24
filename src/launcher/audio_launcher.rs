@@ -1,6 +1,5 @@
 use bytes::Bytes;
 use gpui::{App, Image, ImageFormat, SharedString};
-use indoc::indoc;
 use serde_json::Value;
 use simd_json::prelude::ArrayTrait;
 use std::env;
@@ -10,7 +9,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use zbus::blocking::{Connection, Proxy};
 
-use crate::docs::launcher::{Example, InnerFunctionDoc, LauncherDoc, LauncherDocEntry};
 use crate::launcher::utils::binds::Bind;
 use crate::launcher::variant_type::InnerFunction;
 use crate::ui::widgets::RenderableChild;
@@ -20,9 +18,7 @@ use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::{
     DBusAction, DirAction, FileAction, SherlockErrorType, SocketAction,
 };
-use crate::{
-    define_inner_functions, display_name, ensure_func, sherlock_msg, skip_func_if_nav, variant_name,
-};
+use crate::{define_inner_functions, ensure_func, sherlock_msg, skip_func_if_nav};
 
 pub mod utils;
 
@@ -329,36 +325,43 @@ pub fn identify_image_type(bytes: &[u8]) -> &'static str {
 }
 
 // DOCS
-impl LauncherDoc for MusicPlayerLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(MusicPlayerLauncher),
-            variant_name: variant_name!(MusicPlayer),
-            description: "Shows the currently played song or video with thumbnail, title, and artists.",
-            inner_functions: &[
-                InnerFunctionDoc {
-                    name: "Toggle Playback",
-                    identifier: "inner.toggle_playback",
-                    description: "Toggles current media playback status (playing/paused).",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "Previous",
-                    identifier: "inner.previous",
-                    description: "Skips to the previous audio element (song, video).",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "Next",
-                    identifier: "inner.next",
-                    description: "Skips to the next audio element (song, video).",
-                    user_facing: true,
-                },
-            ],
-            examples: &[Example {
-                description: "Basic music player",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::MusicPlayerLauncher;
+    use crate::docs::launcher::{Example, InnerFunctionDoc, LauncherDoc, LauncherDocEntry};
+    use crate::{display_name, variant_name};
+    use indoc::indoc;
+
+    impl LauncherDoc for MusicPlayerLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(MusicPlayerLauncher),
+                variant_name: variant_name!(MusicPlayer),
+                description: "Shows the currently played song or video with thumbnail, title, and artists.",
+                inner_functions: &[
+                    InnerFunctionDoc {
+                        name: "Toggle Playback",
+                        identifier: "inner.toggle_playback",
+                        description: "Toggles current media playback status (playing/paused).",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Previous",
+                        identifier: "inner.previous",
+                        description: "Skips to the previous audio element (song, video).",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Next",
+                        identifier: "inner.next",
+                        description: "Skips to the next audio element (song, video).",
+                        user_facing: true,
+                    },
+                ],
+                examples: &[Example {
+                    description: "Basic music player",
+                    json: indoc! {
+                        r#"{
                         "name": "Spotify",
                         "type": "music_player",
                         "args": {},
@@ -379,9 +382,10 @@ impl LauncherDoc for MusicPlayerLauncher {
                             }
                         ]
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

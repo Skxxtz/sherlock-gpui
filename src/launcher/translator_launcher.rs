@@ -1,17 +1,13 @@
 use std::sync::Arc;
 
-use indoc::indoc;
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    display_name,
-    docs::launcher::{Example, LauncherDoc, LauncherDocEntry},
     launcher::{LauncherProvider, LauncherType, LoadContext},
     loader::utils::RawLauncher,
     ui::widgets::{RenderableChild, translator::TranslationData},
     utils::errors::SherlockMessage,
-    variant_name,
 };
 
 /// No user-side arguments
@@ -38,16 +34,26 @@ impl LauncherProvider for Translator {
 }
 
 // DOCS
-impl LauncherDoc for Translator {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(Translator),
-            variant_name: variant_name!(Translator),
-            description: "Translate your queries into other languages.",
-            examples: &[Example {
-                description: "Basic translator",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::Translator;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for Translator {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(Translator),
+                variant_name: variant_name!(Translator),
+                description: "Translate your queries into other languages.",
+                examples: &[Example {
+                    description: "Basic translator",
+                    json: indoc! {
+                        r#"{
                         "name": "Translator",
                         "alias": "trans",
                         "type": "translator",
@@ -57,9 +63,10 @@ impl LauncherDoc for Translator {
                         "priority": 1,
                         "shortcut": false
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

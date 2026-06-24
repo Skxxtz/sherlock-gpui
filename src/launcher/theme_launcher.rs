@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use gpui::App;
-use indoc::indoc;
 
 use crate::app::theme::{ActiveTheme, ThemeData};
-use crate::docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry};
 use crate::launcher::variant_type::InnerFunction;
 use crate::launcher::{ExecEffect, LauncherProvider, LauncherType};
 use crate::loader::utils::RawLauncher;
@@ -14,7 +12,7 @@ use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::{DirAction, FileAction, SherlockErrorType};
 use crate::utils::files::{expand_path, home_dir};
 use crate::utils::format::make_title_case;
-use crate::{define_inner_functions, display_name, ensure_func, sherlock_msg, variant_name};
+use crate::{define_inner_functions, ensure_func, sherlock_msg};
 
 define_inner_functions! {
     pub enum ThemePickerFunctions {
@@ -130,38 +128,49 @@ impl LauncherProvider for ThemePicker {
 }
 
 // DOCS
-impl LauncherDoc for ThemePicker {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(ThemePicker),
-            variant_name: variant_name!(Theme),
-            description: "Preview and select Sherlock themes.",
-            args: &[FieldDoc {
-                name: "path",
-                ty: "path",
-                required: false,
-                default: Some("~/.config/sherlock/themes/"),
-                description: "The path to the Sherlock themes directory.",
-            }],
-            inner_functions: &[InnerFunctionDoc {
-                name: "Pick",
-                identifier: "inner.pick",
-                description: "Apply a the selected theme as the active theme. (Not user-facing yet)",
-                user_facing: false, // TODO
-            }],
-            examples: &[Example {
-                description: "Basic process terminator",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::ThemePicker;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for ThemePicker {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(ThemePicker),
+                variant_name: variant_name!(Theme),
+                description: "Preview and select Sherlock themes.",
+                args: &[FieldDoc {
+                    name: "path",
+                    ty: "path",
+                    required: false,
+                    default: Some("~/.config/sherlock/themes/"),
+                    description: "The path to the Sherlock themes directory.",
+                }],
+                inner_functions: &[InnerFunctionDoc {
+                    name: "Pick",
+                    identifier: "inner.pick",
+                    description: "Apply a the selected theme as the active theme. (Not user-facing yet)",
+                    user_facing: false, // TODO
+                }],
+                examples: &[Example {
+                    description: "Basic process terminator",
+                    json: indoc! {
+                        r#"{
                         "name": "Theme Picker",
                         "type": "theme",
                         "alias": "themes",
                         "priority": 0,
                         "exit": false
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

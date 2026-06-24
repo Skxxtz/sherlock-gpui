@@ -1,14 +1,11 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{App, SharedString};
-use indoc::indoc;
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    define_inner_functions, display_name,
-    docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
-    ensure_func,
+    define_inner_functions, ensure_func,
     launcher::{
         ExecEffect, LauncherConfig, LauncherProvider, LauncherType, LoadContext,
         variant_type::InnerFunction,
@@ -17,7 +14,6 @@ use crate::{
     sherlock_msg, skip_func_if_nav,
     ui::widgets::{RenderableChild, timer::TimerChild},
     utils::errors::{SherlockMessage, types::SherlockErrorType},
-    variant_name,
 };
 
 define_inner_functions! {
@@ -91,43 +87,53 @@ impl LauncherProvider for TimerLauncher {
 }
 
 // DOCS
-impl LauncherDoc for TimerLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(TimerLauncher),
-            variant_name: variant_name!(Timer),
-            description: "Start and run up to four timers concurrently. Each timer can have a unique action to be run at completion.",
-            args: &[FieldDoc {
-                name: "exec",
-                ty: "command",
-                required: false,
-                default: Some(""),
-                description: "The command to execute on timer completion.",
-            }],
-            inner_functions: &[
-                InnerFunctionDoc {
-                    name: "Toggle",
-                    identifier: "inner.toggle",
-                    description: "Toggle all timers",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "Reset",
-                    identifier: "inner.reset",
-                    description: "Reset all timers",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "New Timer",
-                    identifier: "",
-                    description: "Create new timer",
-                    user_facing: false,
-                },
-            ],
-            examples: &[Example {
-                description: "Basic process terminator",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::TimerLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for TimerLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(TimerLauncher),
+                variant_name: variant_name!(Timer),
+                description: "Start and run up to four timers concurrently. Each timer can have a unique action to be run at completion.",
+                args: &[FieldDoc {
+                    name: "exec",
+                    ty: "command",
+                    required: false,
+                    default: Some(""),
+                    description: "The command to execute on timer completion.",
+                }],
+                inner_functions: &[
+                    InnerFunctionDoc {
+                        name: "Toggle",
+                        identifier: "inner.toggle",
+                        description: "Toggle all timers",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Reset",
+                        identifier: "inner.reset",
+                        description: "Reset all timers",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "New Timer",
+                        identifier: "",
+                        description: "Create new timer",
+                        user_facing: false,
+                    },
+                ],
+                examples: &[Example {
+                    description: "Basic process terminator",
+                    json: indoc! {
+                        r#"{
                         "name": "Timer",
                         "type": "timer",
                         "args": {
@@ -136,9 +142,10 @@ impl LauncherDoc for TimerLauncher {
                         "priority": 1,
                         "shortcut": false
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

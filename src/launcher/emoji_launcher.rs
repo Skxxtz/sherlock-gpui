@@ -1,12 +1,9 @@
 use std::{fmt::Display, sync::Arc};
 
-use indoc::indoc;
 use serde::{Deserialize, Serialize};
 use strum::FromRepr;
 
 use crate::{
-    display_name,
-    docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{
         LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData,
         emoji_launcher::data::EmojiEntry,
@@ -17,7 +14,6 @@ use crate::{
     },
     ui::widgets::{RenderableChild, emoji::set_selected_skin_tone},
     utils::errors::SherlockMessage,
-    variant_name,
 };
 
 pub mod data;
@@ -126,23 +122,33 @@ impl SkinTone {
 }
 
 // DOCS
-impl LauncherDoc for EmojiPicker {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(EmojiPicker),
-            variant_name: variant_name!(Emoji),
-            description: "A emoji picker allowing for skin tone selection.",
-            args: &[FieldDoc {
-                name: "default_skin_tone",
-                ty: "SkinTone",
-                required: false,
-                default: Some("Simpsons"),
-                description: "The skin tone to use as the default. Can be either: Light, MediumLight, Medium, MediumDark, Dark, or Simpsons",
-            }],
-            examples: &[Example {
-                description: "Basic emoji picker",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::EmojiPicker;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for EmojiPicker {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(EmojiPicker),
+                variant_name: variant_name!(Emoji),
+                description: "A emoji picker allowing for skin tone selection.",
+                args: &[FieldDoc {
+                    name: "default_skin_tone",
+                    ty: "SkinTone",
+                    required: false,
+                    default: Some("Simpsons"),
+                    description: "The skin tone to use as the default. Can be either: Light, MediumLight, Medium, MediumDark, Dark, or Simpsons",
+                }],
+                examples: &[Example {
+                    description: "Basic emoji picker",
+                    json: indoc! {
+                        r#"{
                         "name": "Emoji Picker",
                         "alias": "emj",
                         "type": "emoji",
@@ -152,9 +158,10 @@ impl LauncherDoc for EmojiPicker {
                         "priority": 5,
                         "home": "Home"
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

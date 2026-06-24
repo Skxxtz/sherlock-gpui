@@ -1,15 +1,11 @@
 use crate::{
-    display_name,
-    docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{LauncherProvider, LauncherType, app_launcher::app_data::AppData},
     loader::utils::{PriorityGuard, RawLauncher},
     sherlock_msg,
     ui::widgets::RenderableChild,
     utils::errors::{SherlockMessage, types::SherlockErrorType},
-    variant_name,
 };
 use gpui::SharedString;
-use indoc::indoc;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -60,39 +56,49 @@ impl LauncherProvider for WebLauncher {
 /// - `engine`: The engine to be used for the query
 /// - `browser`: The browser to be used for opening the query, defaults
 /// - `display_name`: The display name for this tile, replacing `{keyword}` with query
-impl LauncherDoc for WebLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(WebLauncher),
-            variant_name: variant_name!(Web),
-            description: "Seach the current query in the specified engine using the specified browser.",
-            args: &[
-                FieldDoc {
-                    name: "search_engine",
-                    ty: "string",
-                    required: true,
-                    default: None,
-                    description: "The search engine used for the query.",
-                },
-                FieldDoc {
-                    name: "browser",
-                    ty: "u64",
-                    required: false,
-                    default: Some("Default Browser"),
-                    description: "The browser in which to open the query.",
-                },
-                FieldDoc {
-                    name: "display_name",
-                    ty: "string",
-                    required: false,
-                    default: None,
-                    description: "The display name for this tile, replacing `{keyword}` with the actual contents of the search bar.",
-                },
-            ],
-            examples: &[Example {
-                description: "Basic web launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::WebLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for WebLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(WebLauncher),
+                variant_name: variant_name!(Web),
+                description: "Seach the current query in the specified engine using the specified browser.",
+                args: &[
+                    FieldDoc {
+                        name: "search_engine",
+                        ty: "string",
+                        required: true,
+                        default: None,
+                        description: "The search engine used for the query.",
+                    },
+                    FieldDoc {
+                        name: "browser",
+                        ty: "u64",
+                        required: false,
+                        default: Some("Default Browser"),
+                        description: "The browser in which to open the query.",
+                    },
+                    FieldDoc {
+                        name: "display_name",
+                        ty: "string",
+                        required: false,
+                        default: None,
+                        description: "The display name for this tile, replacing `{keyword}` with the actual contents of the search bar.",
+                    },
+                ],
+                examples: &[Example {
+                    description: "Basic web launcher",
+                    json: indoc! {
+                        r#"{
                         "name": "Web Search",
                         "alias": "gg",
                         "type": "web",
@@ -104,9 +110,10 @@ impl LauncherDoc for WebLauncher {
                         "home": "Persist",
                         "priority": 100
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

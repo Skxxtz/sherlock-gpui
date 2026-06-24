@@ -1,8 +1,5 @@
 use super::capabilities::{HasCapabilityBit, PluginCapability};
-use crate::{
-    docs::launcher::plugin_launcher::{PluginCapabilityFunctionDoc, PluginCapabilityModuleDoc},
-    launcher::plugin_launcher::api::protocol::PluginDeferFunction,
-};
+use crate::launcher::plugin_launcher::api::protocol::PluginDeferFunction;
 use mlua::prelude::*;
 use std::{fmt::Write, sync::OnceLock};
 use tokio::sync::mpsc;
@@ -203,22 +200,32 @@ macro_rules! generate_modules {
                 }
             })
         }
-        pub fn plugin_capability_docs() -> &'static [PluginCapabilityModuleDoc] {
-            &[
-                $(
-                    PluginCapabilityModuleDoc {
-                        module: $name,
-                        functions: &[
-                            $(
-                                PluginCapabilityFunctionDoc {
-                                    name: <$fn_path as SherlockPluginFn>::NAME,
-                                    doc: <$fn_path as SherlockPluginFn>::DOC,
-                                },
-                            )*
-                        ],
-                    },
-                )*
-            ]
+
+        #[cfg(feature = "docs")]
+        pub mod docs {
+            use super::*;
+            use crate::docs::launcher::plugin_launcher::{
+                PluginCapabilityModuleDoc,
+                PluginCapabilityFunctionDoc,
+            };
+
+            pub fn plugin_capability_docs() -> &'static [PluginCapabilityModuleDoc] {
+                &[
+                    $(
+                        PluginCapabilityModuleDoc {
+                            module: $name,
+                            functions: &[
+                                $(
+                                    PluginCapabilityFunctionDoc {
+                                        name: <$fn_path as SherlockPluginFn>::NAME,
+                                        doc: <$fn_path as SherlockPluginFn>::DOC,
+                                    },
+                                )*
+                            ],
+                        },
+                    )*
+                ]
+            }
         }
 
         pub struct LuaApiDocumentation;
@@ -260,10 +267,10 @@ macro_rules! generate_modules {
 }
 
 generate_modules! {
-    ClipboardModule("clipboard") => [clipboard::Get, clipboard::Set],
-    HttpModule("http")           => [http::Get, http::Post],
-    JsonModule("json")           => [json::Decode],
-    LogModule("log")             => [log::Info, log::Error],
-    TimeModule("time")           => [time::Sleep],
-    UiModule("ui")               => [ui::Update],
+    ClipboardModule("clipboard") => [self::clipboard::Get, self::clipboard::Set],
+    HttpModule("http")           => [self::http::Get, self::http::Post],
+    JsonModule("json")           => [self::json::Decode],
+    LogModule("log")             => [self::log::Info, self::log::Error],
+    TimeModule("time")           => [self::time::Sleep],
+    UiModule("ui")               => [self::ui::Update],
 }

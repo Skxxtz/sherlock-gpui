@@ -1,17 +1,15 @@
 use std::sync::Arc;
 
-use indoc::indoc;
 use serde::de::IntoDeserializer;
 
-use crate::docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry};
 use crate::launcher::app_launcher::app_serde::deserialize_named_appdata;
 use crate::launcher::{LauncherProvider, LauncherType};
 use crate::loader::utils::{ApplicationAction, RawLauncher};
+use crate::sherlock_msg;
 use crate::ui::launcher::context_menu::ContextMenuAction;
 use crate::ui::widgets::RenderableChild;
 use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::SherlockErrorType;
-use crate::{display_name, sherlock_msg, variant_name};
 
 /// The following arguments are available to users:
 /// - `categories`: The available categories. Is a named AppData. On execution, will apply the
@@ -81,23 +79,33 @@ impl LauncherProvider for CategoryLauncher {
 }
 
 // DOCS
-impl LauncherDoc for CategoryLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(CategoryLauncher),
-            variant_name: variant_name!(Categories),
-            description: "Applies aliases to restrict search to certain launchers.",
-            args: &[FieldDoc {
-                name: "categories",
-                ty: "{Name: AppData}",
-                required: true,
-                default: None,
-                description: "The available categories. On execution, will apply the aslias, privodes as the `exec` field.",
-            }],
-            examples: &[Example {
-                description: "Power Menu Example",
-                json: indoc! {
-                    r#" {
+#[cfg(feature = "docs")]
+mod docs {
+    use super::CategoryLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for CategoryLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(CategoryLauncher),
+                variant_name: variant_name!(Categories),
+                description: "Applies aliases to restrict search to certain launchers.",
+                args: &[FieldDoc {
+                    name: "categories",
+                    ty: "{Name: AppData}",
+                    required: true,
+                    default: None,
+                    description: "The available categories. On execution, will apply the aslias, privodes as the `exec` field.",
+                }],
+                examples: &[Example {
+                    description: "Power Menu Example",
+                    json: indoc! {
+                        r#" {
                         "name": "Categories",
                         "alias": "cat",
                         "type": "categories",
@@ -146,9 +154,10 @@ impl LauncherDoc for CategoryLauncher {
                         "priority": 4,
                         "home": "Home"
                     } "#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

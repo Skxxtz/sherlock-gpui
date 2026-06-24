@@ -100,7 +100,7 @@ jobs:
 
       # Build and test
       - name: Build
-        run: cargo build --verbose --features wayland
+        run: cargo build --verbose --features "wayland,docs"
 
       - name: Run tests
-        run: cargo test --verbose --features wayland
+        run: cargo test --verbose --features "wayland,docs"

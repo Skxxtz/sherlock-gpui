@@ -10,7 +10,7 @@ version = "0.2.3"
 edition = "2024"
 
 [dependencies]
-md-rs = { path = "./crates/md-rs", features = ["github"] }
+md-rs = { path = "./crates/md-rs", features = ["github"], optional = true }
 arrayvec = "0.7.6"
 bincode = {version = "2.0.1", features = ["serde"]}
 bytes = "1.11.0"
@@ -68,6 +68,7 @@ default = ["wayland"]
 wayland = ["gpui/wayland", "gpui_platform/wayland"]
 nixos = []
 bench = []
+docs = ["md-rs"]
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

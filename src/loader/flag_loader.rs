@@ -13,11 +13,15 @@ mod utils;
 pub enum DebugAction {
     Help,
     Version,
-    GenerateDocs,
     Repair,
     ClearCache,
-    Init { path: PathBuf, extension: String },
+    Init {
+        path: PathBuf,
+        extension: String,
+    },
     PluginInit,
+    #[cfg(feature = "docs")]
+    GenerateDocs,
 }
 
 impl Loader {

@@ -1,11 +1,7 @@
+use serde::de::IntoDeserializer;
 use std::sync::Arc;
 
-use indoc::indoc;
-use serde::de::IntoDeserializer;
-
 use crate::{
-    display_name,
-    docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
     launcher::{
         LauncherProvider, LauncherType, app_launcher::app_serde::deserialize_named_appdata,
     },
@@ -13,7 +9,6 @@ use crate::{
     sherlock_msg,
     ui::{launcher::context_menu::ContextMenuAction, widgets::RenderableChild},
     utils::errors::{SherlockMessage, types::SherlockErrorType},
-    variant_name,
 };
 
 /// The following arguments are available to users:
@@ -84,23 +79,33 @@ impl LauncherProvider for CommandLauncher {
 }
 
 // DOCS
-impl LauncherDoc for CommandLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(CommandLauncher),
-            variant_name: variant_name!(Commands),
-            description: "Launches user-specified commands.",
-            args: &[FieldDoc {
-                name: "commands",
-                ty: "{Name: AppData}",
-                required: true,
-                default: None,
-                description: "The commands to show in Sherlock.",
-            }],
-            examples: &[Example {
-                description: "Basic command launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::CommandLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for CommandLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(CommandLauncher),
+                variant_name: variant_name!(Commands),
+                description: "Launches user-specified commands.",
+                args: &[FieldDoc {
+                    name: "commands",
+                    ty: "{Name: AppData}",
+                    required: true,
+                    default: None,
+                    description: "The commands to show in Sherlock.",
+                }],
+                examples: &[Example {
+                    description: "Basic command launcher",
+                    json: indoc! {
+                        r#"{
                         "name": "Throw Confetti",
                         "type": "commands",
                         "args": {
@@ -114,9 +119,10 @@ impl LauncherDoc for CommandLauncher {
                         },
                         "priority": 4
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

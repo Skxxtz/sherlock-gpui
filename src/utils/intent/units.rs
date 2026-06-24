@@ -34,23 +34,38 @@ macro_rules! define_units {
             }
         }
 
-        pub static CAPABILITY_DOCS: &[CapabilityDoc] = &[
-            $(
-                CapabilityDoc {
-                    name: stringify!($category),
-                    identifier: $id,
-                    units: &[
-                        $(
-                            UnitDoc {
-                                name: stringify!($variant),
-                                aliases: &[$($alias),*],
-                                symbol: $canonical_symbol,
-                            },
-                        )*
-                    ],
-                },
-            )*
-        ];
+        #[cfg(feature = "docs")]
+        pub mod docs {
+            pub struct CapabilityDoc {
+                pub name: &'static str,
+                pub identifier: &'static str,
+                pub units: &'static [UnitDoc],
+            }
+
+            pub struct UnitDoc {
+                pub name: &'static str,
+                pub aliases: &'static [&'static str],
+                pub symbol: &'static str,
+            }
+
+            pub static CAPABILITY_DOCS: &[CapabilityDoc] = &[
+                $(
+                    CapabilityDoc {
+                        name: stringify!($category),
+                        identifier: $id,
+                        units: &[
+                            $(
+                                UnitDoc {
+                                    name: stringify!($variant),
+                                    aliases: &[$($alias),*],
+                                    symbol: $canonical_symbol,
+                                },
+                            )*
+                        ],
+                    },
+                )*
+            ];
+        }
 
         impl std::fmt::Debug for Capabilities {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -375,16 +390,4 @@ define_units! {
         MilesPerHour: ["mph", "mile per hour", "miles per hour"] => 0.44704, "mph",
         Knot: ["kn", "knot", "knots"] => 0.514444, "kn",
     }
-}
-
-pub struct CapabilityDoc {
-    pub name: &'static str,
-    pub identifier: &'static str,
-    pub units: &'static [UnitDoc],
-}
-
-pub struct UnitDoc {
-    pub name: &'static str,
-    pub aliases: &'static [&'static str],
-    pub symbol: &'static str,
 }

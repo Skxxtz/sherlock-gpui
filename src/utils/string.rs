@@ -1,3 +1,4 @@
+#[allow(unused)]
 pub trait TrimInPlace {
     fn trim_in_place(&mut self);
 }

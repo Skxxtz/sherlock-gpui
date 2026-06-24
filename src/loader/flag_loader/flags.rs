@@ -111,15 +111,14 @@ pub const FLAGS: &[FlagSpec] = &[
             Ok(())
         },
     },
+    #[cfg(feature = "docs")]
     FlagSpec {
         long: "--generate-docs",
         short: None,
         section: FlagSection::None,
         help: "Generate docs (dev only).",
         parse: |_args, _iter, _flags, startup| {
-            if startup.is_none()
-                && std::env::var("SHERLOCK_DEV").is_ok_and(|var| var.eq_ignore_ascii_case("true"))
-            {
+            if startup.is_none() {
                 *startup = Some(DebugAction::GenerateDocs.into());
             }
             Ok(())

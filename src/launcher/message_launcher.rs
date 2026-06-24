@@ -3,8 +3,6 @@ use std::sync::Arc;
 use serde::Deserialize;
 
 use crate::{
-    display_name,
-    docs::launcher::{LauncherDoc, LauncherDocEntry},
     launcher::{LauncherProvider, app_launcher::app_data::AppData, variant_type::LauncherType},
     loader::{
         resolve_icon_path,
@@ -12,7 +10,6 @@ use crate::{
     },
     ui::widgets::RenderableChild,
     utils::errors::SherlockMessage,
-    variant_name,
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -44,12 +41,22 @@ impl LauncherProvider for MessageLauncher {
 }
 
 // DOCS
-impl LauncherDoc for MessageLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry::new_hidden(
-            display_name!(MessageLauncher),
-            variant_name!(Message),
-            "The launcher to provide the message view",
-        )
+#[cfg(feature = "docs")]
+mod docs {
+    use super::MessageLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+
+    impl LauncherDoc for MessageLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry::new_hidden(
+                display_name!(MessageLauncher),
+                variant_name!(Message),
+                "The launcher to provide the message view",
+            )
+        }
     }
 }

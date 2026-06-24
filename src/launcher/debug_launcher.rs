@@ -2,7 +2,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::docs::launcher::{Example, InnerFunctionDoc, LauncherDoc, LauncherDocEntry};
 use crate::launcher::app_launcher::app_data::AppData;
 use crate::launcher::variant_type::InnerFunction;
 use crate::launcher::{ExecEffect, LauncherProvider, LauncherType};
@@ -14,11 +13,8 @@ use crate::utils::config::ConfigGuard;
 use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::{DirAction, FileAction, SherlockErrorType};
 use crate::utils::paths;
-use crate::{
-    define_inner_functions, display_name, ensure_func, sherlock_msg, skip_func_if_nav, variant_name,
-};
+use crate::{define_inner_functions, ensure_func, sherlock_msg, skip_func_if_nav};
 use gpui::App;
-use indoc::indoc;
 
 define_inner_functions! {
     pub enum DebugFunctions {
@@ -174,42 +170,52 @@ impl DebugFunctions {
 }
 
 // DOCS
-impl LauncherDoc for DebugLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(DebugLauncher),
-            variant_name: variant_name!(Debug),
-            description: "Execute different debug functions like clearing the cache or app counts.",
-            inner_functions: &[
-                InnerFunctionDoc {
-                    name: "Clear Cache",
-                    identifier: "inner.clear_cache",
-                    description: "Clears the entire ~/.cache/sherlock/ directory.",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "Clear App Counts",
-                    identifier: "inner.clear_app_counts",
-                    description: "Clears the app count file to reset the sorting based on execution counts.",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "Clear Errors",
-                    identifier: "inner.clear_errors",
-                    description: "Clears the messages from the message view",
-                    user_facing: true,
-                },
-                InnerFunctionDoc {
-                    name: "Insert Test Errors",
-                    identifier: "inner.insert_test_errors",
-                    description: "Inserts test messages for each message type: Info, Warning, and Error.",
-                    user_facing: true,
-                },
-            ],
-            examples: &[Example {
-                description: "Basic app launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::DebugLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for DebugLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(DebugLauncher),
+                variant_name: variant_name!(Debug),
+                description: "Execute different debug functions like clearing the cache or app counts.",
+                inner_functions: &[
+                    InnerFunctionDoc {
+                        name: "Clear Cache",
+                        identifier: "inner.clear_cache",
+                        description: "Clears the entire ~/.cache/sherlock/ directory.",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Clear App Counts",
+                        identifier: "inner.clear_app_counts",
+                        description: "Clears the app count file to reset the sorting based on execution counts.",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Clear Errors",
+                        identifier: "inner.clear_errors",
+                        description: "Clears the messages from the message view",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Insert Test Errors",
+                        identifier: "inner.insert_test_errors",
+                        description: "Inserts test messages for each message type: Info, Warning, and Error.",
+                        user_facing: true,
+                    },
+                ],
+                examples: &[Example {
+                    description: "Basic app launcher",
+                    json: indoc! {
+                        r#"{
                         "name": "Debug",
                         "type": "debug",
                         "alias": "debug",
@@ -217,9 +223,10 @@ impl LauncherDoc for DebugLauncher {
                         "priority": 1,
                         "exit": false
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

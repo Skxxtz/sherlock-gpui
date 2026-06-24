@@ -1,6 +1,5 @@
 use chrono::NaiveTime;
 use gpui::{Hsla, LinearColorStop, SharedString, linear_color_stop, rgb};
-use indoc::indoc;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
@@ -8,7 +7,6 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use strum::Display;
 
-use crate::docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry};
 use crate::launcher::LauncherConfig;
 use crate::launcher::weather_launcher::utils::transform_weather;
 use crate::launcher::weather_launcher::wttr_serde::WttrResponse;
@@ -18,10 +16,10 @@ use crate::ui::widgets::weather::WeatherWidget;
 use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::{NetworkAction, SherlockErrorType};
 use crate::utils::files::home_dir;
-use crate::{display_name, sherlock_msg, variant_name};
 use crate::{
     launcher::{LauncherProvider, LauncherType},
     loader::utils::RawLauncher,
+    sherlock_msg,
 };
 
 mod utils;
@@ -285,46 +283,56 @@ impl WeatherClass {
 }
 
 // DOCS
-impl LauncherDoc for WeatherLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(WeatherLauncher),
-            variant_name: variant_name!(Weather),
-            description: "Display the weather and time in Sherlock.",
-            args: &[
-                FieldDoc {
-                    name: "location",
-                    ty: "string",
-                    required: true,
-                    default: None,
-                    description: "The location for the weather.",
-                },
-                FieldDoc {
-                    name: "update_interval",
-                    ty: "u64",
-                    required: true,
-                    default: None,
-                    description: "The time in minutes after which to invalidate the cached weather condition.",
-                },
-                FieldDoc {
-                    name: "icon_theme",
-                    ty: "string",
-                    required: false,
-                    default: None,
-                    description: "The weather icon theme. Can be either `None` or `Sherlock`",
-                },
-                FieldDoc {
-                    name: "show_datetime",
-                    ty: "bool",
-                    required: false,
-                    default: Some("false"),
-                    description: "Whether to show a tile with the current date and time.",
-                },
-            ],
-            examples: &[Example {
-                description: "Basic weather launcher",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::WeatherLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for WeatherLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(WeatherLauncher),
+                variant_name: variant_name!(Weather),
+                description: "Display the weather and time in Sherlock.",
+                args: &[
+                    FieldDoc {
+                        name: "location",
+                        ty: "string",
+                        required: true,
+                        default: None,
+                        description: "The location for the weather.",
+                    },
+                    FieldDoc {
+                        name: "update_interval",
+                        ty: "u64",
+                        required: true,
+                        default: None,
+                        description: "The time in minutes after which to invalidate the cached weather condition.",
+                    },
+                    FieldDoc {
+                        name: "icon_theme",
+                        ty: "string",
+                        required: false,
+                        default: None,
+                        description: "The weather icon theme. Can be either `None` or `Sherlock`",
+                    },
+                    FieldDoc {
+                        name: "show_datetime",
+                        ty: "bool",
+                        required: false,
+                        default: Some("false"),
+                        description: "Whether to show a tile with the current date and time.",
+                    },
+                ],
+                examples: &[Example {
+                    description: "Basic weather launcher",
+                    json: indoc! {
+                        r#"{
                         "name": "Weather",
                         "type": "weather",
                         "args": {
@@ -346,9 +354,10 @@ impl LauncherDoc for WeatherLauncher {
                         "shortcut": false,
                         "spawn_focus": false
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }

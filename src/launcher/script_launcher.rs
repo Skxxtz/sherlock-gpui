@@ -1,12 +1,9 @@
 use gpui::{App, AppContext, SharedString};
-use indoc::indoc;
 use serde_json::Value;
 use std::sync::Arc;
 
 use crate::{
-    define_inner_functions, display_name,
-    docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
-    ensure_func,
+    define_inner_functions, ensure_func,
     launcher::{
         Bind, ExecEffect, LauncherProvider, LauncherType, LoadContext, variant_type::InnerFunction,
     },
@@ -20,7 +17,6 @@ use crate::{
         },
     },
     utils::errors::{SherlockMessage, types::SherlockErrorType},
-    variant_name,
 };
 
 define_inner_functions! {
@@ -116,45 +112,55 @@ impl LauncherProvider for ScriptLauncher {
 }
 
 // DOCS
-impl LauncherDoc for ScriptLauncher {
-    fn doc() -> LauncherDocEntry {
-        LauncherDocEntry {
-            name: display_name!(ScriptLauncher),
-            variant_name: variant_name!(Script),
-            description: "Executes commands either on keypress (async) or on return. The results will be displayed within Sherlock.",
-            args: &[
-                FieldDoc {
-                    name: "async",
-                    ty: "bool",
-                    required: false,
-                    default: Some("true"),
-                    description: "If set to true, will run the script on every keypress. If set to false, will wait for the execution of the `inner.run` command.",
-                },
-                FieldDoc {
-                    name: "exec",
-                    ty: "command",
-                    required: false,
-                    default: Some("false"),
-                    description: "Wheather a tile should be displayed of the user only wants the alias-based execution.",
-                },
-                FieldDoc {
-                    name: "exec",
-                    ty: "string",
-                    required: false,
-                    default: Some(""),
-                    description: "The arguments to the command. Will replace `{keyword}` with the actual contents of the search bar.",
-                },
-            ],
-            inner_functions: &[InnerFunctionDoc {
-                name: "Run",
-                identifier: "inner.run",
-                description: "Run the current script. (Required if `async = false`)",
-                user_facing: true,
-            }],
-            examples: &[Example {
-                description: "Basic process terminator",
-                json: indoc! {
-                    r#"{
+#[cfg(feature = "docs")]
+mod docs {
+    use super::ScriptLauncher;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+    use indoc::indoc;
+
+    impl LauncherDoc for ScriptLauncher {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(ScriptLauncher),
+                variant_name: variant_name!(Script),
+                description: "Executes commands either on keypress (async) or on return. The results will be displayed within Sherlock.",
+                args: &[
+                    FieldDoc {
+                        name: "async",
+                        ty: "bool",
+                        required: false,
+                        default: Some("true"),
+                        description: "If set to true, will run the script on every keypress. If set to false, will wait for the execution of the `inner.run` command.",
+                    },
+                    FieldDoc {
+                        name: "exec",
+                        ty: "command",
+                        required: false,
+                        default: Some("false"),
+                        description: "Wheather a tile should be displayed of the user only wants the alias-based execution.",
+                    },
+                    FieldDoc {
+                        name: "exec",
+                        ty: "string",
+                        required: false,
+                        default: Some(""),
+                        description: "The arguments to the command. Will replace `{keyword}` with the actual contents of the search bar.",
+                    },
+                ],
+                inner_functions: &[InnerFunctionDoc {
+                    name: "Run",
+                    identifier: "inner.run",
+                    description: "Run the current script. (Required if `async = false`)",
+                    user_facing: true,
+                }],
+                examples: &[Example {
+                    description: "Basic process terminator",
+                    json: indoc! {
+                        r#"{
                         "name": "Wikipedia Search",
                         "alias": "wiki",
                         "type": "script",
@@ -166,9 +172,10 @@ impl LauncherDoc for ScriptLauncher {
                         "priority": 0,
                         "shortcut": false
                     }"#
-                },
-            }],
-            ..LauncherDocEntry::new()
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
         }
     }
 }
