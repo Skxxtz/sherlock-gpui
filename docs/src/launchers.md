@@ -900,28 +900,123 @@ _Basic music player_
 
 `type = plugin`
 
-Launches installed desktop applications
+The harness for custom plugins. Allow access to specific user plugins.
 
 ### Args
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `use_keywords` | `bool` |  | true | Whether the search should use the keywords defined in the .desktop file. |
+| `path` | `Path` | ✓ | — | The location of the plugin `init.lua` file. |
+| `capabilities` | `PluginCapability` |  | PluginCapability::None | The allowed scopes, the plugin can access. |
+
+<details>
+<summary><strong>Capabilities:</strong></summary>
+
+Plugin capabilities control what scopes the plugin can access. They are a security feature, preventing malicious plugins from accessing scopes the user doesnt explicitly allow. Otherwise, a plugin could for example create a clipboard tracker, allowing a hacker to log the users clipboard content in a remote database. Therefore, it's **strongly recommented.** to use a proper capability setup, allowing only necessary scopes. 
+
+Pass them via the `capabilities` arg:
+
+```json
+{ "capabilities": ["calc.math", "calc.units"] }
+```
+
+<details>
+<summary>clipboard</summary>
+
+#### `clipboard.get`
+
+Fetches the current clipboard entry.
+
+#### `clipboard.set`
+
+Writes a string to the clipboard.
+
+</details>
+
+<details>
+<summary>http</summary>
+
+#### `http.get`
+
+Performs an HTTP GET request and returns the response body.
+
+#### `http.post`
+
+Performs an HTTP POST request with the given body and optional headers, and returns the response body.
+
+</details>
+
+<details>
+<summary>json</summary>
+
+#### `json.decode`
+
+Decodes a given string into a Lua table.
+
+</details>
+
+<details>
+<summary>log</summary>
+
+#### `log.info`
+
+Logs an informational message.
+
+#### `log.error`
+
+Logs an error message.
+
+</details>
+
+<details>
+<summary>time</summary>
+
+#### `time.sleep_ms`
+
+Sleeps for <ms> milliseconds.
+
+</details>
+
+<details>
+<summary>ui</summary>
+
+#### `ui.update`
+
+Updates the UI tile identified by <tile_id> with the given node.
+
+</details>
+
+</details>
+
+### Inner Functions
+
+| Name | Identifier | Description |
+|---|---|---|
+| Reload | `inner.reload` | Reload plugin and its environment. |
 
 ### Examples
 
-_Basic app launcher_
+_Basic plugin launcher_
 
 ```json
 {
-    "name": "App Launcher",
-    "alias": "app",
-    "type": "apps",
+    "type": "plugin",
+    "name": "Quote Plugin",
     "args": {
-        "use_keywords": false
+        "path": "~/.config/sherlock/plugins/quote.lua",
+        "capabilities": ["http.get", "json.decode"]
     },
-    "priority": 4,
-    "home": "Home"
+    "actions": [
+        {
+            "name": "Reload",
+            "icon": "sherlock-devtools",
+            "method": "inner.reload"
+        }
+    ],
+    "home": "OnlyHome",
+    "shortcut": false,
+    "spawn_focus": false,
+    "priority": 1
 }
 ```
 
