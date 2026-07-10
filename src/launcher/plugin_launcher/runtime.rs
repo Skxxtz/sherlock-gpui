@@ -62,6 +62,14 @@ pub enum LuaJob {
 
 pub static LUA_RUNTIME: OnceLock<LuaRuntimeHandle> = OnceLock::new();
 
+/// Creates a mock instance of the LuaRuntimeHandle.
+/// The receiver is dropped, so sends will succeed but jobs go nowhere.
+#[cfg(test)]
+pub fn init_mock_runtime(){
+    let (tx, _rx) = mpsc::unbounded_channel();
+    let _ = LUA_RUNTIME.set(LuaRuntimeHandle { tx });
+}
+
 #[derive(Clone)]
 pub struct LuaRuntimeHandle {
     tx: mpsc::UnboundedSender<LuaJob>,
@@ -79,7 +87,8 @@ impl LuaRuntimeHandle {
         job: LuaJob,
         rx: oneshot::Receiver<LuaResult<T>>,
     ) -> LuaResult<T> {
-        self.tx.send(job)
+        self.tx
+            .send(job)
             .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
         rx.await
             .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
@@ -184,7 +193,15 @@ impl LuaRuntimeHandle {
         theme: Arc<ThemeData>,
     ) -> LuaResult<()> {
         let (reply, rx) = oneshot::channel();
-        self.send_and_recv(LuaJob::CallInit { handle, theme, reply }, rx).await
+        self.send_and_recv(
+            LuaJob::CallInit {
+                handle,
+                theme,
+                reply,
+            },
+            rx,
+        )
+        .await
     }
 
     /// Fire-and-forget: starts the plugin's `live(tile_id)` loop. Does not
