@@ -31,7 +31,11 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             .await;
             let _ = reply.send(result);
         }
-        LuaJob::CallInit { handle, theme, reply } => {
+        LuaJob::CallInit {
+            handle,
+            theme,
+            reply,
+        } => {
             let result = call_plugin_fn_async::<mlua::Value>(
                 &lua,
                 &registry,

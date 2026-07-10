@@ -9,9 +9,7 @@ impl SherlockPluginFn for Version {
     const RETURNS: &'static str = "string";
     const DOC: &'static str = "Gives the current Sherlock version.";
     fn register(lua: &Lua, table: &LuaTable, _ctx: &ApiContext) -> LuaResult<()> {
-        lua_fn!(table, lua, |_lua, ()| Ok(
-            env!("CARGO_PKG_VERSION")
-        ))
+        lua_fn!(table, lua, |_lua, ()| Ok(env!("CARGO_PKG_VERSION")))
     }
 }
 
@@ -22,9 +20,7 @@ impl SherlockPluginFn for VersionMajor {
     const RETURNS: &'static str = "string";
     const DOC: &'static str = "Gives the major version component of Sherlock.";
     fn register(lua: &Lua, table: &LuaTable, _ctx: &ApiContext) -> LuaResult<()> {
-        lua_fn!(table, lua, |_lua, ()| Ok(
-            env!("CARGO_PKG_VERSION_MAJOR")
-        ))
+        lua_fn!(table, lua, |_lua, ()| Ok(env!("CARGO_PKG_VERSION_MAJOR")))
     }
 }
 
@@ -35,9 +31,7 @@ impl SherlockPluginFn for VersionMinor {
     const RETURNS: &'static str = "string";
     const DOC: &'static str = "Gives the minor version component of Sherlock.";
     fn register(lua: &Lua, table: &LuaTable, _ctx: &ApiContext) -> LuaResult<()> {
-        lua_fn!(table, lua, |_lua, ()| Ok(
-            env!("CARGO_PKG_VERSION_MINOR")
-        ))
+        lua_fn!(table, lua, |_lua, ()| Ok(env!("CARGO_PKG_VERSION_MINOR")))
     }
 }
 
@@ -48,9 +42,7 @@ impl SherlockPluginFn for VersionPatch {
     const RETURNS: &'static str = "string";
     const DOC: &'static str = "Gives the patch version component of Sherlock.";
     fn register(lua: &Lua, table: &LuaTable, _ctx: &ApiContext) -> LuaResult<()> {
-        lua_fn!(table, lua, |_lua, ()| Ok(
-            env!("CARGO_PKG_VERSION_PATCH")
-        ))
+        lua_fn!(table, lua, |_lua, ()| Ok(env!("CARGO_PKG_VERSION_PATCH")))
     }
 }
 
@@ -61,9 +53,7 @@ impl SherlockPluginFn for AppName {
     const RETURNS: &'static str = "string";
     const DOC: &'static str = "Gives the crate/application name.";
     fn register(lua: &Lua, table: &LuaTable, _ctx: &ApiContext) -> LuaResult<()> {
-        lua_fn!(table, lua, |_lua, ()| Ok(
-            env!("CARGO_PKG_NAME")
-        ))
+        lua_fn!(table, lua, |_lua, ()| Ok(env!("CARGO_PKG_NAME")))
     }
 }
 

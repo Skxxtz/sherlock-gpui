@@ -53,25 +53,6 @@ pub struct PluginLauncher {
     pub handle: Arc<PluginHandle>,
 }
 
-fn load_plugin(
-    path: Arc<Path>,
-    capabilities: PluginCapability,
-) -> Result<Arc<PluginHandle>, SherlockMessage> {
-    #[cfg(test)]
-    return Ok(Arc::new(PluginHandle::default()));
-
-    let runtime = LuaRuntimeHandle::get();
-    futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities))
-        .map_err(|e| {
-            sherlock_msg!(
-                Error,
-                SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
-                e
-            )
-        })
-        .map(Arc::new)
-}
-
 impl LauncherProvider for PluginLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let home = home_dir()?;
@@ -99,7 +80,16 @@ impl LauncherProvider for PluginLauncher {
             .map(|v| capabilities_from_names(v.iter().filter_map(|v| v.as_str())))
             .unwrap_or(PluginCapability::NONE);
 
-        let handle = load_plugin(path.clone(), capabilities)?;
+        let runtime = LuaRuntimeHandle::get();
+        let handle = futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities))
+            .map_err(|e| {
+                sherlock_msg!(
+                    Error,
+                    SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                    e
+                )
+            })
+            .map(Arc::new)?;
 
         Ok(LauncherType::Plugin(Self {
             path,
@@ -192,8 +182,7 @@ impl PluginLauncher {
                 let (tile_id, data) = (tile.id, tile.node);
                 let entity = cx.new(|_| PluginTileState {
                     data: Some(Box::new(data)),
-                    loading: false,
-                    error: None,
+                    ..Default::default()
                 });
 
                 let weak = entity.downgrade();

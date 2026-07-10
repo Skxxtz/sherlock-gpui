@@ -65,7 +65,7 @@ pub static LUA_RUNTIME: OnceLock<LuaRuntimeHandle> = OnceLock::new();
 /// Creates a mock instance of the LuaRuntimeHandle.
 /// The receiver is dropped, so sends will succeed but jobs go nowhere.
 #[cfg(test)]
-pub fn init_mock_runtime(){
+pub fn init_mock_runtime() {
     let (tx, _rx) = mpsc::unbounded_channel();
     let _ = LUA_RUNTIME.set(LuaRuntimeHandle { tx });
 }
