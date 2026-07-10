@@ -720,6 +720,7 @@ impl LauncherView {
                         | LauncherType::MusicPlayer(_)
                         | LauncherType::Clipboard(_)
                         | LauncherType::Event(_)
+                        | LauncherType::Plugin(_)
                 ) {
                     Some(launcher.children.iter())
                 } else {

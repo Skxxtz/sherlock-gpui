@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, Entity, ImageSource, IntoElement, ParentElement, Styled, StyledText, div, img,
+    AnyElement, App, AsyncApp, Entity, ImageSource, IntoElement, ParentElement, Styled, StyledText,
+    WeakEntity, div, img,
 };
 
 use crate::{
@@ -9,10 +10,11 @@ use crate::{
     launcher::{
         LauncherConfig,
         plugin_launcher::{
-            plugin_tile_state::PluginTileState, subscribers::TileSubscribers,
-            ui_schema::PluginUiNode,
+            plugin_tile_state::PluginTileState, runtime::LuaRuntimeHandle,
+            subscribers::TileSubscribers, ui_schema::PluginUiNode,
         },
         utils::exec_mode::ExecMode,
+        variant_type::LauncherType,
     },
     loader::{resolve_icon_path, utils::Priority},
     ui::{
@@ -110,6 +112,43 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
     }
     #[inline(always)]
     fn increment_count(&self) {}
+
+    fn update_async<C: gpui::AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
+        let LauncherType::Plugin(plg) = launcher.launcher_type.as_ref() else {
+            return;
+        };
+        let handle = plg.handle.clone();
+        let tile_id = self.tile_id.clone();
+
+        self.state.update(cx, |this, cx| {
+            let task = cx.spawn(
+                move |weak_self: WeakEntity<PluginTileState>, cx: &mut AsyncApp| {
+                    let mut cx = cx.clone();
+                    async move {
+                        let rt = LuaRuntimeHandle::get();
+                        match rt.call_refresh(handle, tile_id).await {
+                            Ok(update) => {
+                                let _ = weak_self.update(&mut cx, |this, _cx| {
+                                    this.error = None;
+                                    this.loading = false;
+                                    this.data = Some(Box::new(update));
+                                });
+                            }
+                            Err(e) => {
+                                let _ = weak_self.update(&mut cx, |this, _cx| {
+                                    this.error = Some(e.to_string());
+                                    this.loading = false;
+                                    this.data = None;
+                                });
+                            }
+                        }
+                    }
+                },
+            );
+
+            this.update_task = Some(task);
+        });
+    }
 }
 
 impl Drop for PluginWidget {

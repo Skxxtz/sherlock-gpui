@@ -1,10 +1,13 @@
-use gpui::Context;
+use gpui::{Context, Task};
 
 use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
+
+#[derive(Default)]
 pub struct PluginTileState {
     pub data: Option<Box<PluginUiNode>>,
     pub loading: bool,
     pub error: Option<String>,
+    pub update_task: Option<Task<()>>,
 }
 
 impl PluginTileState {
