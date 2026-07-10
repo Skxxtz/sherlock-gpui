@@ -1,5 +1,7 @@
 use gpui::{
-    AbsoluteLength, AlignItems, DefiniteLength, Display, EdgesRefinement, Fill, FlexDirection, Hsla, JustifyContent, Length, Rgba, SharedString, SizeRefinement, StyleRefinement, TextAlign, px
+    AbsoluteLength, AlignItems, DefiniteLength, Display, EdgesRefinement, Fill, FlexDirection,
+    Hsla, JustifyContent, Length, Rgba, SharedString, SizeRefinement, StyleRefinement, TextAlign,
+    px,
 };
 use serde::Deserialize;
 
@@ -7,6 +9,7 @@ use serde::Deserialize;
 #[serde(default)]
 pub struct PluginStyle {
     // Layout
+    pub flex: Option<bool>,
     pub flex_direction: Option<PluginFlexDirection>,
     pub flex_grow: Option<f32>,
     pub flex_shrink: Option<f32>,
@@ -89,8 +92,10 @@ pub enum PluginTextAlign {
 
 impl PluginStyle {
     pub fn apply_to_style_refinement(&self, style: &mut StyleRefinement) {
-        if let Some(dir) = self.flex_direction {
+        if self.flex.is_some_and(|f| f) {
             style.display = Some(Display::Flex);
+        }
+        if let Some(dir) = self.flex_direction {
             style.flex_direction = Some(match dir {
                 PluginFlexDirection::Row => FlexDirection::Row,
                 PluginFlexDirection::Column => FlexDirection::Column,
