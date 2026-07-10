@@ -4,6 +4,7 @@ use mlua::prelude::*;
 use std::{fmt::Write, sync::OnceLock};
 use tokio::sync::mpsc;
 
+pub mod app;
 pub mod clipboard;
 pub mod http;
 pub mod json;
@@ -267,10 +268,33 @@ macro_rules! generate_modules {
 }
 
 generate_modules! {
-    ClipboardModule("clipboard") => [self::clipboard::Get, self::clipboard::Set],
-    HttpModule("http")           => [self::http::Get, self::http::Post],
-    JsonModule("json")           => [self::json::Decode],
-    LogModule("log")             => [self::log::Info, self::log::Error],
-    TimeModule("time")           => [self::time::Sleep],
-    UiModule("ui")               => [self::ui::Update],
+    ClipboardModule("clipboard") => [
+        self::clipboard::Get,
+        self::clipboard::Set,
+    ],
+    HttpModule("http") => [
+        self::http::Get,
+        self::http::Post,
+    ],
+    JsonModule("json") => [
+        self::json::Decode,
+    ],
+    LogModule("log") => [
+        self::log::Info,
+        self::log::Error,
+    ],
+    TimeModule("time") => [
+        self::time::Sleep,
+    ],
+    UiModule("ui") => [
+        self::ui::Update,
+    ],
+    AppModule("app") => [
+        self::app::Version,
+        self::app::VersionMajor,
+        self::app::VersionMinor,
+        self::app::VersionPatch,
+        self::app::AppName,
+        self::app::HasFeature,
+    ]
 }
