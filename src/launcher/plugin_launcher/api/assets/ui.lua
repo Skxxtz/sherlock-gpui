@@ -1,3 +1,5 @@
+sherlock.ui = sherlock.ui or {}
+
 ---@alias sherlock.ui.FlexDirection
 ---| "row"
 ---| "column"
@@ -65,11 +67,13 @@ function Node:style(style_table)
     return self
 end
 
----@param callback fun()
+---@param callback fun()|integer callback id previously returned by :on_click, if you want to reuse one
 ---@return sherlock.ui.Node
 function Node:on_click(callback)
-    local id = sherlock._register_callback(callback)
-    self._props.on_click = id
+    if type(callback) == "function" then
+        callback = sherlock._register_callback(callback)
+    end
+    self._props.on_click = callback
     return self
 end
 
@@ -94,38 +98,139 @@ function Node:build()
     }
 end
 
+-- ---------------------------------------------------------------------
+-- Table-constructor sugar
+--
+--   sherlock.ui.row {
+--       gap = 8,                          -- flattened style shorthand
+--       style = { padding = 4 },          -- ...or nested, both work
+--       sherlock.ui.icon "search",        -- array part = children,
+--       sherlock.ui.text "hi",            -- nesting is just Lua tables,
+--   }                                     -- so depth is unlimited for free
+--
+-- Also enables re-opening an already-built node:
+--   sherlock.ui.text("hi") { on_click = fn }
+-- ---------------------------------------------------------------------
+
+---@class sherlock.ui.NodeOpts
+---@field style table? nested style overrides
+---@field on_click (fun()|integer)?
+--- any recognized style key (gap, padding, background, ...) may also be
+--- set directly at the top level of this table instead of nesting it
+--- under `style`; see STYLE_KEYS below for the full set.
+--- Array-part entries (no key) are treated as children.
+
+local STYLE_KEYS = {
+    width = true, height = true,
+    padding = true, padding_x = true, padding_y = true, margin = true,
+    gap = true, flex_grow = true, flex_shrink = true,
+    background = true, border_color = true, border_width = true,
+    corner_radii = true, opacity = true, color = true,
+    font_size = true, font_family = true, text_align = true,
+    flex_direction = true, align_items = true, justify_content = true,
+}
+
+---@param node sherlock.ui.Node
+---@param opts sherlock.ui.NodeOpts|sherlock.ui.Node[]|nil
 ---@return sherlock.ui.Node
-function sherlock.ui.row()
+local function apply_opts(node, opts)
+    if type(opts) ~= "table" then
+        return node
+    end
+    for i, child in ipairs(opts) do
+        node:child(child)
+    end
+    if opts.style then
+        node:style(opts.style)
+    end
+    for k in pairs(STYLE_KEYS) do
+        if opts[k] ~= nil then
+            node._style[k] = opts[k]
+        end
+    end
+    if opts.on_click then
+        node:on_click(opts.on_click)
+    end
+    return node
+end
+
+-- lets a returned Node be "called" again to merge in more opts, e.g.
+-- sherlock.ui.text("hi") { style = { color = "red" } }
+Node.__call = function(self, opts)
+    return apply_opts(self, opts)
+end
+
+-- ---------------------------------------------------------------------
+-- Constructors
+-- ---------------------------------------------------------------------
+
+---@param opts (sherlock.ui.NodeOpts|sherlock.ui.Node[])?
+---@return sherlock.ui.Node
+function sherlock.ui.row(opts)
     local node = Node.new("container")
     node:flex_direction("row")
-    return node
+    return apply_opts(node, opts)
 end
 
+---@param opts (sherlock.ui.NodeOpts|sherlock.ui.Node[])?
 ---@return sherlock.ui.Node
-function sherlock.ui.column()
+function sherlock.ui.column(opts)
     local node = Node.new("container")
     node:flex_direction("column")
-    return node
+    return apply_opts(node, opts)
 end
 
----@param content string
+---@param opts (sherlock.ui.NodeOpts|sherlock.ui.Node[])?
+---@return sherlock.ui.Node
+function sherlock.ui.container(opts)
+    local node = Node.new("container")
+    return apply_opts(node, opts)
+end
+
+---@class sherlock.ui.TextOpts : sherlock.ui.NodeOpts
+---@field content string?
+
+---@param content string|sherlock.ui.TextOpts
 ---@return sherlock.ui.Node
 function sherlock.ui.text(content)
+    if type(content) == "table" then
+        local node = Node.new("text", { content = content.content })
+        return apply_opts(node, content)
+    end
     return Node.new("text", { content = content })
 end
 
----@param name string
+---@class sherlock.ui.IconOpts : sherlock.ui.NodeOpts
+---@field name string?
+
+---@param name string|sherlock.ui.IconOpts
 ---@return sherlock.ui.Node
 function sherlock.ui.icon(name)
+    if type(name) == "table" then
+        local node = Node.new("icon", { name = name.name })
+        return apply_opts(node, name)
+    end
     return Node.new("icon", { name = name })
-
 end
 
----@param label string
+---@class sherlock.ui.ButtonOpts : sherlock.ui.NodeOpts
+---@field label string?
+
+---@param label string|sherlock.ui.ButtonOpts
 ---@return sherlock.ui.Node
 function sherlock.ui.button(label)
+    if type(label) == "table" then
+        local node = Node.new("button", { label = label.label })
+        return apply_opts(node, label)
+    end
     return Node.new("button", { label = label })
 end
+
+-- ---------------------------------------------------------------------
+-- Fluent style setters (kept for power users / imperative building --
+-- the table-constructor sugar above is just an alternate front end
+-- onto the same Node object)
+-- ---------------------------------------------------------------------
 
 ---@param v number
 ---@return sherlock.ui.Node
@@ -198,7 +303,7 @@ function Node:bg(color)
 end
 
 ---@param color string
----@param width number
+---@param width number?
 ---@return sherlock.ui.Node
 function Node:border(color, width)
     self._style.border_color = color
@@ -268,4 +373,3 @@ function Node:justify_content(v)
     self._style.justify_content = v
     return self
 end
-

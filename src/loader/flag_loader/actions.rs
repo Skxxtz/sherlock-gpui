@@ -1,7 +1,5 @@
 use std::{env, fs, path::Path};
 
-use indoc::indoc;
-
 use crate::{
     launcher::plugin_launcher::api::LuaApiDocumentation,
     loader::flag_loader::{DebugAction, flags::FLAGS, utils::FlagSection},
@@ -11,6 +9,7 @@ use crate::{
         config::SherlockConfig,
         errors::{SherlockMessage, types::SherlockErrorType},
         networking::ClientMessage,
+        paths::get_cache_dir,
     },
 };
 
@@ -83,32 +82,72 @@ pub(super) fn plugin_init() {
         }
     };
 
-    let api_path = dir.join("sherlock-api.lua");
-    let luarc_path = dir.join(".luarc.json");
+    let cache_root = match get_cache_dir() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("error: {:?}", e);
+            return;
+        }
+    };
+    let meta_dir = cache_root.join("meta").join("sherlock");
+    if let Err(e) = fs::create_dir_all(&meta_dir) {
+        eprintln!("error: failed to create {}: {e}", meta_dir.display());
+        return;
+    }
 
-    let api = LuaApiDocumentation::generate_lua_stub();
+    // purely generated -- always overwrite, no need to check existence
+    let init_path = meta_dir.join("init.lua");
+    let api_stub = LuaApiDocumentation::generate_lua_stub();
+    if let Err(e) = fs::write(&init_path, api_stub) {
+        eprintln!("error: failed to write {}: {e}", init_path.display());
+        return;
+    }
+    println!("wrote {}", init_path.display());
+
+    let ui_path = meta_dir.join("ui.lua");
     let ui_source = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/src/launcher/plugin_launcher/api/assets/ui.lua"
     ));
-    let combined = format!("{api}\n{ui_source}");
-    if let Err(e) = fs::write(&api_path, combined) {
-        eprintln!("error: failed to write {}: {e}", api_path.display());
+    if let Err(e) = fs::write(&ui_path, ui_source) {
+        eprintln!("error: failed to write {}: {e}", ui_path.display());
         return;
     }
-    println!("wrote {}", api_path.display());
+    println!("wrote {}", ui_path.display());
+
+    let luarc_path = dir.join(".luarc.json");
+    let library_dir = meta_dir.parent().unwrap();
 
     if luarc_path.exists() {
-        println!(
-            "skipped {} (already exists) — add \"./sherlock-api.lua\" to workspace.library manually if needed",
-            luarc_path.display()
-        );
+        let wired_up = fs::read_to_string(&luarc_path)
+            .map(|contents| contents.contains(library_dir.to_string_lossy().as_ref()))
+            .unwrap_or(false);
+        if wired_up {
+            println!(
+                "{} already references {}",
+                luarc_path.display(),
+                library_dir.display()
+            );
+        } else {
+            println!(
+                "skipped {} (already exists) — add \"{}\" to workspace.library manually",
+                luarc_path.display(),
+                library_dir.display()
+            );
+        }
     } else {
-        let luarc = indoc! {r#"
-            {
-              "workspace.library": ["./sherlock-api.lua"]
-            }"#};
-        if let Err(e) = fs::write(&luarc_path, luarc) {
+        let luarc = serde_json::json!({
+            "workspace.library": [library_dir.to_string_lossy()],
+            "diagnostics.globals": ["sherlock"]
+        });
+        let luarc_str = match serde_json::to_string_pretty(&luarc) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("error: failed to serialize .luarc.json: {e}");
+                return;
+            }
+        };
+        if let Err(e) = fs::write(&luarc_path, luarc_str) {
             eprintln!("error: failed to write {}: {e}", luarc_path.display());
             return;
         }
