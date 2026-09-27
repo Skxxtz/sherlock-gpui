@@ -48,6 +48,7 @@ run `git log main..dev` for all changes
   empty, will not animate. (`e2393b2e`)
 * **MD-RS:** Added badge, image, and div components (`051f45e2`, `051f45e2`,
   `eda442fd`, `fedf0a56`)
+* Added plugin support
 
 ### Improved
 
