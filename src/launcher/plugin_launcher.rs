@@ -36,6 +36,7 @@ pub mod job_handler;
 pub mod plugin_tile_state;
 pub mod registry;
 pub mod runtime;
+pub mod sandbox;
 pub mod subscribers;
 pub mod ui;
 pub mod ui_schema;

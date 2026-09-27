@@ -3,6 +3,7 @@ use super::{
     capabilities::PluginCapability,
     registry::PluginRegistry,
     runtime::{LuaJob, PluginHandle},
+    sandbox::make_env,
     ui_schema::{PluginNodeRegistration, PluginUiNode},
 };
 use mlua::prelude::*;
@@ -141,33 +142,13 @@ fn load_plugin(
         name
     )))?;
 
-    let package: LuaTable = lua.globals().get("package")?;
-    let prev_path: String = package.get("path")?;
-    package.set("path", format!("{}/?.lua;{}", root.display(), prev_path))?;
+    let env = make_env(lua, root)?;
+    init_local_api(lua, &env, Arc::from(path), capabilities)?;
 
-    let env: LuaTable = lua
-        .load(
-            r#"
-            local env = {}
-            setmetatable(env, { __index = _G })
-            return env
-        "#,
-        )
-        .eval()?;
-
-    if let Err(e) = init_local_api(lua, &env, Arc::from(path), capabilities) {
-        package.set("path", prev_path)?;
-        return Err(e);
-    };
-
-    let plugin_result = lua
-        .load(code)
+    lua.load(code)
         .set_name(&name)
         .set_environment(env.clone())
-        .exec();
-
-    package.set("path", prev_path)?;
-    plugin_result?;
+        .exec()?;
 
     let env_key = lua.create_registry_value(env)?;
 
@@ -229,7 +210,6 @@ where
     f.call_async::<R>(args).await
 }
 
-// job_handler.rs — a variant that doesn't try to convert the return value
 async fn call_plugin_fn_unit(
     lua: &Lua,
     registry: &Rc<RefCell<PluginRegistry>>,

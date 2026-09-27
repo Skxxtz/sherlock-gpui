@@ -39,6 +39,7 @@ pub enum LuaJob {
     CallRefresh {
         handle: Arc<PluginHandle>,
         tile_id: String,
+        /// `None` when the plugin has no `refresh` function.
         reply: oneshot::Sender<LuaResult<Option<PluginUiNode>>>,
     },
     CallInit {
@@ -250,15 +251,7 @@ fn run_lua_thread(
 
     let registry = Rc::new(RefCell::new(PluginRegistry::default()));
 
-    let lua = Lua::new_with(
-        LuaStdLib::TABLE
-            | LuaStdLib::STRING
-            | LuaStdLib::MATH
-            | LuaStdLib::COROUTINE
-            | LuaStdLib::PACKAGE,
-        LuaOptions::default(),
-    )
-    .expect("failed to init Lua runtime");
+    let lua = super::sandbox::new_lua().expect("failed to init Lua runtime");
 
     // update_tx is captured here, at registration time, by the
     // sherlock.update closure — this is the only place it needs to exist.
