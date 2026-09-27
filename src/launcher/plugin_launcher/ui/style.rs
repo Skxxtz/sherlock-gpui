@@ -50,6 +50,7 @@ pub struct PluginStyle {
 
     /// Overrides applied while the pointer is over the element.
     pub hover: Option<Box<PluginStyle>>,
+    pub focus: Option<Box<PluginStyle>>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]

@@ -10,7 +10,10 @@ use crate::{
         variant_type::InnerFunction,
     },
     loader::utils::{ExecVariable, Priority},
-    ui::{launcher::context_menu::ContextMenuAction, utils::selection::Selection},
+    ui::{
+        launcher::{context_menu::ContextMenuAction, views::MoveDirection},
+        utils::selection::Selection,
+    },
 };
 
 pub trait RenderableChildImpl<'a> {
@@ -57,6 +60,14 @@ pub trait RenderableChildImpl<'a> {
     fn sidebar(&self, _cx: &mut App) -> Option<AnyElement> {
         None
     }
+    /// Lets the selected item handle a navigation key itself (e.g. move
+    /// between items inside a tile). Return `true` if handled; otherwise
+    /// the launcher moves to the next/previous row.
+    fn move_inner(&self, _direction: &MoveDirection, _cx: &mut App) -> bool {
+        false
+    }
+    /// Called when the selection leaves this item: drop any inner focus.
+    fn reset_inner(&self, _cx: &mut App) {}
     fn update_sync(&self, _query: SharedString, _launcher: &Arc<LauncherConfig>, _cx: &mut App) {}
     fn update_async<C: AppContext>(&self, _launcher: Arc<LauncherConfig>, _cx: &mut C) {}
     fn vars(&self, _cx: &mut App) -> Option<&[ExecVariable]> {

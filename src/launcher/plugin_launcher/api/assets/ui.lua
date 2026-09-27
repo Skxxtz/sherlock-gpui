@@ -93,6 +93,15 @@ function Node:hide(hidden)
     return self
 end
 
+--- Tile-level: keys that move between the tile's items (nodes with
+--- `on_click`): "horizontal" (default), "vertical" or "both".
+---@param mode "horizontal"|"vertical"|"both"
+---@return sherlock.ui.Node
+function Node:nav(mode)
+    self._props.nav = mode
+    return self
+end
+
 ---@class sherlock.ui.ActionOpts
 ---@field icon string? icon name
 ---@field exit boolean? close the launcher after running
@@ -132,6 +141,7 @@ function Node:build()
         on_activate = self._props.on_activate,
         actions = self._props.actions,
         hidden = self._props.hidden,
+        nav = self._props.nav,
 
         style = next(self._style) and self._style or nil,
 
@@ -174,7 +184,7 @@ local STYLE_KEYS = {
     corner_radii = true, opacity = true, color = true,
     font_size = true, font_family = true, text_align = true,
     flex_direction = true, align_items = true, justify_content = true,
-    hover = true,
+    hover = true, focus = true,
 }
 
 ---@param node sherlock.ui.Node
@@ -197,6 +207,9 @@ local function apply_opts(node, opts)
     end
     if opts.on_click then
         node:on_click(opts.on_click)
+    end
+    if opts.nav then
+        node:nav(opts.nav)
     end
     if opts.hidden ~= nil then
         node:hide(opts.hidden)
@@ -467,6 +480,14 @@ end
 ---@return sherlock.ui.Node
 function Node:hover(style_table)
     self._style.hover = style_table
+    return self
+end
+
+--- Style overrides while this item has keyboard focus.
+---@param style_table table
+---@return sherlock.ui.Node
+function Node:focus(style_table)
+    self._style.focus = style_table
     return self
 end
 

@@ -76,6 +76,18 @@ pub trait RenderableChildDelegate<'a> {
     /// Updates the execution count for supported children
     fn increment_count(&self);
 
+    /// Lets the selected item handle a navigation key itself (e.g. move
+    /// between items inside a tile). Return `true` if handled; otherwise
+    /// the launcher moves to the next/previous row.
+    fn move_inner(
+        &self,
+        direction: &crate::ui::launcher::views::MoveDirection,
+        cx: &mut App,
+    ) -> bool;
+
+    /// Called when the selection leaves this item: drop any inner focus
+    fn reset_inner(&self, cx: &mut App);
+
     /// Gets content to be copied, or printet on return
     fn get_content(&self, cx: &mut App) -> Option<String>;
 }

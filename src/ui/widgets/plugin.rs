@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{cell::Cell, sync::Arc};
 
 use gpui::{
     AnyElement, App, AppContext, AsyncApp, Div, Entity, ImageSource, InteractiveElement,
@@ -16,14 +16,17 @@ use crate::{
             runtime::{LuaRuntimeHandle, PluginHandle},
             subscribers::TileSubscribers,
             ui::style::{PluginStyle, parse_color},
-            ui_schema::{PluginTileMeta, PluginUiNode},
+            ui_schema::{PluginNav, PluginTileMeta, PluginUiNode},
         },
         utils::exec_mode::ExecMode,
         variant_type::{InnerFunction, LauncherType},
     },
     loader::{resolve_icon_path, utils::Priority},
     ui::{
-        launcher::context_menu::{ContextMenuAction, DynamicFunctionAction},
+        launcher::{
+            context_menu::{ContextMenuAction, DynamicFunctionAction},
+            views::MoveDirection,
+        },
         traits::RenderableChildImpl,
         utils::selection::Selection,
     },
@@ -44,7 +47,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
     fn render(
         &self,
         launcher: &Arc<LauncherConfig>,
-        _selection: Selection,
+        selection: Selection,
         _query: &str,
         theme: Arc<ThemeData>,
         cx: &mut App,
@@ -86,13 +89,17 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
             },
             tile_id: self.tile_id.clone(),
             theme,
+            focused: state.focused_item.filter(|_| selection.is_selected),
+            item_counter: Cell::new(0),
         };
         render_node(&data.node, &ctx)
     }
     #[inline(always)]
     fn build_exec(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
-        // Enter runs the tile's `on_activate`, if it has one.
-        self.meta(cx)?.on_activate?;
+        let has_focus = self.state.read(cx).focused_item.is_some();
+        if !has_focus {
+            self.meta(cx)?.on_activate?;
+        }
         Some(ExecMode::Inner {
             func: InnerFunction::Plugin(PluginFunctions::Activate),
             exit: false,
@@ -142,6 +149,43 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
                     .collect(),
             ),
         }
+    }
+    fn move_inner(&self, direction: &MoveDirection, cx: &mut App) -> bool {
+        let Some(data) = self.state.read(cx).data.as_ref() else {
+            return false;
+        };
+        let items = data.node.item_callbacks().len();
+        if items == 0 {
+            return false;
+        }
+        let forward = match (data.meta.nav, direction) {
+            (PluginNav::Horizontal | PluginNav::Both, MoveDirection::Right)
+            | (PluginNav::Vertical | PluginNav::Both, MoveDirection::Down) => true,
+            (PluginNav::Horizontal | PluginNav::Both, MoveDirection::Left)
+            | (PluginNav::Vertical | PluginNav::Both, MoveDirection::Up) => false,
+            _ => return false,
+        };
+        let current = self.state.read(cx).focused_item;
+        let next = match (current, forward) {
+            (None, true) => Some(0),
+            (Some(i), true) if i + 1 < items => Some(i + 1),
+            (Some(_), true) => return false,
+            (None, false) => return false,
+            (Some(0), false) => None,
+            (Some(i), false) => Some(i - 1),
+        };
+        self.state.update(cx, |state, cx| {
+            state.focused_item = next;
+            cx.notify();
+        });
+        true
+    }
+    fn reset_inner(&self, cx: &mut App) {
+        self.state.update(cx, |state, cx| {
+            if state.focused_item.take().is_some() {
+                cx.notify();
+            }
+        });
     }
     #[inline(always)]
     fn has_actions(&self, cx: &mut App) -> bool {
@@ -242,7 +286,12 @@ impl PluginWidget {
 
     /// Runs the tile's `on_activate` callback.
     pub fn activate(&self, handle: Arc<PluginHandle>, cx: &App) {
-        if let Some(index) = self.meta(cx).and_then(|m| m.on_activate) {
+        let state = self.state.read(cx);
+        let focused = state.focused_item.and_then(|i| {
+            let data = state.data.as_ref()?;
+            data.node.item_callbacks().get(i).copied()
+        });
+        if let Some(index) = focused.or_else(|| self.meta(cx).and_then(|m| m.on_activate)) {
             LuaRuntimeHandle::get().invoke_callback(handle, self.tile_id.clone(), index);
         }
     }
@@ -260,6 +309,9 @@ struct NodeCtx {
     handle: Option<Arc<PluginHandle>>,
     tile_id: String,
     theme: Arc<ThemeData>,
+    /// Focused item index; items are counted in render order.
+    focused: Option<usize>,
+    item_counter: Cell<usize>,
 }
 
 impl NodeCtx {
@@ -278,9 +330,21 @@ impl NodeCtx {
         }
     }
 
-    /// Makes `el` clickable if the node has an `on_click` callback.
-    fn clickable(&self, el: Div, on_click: Option<u32>) -> Div {
-        let (Some(index), Some(handle)) = (on_click, self.handle.clone()) else {
+    /// Makes `el` clickable if the node has an `on_click` callback. Such
+    /// nodes are the tile's navigable items; the focused one gets `focus`.
+    fn clickable(&self, mut el: Div, on_click: Option<u32>, focus: Option<&PluginStyle>) -> Div {
+        let Some(index) = on_click else {
+            return el;
+        };
+        let item = self.item_counter.get();
+        self.item_counter.set(item + 1);
+        if self.focused == Some(item) {
+            match focus {
+                Some(focus) => focus.apply_to_style_refinement(el.style(), &self.theme),
+                None => el = el.bg(self.theme.bg_selected).rounded_sm(),
+            }
+        }
+        let Some(handle) = self.handle.clone() else {
             return el;
         };
         let tile_id = self.tile_id.clone();
@@ -294,7 +358,7 @@ impl NodeCtx {
 
     /// Styled, optionally clickable div.
     fn node_div(&self, style: &PluginStyle, on_click: Option<u32>) -> Div {
-        self.clickable(self.styled(div(), style), on_click)
+        self.clickable(self.styled(div(), style), on_click, style.focus.as_deref())
     }
 }
 
@@ -357,7 +421,7 @@ fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
             };
             match on_click {
                 Some(_) => ctx
-                    .clickable(div(), *on_click)
+                    .clickable(div(), *on_click, style.focus.as_deref())
                     .child(icon)
                     .into_any_element(),
                 None => icon,
@@ -371,7 +435,10 @@ fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
             let mut el = img(image_source(src)).object_fit(ObjectFit::Contain);
             style.apply_to_style_refinement(el.style(), &ctx.theme);
             match on_click {
-                Some(_) => ctx.clickable(div(), *on_click).child(el).into_any_element(),
+                Some(_) => ctx
+                    .clickable(div(), *on_click, style.focus.as_deref())
+                    .child(el)
+                    .into_any_element(),
                 None => el.into_any_element(),
             }
         }

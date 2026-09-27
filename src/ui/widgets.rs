@@ -196,6 +196,18 @@ macro_rules! renderable_enum {
                     $(Self::$variant {inner, ..} => inner.increment_count()),*
                 }
             }
+
+            fn move_inner(&self, direction: &crate::ui::launcher::views::MoveDirection, cx: &mut App) -> bool {
+                match self {
+                    $(Self::$variant {inner, ..} => inner.move_inner(direction, cx)),*
+                }
+            }
+
+            fn reset_inner(&self, cx: &mut App) {
+                match self {
+                    $(Self::$variant {inner, ..} => inner.reset_inner(cx)),*
+                }
+            }
         }
 
         impl<'a> LauncherValues<'a> for $name {

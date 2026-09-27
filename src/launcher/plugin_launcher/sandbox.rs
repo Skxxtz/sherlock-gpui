@@ -50,6 +50,7 @@ mod tests {
     }
 
     fn setup() -> (Lua, std::path::PathBuf) {
+        // One directory per test: tests run in parallel and rewrite these files.
         static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let dir = std::env::temp_dir().join(format!("sherlock-sandbox-{}-{n}", std::process::id()));
@@ -418,5 +419,37 @@ mod tests {
             )
             .unwrap();
         assert!(released);
+    }
+
+    #[test]
+    fn tile_items_follow_render_order() {
+        use crate::launcher::plugin_launcher::ui_schema::{PluginNav, PluginTileContent};
+
+        let (lua, dir) = setup();
+        let env = make_env(&lua, &dir).unwrap();
+        run(&lua, &env, "sherlock = { ui = {} }").unwrap();
+        load_ui_lib(&lua, &env).unwrap();
+
+        let content: PluginTileContent = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "local ui = sherlock.ui
+                     local f = function() end
+                     return sherlock._prepare('t', ui.column {
+                         nav = 'vertical',
+                         ui.text 'title',
+                         ui.row { ui.button 'a' :on_click(f), ui.button 'b' :on_click(f) }
+                             :on_click(f),
+                         ui.button 'c' :on_click(f) :focus { background = 'accent' },
+                     })",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(content.meta.nav, PluginNav::Vertical);
+        // Row before its children, then c.
+        assert_eq!(content.node.item_callbacks().len(), 4);
     }
 }

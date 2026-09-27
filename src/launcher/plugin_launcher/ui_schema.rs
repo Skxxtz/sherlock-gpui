@@ -32,6 +32,44 @@ pub struct PluginTileMeta {
     pub on_activate: Option<u32>,
     pub actions: Vec<PluginTileAction>,
     pub hidden: bool,
+    pub nav: PluginNav,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PluginNav {
+    /// Left/Right.
+    #[default]
+    Horizontal,
+    /// Up/Down.
+    Vertical,
+    /// Left/Right and Up/Down.
+    Both,
+}
+
+impl PluginUiNode {
+    pub fn item_callbacks(&self) -> Vec<u32> {
+        fn walk(node: &PluginUiNode, out: &mut Vec<u32>) {
+            let on_click = match node {
+                PluginUiNode::Container { on_click, .. }
+                | PluginUiNode::Text { on_click, .. }
+                | PluginUiNode::Icon { on_click, .. }
+                | PluginUiNode::Image { on_click, .. }
+                | PluginUiNode::Progress { on_click, .. }
+                | PluginUiNode::Button { on_click, .. } => *on_click,
+                PluginUiNode::Divider { .. } | PluginUiNode::Spacer { .. } => None,
+            };
+            out.extend(on_click);
+            if let PluginUiNode::Container { children, .. } = node {
+                for child in children {
+                    walk(child, out);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(self, &mut out);
+        out
+    }
 }
 
 /// What a tile displays: its root node plus tile-level behaviour.
