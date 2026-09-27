@@ -4,7 +4,7 @@ use super::{
     registry::PluginRegistry,
     runtime::{LuaJob, PluginHandle},
     sandbox::{load_ui_lib, make_env},
-    ui_schema::{PluginNodeRegistration, PluginUiNode},
+    ui_schema::{PluginNodeRegistration, PluginTileContent},
 };
 use mlua::prelude::*;
 use std::cell::RefCell;
@@ -68,7 +68,7 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                         call_plugin_fn_async(&lua, &registry, &handle, "refresh", tile_id.clone())
                             .await?;
                     let node = prepare_node(&lua, &registry, &handle, &tile_id, node)?;
-                    lua.unpack::<PluginUiNode>(node).map(Some)
+                    lua.unpack::<PluginTileContent>(node).map(Some)
                 }
                 .await
             } else {

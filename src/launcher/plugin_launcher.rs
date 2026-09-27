@@ -53,6 +53,7 @@ pub mod ui_schema;
 define_inner_functions! {
     pub enum PluginFunctions {
         Reload,
+        Activate,
     }
 }
 
@@ -61,6 +62,7 @@ pub struct PluginLauncher {
     pub path: Arc<Path>,
     pub capabilities: PluginCapability,
     pub handle: Arc<PluginHandle>,
+    /// Bumped on every tile load; only the newest load may apply its tiles.
     pub load_gen: Arc<AtomicU64>,
 }
 
@@ -143,7 +145,7 @@ impl LauncherProvider for PluginLauncher {
         skip_func_if_nav!(func);
         let func = ensure_func!(func, InnerFunction::Plugin);
 
-        let RenderableChild::Plugin { launcher, .. } = child else {
+        let RenderableChild::Plugin { launcher, inner } = child else {
             return Err(sherlock_msg!(
                 Warning,
                 SherlockErrorType::Unreachable,
@@ -152,6 +154,7 @@ impl LauncherProvider for PluginLauncher {
         };
 
         match func {
+            PluginFunctions::Activate => inner.activate(self.handle.clone(), cx),
             PluginFunctions::Reload => {
                 let path = self.path.clone();
                 let caps = self.capabilities;
@@ -168,6 +171,9 @@ impl LauncherProvider for PluginLauncher {
 }
 
 impl PluginLauncher {
+    /// Returns a loading placeholder right away and swaps in the real tiles
+    /// once the plugin's `init`/`tiles` finish on the Lua thread, so slow
+    /// plugins never block the UI thread.
     pub fn load_tiles_async(
         &self,
         launcher: Arc<LauncherConfig>,
@@ -200,6 +206,8 @@ impl PluginLauncher {
                 }
                 .await;
 
+                // A newer load (or reload) superseded this one: don't
+                // register tiles or start `live` loops for it.
                 if load_gen.load(Ordering::SeqCst) != generation {
                     return;
                 }
@@ -234,6 +242,7 @@ impl PluginLauncher {
     }
 }
 
+/// Creates tile entities, registers them and starts `live`/`refresh`.
 fn build_tiles(
     launcher: &Arc<LauncherConfig>,
     path: &Arc<Path>,
@@ -295,6 +304,7 @@ fn is_current(launcher: &LauncherConfig, handle: &Arc<PluginHandle>, cx: &App) -
     })
 }
 
+/// Replaces the launcher's children if `handle` is still current.
 fn replace_children(
     launcher: &LauncherConfig,
     handle: &Arc<PluginHandle>,
@@ -400,12 +410,20 @@ mod docs {
                         description: "The allowed scopes, the plugin can access.",
                     },
                 ],
-                inner_functions: &[InnerFunctionDoc {
-                    name: "Reload",
-                    identifier: "inner.reload",
-                    description: "Reload plugin and its environment.",
-                    user_facing: true,
-                }],
+                inner_functions: &[
+                    InnerFunctionDoc {
+                        name: "Reload",
+                        identifier: "inner.reload",
+                        description: "Reload plugin and its environment.",
+                        user_facing: true,
+                    },
+                    InnerFunctionDoc {
+                        name: "Activate",
+                        identifier: "inner.activate",
+                        description: "Run the selected tile's `on_activate` callback (Enter).",
+                        user_facing: false,
+                    },
+                ],
                 examples: &[Example {
                     description: "Basic plugin launcher",
                     json: indoc! {

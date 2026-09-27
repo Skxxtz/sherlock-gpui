@@ -242,4 +242,52 @@ mod tests {
             .unwrap();
         assert!(stale);
     }
+
+    #[test]
+    fn tile_meta_carries_activate_and_actions() {
+        use crate::launcher::plugin_launcher::ui_schema::PluginTileContent;
+
+        let (lua, dir) = setup();
+        let env = make_env(&lua, &dir).unwrap();
+        run(&lua, &env, "sherlock = { ui = {} }").unwrap();
+        load_ui_lib(&lua, &env).unwrap();
+
+        let content: PluginTileContent = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "local ui = sherlock.ui
+                     local node = ui.row { ui.text 'x' :on_click(function() end) }
+                         :on_activate(function(id) activated = id end)
+                         :action('Copy', function(id) copied = id end, { icon = 'copy', exit = true })
+                     return sherlock._prepare('t', node)",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        // on_activate registered first (root), then the action, then the child's on_click.
+        let on_activate = content.meta.on_activate.expect("on_activate");
+        assert_eq!(content.meta.actions.len(), 1);
+        let action = &content.meta.actions[0];
+        assert_eq!(action.name, "Copy");
+        assert_eq!(action.icon.as_deref(), Some("copy"));
+        assert!(action.exit);
+
+        let result: String = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    &format!(
+                        "sherlock._invoke('t', {on_activate}); sherlock._invoke('t', {}); \
+                         return activated .. ',' .. copied",
+                        action.run
+                    ),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(result, "t,t");
+    }
 }

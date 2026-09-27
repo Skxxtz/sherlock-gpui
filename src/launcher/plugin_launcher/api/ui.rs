@@ -1,7 +1,7 @@
 use crate::{
     launcher::plugin_launcher::{
         api::{ApiContext, SherlockPluginFn, protocol::PluginDeferFunction},
-        ui_schema::PluginUiNode,
+        ui_schema::PluginTileContent,
     },
     lua_fn,
 };
@@ -19,7 +19,7 @@ impl SherlockPluginFn for Update {
         let plugin_id = ctx.plugin_id.clone();
         lua_fn!(
             table, lua,
-            |_lua, (tile_id: String, node: PluginUiNode)| {
+            |_lua, (tile_id: String, node: PluginTileContent)| {
                 let _ = update_tx.send(PluginDeferFunction::Update {
                     plugin_id: plugin_id.clone(),
                     tile_id,

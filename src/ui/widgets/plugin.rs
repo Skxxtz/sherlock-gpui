@@ -10,17 +10,19 @@ use crate::{
     launcher::{
         LauncherConfig,
         plugin_launcher::{
+            PluginFunctions,
             plugin_tile_state::PluginTileState,
             runtime::{LuaRuntimeHandle, PluginHandle},
             subscribers::TileSubscribers,
-            ui_schema::PluginUiNode,
+            ui_schema::{PluginTileMeta, PluginUiNode},
         },
         utils::exec_mode::ExecMode,
-        variant_type::LauncherType,
+        variant_type::{InnerFunction, LauncherType},
     },
     loader::{resolve_icon_path, utils::Priority},
     ui::{
-        launcher::context_menu::ContextMenuAction, traits::RenderableChildImpl,
+        launcher::context_menu::{ContextMenuAction, DynamicFunctionAction},
+        traits::RenderableChildImpl,
         utils::selection::Selection,
     },
 };
@@ -79,11 +81,16 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
             },
             tile_id: self.tile_id.clone(),
         };
-        render_node(data, &ctx)
+        render_node(&data.node, &ctx)
     }
     #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
-        None
+    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
+        // Enter runs the tile's `on_activate`, if it has one.
+        self.meta(cx)?.on_activate?;
+        Some(ExecMode::Inner {
+            func: InnerFunction::Plugin(PluginFunctions::Activate),
+            exit: false,
+        })
     }
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
@@ -101,20 +108,24 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
     fn actions(
         &self,
         launcher: &Arc<LauncherConfig>,
-        _cx: &mut App,
+        cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
-        if let Some(actions) = &launcher.actions {
-            Some(actions.clone())
-        } else {
-            launcher
-                .add_actions
-                .as_ref()
-                .map(|add_actions| add_actions.clone())
+        let configured = launcher.actions.as_ref().or(launcher.add_actions.as_ref());
+        let plugin_actions = self.plugin_actions(launcher, cx);
+        match (configured, plugin_actions.is_empty()) {
+            (None, true) => None,
+            (Some(c), true) => Some(c.clone()),
+            (c, false) => Some(
+                plugin_actions
+                    .into_iter()
+                    .chain(c.into_iter().flat_map(|c| c.iter().cloned()))
+                    .collect(),
+            ),
         }
     }
     #[inline(always)]
-    fn has_actions(&self, _cx: &mut App) -> bool {
-        false
+    fn has_actions(&self, cx: &mut App) -> bool {
+        self.meta(cx).is_some_and(|m| !m.actions.is_empty())
     }
     #[inline(always)]
     fn vars(&self, _cx: &mut App) -> Option<&[crate::loader::utils::ExecVariable]> {
@@ -165,6 +176,55 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
 
             this.update_task = Some(task);
         });
+    }
+}
+
+impl PluginWidget {
+    /// Tile-level behaviour from the current content, if loaded.
+    fn meta<'b>(&self, cx: &'b App) -> Option<&'b PluginTileMeta> {
+        self.state.read(cx).data.as_ref().map(|d| &d.meta)
+    }
+
+    /// Context-menu entries defined by the plugin for this tile.
+    fn plugin_actions(
+        &self,
+        launcher: &Arc<LauncherConfig>,
+        cx: &App,
+    ) -> Vec<Arc<ContextMenuAction>> {
+        let LauncherType::Plugin(plg) = &launcher.launcher_type else {
+            return Vec::new();
+        };
+        let Some(meta) = self.meta(cx) else {
+            return Vec::new();
+        };
+        meta.actions
+            .iter()
+            .map(|action| {
+                let handle = plg.handle.clone();
+                let tile_id = self.tile_id.clone();
+                let index = action.run;
+                let mut entry = DynamicFunctionAction::new(action.name.clone())
+                    .exit(action.exit)
+                    .on_exec(move |_| {
+                        LuaRuntimeHandle::get().invoke_callback(
+                            handle.clone(),
+                            tile_id.clone(),
+                            index,
+                        )
+                    });
+                if let Some(icon) = &action.icon {
+                    entry = entry.icon_name(icon);
+                }
+                Arc::new(ContextMenuAction::Fn(entry))
+            })
+            .collect()
+    }
+
+    /// Runs the tile's `on_activate` callback.
+    pub fn activate(&self, handle: Arc<PluginHandle>, cx: &App) {
+        if let Some(index) = self.meta(cx).and_then(|m| m.on_activate) {
+            LuaRuntimeHandle::get().invoke_callback(handle, self.tile_id.clone(), index);
+        }
     }
 }
 

@@ -1,17 +1,17 @@
 use gpui::{Context, Task};
 
-use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
+use crate::launcher::plugin_launcher::ui_schema::PluginTileContent;
 
 #[derive(Default)]
 pub struct PluginTileState {
-    pub data: Option<Box<PluginUiNode>>,
+    pub data: Option<Box<PluginTileContent>>,
     pub loading: bool,
     pub error: Option<String>,
     pub update_task: Option<Task<()>>,
 }
 
 impl PluginTileState {
-    pub fn set_data(&mut self, data: Box<PluginUiNode>, cx: &mut Context<Self>) {
+    pub fn set_data(&mut self, data: Box<PluginTileContent>, cx: &mut Context<Self>) {
         self.data = Some(data);
         self.loading = false;
         self.error = None;

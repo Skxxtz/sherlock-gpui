@@ -15,7 +15,7 @@ use super::{
     job_handler::handle_job,
     registry::PluginRegistry,
     subscribers::{TileSubscribers, TileSubscribersGlobal},
-    ui_schema::{PluginNodeRegistration, PluginUiNode},
+    ui_schema::{PluginNodeRegistration, PluginTileContent},
 };
 
 #[derive(Clone, Debug, Default)]
@@ -40,8 +40,7 @@ pub enum LuaJob {
     CallRefresh {
         handle: Arc<PluginHandle>,
         tile_id: String,
-        /// `None` when the plugin has no `refresh` function.
-        reply: oneshot::Sender<LuaResult<Option<PluginUiNode>>>,
+        reply: oneshot::Sender<LuaResult<Option<PluginTileContent>>>,
     },
     CallInit {
         handle: Arc<PluginHandle>,
@@ -180,7 +179,7 @@ impl LuaRuntimeHandle {
         &self,
         handle: Arc<PluginHandle>,
         tile_id: String,
-    ) -> LuaResult<Option<PluginUiNode>> {
+    ) -> LuaResult<Option<PluginTileContent>> {
         let (reply, rx) = oneshot::channel();
         self.send_and_recv(
             LuaJob::CallRefresh {

@@ -75,6 +75,36 @@ function Node:on_click(callback)
     return self
 end
 
+--- Tile-level: runs when the tile is activated (Enter). Only used on a
+--- tile's root node.
+---@param callback fun(tile_id: string)
+---@return sherlock.ui.Node
+function Node:on_activate(callback)
+    self._props.on_activate = callback
+    return self
+end
+
+---@class sherlock.ui.ActionOpts
+---@field icon string? icon name
+---@field exit boolean? close the launcher after running
+
+--- Tile-level: adds a context-menu entry. Only used on a tile's root node.
+---@param name string
+---@param callback fun(tile_id: string)
+---@param opts sherlock.ui.ActionOpts?
+---@return sherlock.ui.Node
+function Node:action(name, callback, opts)
+    opts = opts or {}
+    self._props.actions = self._props.actions or {}
+    table.insert(self._props.actions, {
+        name = name,
+        run = callback,
+        icon = opts.icon,
+        exit = opts.exit,
+    })
+    return self
+end
+
 ---@return table
 function Node:build()
     local children = {}
@@ -88,6 +118,8 @@ function Node:build()
         label = self._props.label,
         name = self._props.name,
         on_click = self._props.on_click,
+        on_activate = self._props.on_activate,
+        actions = self._props.actions,
 
         style = next(self._style) and self._style or nil,
 
@@ -112,6 +144,8 @@ end
 ---@class sherlock.ui.NodeOpts
 ---@field style table? nested style overrides
 ---@field on_click fun(tile_id: string)?
+---@field on_activate fun(tile_id: string)? tile root only
+---@field actions { name: string, run: fun(tile_id: string), icon: string?, exit: boolean? }[]? tile root only
 --- any recognized style key (gap, padding, background, ...) may also be
 --- set directly at the top level of this table instead of nesting it
 --- under `style`; see STYLE_KEYS below for the full set.
@@ -150,6 +184,12 @@ local function apply_opts(node, opts)
     end
     if opts.on_click then
         node:on_click(opts.on_click)
+    end
+    if opts.on_activate then
+        node:on_activate(opts.on_activate)
+    end
+    for _, a in ipairs(opts.actions or {}) do
+        node:action(a.name, a.run, a)
     end
     return node
 end
@@ -381,6 +421,13 @@ local tile_callbacks = {}
 -- Each send replaces the list, so closures from older renders are released.
 local function prepare(tile_id, node)
     local callbacks = {}
+    local function register(fn)
+        if type(fn) ~= "function" then
+            return nil
+        end
+        callbacks[#callbacks + 1] = fn
+        return #callbacks
+    end
     local function walk(n)
         if type(n) ~= "table" then
             return n
@@ -393,11 +440,21 @@ local function prepare(tile_id, node)
         for k, v in pairs(n) do
             out[k] = v
         end
-        if type(out.on_click) == "function" then
-            callbacks[#callbacks + 1] = out.on_click
-            out.on_click = #callbacks
+        out.on_click = register(out.on_click)
+        out.on_activate = register(out.on_activate)
+        if type(out.actions) == "table" and #out.actions > 0 then
+            local actions = {}
+            for _, a in ipairs(out.actions) do
+                actions[#actions + 1] = {
+                    name = a.name,
+                    icon = a.icon,
+                    exit = a.exit == true,
+                    run = register(a.run),
+                }
+            end
+            out.actions = actions
         else
-            out.on_click = nil
+            out.actions = nil
         end
         if type(out.children) == "table" then
             local children = {}
