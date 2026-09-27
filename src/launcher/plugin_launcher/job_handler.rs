@@ -80,6 +80,9 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                             tile_id.clone(),
                         )
                         .await?;
+                        if node.is_nil() {
+                            return Ok(None);
+                        }
                         let node = prepare_node(&lua, &registry, &handle, &tile_id, node)?;
                         lua.unpack::<PluginTileContent>(node).map(Some)
                     }
