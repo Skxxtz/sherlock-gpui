@@ -73,8 +73,11 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                 let registry = Rc::clone(&registry);
                 let handle = Arc::clone(&handle);
                 tokio::task::spawn_local(async move {
-                    let result =
-                        call_plugin_fn_unit(&lua, &registry, &handle, "live", tile_id).await;
+                    let result = call_plugin_fn_async::<LuaMultiValue>(
+                        &lua, &registry, &handle, "live", tile_id,
+                    )
+                    .await
+                    .map(|_| ());
                     if let Err(e) = result {
                         eprintln!("[plugin:{}] live() exited: {e}", handle.name);
                     }
@@ -191,10 +194,10 @@ async fn call_plugin_fn_async<R>(
     registry: &Rc<RefCell<PluginRegistry>>,
     handle: &PluginHandle,
     func_name: &str,
-    args: impl IntoLuaMulti + Clone,
+    args: impl IntoLuaMulti,
 ) -> LuaResult<R>
 where
-    R: FromLua,
+    R: FromLuaMulti,
 {
     let env: LuaTable = {
         let reg = registry.borrow();
@@ -215,35 +218,6 @@ where
     // via async functions registered in the API) to completion using the
     // tokio executor on this thread — no manual resume loop required.
     f.call_async::<R>(args).await
-}
-
-async fn call_plugin_fn_unit(
-    lua: &Lua,
-    registry: &Rc<RefCell<PluginRegistry>>,
-    handle: &PluginHandle,
-    func_name: &str,
-    args: impl IntoLuaMulti,
-) -> LuaResult<()> {
-    let env: LuaTable = {
-        let reg = registry.borrow();
-        let plugin = reg.get(&handle.id).ok_or_else(|| {
-            LuaError::RuntimeError(format!("plugin '{}' not loaded", handle.name))
-        })?;
-        lua.registry_value(&plugin.env_key)?
-    };
-
-    let f: LuaFunction = env.get(func_name).map_err(|_| {
-        LuaError::RuntimeError(format!(
-            "plugin '{}' has no function '{}'",
-            handle.name, func_name
-        ))
-    })?;
-
-    // Discard whatever Lua returns instead of converting it — call_async
-    // still needs *some* return type parameter, so use LuaMultiValue,
-    // which accepts any number/shape of returned values.
-    f.call_async::<LuaMultiValue>(args).await?;
-    Ok(())
 }
 
 #[cfg(test)]

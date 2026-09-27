@@ -151,15 +151,15 @@ impl LuaRuntimeHandle {
         capabilities: PluginCapability,
     ) -> LuaResult<PluginHandle> {
         let (reply, rx) = oneshot::channel();
-        self.tx
-            .send(LuaJob::LoadPlugin {
+        self.send_and_recv(
+            LuaJob::LoadPlugin {
                 path,
                 reply,
                 capabilities,
-            })
-            .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
-        rx.await
-            .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
+            },
+            rx,
+        )
+        .await
     }
 
     pub async fn call_tiles(
@@ -167,11 +167,8 @@ impl LuaRuntimeHandle {
         handle: Arc<PluginHandle>,
     ) -> LuaResult<Vec<PluginNodeRegistration>> {
         let (reply, rx) = oneshot::channel();
-        self.tx
-            .send(LuaJob::CallTiles { handle, reply })
-            .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
-        rx.await
-            .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
+        self.send_and_recv(LuaJob::CallTiles { handle, reply }, rx)
+            .await
     }
 
     pub async fn call_refresh(
@@ -180,15 +177,15 @@ impl LuaRuntimeHandle {
         tile_id: String,
     ) -> LuaResult<Option<PluginUiNode>> {
         let (reply, rx) = oneshot::channel();
-        self.tx
-            .send(LuaJob::CallRefresh {
+        self.send_and_recv(
+            LuaJob::CallRefresh {
                 handle,
                 tile_id,
                 reply,
-            })
-            .map_err(|_| LuaError::RuntimeError("lua runtime thread is gone".into()))?;
-        rx.await
-            .map_err(|_| LuaError::RuntimeError("lua runtime dropped reply".into()))?
+            },
+            rx,
+        )
+        .await
     }
 
     pub async fn call_init(
