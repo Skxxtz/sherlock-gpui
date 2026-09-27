@@ -1,4 +1,4 @@
-use crate::launcher::LauncherConfig;
+use crate::launcher::{LauncherConfig, LauncherId};
 use crate::tokio_utils::SizedMessageObj;
 use crate::ui::backdrop::Backdrop;
 use crate::ui::choice::Choice;
@@ -76,6 +76,8 @@ pub struct LauncherView {
     pub response_socket: Option<Arc<UnixStream>>,
 
     pub backdrop: Option<WindowHandle<Backdrop>>,
+
+    pub last_selected: Option<(LauncherId, usize)>,
 }
 
 impl Focusable for LauncherView {

@@ -136,6 +136,8 @@ fn spawn_launcher(
         cx.new(|cx| {
             let data_len = data.read(cx).len();
 
+            // Re-run the filter when launcher data changes (e.g. plugin tiles
+            // arriving asynchronously).
             let data_sub = cx.observe(&data, |this: &mut LauncherView, _, cx| {
                 this.force_filter_and_sort(cx);
             });
@@ -205,6 +207,7 @@ fn spawn_launcher(
                 config_initialized: ConfigGuard::is_initialized(),
                 response_socket,
                 backdrop,
+                last_selected: None,
             }
         })
     })

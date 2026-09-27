@@ -162,10 +162,6 @@ impl LauncherView {
         if let Some((old, target_idx)) = current_style.next_index(direction)
             && self.valid_selection_idx(target_idx, cx)
         {
-            if old != target_idx {
-                self.navigation
-                    .with_selected_item(cx, |item, cx| item.reset_inner(cx));
-            }
             self.focus_nth(target_idx, cx);
             if old != target_idx {
                 self.focus_search_bar(win, cx);

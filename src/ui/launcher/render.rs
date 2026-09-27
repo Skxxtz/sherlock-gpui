@@ -31,6 +31,15 @@ impl Render for LauncherView {
     fn render(&mut self, _win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
+        let selected = self.navigation.selected_data_idx(cx);
+        if selected != self.last_selected {
+            if let Some(old) = self.last_selected {
+                self.navigation
+                    .with_item(old, cx, |item, cx| item.reset_inner(cx));
+            }
+            self.last_selected = selected;
+        }
+
         self.has_actions = self
             .navigation
             .with_selected_item(cx, |itm, cx| itm.has_actions(cx))

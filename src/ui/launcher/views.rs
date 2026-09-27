@@ -268,6 +268,20 @@ impl NavigationStack {
             .and_then(|l| l.children.get(idx.1))
     }
 
+    pub fn with_item<R>(
+        &self,
+        idx: (LauncherId, usize),
+        cx: &mut App,
+        f: impl FnOnce(&RenderableChild, &mut App) -> R,
+    ) -> Option<R> {
+        let data_entity = self.with_model(cx, |mdl| mdl.data());
+        data_entity.update(cx, |data, cx| {
+            data.get(&idx.0)
+                .and_then(|l| l.children.get(idx.1))
+                .map(|item| f(item, cx))
+        })
+    }
+
     pub fn with_selected_item<R>(
         &self,
         cx: &mut App,
@@ -282,7 +296,7 @@ impl NavigationStack {
                 .map(|item| f(item, cx))
         })
     }
-    fn selected_data_idx(&self, cx: &App) -> Option<(LauncherId, usize)> {
+    pub fn selected_data_idx(&self, cx: &App) -> Option<(LauncherId, usize)> {
         let ui_idx = self.current().style.selected_index()?;
         let (data, filtered_indices) =
             self.with_model(cx, |mdl| (mdl.data(), mdl.filtered_indices()));
