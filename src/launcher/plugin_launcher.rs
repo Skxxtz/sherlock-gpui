@@ -151,6 +151,9 @@ impl PluginLauncher {
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
         let lua_runtime = LuaRuntimeHandle::get();
+        // Drop state from any previous load of this plugin.
+        lua_runtime.stop_live(self.handle.clone());
+        subscribers.clear_plugin(&self.path);
         let theme = cx.global::<ActiveTheme>().0.clone();
         futures::executor::block_on(lua_runtime.call_init(self.handle.clone(), theme)).map_err(
             |e| {
@@ -187,7 +190,7 @@ impl PluginLauncher {
 
                 let weak = entity.downgrade();
 
-                subscribers.register(tile_id.clone(), weak.clone());
+                subscribers.register(self.path.clone(), tile_id.clone(), weak.clone());
 
                 let has_live =
                     futures::executor::block_on(lua_runtime.has_fn(self.handle.clone(), "live"));
@@ -222,6 +225,7 @@ impl PluginLauncher {
                     launcher: Arc::clone(&launcher),
                     inner: PluginWidget {
                         state: entity,
+                        plugin_id: self.path.clone(),
                         tile_id: tile_id.clone(),
                         subscribers: subscribers.clone(),
                     },

@@ -26,6 +26,7 @@ use crate::{
 #[derive(Clone)]
 pub struct PluginWidget {
     pub state: Entity<PluginTileState>,
+    pub plugin_id: Arc<std::path::Path>,
     pub tile_id: String,
     pub subscribers: TileSubscribers,
 }
@@ -153,7 +154,8 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
 
 impl Drop for PluginWidget {
     fn drop(&mut self) {
-        self.subscribers.unregister(&self.tile_id);
+        self.subscribers
+            .unregister(&self.plugin_id, &self.tile_id, &self.state);
     }
 }
 

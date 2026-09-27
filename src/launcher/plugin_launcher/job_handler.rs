@@ -87,6 +87,13 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
         } => {
             let _ = reply.send(plugin_has_fn(&lua, &registry, &handle, &func_name));
         }
+        LuaJob::StopLive { handle } => {
+            if let Some(plugin) = registry.borrow_mut().get_mut(&handle.id) {
+                for task in plugin.live_tasks.drain(..) {
+                    task.abort();
+                }
+            }
+        }
         LuaJob::Unload { handle } => unload_plugin(&lua, &registry, &handle.id),
     }
 }
@@ -144,7 +151,7 @@ fn load_plugin(
         )
         .eval()?;
 
-    if let Err(e) = init_local_api(lua, &env, capabilities) {
+    if let Err(e) = init_local_api(lua, &env, Arc::from(path), capabilities) {
         package.set("path", prev_path)?;
         return Err(e);
     };

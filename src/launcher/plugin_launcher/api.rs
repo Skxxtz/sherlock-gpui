@@ -1,7 +1,11 @@
 use super::capabilities::{HasCapabilityBit, PluginCapability};
 use crate::launcher::plugin_launcher::api::protocol::PluginDeferFunction;
 use mlua::prelude::*;
-use std::{fmt::Write, sync::OnceLock};
+use std::{
+    fmt::Write,
+    path::Path,
+    sync::{Arc, OnceLock},
+};
 use tokio::sync::mpsc;
 
 pub mod app;
@@ -17,6 +21,8 @@ static UI_UPDATE_CHANNEL: OnceLock<mpsc::UnboundedSender<PluginDeferFunction>> =
 
 pub struct ApiContext {
     pub update_tx: &'static mpsc::UnboundedSender<PluginDeferFunction>,
+    /// Path of the plugin this API instance belongs to.
+    pub plugin_id: Arc<Path>,
 }
 
 pub trait SherlockPluginFn: HasCapabilityBit {
@@ -149,12 +155,13 @@ macro_rules! generate_modules {
         pub fn init_local_api(
             lua: &mlua::Lua,
             local_env: &mlua::Table,
+            plugin_id: std::sync::Arc<std::path::Path>,
             caps: $crate::launcher::plugin_launcher::api::PluginCapability,
         ) -> mlua::Result<()> {
             let Some(update_tx) = UI_UPDATE_CHANNEL.get() else {
                 panic!("Tried to initialize local lua env before globals have been set.");
             };
-            let ctx = $crate::launcher::plugin_launcher::api::ApiContext { update_tx };
+            let ctx = $crate::launcher::plugin_launcher::api::ApiContext { update_tx, plugin_id };
             let sherlock = lua.create_table()?;
             $(
                 let t = lua.create_table()?;

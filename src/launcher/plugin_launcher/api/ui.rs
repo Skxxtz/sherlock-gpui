@@ -16,10 +16,12 @@ impl SherlockPluginFn for Update {
     const DOC: &'static str = "Updates the UI tile identified by `<tile_id>` with the given node.";
     fn register(lua: &Lua, table: &LuaTable, ctx: &ApiContext) -> LuaResult<()> {
         let update_tx = ctx.update_tx.clone();
+        let plugin_id = ctx.plugin_id.clone();
         lua_fn!(
             table, lua,
             |_lua, (tile_id: String, node: PluginUiNode)| {
                 let _ = update_tx.send(PluginDeferFunction::Update {
+                    plugin_id: plugin_id.clone(),
                     tile_id,
                     node: Box::new(node),
                 });

@@ -50,6 +50,9 @@ pub enum LuaJob {
         handle: Arc<PluginHandle>,
         tile_id: String,
     },
+    StopLive {
+        handle: Arc<PluginHandle>,
+    },
     HasFn {
         handle: Arc<PluginHandle>,
         func_name: String,
@@ -122,8 +125,12 @@ impl LuaRuntimeHandle {
                         PluginDeferFunction::WriteClipboard(content) => {
                             let _ = cx.update(|cx| cx.write_to_clipboard(content.into()));
                         }
-                        PluginDeferFunction::Update { tile_id, node } => {
-                            if let Some(weak) = subscribers.get(&tile_id)
+                        PluginDeferFunction::Update {
+                            plugin_id,
+                            tile_id,
+                            node,
+                        } => {
+                            if let Some(weak) = subscribers.get(&plugin_id, &tile_id)
                                 && let Some(entity) = weak.upgrade()
                             {
                                 cx.update(|cx| {
@@ -208,6 +215,11 @@ impl LuaRuntimeHandle {
     /// wait for it to finish — it may run forever.
     pub fn spawn_live(&self, handle: Arc<PluginHandle>, tile_id: String) {
         let _ = self.tx.send(LuaJob::SpawnLive { handle, tile_id });
+    }
+
+    /// Stops all running `live()` loops of a plugin without unloading it.
+    pub fn stop_live(&self, handle: Arc<PluginHandle>) {
+        let _ = self.tx.send(LuaJob::StopLive { handle });
     }
 
     #[allow(unused)]
