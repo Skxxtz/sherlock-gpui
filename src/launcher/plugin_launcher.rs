@@ -30,7 +30,14 @@ use crate::{
 use gpui::{App, AppContext, AsyncApp, SharedString};
 use mlua::prelude::LuaResult;
 use serde_json::Value;
-use std::{path::Path, rc::Rc, sync::Arc};
+use std::{
+    path::Path,
+    rc::Rc,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+};
 
 pub mod api;
 pub mod capabilities;
@@ -54,6 +61,7 @@ pub struct PluginLauncher {
     pub path: Arc<Path>,
     pub capabilities: PluginCapability,
     pub handle: Arc<PluginHandle>,
+    pub load_gen: Arc<AtomicU64>,
 }
 
 impl LauncherProvider for PluginLauncher {
@@ -106,6 +114,7 @@ impl LauncherProvider for PluginLauncher {
             path,
             capabilities,
             handle,
+            load_gen: Arc::default(),
         }))
     }
 
@@ -175,6 +184,8 @@ impl PluginLauncher {
         rt.stop_live(self.handle.clone());
         subscribers.clear_plugin(&self.path);
 
+        let generation = self.load_gen.fetch_add(1, Ordering::SeqCst) + 1;
+        let load_gen = self.load_gen.clone();
         let theme = cx.global::<ActiveTheme>().0.clone();
         let handle = self.handle.clone();
         let path = self.path.clone();
@@ -189,8 +200,15 @@ impl PluginLauncher {
                 }
                 .await;
 
+                if load_gen.load(Ordering::SeqCst) != generation {
+                    return;
+                }
+
                 match result {
                     Ok(tiles) => cx.update(|cx| {
+                        if !is_current(&launcher, &handle, cx) {
+                            return;
+                        }
                         let children =
                             build_tiles(&launcher, &path, &handle, tiles, &subscribers, cx);
                         replace_children(&launcher, &handle, children, cx);
@@ -266,8 +284,17 @@ fn build_tiles(
         .collect()
 }
 
-/// Replaces the launcher's children, unless the plugin was reloaded or the
-/// config was re-read since this load started (stale result).
+/// Whether `handle` is still the plugin handle of this launcher (it isn't
+/// after a plugin reload or a config re-read).
+fn is_current(launcher: &LauncherConfig, handle: &Arc<PluginHandle>, cx: &App) -> bool {
+    let Some(data) = cx.global::<LauncherEntityGlobal>().0.upgrade() else {
+        return false;
+    };
+    data.read(cx).get(&launcher.id()).is_some_and(|entry| {
+        matches!(&entry.config.launcher_type, LauncherType::Plugin(p) if Arc::ptr_eq(&p.handle, handle))
+    })
+}
+
 fn replace_children(
     launcher: &LauncherConfig,
     handle: &Arc<PluginHandle>,
