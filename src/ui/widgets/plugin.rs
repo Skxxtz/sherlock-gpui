@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, AsyncApp, Div, Entity, ImageSource, InteractiveElement, IntoElement,
-    MouseButton, ParentElement, Styled, StyledText, WeakEntity, div, img,
+    MouseButton, ObjectFit, ParentElement, Resource, SharedUri, Styled, StyledImage, StyledText,
+    WeakEntity, div, img, prelude::FluentBuilder, px, relative,
 };
 
 use crate::{
@@ -14,6 +15,7 @@ use crate::{
             plugin_tile_state::PluginTileState,
             runtime::{LuaRuntimeHandle, PluginHandle},
             subscribers::TileSubscribers,
+            ui::style::{PluginStyle, parse_color},
             ui_schema::{PluginTileMeta, PluginUiNode},
         },
         utils::exec_mode::ExecMode,
@@ -25,6 +27,7 @@ use crate::{
         traits::RenderableChildImpl,
         utils::selection::Selection,
     },
+    utils::files::{expand_path, home_dir},
 };
 
 #[derive(Clone)]
@@ -41,7 +44,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         launcher: &Arc<LauncherConfig>,
         _selection: Selection,
         _query: &str,
-        _theme: Arc<ThemeData>,
+        theme: Arc<ThemeData>,
         cx: &mut App,
     ) -> AnyElement {
         let state = self.state.read(cx);
@@ -80,6 +83,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
                 _ => None,
             },
             tile_id: self.tile_id.clone(),
+            theme,
         };
         render_node(&data.node, &ctx)
     }
@@ -235,13 +239,29 @@ impl Drop for PluginWidget {
     }
 }
 
-/// What a rendered node needs to route clicks back to its plugin.
+/// What a rendered node needs: click routing and the active theme.
 struct NodeCtx {
     handle: Option<Arc<PluginHandle>>,
     tile_id: String,
+    theme: Arc<ThemeData>,
 }
 
 impl NodeCtx {
+    /// Applies `style` (and its `hover` overrides) to a div.
+    fn styled(&self, mut el: Div, style: &PluginStyle) -> Div {
+        style.apply_to_style_refinement(el.style(), &self.theme);
+        match style.hover.clone() {
+            Some(hover) => {
+                let theme = self.theme.clone();
+                el.hover(move |mut s| {
+                    hover.apply_to_style_refinement(&mut s, &theme);
+                    s
+                })
+            }
+            None => el,
+        }
+    }
+
     /// Makes `el` clickable if the node has an `on_click` callback.
     fn clickable(&self, el: Div, on_click: Option<u32>) -> Div {
         let (Some(index), Some(handle)) = (on_click, self.handle.clone()) else {
@@ -255,6 +275,23 @@ impl NodeCtx {
                 LuaRuntimeHandle::get().invoke_callback(handle.clone(), tile_id.clone(), index);
             })
     }
+
+    /// Styled, optionally clickable div.
+    fn node_div(&self, style: &PluginStyle, on_click: Option<u32>) -> Div {
+        self.clickable(self.styled(div(), style), on_click)
+    }
+}
+
+/// Resolves an image `src`: http(s) URLs as-is, otherwise a path (`~` expanded).
+fn image_source(src: &str) -> ImageSource {
+    if src.starts_with("http://") || src.starts_with("https://") {
+        return ImageSource::Resource(Resource::Uri(SharedUri::from(src.to_string())));
+    }
+    let path = match home_dir() {
+        Ok(home) => expand_path(src, &home),
+        Err(_) => src.into(),
+    };
+    ImageSource::Resource(Resource::Path(Arc::from(path)))
 }
 
 fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
@@ -263,24 +300,26 @@ fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
             style,
             children,
             on_click,
-        } => {
-            let mut el = div();
-            style.apply_to_style_refinement(el.style());
-            ctx.clickable(el, *on_click)
-                .children(children.iter().map(|c| render_node(c, ctx)))
-                .into_any_element()
-        }
+        } => ctx
+            .node_div(style, *on_click)
+            .children(children.iter().map(|c| render_node(c, ctx)))
+            .into_any_element(),
         PluginUiNode::Text {
             content,
             style,
             on_click,
-        } => {
-            let mut el = div();
-            style.apply_to_style_refinement(el.style());
-            ctx.clickable(el, *on_click)
-                .child(StyledText::new(content.clone()))
-                .into_any_element()
-        }
+        } => ctx
+            .node_div(style, *on_click)
+            .child(StyledText::new(content.clone()))
+            .into_any_element(),
+        PluginUiNode::Button {
+            label,
+            style,
+            on_click,
+        } => ctx
+            .node_div(style, *on_click)
+            .child(label.clone())
+            .into_any_element(),
         PluginUiNode::Icon {
             name,
             style,
@@ -288,16 +327,16 @@ fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
         } => {
             let icon = if let Some(icon) = resolve_icon_path(name) {
                 if let Some(mut svg) = icon.svg() {
-                    style.apply_to_style_refinement(svg.style());
+                    style.apply_to_style_refinement(svg.style(), &ctx.theme);
                     svg.into_any_element()
                 } else {
                     let mut el = img(icon.clone());
-                    style.apply_to_style_refinement(el.style());
+                    style.apply_to_style_refinement(el.style(), &ctx.theme);
                     el.into_any_element()
                 }
             } else {
                 let mut el = img(ImageSource::Image(Arc::new(gpui::Image::empty())));
-                style.apply_to_style_refinement(el.style());
+                style.apply_to_style_refinement(el.style(), &ctx.theme);
                 el.into_any_element()
             };
             match on_click {
@@ -308,16 +347,52 @@ fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
                 None => icon,
             }
         }
-        PluginUiNode::Button {
-            label,
+        PluginUiNode::Image {
+            src,
             style,
             on_click,
         } => {
-            let mut el = div();
-            style.apply_to_style_refinement(el.style());
-            ctx.clickable(el, *on_click)
-                .child(label.clone())
+            let mut el = img(image_source(src)).object_fit(ObjectFit::Contain);
+            style.apply_to_style_refinement(el.style(), &ctx.theme);
+            match on_click {
+                Some(_) => ctx.clickable(div(), *on_click).child(el).into_any_element(),
+                None => el.into_any_element(),
+            }
+        }
+        PluginUiNode::Progress {
+            value,
+            style,
+            on_click,
+        } => {
+            let fill = style
+                .color
+                .as_deref()
+                .and_then(|c| parse_color(c, &ctx.theme))
+                .unwrap_or(ctx.theme.border_selected);
+            // Defaults first, so the plugin's style can override them.
+            ctx.node_div(style, *on_click)
+                .map(|mut el| {
+                    let s = el.style();
+                    s.size.width.get_or_insert(relative(1.).into());
+                    s.size.height.get_or_insert(px(6.).into());
+                    s.background
+                        .get_or_insert(gpui::Fill::Color(ctx.theme.bg_muted.into()));
+                    el
+                })
+                .rounded_full()
+                .overflow_hidden()
+                .child(
+                    div()
+                        .h_full()
+                        .w(relative(value.clamp(0., 1.)))
+                        .rounded_full()
+                        .bg(fill),
+                )
                 .into_any_element()
         }
+        PluginUiNode::Divider { style } => ctx
+            .styled(div().w_full().h(px(1.)).bg(ctx.theme.border), style)
+            .into_any_element(),
+        PluginUiNode::Spacer { style } => ctx.styled(div().flex_grow(), style).into_any_element(),
     }
 }

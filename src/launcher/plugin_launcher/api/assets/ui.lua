@@ -117,6 +117,8 @@ function Node:build()
         content = self._props.content,
         label = self._props.label,
         name = self._props.name,
+        src = self._props.src,
+        value = self._props.value,
         on_click = self._props.on_click,
         on_activate = self._props.on_activate,
         actions = self._props.actions,
@@ -162,6 +164,7 @@ local STYLE_KEYS = {
     corner_radii = true, opacity = true, color = true,
     font_size = true, font_family = true, text_align = true,
     flex_direction = true, align_items = true, justify_content = true,
+    hover = true,
 }
 
 ---@param node sherlock.ui.Node
@@ -264,6 +267,43 @@ function sherlock.ui.button(label)
         return apply_opts(node, label)
     end
     return Node.new("button", { label = label })
+end
+
+--- Image from a file path (`~` expanded) or an http(s) URL.
+---@param src string|table
+---@return sherlock.ui.Node
+function sherlock.ui.image(src)
+    if type(src) == "table" then
+        local node = Node.new("image", { src = src.src })
+        return apply_opts(node, src)
+    end
+    return Node.new("image", { src = src })
+end
+
+--- Progress bar filled to `value` (0..1). `background` styles the track,
+--- `color` the fill.
+---@param value number|table
+---@return sherlock.ui.Node
+function sherlock.ui.progress(value)
+    if type(value) == "table" then
+        local node = Node.new("progress", { value = value.value })
+        return apply_opts(node, value)
+    end
+    return Node.new("progress", { value = value })
+end
+
+--- Thin horizontal line.
+---@param opts table?
+---@return sherlock.ui.Node
+function sherlock.ui.divider(opts)
+    return apply_opts(Node.new("divider"), opts)
+end
+
+--- Fills the remaining space in a row/column.
+---@param opts table?
+---@return sherlock.ui.Node
+function sherlock.ui.spacer(opts)
+    return apply_opts(Node.new("spacer"), opts)
 end
 
 -- ---------------------------------------------------------------------
@@ -409,6 +449,13 @@ end
 
 ---@param v sherlock.ui.Justify
 ---@return sherlock.ui.Node
+---@param style_table table
+---@return sherlock.ui.Node
+function Node:hover(style_table)
+    self._style.hover = style_table
+    return self
+end
+
 function Node:justify_content(v)
     self._style.justify_content = v
     return self

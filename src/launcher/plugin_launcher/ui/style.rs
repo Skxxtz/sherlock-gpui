@@ -5,6 +5,8 @@ use gpui::{
 };
 use serde::Deserialize;
 
+use crate::app::theme::ThemeData;
+
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 pub struct PluginStyle {
@@ -33,18 +35,21 @@ pub struct PluginStyle {
     pub margin_x: Option<f32>,
     pub margin_y: Option<f32>,
 
-    // Visual
-    pub background: Option<String>,   // hex
-    pub border_color: Option<String>, // hex
+    // Visual. Colors are hex (`#rrggbb[aa]`) or a theme token (see `parse_color`).
+    pub background: Option<String>,
+    pub border_color: Option<String>,
     pub border_width: Option<f32>,
     pub corner_radii: Option<f32>,
     pub opacity: Option<f32>,
 
     // Text
-    pub color: Option<String>, // hex, forwarded to text style
+    pub color: Option<String>, // forwarded to text style
     pub font_family: Option<SharedString>,
     pub font_size: Option<f32>,
     pub text_align: Option<PluginTextAlign>,
+
+    /// Overrides applied while the pointer is over the element.
+    pub hover: Option<Box<PluginStyle>>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
@@ -91,7 +96,7 @@ pub enum PluginTextAlign {
 }
 
 impl PluginStyle {
-    pub fn apply_to_style_refinement(&self, style: &mut StyleRefinement) {
+    pub fn apply_to_style_refinement(&self, style: &mut StyleRefinement, theme: &ThemeData) {
         // Flex properties imply a flex container unless `flex = false`.
         let implies_flex = self.flex_direction.is_some()
             || self.align_items.is_some()
@@ -215,10 +220,18 @@ impl PluginStyle {
         }
 
         // Visual
-        if let Some(color) = self.background.as_deref().and_then(parse_hex) {
+        if let Some(color) = self
+            .background
+            .as_deref()
+            .and_then(|c| parse_color(c, theme))
+        {
             style.background = Some(Fill::Color(color.into()));
         }
-        if let Some(color) = self.border_color.as_deref().and_then(parse_hex) {
+        if let Some(color) = self
+            .border_color
+            .as_deref()
+            .and_then(|c| parse_color(c, theme))
+        {
             style.border_color = Some(color);
         }
         if let Some(w) = self.border_width {
@@ -244,7 +257,7 @@ impl PluginStyle {
         }
 
         // text stuff
-        if let Some(color) = self.color.as_deref().and_then(parse_hex) {
+        if let Some(color) = self.color.as_deref().and_then(|c| parse_color(c, theme)) {
             style.text.color = Some(color);
         }
         if let Some(family) = &self.font_family {
@@ -263,12 +276,29 @@ impl PluginStyle {
     }
 }
 
-impl From<PluginStyle> for StyleRefinement {
-    fn from(s: PluginStyle) -> Self {
-        let mut style = StyleRefinement::default();
-        s.apply_to_style_refinement(&mut style);
-        style
+/// Parses a hex color or one of the theme tokens:
+/// `text`, `text_secondary`, `text_muted`, `bg`, `bg_muted`, `bg_selected`,
+/// `border`, `accent`, `success`, `warning`, `error`, `info`.
+pub fn parse_color(value: &str, theme: &ThemeData) -> Option<Hsla> {
+    if value.starts_with('#') {
+        return parse_hex(value);
     }
+    Some(match value {
+        "text" => theme.primary_text,
+        "text_secondary" => theme.secondary_text,
+        "text_muted" => theme.tertiary_text,
+        "bg" => theme.bg_app,
+        "bg_muted" => theme.bg_muted,
+        "bg_selected" => theme.bg_selected,
+        "border" => theme.border,
+        "accent" => theme.border_selected,
+        "success" => theme.color_succ,
+        "warning" => theme.color_warn,
+        "error" => theme.color_err,
+        "info" => theme.color_info,
+        // Bare hex without `#` keeps working.
+        other => return parse_hex(other),
+    })
 }
 
 fn parse_hex(hex: &str) -> Option<Hsla> {

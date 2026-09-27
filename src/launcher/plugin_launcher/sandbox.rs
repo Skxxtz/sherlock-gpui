@@ -290,4 +290,48 @@ mod tests {
             .unwrap();
         assert_eq!(result, "t,t");
     }
+
+    #[test]
+    fn rich_nodes_convert_to_schema() {
+        use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
+
+        let (lua, dir) = setup();
+        let env = make_env(&lua, &dir).unwrap();
+        run(&lua, &env, "sherlock = { ui = {} }").unwrap();
+        load_ui_lib(&lua, &env).unwrap();
+
+        let node: PluginUiNode = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "local ui = sherlock.ui
+                     return ui.column {
+                         ui.image '~/pic.png',
+                         ui.progress(0.5) { color = 'accent' },
+                         ui.divider(),
+                         ui.row { ui.text 'a', ui.spacer(), ui.text 'b' }
+                             :hover { background = 'bg_selected' },
+                     }",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        let PluginUiNode::Container { children, .. } = node else {
+            panic!("expected container");
+        };
+        assert!(matches!(&children[0], PluginUiNode::Image { src, .. } if src == "~/pic.png"));
+        assert!(matches!(children[1], PluginUiNode::Progress { value, .. } if value == 0.5));
+        assert!(matches!(children[2], PluginUiNode::Divider { .. }));
+        let PluginUiNode::Container {
+            style,
+            children: row,
+            ..
+        } = &children[3]
+        else {
+            panic!("expected row");
+        };
+        assert!(style.hover.is_some());
+        assert!(matches!(row[1], PluginUiNode::Spacer { .. }));
+    }
 }

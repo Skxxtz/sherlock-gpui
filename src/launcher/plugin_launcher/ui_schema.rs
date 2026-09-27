@@ -53,6 +53,7 @@ impl<'de> Deserialize<'de> for PluginTileContent {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum PluginUiNode {
     Container {
+        /// Index into the tile's callback list (see `sherlock._prepare`).
         #[serde(default)]
         on_click: Option<u32>,
         #[serde(default)]
@@ -61,6 +62,7 @@ pub enum PluginUiNode {
         children: Vec<PluginUiNode>,
     },
     Text {
+        /// Index into the tile's callback list (see `sherlock._prepare`).
         #[serde(default)]
         on_click: Option<u32>,
         content: String,
@@ -68,13 +70,42 @@ pub enum PluginUiNode {
         style: PluginStyle,
     },
     Icon {
+        /// Index into the tile's callback list (see `sherlock._prepare`).
         #[serde(default)]
         on_click: Option<u32>,
         name: String,
         #[serde(default)]
         style: PluginStyle,
     },
+    /// Image from a file path (`~` expanded) or an http(s) URL.
+    Image {
+        src: String,
+        #[serde(default)]
+        style: PluginStyle,
+        #[serde(default)]
+        on_click: Option<u32>,
+    },
+    /// Horizontal bar filled to `value` (0.0–1.0). `background` styles the
+    /// track, `color` the fill.
+    Progress {
+        value: f32,
+        #[serde(default)]
+        style: PluginStyle,
+        #[serde(default)]
+        on_click: Option<u32>,
+    },
+    /// Thin horizontal line in the theme's border color.
+    Divider {
+        #[serde(default)]
+        style: PluginStyle,
+    },
+    /// Takes up the remaining space in a row/column.
+    Spacer {
+        #[serde(default)]
+        style: PluginStyle,
+    },
     Button {
+        /// Index into the tile's callback list (see `sherlock._prepare`).
         #[serde(default)]
         on_click: Option<u32>,
         label: String,
