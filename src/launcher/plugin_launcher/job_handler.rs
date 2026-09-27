@@ -120,6 +120,19 @@ fn plugin_has_fn(
     matches!(env.get::<LuaValue>(func_name), Ok(LuaValue::Function(_)))
 }
 
+/// Short display name: the file stem, or the directory name for `init.lua`.
+fn plugin_name(path: &Path) -> String {
+    let stem = path.file_stem().and_then(|s| s.to_str());
+    let name = match stem {
+        Some("init") => path
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(|s| s.to_str()),
+        other => other,
+    };
+    name.unwrap_or("unknown").to_string()
+}
+
 fn load_plugin(
     lua: &Lua,
     registry: &Rc<RefCell<PluginRegistry>>,
@@ -131,11 +144,7 @@ fn load_plugin(
         unload_plugin(lua, registry, path);
     }
 
-    let name = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("unknown")
-        .to_string();
+    let name = plugin_name(path);
 
     let root = path.parent().ok_or(LuaError::RuntimeError(format!(
         "plugin '{}' not loaded",
@@ -237,4 +246,16 @@ async fn call_plugin_fn_unit(
     // which accepts any number/shape of returned values.
     f.call_async::<LuaMultiValue>(args).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::plugin_name;
+    use std::path::Path;
+
+    #[test]
+    fn plugin_name_uses_dir_for_init_lua() {
+        assert_eq!(plugin_name(Path::new("/p/weather/init.lua")), "weather");
+        assert_eq!(plugin_name(Path::new("/p/quote.lua")), "quote");
+    }
 }

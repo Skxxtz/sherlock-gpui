@@ -72,6 +72,14 @@ impl LauncherProvider for PluginLauncher {
                 )
             ));
         };
+        // Canonical path = stable plugin identity (registry, tile subscribers).
+        let path = path.canonicalize().map_err(|e| {
+            sherlock_msg!(
+                Warning,
+                SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                e
+            )
+        })?;
         let path: Arc<Path> = Arc::from(path);
 
         let capabilities = raw
