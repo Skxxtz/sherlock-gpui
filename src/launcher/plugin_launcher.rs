@@ -211,7 +211,8 @@ impl PluginLauncher {
                             if let Some(entity) = weak.upgrade() {
                                 cx.update(|cx| {
                                     entity.update(cx, |state, cx| match result {
-                                        Ok(data) => state.set_data(data.into(), cx),
+                                        Ok(Some(data)) => state.set_data(data.into(), cx),
+                                        Ok(None) => {}
                                         Err(e) => state.set_error(e.to_string(), cx),
                                     });
                                 });

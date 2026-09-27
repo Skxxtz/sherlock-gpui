@@ -57,9 +57,13 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             tile_id,
             reply,
         } => {
-            let result =
+            let result = if plugin_has_fn(&lua, &registry, &handle, "refresh") {
                 call_plugin_fn_async::<PluginUiNode>(&lua, &registry, &handle, "refresh", tile_id)
-                    .await;
+                    .await
+                    .map(Some)
+            } else {
+                Ok(None)
+            };
             let _ = reply.send(result);
         }
         LuaJob::SpawnLive { handle, tile_id } => {

@@ -132,7 +132,10 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
                                 let _ = weak_self.update(&mut cx, |this, _cx| {
                                     this.error = None;
                                     this.loading = false;
-                                    this.data = Some(Box::new(update));
+                                    // No `refresh` function: keep current content.
+                                    if let Some(update) = update {
+                                        this.data = Some(Box::new(update));
+                                    }
                                 });
                             }
                             Err(e) => {

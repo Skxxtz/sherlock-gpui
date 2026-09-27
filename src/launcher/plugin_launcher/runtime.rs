@@ -39,7 +39,7 @@ pub enum LuaJob {
     CallRefresh {
         handle: Arc<PluginHandle>,
         tile_id: String,
-        reply: oneshot::Sender<LuaResult<PluginUiNode>>,
+        reply: oneshot::Sender<LuaResult<Option<PluginUiNode>>>,
     },
     CallInit {
         handle: Arc<PluginHandle>,
@@ -181,7 +181,7 @@ impl LuaRuntimeHandle {
         &self,
         handle: Arc<PluginHandle>,
         tile_id: String,
-    ) -> LuaResult<PluginUiNode> {
+    ) -> LuaResult<Option<PluginUiNode>> {
         let (reply, rx) = oneshot::channel();
         self.tx
             .send(LuaJob::CallRefresh {
