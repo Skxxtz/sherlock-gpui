@@ -164,6 +164,8 @@ impl LauncherView {
                 });
             }
             ModelKind::Standard { data } => {
+                crate::launcher::plugin_launcher::dispatch_query(data.read(cx), &query);
+
                 // drop active tasks
                 self.navigation.with_model_mut(cx, |mdl, _| {
                     if let Model::Standard {

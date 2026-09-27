@@ -8,7 +8,10 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{app::theme::ThemeData, launcher::plugin_launcher::api::protocol::PluginDeferFunction};
+use crate::{
+    app::{LauncherEntityGlobal, theme::ThemeData},
+    launcher::plugin_launcher::api::protocol::PluginDeferFunction,
+};
 
 use super::{
     capabilities::PluginCapability,
@@ -24,6 +27,7 @@ pub struct PluginHandle {
     pub name: String,
     pub has_live: bool,
     pub has_refresh: bool,
+    pub has_on_query: bool,
 }
 
 #[allow(unused)]
@@ -55,6 +59,10 @@ pub enum LuaJob {
         handle: Arc<PluginHandle>,
         tile_id: String,
         index: u32,
+    },
+    Query {
+        handle: Arc<PluginHandle>,
+        query: String,
     },
     StopLive {
         handle: Arc<PluginHandle>,
@@ -135,7 +143,15 @@ impl LuaRuntimeHandle {
                                 && let Some(entity) = weak.upgrade()
                             {
                                 cx.update(|cx| {
-                                    entity.update(cx, |state, cx| state.set_data(node, cx));
+                                    let visibility_changed =
+                                        entity.update(cx, |state, cx| state.set_data(node, cx));
+                                    // Showing/hiding a tile changes the result list.
+                                    if visibility_changed
+                                        && let Some(data) =
+                                            cx.global::<LauncherEntityGlobal>().0.upgrade()
+                                    {
+                                        data.update(cx, |_, cx| cx.notify());
+                                    }
                                 });
                             }
                         }
@@ -222,6 +238,10 @@ impl LuaRuntimeHandle {
             tile_id,
             index,
         });
+    }
+
+    pub fn query(&self, handle: Arc<PluginHandle>, query: String) {
+        let _ = self.tx.send(LuaJob::Query { handle, query });
     }
 
     /// Stops all running `live()` loops of a plugin without unloading it.

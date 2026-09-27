@@ -7,6 +7,8 @@ use crate::launcher::plugin_launcher::ui::style::PluginStyle;
 pub struct PluginNodeRegistration {
     pub id: String,
     pub node: PluginTileContent,
+    #[serde(default)]
+    pub search: Option<String>,
 }
 
 /// A context-menu entry defined by the plugin.
@@ -29,6 +31,7 @@ pub struct PluginTileMeta {
     /// Callback index run when the tile is activated (Enter).
     pub on_activate: Option<u32>,
     pub actions: Vec<PluginTileAction>,
+    pub hidden: bool,
 }
 
 /// What a tile displays: its root node plus tile-level behaviour.

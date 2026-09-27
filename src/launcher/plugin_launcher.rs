@@ -1,5 +1,5 @@
 use crate::{
-    app::{LauncherEntityGlobal, theme::ActiveTheme},
+    app::{LauncherEntityGlobal, LauncherEntityInner, theme::ActiveTheme},
     define_inner_functions, ensure_func,
     launcher::{
         ExecEffect, LauncherConfig, LauncherId, LauncherProvider, LauncherType, LoadContext,
@@ -34,7 +34,7 @@ use std::{
     path::Path,
     rc::Rc,
     sync::{
-        Arc,
+        Arc, Mutex,
         atomic::{AtomicU64, Ordering},
     },
 };
@@ -64,6 +64,7 @@ pub struct PluginLauncher {
     pub handle: Arc<PluginHandle>,
     /// Bumped on every tile load; only the newest load may apply its tiles.
     pub load_gen: Arc<AtomicU64>,
+    pub last_query: Arc<Mutex<Option<String>>>,
 }
 
 impl LauncherProvider for PluginLauncher {
@@ -117,6 +118,7 @@ impl LauncherProvider for PluginLauncher {
             capabilities,
             handle,
             load_gen: Arc::default(),
+            last_query: Arc::default(),
         }))
     }
 
@@ -185,7 +187,7 @@ impl PluginLauncher {
             ..Default::default()
         });
 
-        // Drop state from any previous load of this plugin.
+        *self.last_query.lock().unwrap() = None;
         let rt = LuaRuntimeHandle::get();
         rt.stop_live(self.handle.clone());
         subscribers.clear_plugin(&self.path);
@@ -237,6 +239,8 @@ impl PluginLauncher {
                 plugin_id: self.path.clone(),
                 tile_id: String::new(),
                 subscribers,
+                search: SharedString::default(),
+                has_on_query: false,
             },
         }
     }
@@ -272,7 +276,9 @@ fn build_tiles(
                 cx.spawn(async move |cx: &mut AsyncApp| {
                     let result = rt.call_refresh(handle, tile_id).await;
                     let _ = weak.update(cx, |state, cx| match result {
-                        Ok(Some(data)) => state.set_data(data.into(), cx),
+                        Ok(Some(data)) => {
+                            state.set_data(data.into(), cx);
+                        }
                         Ok(None) => {}
                         Err(e) => state.set_error(e.to_string(), cx),
                     });
@@ -287,6 +293,12 @@ fn build_tiles(
                     plugin_id: path.clone(),
                     tile_id: tile.id,
                     subscribers: subscribers.clone(),
+                    search: tile
+                        .search
+                        .map(SharedString::from)
+                        .or_else(|| launcher.name.clone())
+                        .unwrap_or_default(),
+                    has_on_query: handle.has_on_query,
                 },
             }
         })
@@ -302,6 +314,26 @@ fn is_current(launcher: &LauncherConfig, handle: &Arc<PluginHandle>, cx: &App) -
     data.read(cx).get(&launcher.id()).is_some_and(|entry| {
         matches!(&entry.config.launcher_type, LauncherType::Plugin(p) if Arc::ptr_eq(&p.handle, handle))
     })
+}
+
+/// Sends `query` to every plugin that defines `on_query`, unless it already
+/// got that exact query (refilters re-run with the same query).
+pub fn dispatch_query(data: &LauncherEntityInner, query: &str) {
+    let rt = LuaRuntimeHandle::get();
+    for launcher in data.values() {
+        let LauncherType::Plugin(plg) = &launcher.config.launcher_type else {
+            continue;
+        };
+        if !plg.handle.has_on_query {
+            continue;
+        }
+        let mut last = plg.last_query.lock().unwrap();
+        if last.as_deref() == Some(query) {
+            continue;
+        }
+        *last = Some(query.to_string());
+        rt.query(plg.handle.clone(), query.to_string());
+    }
 }
 
 /// Replaces the launcher's children if `handle` is still current.

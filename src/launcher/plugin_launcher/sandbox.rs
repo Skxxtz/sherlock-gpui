@@ -50,7 +50,9 @@ mod tests {
     }
 
     fn setup() -> (Lua, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("sherlock-sandbox-{}", std::process::id()));
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("sherlock-sandbox-{}-{n}", std::process::id()));
         std::fs::create_dir_all(dir.join("sub")).unwrap();
         std::fs::write(dir.join("helper.lua"), "return { value = 42 }").unwrap();
         std::fs::write(dir.join("sub/init.lua"), "return 'nested'").unwrap();
@@ -333,5 +335,29 @@ mod tests {
         };
         assert!(style.hover.is_some());
         assert!(matches!(row[1], PluginUiNode::Spacer { .. }));
+    }
+
+    #[test]
+    fn hidden_and_search_convert() {
+        use crate::launcher::plugin_launcher::ui_schema::PluginNodeRegistration;
+
+        let (lua, dir) = setup();
+        let env = make_env(&lua, &dir).unwrap();
+        run(&lua, &env, "sherlock = { ui = {} }").unwrap();
+        load_ui_lib(&lua, &env).unwrap();
+
+        let reg: PluginNodeRegistration = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "return { id = 't', search = 'weather forecast',
+                              node = sherlock._prepare('t', sherlock.ui.text 'x' :hide()) }",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(reg.node.meta.hidden);
+        assert_eq!(reg.search.as_deref(), Some("weather forecast"));
     }
 }

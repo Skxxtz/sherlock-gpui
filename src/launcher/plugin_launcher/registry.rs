@@ -12,6 +12,7 @@ pub struct PluginRegistry {
 pub struct LoadedPlugin {
     pub env_key: LuaRegistryKey,
     pub live_tasks: Vec<tokio::task::AbortHandle>,
+    pub query_task: Option<tokio::task::AbortHandle>,
 }
 
 impl PluginRegistry {
@@ -25,6 +26,7 @@ impl PluginRegistry {
             LoadedPlugin {
                 env_key,
                 live_tasks: Vec::new(),
+                query_task: None,
             },
         );
         Ok(())

@@ -11,11 +11,14 @@ pub struct PluginTileState {
 }
 
 impl PluginTileState {
-    pub fn set_data(&mut self, data: Box<PluginTileContent>, cx: &mut Context<Self>) {
+    pub fn set_data(&mut self, data: Box<PluginTileContent>, cx: &mut Context<Self>) -> bool {
+        let was_hidden = self.data.as_ref().is_some_and(|d| d.meta.hidden);
+        let changed = was_hidden != data.meta.hidden;
         self.data = Some(data);
         self.loading = false;
         self.error = None;
         cx.notify();
+        changed
     }
 
     pub fn set_error(&mut self, err: String, cx: &mut Context<Self>) {

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, AsyncApp, Div, Entity, ImageSource, InteractiveElement, IntoElement,
-    MouseButton, ObjectFit, ParentElement, Resource, SharedUri, Styled, StyledImage, StyledText,
-    WeakEntity, div, img, prelude::FluentBuilder, px, relative,
+    AnyElement, App, AppContext, AsyncApp, Div, Entity, ImageSource, InteractiveElement,
+    IntoElement, MouseButton, ObjectFit, ParentElement, Resource, SharedString, SharedUri, Styled,
+    StyledImage, StyledText, WeakEntity, div, img, prelude::FluentBuilder, px, relative,
 };
 
 use crate::{
@@ -36,6 +36,8 @@ pub struct PluginWidget {
     pub plugin_id: Arc<std::path::Path>,
     pub tile_id: String,
     pub subscribers: TileSubscribers,
+    pub search: SharedString,
+    pub has_on_query: bool,
 }
 
 impl<'a> RenderableChildImpl<'a> for PluginWidget {
@@ -106,7 +108,21 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
     }
     #[inline(always)]
     fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
-        "test"
+        &self.search
+    }
+    #[inline(always)]
+    fn based_show<C: AppContext>(&self, _keyword: &str, cx: &mut C) -> Option<bool> {
+        let hidden = self
+            .state
+            .read_with(cx, |s, _| s.data.as_ref().is_some_and(|d| d.meta.hidden));
+        if hidden {
+            Some(false)
+        } else if self.has_on_query {
+            // Plugins with `on_query` filter themselves.
+            Some(true)
+        } else {
+            None
+        }
     }
     #[inline(always)]
     fn actions(

@@ -84,6 +84,15 @@ function Node:on_activate(callback)
     return self
 end
 
+--- Tile-level: hide the tile from results (e.g. from `on_query`). Only
+--- used on a tile's root node.
+---@param hidden boolean?
+---@return sherlock.ui.Node
+function Node:hide(hidden)
+    self._props.hidden = hidden ~= false
+    return self
+end
+
 ---@class sherlock.ui.ActionOpts
 ---@field icon string? icon name
 ---@field exit boolean? close the launcher after running
@@ -122,6 +131,7 @@ function Node:build()
         on_click = self._props.on_click,
         on_activate = self._props.on_activate,
         actions = self._props.actions,
+        hidden = self._props.hidden,
 
         style = next(self._style) and self._style or nil,
 
@@ -187,6 +197,9 @@ local function apply_opts(node, opts)
     end
     if opts.on_click then
         node:on_click(opts.on_click)
+    end
+    if opts.hidden ~= nil then
+        node:hide(opts.hidden)
     end
     if opts.on_activate then
         node:on_activate(opts.on_activate)
@@ -449,6 +462,7 @@ end
 
 ---@param v sherlock.ui.Justify
 ---@return sherlock.ui.Node
+--- Style overrides while hovered, e.g. `:hover { background = "bg_selected" }`.
 ---@param style_table table
 ---@return sherlock.ui.Node
 function Node:hover(style_table)

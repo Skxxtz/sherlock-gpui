@@ -115,6 +115,30 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                 eprintln!("[plugin:{}] on_click failed: {e}", handle.name);
             }
         }
+        LuaJob::Query { handle, query } => {
+            let task = {
+                let lua = lua.clone();
+                let registry = Rc::clone(&registry);
+                let handle = Arc::clone(&handle);
+                tokio::task::spawn_local(async move {
+                    let result = call_plugin_fn_async::<LuaMultiValue>(
+                        &lua, &registry, &handle, "on_query", query,
+                    )
+                    .await;
+                    if let Err(e) = result {
+                        eprintln!("[plugin:{}] on_query failed: {e}", handle.name);
+                    }
+                })
+            };
+            match registry.borrow_mut().get_mut(&handle.id) {
+                Some(plugin) => {
+                    if let Some(old) = plugin.query_task.replace(task.abort_handle()) {
+                        old.abort();
+                    }
+                }
+                None => task.abort(),
+            }
+        }
         LuaJob::StopLive { handle } => {
             if let Some(plugin) = registry.borrow_mut().get_mut(&handle.id) {
                 for task in plugin.live_tasks.drain(..) {
@@ -184,7 +208,7 @@ fn load_plugin(
         .exec()?;
 
     let has = |f: &str| matches!(env.get::<LuaValue>(f), Ok(LuaValue::Function(_)));
-    let (has_live, has_refresh) = (has("live"), has("refresh"));
+    let (has_live, has_refresh, has_on_query) = (has("live"), has("refresh"), has("on_query"));
 
     let env_key = lua.create_registry_value(env)?;
 
@@ -198,6 +222,7 @@ fn load_plugin(
         name,
         has_live,
         has_refresh,
+        has_on_query,
     })
 }
 
@@ -207,6 +232,9 @@ pub fn unload_plugin(lua: &Lua, registry: &Rc<RefCell<PluginRegistry>>, id: &Pat
         return;
     };
     for task in plugin.live_tasks {
+        task.abort();
+    }
+    if let Some(task) = plugin.query_task {
         task.abort();
     }
     let _ = lua.remove_registry_value(plugin.env_key);
