@@ -458,10 +458,11 @@ mod docs {
     use super::PluginLauncher;
     use crate::{
         display_name,
-        docs::launcher::{
+        docs::{launcher::{
             Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry,
             plugin_launcher::plugin_capabilities_section,
-        },
+
+        }, plugins::plugin_guide_section},
         variant_name,
     };
     use indoc::indoc;
@@ -506,27 +507,22 @@ mod docs {
                     description: "Basic plugin launcher",
                     json: indoc! {
                         r#"{
-                        "type": "plugin",
-                        "name": "Quote Plugin",
-                        "args": {
-                            "path": "~/.config/sherlock/plugins/quote.lua",
-                            "capabilities": ["http.get", "json.decode"]
-                        },
-                        "actions": [
-                            {
-                                "name": "Reload",
-                                "icon": "sherlock-devtools",
-                                "method": "inner.reload"
-                            }
-                        ],
-                        "home": "OnlyHome",
-                        "shortcut": false,
-                        "spawn_focus": false,
-                        "priority": 1
-                    }"#
+                            "type": "plugin",
+                            "name": "Test Plugin",
+                            "args": {
+                                "path": "~/.config/sherlock/plugins/test/init.lua",
+                                "capabilities": ["ui"]
+                            },
+                            "actions": [{ "name": "Reload", "icon": "sherlock-devtools", "method": "inner.reload" }]
+                            "home": "OnlyHome",
+                            "shortcut": false,
+                            "spawn_focus": false,
+                            "priority": 1
+
+                        }"#
                     },
                 }],
-                args_explanations: &[plugin_capabilities_section],
+                args_explanations: &[plugin_guide_section, plugin_capabilities_section],
                 ..LauncherDocEntry::new()
             }
         }

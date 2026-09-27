@@ -44,7 +44,7 @@ pub fn plugin_capabilities_section() -> Raw {
                 ),
                 codeblock()
                     .lang("json")
-                    .content(r#"{ "capabilities": ["calc.math", "calc.units"] }"#),
+                    .content(r#"{ "capabilities": ["ui"] }"#),
             )
             .children(plugin_capability_docs().iter().map(|cap| {
                 details()

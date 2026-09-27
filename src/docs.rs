@@ -20,6 +20,7 @@ use crate::{
 };
 
 pub mod book;
+pub mod plugins;
 mod configuration;
 mod contributing;
 mod exec_variable;
