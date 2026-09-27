@@ -1,5 +1,5 @@
 use super::{
-    api::{init_local_api, report_error},
+    api::{init_local_api, protocol::PluginDeferFunction, report_error, send_to_ui},
     capabilities::PluginCapability,
     registry::PluginRegistry,
     runtime::{LuaJob, PluginHandle},
@@ -144,9 +144,23 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                 let registry = Rc::clone(&registry);
                 let handle = Arc::clone(&handle);
                 tokio::task::spawn_local(async move {
-                    let result = call_plugin_fn_async::<LuaMultiValue>(
-                        &lua, &registry, &handle, "on_query", query,
-                    )
+                    let result = async {
+                        let rows: LuaValue =
+                            call_plugin_fn_async(&lua, &registry, &handle, "on_query", query)
+                                .await?;
+                        let LuaValue::Table(rows) = rows else {
+                            return Ok(());
+                        };
+                        let prepare: LuaFunction =
+                            sherlock_table(&lua, &registry, &handle)?.get("_prepare_rows")?;
+                        let rows =
+                            lua.unpack::<Vec<PluginNodeRegistration>>(prepare.call(rows)?)?;
+                        send_to_ui(PluginDeferFunction::Results {
+                            plugin_id: Arc::from(handle.id.as_path()),
+                            rows,
+                        });
+                        Ok::<_, LuaError>(())
+                    }
                     .await;
                     if let Err(e) = result {
                         report_error(

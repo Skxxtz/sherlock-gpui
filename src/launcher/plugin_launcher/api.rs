@@ -19,6 +19,12 @@ pub mod ui;
 
 static UI_UPDATE_CHANNEL: OnceLock<mpsc::UnboundedSender<PluginDeferFunction>> = OnceLock::new();
 
+pub fn send_to_ui(msg: PluginDeferFunction) {
+    if let Some(tx) = UI_UPDATE_CHANNEL.get() {
+        let _ = tx.send(msg);
+    }
+}
+
 pub fn report_error(
     plugin: &str,
     action: crate::utils::errors::types::PluginAction,

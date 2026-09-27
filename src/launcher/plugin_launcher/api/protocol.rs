@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use crate::launcher::plugin_launcher::ui_schema::PluginTileContent;
+use crate::launcher::plugin_launcher::ui_schema::{PluginNodeRegistration, PluginTileContent};
 use crate::utils::errors::types::PluginAction;
 
 pub enum PluginDeferFunction {
@@ -10,6 +10,10 @@ pub enum PluginDeferFunction {
         node: Box<PluginTileContent>,
     },
     WriteClipboard(String),
+    Results {
+        plugin_id: Arc<Path>,
+        rows: Vec<PluginNodeRegistration>,
+    },
     Error {
         plugin: String,
         action: PluginAction,

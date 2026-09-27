@@ -533,6 +533,28 @@ end
 
 sherlock._prepare = prepare
 
+local row_ids = {}
+
+function sherlock._prepare_rows(rows)
+    local out, new_ids = {}, {}
+    for i, row in ipairs(rows) do
+        local node, id, search = row, nil, nil
+        if type(row) == "table" and not row.build and row.node ~= nil then
+            node, id, search = row.node, row.id, row.search
+        end
+        id = id or ("result:" .. i)
+        out[i] = { id = id, search = search, node = prepare(id, node) }
+        new_ids[id] = true
+    end
+    for id in pairs(row_ids) do
+        if not new_ids[id] then
+            tile_callbacks[id] = nil
+        end
+    end
+    row_ids = new_ids
+    return out
+end
+
 function sherlock._invoke(tile_id, index)
     local callbacks = tile_callbacks[tile_id]
     local callback = callbacks and callbacks[index]

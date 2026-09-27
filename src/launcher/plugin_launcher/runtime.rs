@@ -137,6 +137,9 @@ impl LuaRuntimeHandle {
                         PluginDeferFunction::WriteClipboard(content) => {
                             let _ = cx.update(|cx| cx.write_to_clipboard(content.into()));
                         }
+                        PluginDeferFunction::Results { plugin_id, rows } => {
+                            cx.update(|cx| super::apply_query_results(&plugin_id, rows, cx));
+                        }
                         PluginDeferFunction::Error {
                             plugin,
                             action,

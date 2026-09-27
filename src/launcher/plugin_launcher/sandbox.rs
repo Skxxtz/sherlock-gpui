@@ -360,4 +360,63 @@ mod tests {
         assert!(reg.node.meta.hidden);
         assert_eq!(reg.search.as_deref(), Some("weather forecast"));
     }
+
+    #[test]
+    fn query_rows_are_prepared() {
+        use crate::launcher::plugin_launcher::ui_schema::PluginNodeRegistration;
+
+        let (lua, dir) = setup();
+        let env = make_env(&lua, &dir).unwrap();
+        run(&lua, &env, "sherlock = { ui = {} }").unwrap();
+        load_ui_lib(&lua, &env).unwrap();
+
+        // Builder node, plain node table, and explicit row with id/search.
+        let rows: Vec<PluginNodeRegistration> = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "local ui = sherlock.ui
+                     return sherlock._prepare_rows {
+                         ui.text 'a' :on_activate(function(id) hit = id end),
+                         { type = 'text', content = 'b' },
+                         { id = 'custom', search = 'cc', node = ui.text 'c' },
+                     }",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        let ids: Vec<_> = rows.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(ids, ["result:1", "result:2", "custom"]);
+        assert_eq!(rows[2].search.as_deref(), Some("cc"));
+        let idx = rows[0].node.meta.on_activate.expect("on_activate");
+
+        let hit: String = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    &format!("sherlock._invoke('result:1', {idx}); return hit"),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(hit, "result:1");
+
+        // Rows that disappear release their callbacks.
+        let released: bool = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    &format!(
+                        "hit = nil; sherlock._prepare_rows {{}}; \
+                         sherlock._invoke('result:1', {idx}); return hit == nil"
+                    ),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(released);
+    }
 }

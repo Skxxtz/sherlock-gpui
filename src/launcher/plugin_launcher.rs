@@ -35,7 +35,7 @@ use std::{
     rc::Rc,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
     },
 };
 
@@ -65,6 +65,7 @@ pub struct PluginLauncher {
     /// Bumped on every tile load; only the newest load may apply its tiles.
     pub load_gen: Arc<AtomicU64>,
     pub last_query: Arc<Mutex<Option<String>>>,
+    pub static_count: Arc<AtomicUsize>,
 }
 
 impl LauncherProvider for PluginLauncher {
@@ -119,6 +120,7 @@ impl LauncherProvider for PluginLauncher {
             handle,
             load_gen: Arc::default(),
             last_query: Arc::default(),
+            static_count: Arc::default(),
         }))
     }
 
@@ -220,7 +222,7 @@ impl PluginLauncher {
                             return;
                         }
                         let children =
-                            build_tiles(&launcher, &path, &handle, tiles, &subscribers, cx);
+                            build_tiles(&launcher, &path, &handle, tiles, &subscribers, true, cx);
                         replace_children(&launcher, &handle, children, cx);
                     }),
                     Err(e) => {
@@ -253,6 +255,7 @@ fn build_tiles(
     handle: &Arc<PluginHandle>,
     tiles: Vec<PluginNodeRegistration>,
     subscribers: &TileSubscribers,
+    start_tasks: bool,
     cx: &mut App,
 ) -> Vec<RenderableChild> {
     let rt = LuaRuntimeHandle::get();
@@ -266,11 +269,11 @@ fn build_tiles(
             let weak = entity.downgrade();
             subscribers.register(path.clone(), tile.id.clone(), weak.clone());
 
-            if handle.has_live {
+            if start_tasks && handle.has_live {
                 rt.spawn_live(handle.clone(), tile.id.clone());
             }
 
-            if handle.has_refresh {
+            if start_tasks && handle.has_refresh {
                 let handle = handle.clone();
                 let tile_id = tile.id.clone();
                 cx.spawn(async move |cx: &mut AsyncApp| {
@@ -355,9 +358,49 @@ fn replace_children(
             return;
         }
         if let Some(entry) = Rc::make_mut(data).get_mut(&id) {
+            if let LauncherType::Plugin(plg) = &entry.config.launcher_type {
+                plg.static_count.store(children.len(), Ordering::SeqCst);
+                // Rows from an earlier query were dropped: ask again.
+                *plg.last_query.lock().unwrap() = None;
+            }
             entry.children = children;
             cx.notify();
         }
+    });
+}
+
+pub(crate) fn apply_query_results(
+    plugin_id: &Path,
+    rows: Vec<PluginNodeRegistration>,
+    cx: &mut App,
+) {
+    let Some(data) = cx.global::<LauncherEntityGlobal>().0.upgrade() else {
+        return;
+    };
+    let subscribers = cx.global::<TileSubscribersGlobal>().0.clone();
+    data.update(cx, |data, cx| {
+        let Some(id) = data
+            .iter()
+            .find_map(|(id, l)| match &l.config.launcher_type {
+                LauncherType::Plugin(p) if *p.path == *plugin_id => Some(*id),
+                _ => None,
+            })
+        else {
+            return;
+        };
+        let Some(entry) = Rc::make_mut(data).get_mut(&id) else {
+            return;
+        };
+        let LauncherType::Plugin(plg) = &entry.config.launcher_type else {
+            return;
+        };
+        let (handle, path) = (plg.handle.clone(), plg.path.clone());
+        let static_count = plg.static_count.load(Ordering::SeqCst);
+        let config = entry.config.clone();
+        let rows = build_tiles(&config, &path, &handle, rows, &subscribers, false, cx);
+        entry.children.truncate(static_count);
+        entry.children.extend(rows);
+        cx.notify();
     });
 }
 
