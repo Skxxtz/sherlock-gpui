@@ -9,6 +9,7 @@ use mlua::prelude::*;
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: LuaJob) {
     match job {
@@ -36,15 +37,19 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             theme,
             reply,
         } => {
-            let result = call_plugin_fn_async::<mlua::Value>(
-                &lua,
-                &registry,
-                &handle,
-                "init",
-                theme.as_ref(),
-            )
-            .await
-            .map(|_| ());
+            let result = if plugin_has_fn(&lua, &registry, &handle, "init") {
+                call_plugin_fn_async::<mlua::Value>(
+                    &lua,
+                    &registry,
+                    &handle,
+                    "init",
+                    theme.as_ref(),
+                )
+                .await
+                .map(|_| ())
+            } else {
+                Ok(())
+            };
             let _ = reply.send(result);
         }
         LuaJob::CallRefresh {
@@ -58,36 +63,49 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             let _ = reply.send(result);
         }
         LuaJob::SpawnLive { handle, tile_id } => {
-            let lua = lua.clone();
-            let registry = Rc::clone(&registry);
-            tokio::task::spawn_local(async move {
-                let result =
-                    call_plugin_fn_unit(&lua, &registry, &handle, "live", tile_id.clone()).await;
-                if let Err(e) = result {
-                    eprintln!("[plugin:{}] live() exited: {e}", handle.name);
-                }
-            });
+            let task = {
+                let lua = lua.clone();
+                let registry = Rc::clone(&registry);
+                let handle = Arc::clone(&handle);
+                tokio::task::spawn_local(async move {
+                    let result =
+                        call_plugin_fn_unit(&lua, &registry, &handle, "live", tile_id).await;
+                    if let Err(e) = result {
+                        eprintln!("[plugin:{}] live() exited: {e}", handle.name);
+                    }
+                })
+            };
+            match registry.borrow_mut().get_mut(&handle.id) {
+                Some(plugin) => plugin.live_tasks.push(task.abort_handle()),
+                None => task.abort(),
+            }
         }
         LuaJob::HasFn {
             handle,
             func_name,
             reply,
         } => {
-            let result = (|| -> LuaResult<bool> {
-                let reg = registry.borrow();
-                let plugin = reg
-                    .get(&handle.id)
-                    .ok_or_else(|| LuaError::RuntimeError("plugin not loaded".into()))?;
-                let env: LuaTable = lua.registry_value(&plugin.env_key)?;
-                Ok(matches!(
-                    env.get::<LuaValue>(func_name.as_str()),
-                    Ok(LuaValue::Function(_))
-                ))
-            })();
-            let _ = reply.send(result.unwrap_or(false));
+            let _ = reply.send(plugin_has_fn(&lua, &registry, &handle, &func_name));
         }
         LuaJob::Unload { handle } => unload_plugin(&lua, &registry, &handle.id),
     }
+}
+
+/// Returns whether the plugin's environment defines `func_name` as a function.
+fn plugin_has_fn(
+    lua: &Lua,
+    registry: &Rc<RefCell<PluginRegistry>>,
+    handle: &PluginHandle,
+    func_name: &str,
+) -> bool {
+    let reg = registry.borrow();
+    let Some(plugin) = reg.get(&handle.id) else {
+        return false;
+    };
+    let Ok(env) = lua.registry_value::<LuaTable>(&plugin.env_key) else {
+        return false;
+    };
+    matches!(env.get::<LuaValue>(func_name), Ok(LuaValue::Function(_)))
 }
 
 fn load_plugin(
@@ -155,9 +173,13 @@ fn load_plugin(
 
 #[inline(always)]
 pub fn unload_plugin(lua: &Lua, registry: &Rc<RefCell<PluginRegistry>>, id: &Path) {
-    if let Some(plugin) = registry.borrow_mut().remove(id) {
-        let _ = lua.remove_registry_value(plugin.env_key);
+    let Some(plugin) = registry.borrow_mut().remove(id) else {
+        return;
+    };
+    for task in plugin.live_tasks {
+        task.abort();
     }
+    let _ = lua.remove_registry_value(plugin.env_key);
 }
 
 /// Calls a plugin function as a coroutine and drives it to completion,

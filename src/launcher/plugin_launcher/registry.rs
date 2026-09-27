@@ -11,6 +11,7 @@ pub struct PluginRegistry {
 
 pub struct LoadedPlugin {
     pub env_key: LuaRegistryKey,
+    pub live_tasks: Vec<tokio::task::AbortHandle>,
 }
 
 impl PluginRegistry {
@@ -19,13 +20,22 @@ impl PluginRegistry {
         if self.plugins.contains_key(path) {
             return Err(());
         }
-        self.plugins
-            .insert(path.to_owned(), LoadedPlugin { env_key });
+        self.plugins.insert(
+            path.to_owned(),
+            LoadedPlugin {
+                env_key,
+                live_tasks: Vec::new(),
+            },
+        );
         Ok(())
     }
 
     pub fn get(&self, path: &Path) -> Option<&LoadedPlugin> {
         self.plugins.get(path)
+    }
+
+    pub fn get_mut(&mut self, path: &Path) -> Option<&mut LoadedPlugin> {
+        self.plugins.get_mut(path)
     }
 
     pub fn remove(&mut self, path: &Path) -> Option<LoadedPlugin> {
