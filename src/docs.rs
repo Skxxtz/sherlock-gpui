@@ -20,12 +20,12 @@ use crate::{
 };
 
 pub mod book;
-pub mod plugins;
 mod configuration;
 mod contributing;
 mod exec_variable;
 mod installation;
 pub mod launcher;
+pub mod plugins;
 mod readme;
 
 pub trait Documentation {
