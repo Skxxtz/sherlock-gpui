@@ -86,6 +86,25 @@ impl LauncherProvider for PluginLauncher {
                 )
             ));
         };
+
+        let capabilities = raw
+            .args
+            .get("capabilities")
+            .and_then(|p| p.as_array())
+            .map(|v| capabilities_from_names(v.iter().filter_map(|v| v.as_str())))
+            .unwrap_or(PluginCapability::NONE);
+
+        if cfg!(test) {
+            return Ok(LauncherType::Plugin(Self {
+                path: Arc::from(path),
+                capabilities,
+                handle: Arc::new(PluginHandle::default()),
+                load_gen: Arc::default(),
+                last_query: Arc::default(),
+                static_count: Arc::default(),
+            }));
+        }
+
         // Canonical path = stable plugin identity (registry, tile subscribers).
         let path = path.canonicalize().map_err(|e| {
             sherlock_msg!(
@@ -95,13 +114,6 @@ impl LauncherProvider for PluginLauncher {
             )
         })?;
         let path: Arc<Path> = Arc::from(path);
-
-        let capabilities = raw
-            .args
-            .get("capabilities")
-            .and_then(|p| p.as_array())
-            .map(|v| capabilities_from_names(v.iter().filter_map(|v| v.as_str())))
-            .unwrap_or(PluginCapability::NONE);
 
         let runtime = LuaRuntimeHandle::get();
         let handle = futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities))
@@ -515,12 +527,11 @@ mod docs {
                                 "path": "~/.config/sherlock/plugins/test/init.lua",
                                 "capabilities": ["ui"]
                             },
-                            "actions": [{ "name": "Reload", "icon": "sherlock-devtools", "method": "inner.reload" }]
+                            "actions": [{ "name": "Reload", "icon": "sherlock-devtools", "method": "inner.reload" }],
                             "home": "OnlyHome",
                             "shortcut": false,
                             "spawn_focus": false,
                             "priority": 1
-
                         }"#
                     },
                 }],
