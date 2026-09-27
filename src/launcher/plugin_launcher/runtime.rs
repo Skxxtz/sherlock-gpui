@@ -52,6 +52,11 @@ pub enum LuaJob {
         handle: Arc<PluginHandle>,
         tile_id: String,
     },
+    Callback {
+        handle: Arc<PluginHandle>,
+        tile_id: String,
+        index: u32,
+    },
     StopLive {
         handle: Arc<PluginHandle>,
     },
@@ -209,6 +214,15 @@ impl LuaRuntimeHandle {
     /// wait for it to finish — it may run forever.
     pub fn spawn_live(&self, handle: Arc<PluginHandle>, tile_id: String) {
         let _ = self.tx.send(LuaJob::SpawnLive { handle, tile_id });
+    }
+
+    /// Fire-and-forget: runs the `on_click` callback `index` of a tile.
+    pub fn invoke_callback(&self, handle: Arc<PluginHandle>, tile_id: String, index: u32) {
+        let _ = self.tx.send(LuaJob::Callback {
+            handle,
+            tile_id,
+            index,
+        });
     }
 
     /// Stops all running `live()` loops of a plugin without unloading it.

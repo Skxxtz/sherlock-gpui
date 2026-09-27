@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, AsyncApp, Entity, ImageSource, IntoElement, ParentElement, Styled, StyledText,
-    WeakEntity, div, img,
+    AnyElement, App, AsyncApp, Div, Entity, ImageSource, InteractiveElement, IntoElement,
+    MouseButton, ParentElement, Styled, StyledText, WeakEntity, div, img,
 };
 
 use crate::{
@@ -10,8 +10,10 @@ use crate::{
     launcher::{
         LauncherConfig,
         plugin_launcher::{
-            plugin_tile_state::PluginTileState, runtime::LuaRuntimeHandle,
-            subscribers::TileSubscribers, ui_schema::PluginUiNode,
+            plugin_tile_state::PluginTileState,
+            runtime::{LuaRuntimeHandle, PluginHandle},
+            subscribers::TileSubscribers,
+            ui_schema::PluginUiNode,
         },
         utils::exec_mode::ExecMode,
         variant_type::LauncherType,
@@ -34,7 +36,7 @@ pub struct PluginWidget {
 impl<'a> RenderableChildImpl<'a> for PluginWidget {
     fn render(
         &self,
-        _launcher: &Arc<LauncherConfig>,
+        launcher: &Arc<LauncherConfig>,
         _selection: Selection,
         _query: &str,
         _theme: Arc<ThemeData>,
@@ -70,7 +72,14 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
             return div().child("No Child").into_any_element();
         };
 
-        render_node(data)
+        let ctx = NodeCtx {
+            handle: match &launcher.launcher_type {
+                LauncherType::Plugin(plg) => Some(plg.handle.clone()),
+                _ => None,
+            },
+            tile_id: self.tile_id.clone(),
+        };
+        render_node(data, &ctx)
     }
     #[inline(always)]
     fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
@@ -118,6 +127,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         let LauncherType::Plugin(plg) = launcher.launcher_type.as_ref() else {
             return;
         };
+        // Loading placeholders have no tile id and nothing to refresh.
         if self.tile_id.is_empty() {
             return;
         }
@@ -165,22 +175,58 @@ impl Drop for PluginWidget {
     }
 }
 
-fn render_node(node: &PluginUiNode) -> AnyElement {
+/// What a rendered node needs to route clicks back to its plugin.
+struct NodeCtx {
+    handle: Option<Arc<PluginHandle>>,
+    tile_id: String,
+}
+
+impl NodeCtx {
+    /// Makes `el` clickable if the node has an `on_click` callback.
+    fn clickable(&self, el: Div, on_click: Option<u32>) -> Div {
+        let (Some(index), Some(handle)) = (on_click, self.handle.clone()) else {
+            return el;
+        };
+        let tile_id = self.tile_id.clone();
+        el.cursor_pointer()
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                // Don't also activate the launcher row underneath.
+                cx.stop_propagation();
+                LuaRuntimeHandle::get().invoke_callback(handle.clone(), tile_id.clone(), index);
+            })
+    }
+}
+
+fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
     match node {
-        PluginUiNode::Container { style, children } => {
+        PluginUiNode::Container {
+            style,
+            children,
+            on_click,
+        } => {
             let mut el = div();
             style.apply_to_style_refinement(el.style());
-            el.children(children.iter().map(render_node))
+            ctx.clickable(el, *on_click)
+                .children(children.iter().map(|c| render_node(c, ctx)))
                 .into_any_element()
         }
-        PluginUiNode::Text { content, style } => {
+        PluginUiNode::Text {
+            content,
+            style,
+            on_click,
+        } => {
             let mut el = div();
             style.apply_to_style_refinement(el.style());
-            el.child(StyledText::new(content.clone()))
+            ctx.clickable(el, *on_click)
+                .child(StyledText::new(content.clone()))
                 .into_any_element()
         }
-        PluginUiNode::Icon { name, style } => {
-            if let Some(icon) = resolve_icon_path(name) {
+        PluginUiNode::Icon {
+            name,
+            style,
+            on_click,
+        } => {
+            let icon = if let Some(icon) = resolve_icon_path(name) {
                 if let Some(mut svg) = icon.svg() {
                     style.apply_to_style_refinement(svg.style());
                     svg.into_any_element()
@@ -193,12 +239,25 @@ fn render_node(node: &PluginUiNode) -> AnyElement {
                 let mut el = img(ImageSource::Image(Arc::new(gpui::Image::empty())));
                 style.apply_to_style_refinement(el.style());
                 el.into_any_element()
+            };
+            match on_click {
+                Some(_) => ctx
+                    .clickable(div(), *on_click)
+                    .child(icon)
+                    .into_any_element(),
+                None => icon,
             }
         }
-        PluginUiNode::Button { label, style } => {
+        PluginUiNode::Button {
+            label,
+            style,
+            on_click,
+        } => {
             let mut el = div();
             style.apply_to_style_refinement(el.style());
-            el.child(label.clone()).into_any_element()
+            ctx.clickable(el, *on_click)
+                .child(label.clone())
+                .into_any_element()
         }
     }
 }

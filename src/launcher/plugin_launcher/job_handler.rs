@@ -23,13 +23,17 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             let _ = reply.send(result);
         }
         LuaJob::CallTiles { handle, reply } => {
-            let result = call_plugin_fn_async::<Vec<PluginNodeRegistration>>(
-                &lua,
-                &registry,
-                &handle,
-                "tiles",
-                (),
-            )
+            let result = async {
+                let tiles: LuaTable =
+                    call_plugin_fn_async(&lua, &registry, &handle, "tiles", ()).await?;
+                for entry in tiles.sequence_values::<LuaTable>() {
+                    let entry = entry?;
+                    let id: String = entry.get("id")?;
+                    let node = prepare_node(&lua, &registry, &handle, &id, entry.get("node")?)?;
+                    entry.set("node", node)?;
+                }
+                lua.unpack::<Vec<PluginNodeRegistration>>(LuaValue::Table(tiles))
+            }
             .await;
             let _ = reply.send(result);
         }
@@ -59,9 +63,14 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             reply,
         } => {
             let result = if plugin_has_fn(&lua, &registry, &handle, "refresh") {
-                call_plugin_fn_async::<PluginUiNode>(&lua, &registry, &handle, "refresh", tile_id)
-                    .await
-                    .map(Some)
+                async {
+                    let node: LuaValue =
+                        call_plugin_fn_async(&lua, &registry, &handle, "refresh", tile_id.clone())
+                            .await?;
+                    let node = prepare_node(&lua, &registry, &handle, &tile_id, node)?;
+                    lua.unpack::<PluginUiNode>(node).map(Some)
+                }
+                .await
             } else {
                 Ok(None)
             };
@@ -86,6 +95,24 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             match registry.borrow_mut().get_mut(&handle.id) {
                 Some(plugin) => plugin.live_tasks.push(task.abort_handle()),
                 None => task.abort(),
+            }
+        }
+        LuaJob::Callback {
+            handle,
+            tile_id,
+            index,
+        } => {
+            let result = async {
+                let invoke: LuaFunction =
+                    sherlock_table(&lua, &registry, &handle)?.get("_invoke")?;
+                invoke
+                    .call_async::<LuaMultiValue>((tile_id, index))
+                    .await
+                    .map(|_| ())
+            }
+            .await;
+            if let Err(e) = result {
+                eprintln!("[plugin:{}] on_click failed: {e}", handle.name);
             }
         }
         LuaJob::StopLive { handle } => {
@@ -185,6 +212,41 @@ pub fn unload_plugin(lua: &Lua, registry: &Rc<RefCell<PluginRegistry>>, id: &Pat
     let _ = lua.remove_registry_value(plugin.env_key);
 }
 
+/// The plugin's sandboxed environment table.
+fn plugin_env(
+    lua: &Lua,
+    registry: &Rc<RefCell<PluginRegistry>>,
+    handle: &PluginHandle,
+) -> LuaResult<LuaTable> {
+    let reg = registry.borrow();
+    let plugin = reg
+        .get(&handle.id)
+        .ok_or_else(|| LuaError::RuntimeError(format!("plugin '{}' not loaded", handle.name)))?;
+    lua.registry_value(&plugin.env_key)
+}
+
+/// The plugin's `sherlock` API table.
+fn sherlock_table(
+    lua: &Lua,
+    registry: &Rc<RefCell<PluginRegistry>>,
+    handle: &PluginHandle,
+) -> LuaResult<LuaTable> {
+    plugin_env(lua, registry, handle)?.get("sherlock")
+}
+
+/// Runs `sherlock._prepare(tile_id, node)`: builds builder nodes and swaps
+/// `on_click` functions for callback indices of that tile.
+fn prepare_node(
+    lua: &Lua,
+    registry: &Rc<RefCell<PluginRegistry>>,
+    handle: &PluginHandle,
+    tile_id: &str,
+    node: LuaValue,
+) -> LuaResult<LuaValue> {
+    let prepare: LuaFunction = sherlock_table(lua, registry, handle)?.get("_prepare")?;
+    prepare.call((tile_id, node))
+}
+
 /// Calls a plugin function as a coroutine and drives it to completion,
 /// resuming on every yield. Because `tiles`/`refresh` are invoked this way,
 /// any `sherlock.*` async function they call internally (which yields under
@@ -200,14 +262,7 @@ async fn call_plugin_fn_async<R>(
 where
     R: FromLuaMulti,
 {
-    let env: LuaTable = {
-        let reg = registry.borrow();
-        let plugin = reg.get(&handle.id).ok_or_else(|| {
-            LuaError::RuntimeError(format!("plugin '{}' not loaded", handle.name))
-        })?;
-        lua.registry_value(&plugin.env_key)?
-    };
-
+    let env = plugin_env(lua, registry, handle)?;
     let f: LuaFunction = env.get(func_name).map_err(|_| {
         LuaError::RuntimeError(format!(
             "plugin '{}' has no function '{}'",

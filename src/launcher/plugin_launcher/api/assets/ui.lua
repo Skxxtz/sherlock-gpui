@@ -67,12 +67,10 @@ function Node:style(style_table)
     return self
 end
 
----@param callback fun()|integer callback id previously returned by :on_click, if you want to reuse one
+--- Called with the tile id when the node is clicked.
+---@param callback fun(tile_id: string)
 ---@return sherlock.ui.Node
 function Node:on_click(callback)
-    if type(callback) == "function" then
-        callback = sherlock._register_callback(callback)
-    end
     self._props.on_click = callback
     return self
 end
@@ -113,7 +111,7 @@ end
 
 ---@class sherlock.ui.NodeOpts
 ---@field style table? nested style overrides
----@field on_click (fun()|integer)?
+---@field on_click fun(tile_id: string)?
 --- any recognized style key (gap, padding, background, ...) may also be
 --- set directly at the top level of this table instead of nesting it
 --- under `style`; see STYLE_KEYS below for the full set.
@@ -374,4 +372,60 @@ end
 function Node:justify_content(v)
     self._style.justify_content = v
     return self
+end
+
+local tile_callbacks = {}
+
+-- Before a tile's node is sent, `_prepare` replaces every `on_click` 
+-- function with an index into that tile's callback list. 
+-- Each send replaces the list, so closures from older renders are released.
+local function prepare(tile_id, node)
+    local callbacks = {}
+    local function walk(n)
+        if type(n) ~= "table" then
+            return n
+        end
+        if n.build then
+            n = n:build()
+        end
+        -- Copy so the caller's table keeps its functions for reuse.
+        local out = {}
+        for k, v in pairs(n) do
+            out[k] = v
+        end
+        if type(out.on_click) == "function" then
+            callbacks[#callbacks + 1] = out.on_click
+            out.on_click = #callbacks
+        else
+            out.on_click = nil
+        end
+        if type(out.children) == "table" then
+            local children = {}
+            for i, c in ipairs(out.children) do
+                children[i] = walk(c)
+            end
+            out.children = children
+        end
+        return out
+    end
+    local prepared = walk(node)
+    tile_callbacks[tile_id] = callbacks
+    return prepared
+end
+
+sherlock._prepare = prepare
+
+function sherlock._invoke(tile_id, index)
+    local callbacks = tile_callbacks[tile_id]
+    local callback = callbacks and callbacks[index]
+    if callback then
+        return callback(tile_id)
+    end
+end
+
+local raw_update = sherlock.ui.update
+if raw_update then
+    function sherlock.ui.update(tile_id, node)
+        return raw_update(tile_id, prepare(tile_id, node))
+    end
 end

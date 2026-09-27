@@ -182,4 +182,64 @@ mod tests {
             .unwrap();
         assert_eq!(reg.id, "t");
     }
+
+    #[test]
+    fn on_click_callbacks_are_indexed_and_invokable() {
+        use crate::launcher::plugin_launcher::ui_schema::PluginUiNode;
+
+        let (lua, dir) = setup();
+        let env = make_env(&lua, &dir).unwrap();
+        run(&lua, &env, "sherlock = { ui = {} }").unwrap();
+        load_ui_lib(&lua, &env).unwrap();
+
+        let node: PluginUiNode = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "local ui = sherlock.ui
+                     return sherlock._prepare('t', ui.row {
+                         ui.text 'no click',
+                         ui.button 'go' :on_click(function(id) clicked = id end),
+                     })",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        let PluginUiNode::Container { children, .. } = node else {
+            panic!("expected container");
+        };
+        assert!(matches!(
+            children[0],
+            PluginUiNode::Text { on_click: None, .. }
+        ));
+        assert!(matches!(
+            children[1],
+            PluginUiNode::Button {
+                on_click: Some(1),
+                ..
+            }
+        ));
+
+        let clicked: String = lua
+            .unpack(run(&lua, &env, "sherlock._invoke('t', 1); return clicked").unwrap())
+            .unwrap();
+        assert_eq!(clicked, "t");
+
+        // A new send for the tile replaces its callbacks.
+        let stale: bool = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "clicked = nil
+                     sherlock._prepare('t', sherlock.ui.text 'plain')
+                     sherlock._invoke('t', 1)
+                     return clicked == nil",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(stale);
+    }
 }

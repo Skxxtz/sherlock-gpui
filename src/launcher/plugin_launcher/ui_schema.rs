@@ -14,26 +14,32 @@ pub struct PluginNodeRegistration {
 pub enum PluginUiNode {
     Container {
         #[serde(default)]
+        on_click: Option<u32>,
+        #[serde(default)]
         style: PluginStyle,
         #[serde(default)]
         children: Vec<PluginUiNode>,
     },
     Text {
+        #[serde(default)]
+        on_click: Option<u32>,
         content: String,
         #[serde(default)]
         style: PluginStyle,
     },
     Icon {
+        #[serde(default)]
+        on_click: Option<u32>,
         name: String,
         #[serde(default)]
         style: PluginStyle,
     },
     Button {
+        #[serde(default)]
+        on_click: Option<u32>,
         label: String,
         #[serde(default)]
         style: PluginStyle,
-        // #[serde(default)]
-        // on_click: Option<String>, // callback id, looked up in plugin env
     },
 }
 
