@@ -64,6 +64,9 @@ pub enum SherlockErrorType {
 pub enum PluginAction {
     Load,
     TileInit,
+    Live,
+    Callback,
+    Query,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, StrumDisplay, PartialEq)]
 #[strum(serialize_all = "lowercase")]

@@ -1,11 +1,12 @@
 use super::{
-    api::init_local_api,
+    api::{init_local_api, report_error},
     capabilities::PluginCapability,
     registry::PluginRegistry,
     runtime::{LuaJob, PluginHandle},
     sandbox::{load_ui_lib, make_env},
     ui_schema::{PluginNodeRegistration, PluginTileContent},
 };
+use crate::utils::errors::types::PluginAction;
 use mlua::prelude::*;
 use std::cell::RefCell;
 use std::path::Path;
@@ -23,17 +24,20 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             let _ = reply.send(result);
         }
         LuaJob::CallTiles { handle, reply } => {
-            let result = async {
-                let tiles: LuaTable =
-                    call_plugin_fn_async(&lua, &registry, &handle, "tiles", ()).await?;
-                for entry in tiles.sequence_values::<LuaTable>() {
-                    let entry = entry?;
-                    let id: String = entry.get("id")?;
-                    let node = prepare_node(&lua, &registry, &handle, &id, entry.get("node")?)?;
-                    entry.set("node", node)?;
+            let result = with_timeout("tiles", async {
+                async {
+                    let tiles: LuaTable =
+                        call_plugin_fn_async(&lua, &registry, &handle, "tiles", ()).await?;
+                    for entry in tiles.sequence_values::<LuaTable>() {
+                        let entry = entry?;
+                        let id: String = entry.get("id")?;
+                        let node = prepare_node(&lua, &registry, &handle, &id, entry.get("node")?)?;
+                        entry.set("node", node)?;
+                    }
+                    lua.unpack::<Vec<PluginNodeRegistration>>(LuaValue::Table(tiles))
                 }
-                lua.unpack::<Vec<PluginNodeRegistration>>(LuaValue::Table(tiles))
-            }
+                .await
+            })
             .await;
             let _ = reply.send(result);
         }
@@ -42,19 +46,22 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             theme,
             reply,
         } => {
-            let result = if plugin_has_fn(&lua, &registry, &handle, "init") {
-                call_plugin_fn_async::<mlua::Value>(
-                    &lua,
-                    &registry,
-                    &handle,
-                    "init",
-                    theme.as_ref(),
-                )
-                .await
-                .map(|_| ())
-            } else {
-                Ok(())
-            };
+            let result = with_timeout("init", async {
+                if plugin_has_fn(&lua, &registry, &handle, "init") {
+                    call_plugin_fn_async::<mlua::Value>(
+                        &lua,
+                        &registry,
+                        &handle,
+                        "init",
+                        theme.as_ref(),
+                    )
+                    .await
+                    .map(|_| ())
+                } else {
+                    Ok(())
+                }
+            })
+            .await;
             let _ = reply.send(result);
         }
         LuaJob::CallRefresh {
@@ -62,18 +69,26 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             tile_id,
             reply,
         } => {
-            let result = if plugin_has_fn(&lua, &registry, &handle, "refresh") {
-                async {
-                    let node: LuaValue =
-                        call_plugin_fn_async(&lua, &registry, &handle, "refresh", tile_id.clone())
-                            .await?;
-                    let node = prepare_node(&lua, &registry, &handle, &tile_id, node)?;
-                    lua.unpack::<PluginTileContent>(node).map(Some)
+            let result = with_timeout("refresh", async {
+                if plugin_has_fn(&lua, &registry, &handle, "refresh") {
+                    async {
+                        let node: LuaValue = call_plugin_fn_async(
+                            &lua,
+                            &registry,
+                            &handle,
+                            "refresh",
+                            tile_id.clone(),
+                        )
+                        .await?;
+                        let node = prepare_node(&lua, &registry, &handle, &tile_id, node)?;
+                        lua.unpack::<PluginTileContent>(node).map(Some)
+                    }
+                    .await
+                } else {
+                    Ok(None)
                 }
-                .await
-            } else {
-                Ok(None)
-            };
+            })
+            .await;
             let _ = reply.send(result);
         }
         LuaJob::SpawnLive { handle, tile_id } => {
@@ -88,7 +103,11 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                     .await
                     .map(|_| ());
                     if let Err(e) = result {
-                        eprintln!("[plugin:{}] live() exited: {e}", handle.name);
+                        report_error(
+                            &handle.name,
+                            PluginAction::Live,
+                            format!("live() exited: {e}"),
+                        );
                     }
                 })
             };
@@ -112,7 +131,11 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             }
             .await;
             if let Err(e) = result {
-                eprintln!("[plugin:{}] on_click failed: {e}", handle.name);
+                report_error(
+                    &handle.name,
+                    PluginAction::Callback,
+                    format!("on_click failed: {e}"),
+                );
             }
         }
         LuaJob::Query { handle, query } => {
@@ -126,7 +149,11 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                     )
                     .await;
                     if let Err(e) = result {
-                        eprintln!("[plugin:{}] on_query failed: {e}", handle.name);
+                        report_error(
+                            &handle.name,
+                            PluginAction::Query,
+                            format!("on_query failed: {e}"),
+                        );
                     }
                 })
             };
@@ -215,7 +242,7 @@ fn load_plugin(
     registry
         .borrow_mut()
         .insert(path, env_key)
-        .expect("Tried to set new env where one alredy exists.");
+        .map_err(|_| LuaError::RuntimeError(format!("plugin '{name}' is already loaded")))?;
 
     Ok(PluginHandle {
         id: path.to_path_buf(),
@@ -238,6 +265,22 @@ pub fn unload_plugin(lua: &Lua, registry: &Rc<RefCell<PluginRegistry>>, id: &Pat
         task.abort();
     }
     let _ = lua.remove_registry_value(plugin.env_key);
+}
+
+const PLUGIN_CALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+async fn with_timeout<T>(
+    what: &str,
+    fut: impl std::future::Future<Output = LuaResult<T>>,
+) -> LuaResult<T> {
+    tokio::time::timeout(PLUGIN_CALL_TIMEOUT, fut)
+        .await
+        .unwrap_or_else(|_| {
+            Err(LuaError::RuntimeError(format!(
+                "{what}() timed out after {}s",
+                PLUGIN_CALL_TIMEOUT.as_secs()
+            )))
+        })
 }
 
 /// The plugin's sandboxed environment table.

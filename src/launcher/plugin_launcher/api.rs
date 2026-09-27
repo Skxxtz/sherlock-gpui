@@ -19,6 +19,24 @@ pub mod ui;
 
 static UI_UPDATE_CHANNEL: OnceLock<mpsc::UnboundedSender<PluginDeferFunction>> = OnceLock::new();
 
+pub fn report_error(
+    plugin: &str,
+    action: crate::utils::errors::types::PluginAction,
+    err: impl std::fmt::Display,
+) {
+    let message = err.to_string();
+    match UI_UPDATE_CHANNEL.get() {
+        Some(tx) => {
+            let _ = tx.send(PluginDeferFunction::Error {
+                plugin: plugin.to_string(),
+                action,
+                message,
+            });
+        }
+        None => eprintln!("[plugin:{plugin}] {action}: {message}"),
+    }
+}
+
 pub struct ApiContext {
     pub update_tx: &'static mpsc::UnboundedSender<PluginDeferFunction>,
     /// Path of the plugin this API instance belongs to.

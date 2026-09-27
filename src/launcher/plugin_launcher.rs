@@ -372,7 +372,10 @@ async fn reload_plugin(
         Ok(h) => Arc::new(h),
         Err(e) => {
             cx.update(|cx| {
-                cx.global::<MessageViewGlobal>().clone().push_message(
+                let Some(view) = cx.try_global::<MessageViewGlobal>().cloned() else {
+                    return;
+                };
+                view.push_message(
                     sherlock_msg!(
                         Warning,
                         SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),

@@ -11,6 +11,9 @@ use tokio::sync::{mpsc, oneshot};
 use crate::{
     app::{LauncherEntityGlobal, theme::ThemeData},
     launcher::plugin_launcher::api::protocol::PluginDeferFunction,
+    sherlock_msg,
+    ui::launcher::views::MessageViewGlobal,
+    utils::errors::types::SherlockErrorType,
 };
 
 use super::{
@@ -133,6 +136,24 @@ impl LuaRuntimeHandle {
                     match defer_fn {
                         PluginDeferFunction::WriteClipboard(content) => {
                             let _ = cx.update(|cx| cx.write_to_clipboard(content.into()));
+                        }
+                        PluginDeferFunction::Error {
+                            plugin,
+                            action,
+                            message,
+                        } => {
+                            cx.update(|cx| {
+                                let msg = sherlock_msg!(
+                                    Warning,
+                                    SherlockErrorType::Plugin(action, plugin),
+                                    message
+                                );
+                                // The message view only exists once a window is open.
+                                match cx.try_global::<MessageViewGlobal>().cloned() {
+                                    Some(view) => view.push_message(msg, cx),
+                                    None => eprintln!("{msg:?}"),
+                                }
+                            });
                         }
                         PluginDeferFunction::Update {
                             plugin_id,
