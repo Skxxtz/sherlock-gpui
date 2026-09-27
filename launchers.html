@@ -15,8 +15,8 @@
         <link rel="icon" href="favicon-de23e50b.svg">
         <link rel="shortcut icon" href="favicon-8114d1fc.png">
         <link rel="stylesheet" href="css/variables-8adf115d.css">
-        <link rel="stylesheet" href="css/general-0392ca55.css">
-        <link rel="stylesheet" href="css/chrome-fc474251.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
         <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
 
         <!-- Fonts -->
@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5aa47549.js";
+            window.path_to_searchindex_js = "searchindex-64d08b43.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-cec86706.js"></script>
@@ -1078,10 +1078,102 @@
 }
 </code></pre>
 <hr>
+<h2 id="plugin-launcher"><a class="header" href="#plugin-launcher">Plugin Launcher</a></h2>
+<p><code>type = plugin</code></p>
+<p>The harness for custom plugins. Allow access to specific user plugins.</p>
+<h3 id="args-9"><a class="header" href="#args-9">Args</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>path</code></td><td><code>Path</code></td><td>✓</td><td>—</td><td>The location of the plugin <code>init.lua</code> file.</td></tr>
+<tr><td><code>capabilities</code></td><td><code>PluginCapability</code></td><td></td><td>PluginCapability::None</td><td>The allowed scopes, the plugin can access.</td></tr>
+</tbody>
+</table>
+</div>
+<details>
+<summary><strong>Capabilities:</strong></summary>
+<p>Plugin capabilities control what scopes the plugin can access. They are a security feature, preventing malicious plugins from accessing scopes the user doesnt explicitly allow. Otherwise, a plugin could for example create a clipboard tracker, allowing a hacker to log the users clipboard content in a remote database. Therefore, it’s <strong>strongly recommented.</strong> to use a proper capability setup, allowing only necessary scopes.</p>
+<p>Pass them via the <code>capabilities</code> arg:</p>
+<pre><code class="language-json">{ "capabilities": ["calc.math", "calc.units"] }
+</code></pre>
+<details>
+<summary>clipboard</summary>
+<h4 id="clipboardget"><a class="header" href="#clipboardget"><code>clipboard.get</code></a></h4>
+<p>Fetches the current clipboard entry.</p>
+<h4 id="clipboardset"><a class="header" href="#clipboardset"><code>clipboard.set</code></a></h4>
+<p>Writes a string to the clipboard.</p>
+</details>
+<details>
+<summary>http</summary>
+<h4 id="httpget"><a class="header" href="#httpget"><code>http.get</code></a></h4>
+<p>Performs an HTTP GET request and returns the response body.</p>
+<h4 id="httppost"><a class="header" href="#httppost"><code>http.post</code></a></h4>
+<p>Performs an HTTP POST request with the given body and optional headers, and returns the response body.</p>
+</details>
+<details>
+<summary>json</summary>
+<h4 id="jsondecode"><a class="header" href="#jsondecode"><code>json.decode</code></a></h4>
+<p>Decodes a given string into a Lua table.</p>
+</details>
+<details>
+<summary>log</summary>
+<h4 id="loginfo"><a class="header" href="#loginfo"><code>log.info</code></a></h4>
+<p>Logs an informational message.</p>
+<h4 id="logerror"><a class="header" href="#logerror"><code>log.error</code></a></h4>
+<p>Logs an error message.</p>
+</details>
+<details>
+<summary>time</summary>
+<h4 id="timesleep_ms"><a class="header" href="#timesleep_ms"><code>time.sleep_ms</code></a></h4>
+<p>Sleeps for <ms> milliseconds.</ms></p>
+</details>
+<details>
+<summary>ui</summary>
+<h4 id="uiupdate"><a class="header" href="#uiupdate"><code>ui.update</code></a></h4>
+<p>Updates the UI tile identified by &lt;tile_id&gt; with the given node.</p>
+</details>
+</details>
+<h3 id="inner-functions-3"><a class="header" href="#inner-functions-3">Inner Functions</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Identifier</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Reload</td><td><code>inner.reload</code></td><td>Reload plugin and its environment.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="examples-11"><a class="header" href="#examples-11">Examples</a></h3>
+<p><em>Basic plugin launcher</em></p>
+<pre><code class="language-json">{
+    "type": "plugin",
+    "name": "Quote Plugin",
+    "args": {
+        "path": "~/.config/sherlock/plugins/quote.lua",
+        "capabilities": ["http.get", "json.decode"]
+    },
+    "actions": [
+        {
+            "name": "Reload",
+            "icon": "sherlock-devtools",
+            "method": "inner.reload"
+        }
+    ],
+    "home": "OnlyHome",
+    "shortcut": false,
+    "spawn_focus": false,
+    "priority": 1
+}
+</code></pre>
+<hr>
 <h2 id="process-launcher"><a class="header" href="#process-launcher">Process Launcher</a></h2>
 <p><code>type = process</code></p>
 <p>Searches and terminates processes from within Sherlock.</p>
-<h3 id="args-9"><a class="header" href="#args-9">Args</a></h3>
+<h3 id="args-10"><a class="header" href="#args-10">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1093,7 +1185,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="inner-functions-3"><a class="header" href="#inner-functions-3">Inner Functions</a></h3>
+<h3 id="inner-functions-4"><a class="header" href="#inner-functions-4">Inner Functions</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1104,7 +1196,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="examples-11"><a class="header" href="#examples-11">Examples</a></h3>
+<h3 id="examples-12"><a class="header" href="#examples-12">Examples</a></h3>
 <p><em>Basic process terminator</em></p>
 <pre><code class="language-json">{
     "name": "Processes",
@@ -1121,7 +1213,7 @@
 <h2 id="script-launcher"><a class="header" href="#script-launcher">Script Launcher</a></h2>
 <p><code>type = script</code></p>
 <p>Executes commands either on keypress (async) or on return. The results will be displayed within Sherlock.</p>
-<h3 id="args-10"><a class="header" href="#args-10">Args</a></h3>
+<h3 id="args-11"><a class="header" href="#args-11">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1134,7 +1226,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="inner-functions-4"><a class="header" href="#inner-functions-4">Inner Functions</a></h3>
+<h3 id="inner-functions-5"><a class="header" href="#inner-functions-5">Inner Functions</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1145,7 +1237,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="examples-12"><a class="header" href="#examples-12">Examples</a></h3>
+<h3 id="examples-13"><a class="header" href="#examples-13">Examples</a></h3>
 <p><em>Basic process terminator</em></p>
 <pre><code class="language-json">{
     "name": "Wikipedia Search",
@@ -1164,7 +1256,7 @@
 <h2 id="theme-picker"><a class="header" href="#theme-picker">Theme Picker</a></h2>
 <p><code>type = theme</code></p>
 <p>Preview and select Sherlock themes.</p>
-<h3 id="args-11"><a class="header" href="#args-11">Args</a></h3>
+<h3 id="args-12"><a class="header" href="#args-12">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1175,7 +1267,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="examples-13"><a class="header" href="#examples-13">Examples</a></h3>
+<h3 id="examples-14"><a class="header" href="#examples-14">Examples</a></h3>
 <p><em>Basic process terminator</em></p>
 <pre><code class="language-json">{
     "name": "Theme Picker",
@@ -1189,7 +1281,7 @@
 <h2 id="timer-launcher"><a class="header" href="#timer-launcher">Timer Launcher</a></h2>
 <p><code>type = timer</code></p>
 <p>Start and run up to four timers concurrently. Each timer can have a unique action to be run at completion.</p>
-<h3 id="args-12"><a class="header" href="#args-12">Args</a></h3>
+<h3 id="args-13"><a class="header" href="#args-13">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1200,7 +1292,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="inner-functions-5"><a class="header" href="#inner-functions-5">Inner Functions</a></h3>
+<h3 id="inner-functions-6"><a class="header" href="#inner-functions-6">Inner Functions</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1212,7 +1304,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="examples-14"><a class="header" href="#examples-14">Examples</a></h3>
+<h3 id="examples-15"><a class="header" href="#examples-15">Examples</a></h3>
 <p><em>Basic process terminator</em></p>
 <pre><code class="language-json">{
     "name": "Timer",
@@ -1228,7 +1320,7 @@
 <h2 id="translator"><a class="header" href="#translator">Translator</a></h2>
 <p><code>type = translator</code></p>
 <p>Translate your queries into other languages.</p>
-<h3 id="examples-15"><a class="header" href="#examples-15">Examples</a></h3>
+<h3 id="examples-16"><a class="header" href="#examples-16">Examples</a></h3>
 <p><em>Basic translator</em></p>
 <pre><code class="language-json">{
     "name": "Translator",
@@ -1245,7 +1337,7 @@
 <h2 id="weather-launcher"><a class="header" href="#weather-launcher">Weather Launcher</a></h2>
 <p><code>type = weather</code></p>
 <p>Display the weather and time in Sherlock.</p>
-<h3 id="args-13"><a class="header" href="#args-13">Args</a></h3>
+<h3 id="args-14"><a class="header" href="#args-14">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1259,7 +1351,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="examples-16"><a class="header" href="#examples-16">Examples</a></h3>
+<h3 id="examples-17"><a class="header" href="#examples-17">Examples</a></h3>
 <p><em>Basic weather launcher</em></p>
 <pre><code class="language-json">{
     "name": "Weather",
@@ -1288,7 +1380,7 @@
 <h2 id="web-launcher"><a class="header" href="#web-launcher">Web Launcher</a></h2>
 <p><code>type = web</code></p>
 <p>Seach the current query in the specified engine using the specified browser.</p>
-<h3 id="args-14"><a class="header" href="#args-14">Args</a></h3>
+<h3 id="args-15"><a class="header" href="#args-15">Args</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -1301,7 +1393,7 @@
 </tbody>
 </table>
 </div>
-<h3 id="examples-17"><a class="header" href="#examples-17">Examples</a></h3>
+<h3 id="examples-18"><a class="header" href="#examples-18">Examples</a></h3>
 <p><em>Basic web launcher</em></p>
 <pre><code class="language-json">{
     "name": "Web Search",
@@ -1365,7 +1457,7 @@
 
         <script src="clipboard-1626706a.min.js"></script>
         <script src="highlight-abc7f01d.js"></script>
-        <script src="book-c22b7243.js"></script>
+        <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
 
