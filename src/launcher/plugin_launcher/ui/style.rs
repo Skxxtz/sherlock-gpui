@@ -92,7 +92,12 @@ pub enum PluginTextAlign {
 
 impl PluginStyle {
     pub fn apply_to_style_refinement(&self, style: &mut StyleRefinement) {
-        if self.flex.is_some_and(|f| f) {
+        // Flex properties imply a flex container unless `flex = false`.
+        let implies_flex = self.flex_direction.is_some()
+            || self.align_items.is_some()
+            || self.justify_content.is_some()
+            || self.gap.is_some();
+        if self.flex.unwrap_or(implies_flex) {
             style.display = Some(Display::Flex);
         }
         if let Some(dir) = self.flex_direction {

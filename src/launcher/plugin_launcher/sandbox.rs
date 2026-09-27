@@ -1,5 +1,3 @@
-//! Per-plugin Lua sandbox. See `api/assets/sandbox.lua`.
-
 use mlua::prelude::*;
 use std::path::Path;
 
@@ -21,6 +19,17 @@ pub fn new_lua() -> LuaResult<Lua> {
 pub fn install(lua: &Lua) -> LuaResult<()> {
     let make_env: LuaFunction = lua.load(SANDBOX_SRC).set_name("sandbox").eval()?;
     lua.set_named_registry_value(MAKE_ENV_KEY, make_env)
+}
+
+const UI_LIB_SRC: &str = include_str!("api/assets/ui.lua");
+
+/// Loads the `sherlock.ui` builder helpers into a plugin env. Expects
+/// `sherlock` to already be set on the env.
+pub fn load_ui_lib(lua: &Lua, env: &LuaTable) -> LuaResult<()> {
+    lua.load(UI_LIB_SRC)
+        .set_name("sherlock.ui")
+        .set_environment(env.clone())
+        .exec()
 }
 
 /// Builds a fresh, isolated environment whose `require` resolves inside `root`.
@@ -131,5 +140,46 @@ mod tests {
             .unpack(run(&lua, &env, "return load('\\27Lua') == nil").unwrap())
             .unwrap();
         assert!(rejected);
+    }
+
+    #[test]
+    fn ui_builder_nodes_convert_to_schema() {
+        use crate::launcher::plugin_launcher::ui_schema::{PluginNodeRegistration, PluginUiNode};
+
+        let (lua, dir) = setup();
+        let env = make_env(&lua, &dir).unwrap();
+        run(&lua, &env, "sherlock = { ui = {} }").unwrap();
+        load_ui_lib(&lua, &env).unwrap();
+
+        // Builder node, no explicit :build().
+        let node: PluginUiNode = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "local ui = sherlock.ui
+                     return ui.row { gap = 4, ui.icon 'search', ui.text 'hi' }",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        let PluginUiNode::Container { children, .. } = node else {
+            panic!("expected container");
+        };
+        assert_eq!(children.len(), 2);
+
+        // Builder nodes mixed into a hand-written registration table.
+        let reg: PluginNodeRegistration = lua
+            .unpack(
+                run(
+                    &lua,
+                    &env,
+                    "return { id = 't', node = { type = 'container',
+                        children = { sherlock.ui.text 'a', { type = 'text', content = 'b' } } } }",
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(reg.id, "t");
     }
 }

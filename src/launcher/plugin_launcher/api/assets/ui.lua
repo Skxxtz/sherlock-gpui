@@ -86,7 +86,6 @@ function Node:build()
 
     return {
         type = self._type,
-        direction = self._props.direction,
         content = self._props.content,
         label = self._props.label,
         name = self._props.name,
@@ -121,7 +120,10 @@ end
 --- Array-part entries (no key) are treated as children.
 
 local STYLE_KEYS = {
+    flex = true,
     width = true, height = true,
+    min_width = true, min_height = true, max_width = true, max_height = true,
+    margin_x = true, margin_y = true,
     padding = true, padding_x = true, padding_y = true, margin = true,
     gap = true, flex_grow = true, flex_shrink = true,
     background = true, border_color = true, border_width = true,

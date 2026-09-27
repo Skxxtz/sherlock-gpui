@@ -3,7 +3,7 @@ use super::{
     capabilities::PluginCapability,
     registry::PluginRegistry,
     runtime::{LuaJob, PluginHandle},
-    sandbox::make_env,
+    sandbox::{load_ui_lib, make_env},
     ui_schema::{PluginNodeRegistration, PluginUiNode},
 };
 use mlua::prelude::*;
@@ -149,6 +149,7 @@ fn load_plugin(
 
     let env = make_env(lua, root)?;
     init_local_api(lua, &env, Arc::from(path), capabilities)?;
+    load_ui_lib(lua, &env)?;
 
     lua.load(code)
         .set_name(&name)
