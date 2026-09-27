@@ -118,6 +118,9 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         let LauncherType::Plugin(plg) = launcher.launcher_type.as_ref() else {
             return;
         };
+        if self.tile_id.is_empty() {
+            return;
+        }
         let handle = plg.handle.clone();
         let tile_id = self.tile_id.clone();
 

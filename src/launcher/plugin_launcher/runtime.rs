@@ -1,5 +1,4 @@
 use gpui::{App, AsyncApp};
-// runtime.rs
 use mlua::prelude::*;
 use std::{
     cell::RefCell,
@@ -23,6 +22,8 @@ use super::{
 pub struct PluginHandle {
     pub id: PathBuf,
     pub name: String,
+    pub has_live: bool,
+    pub has_refresh: bool,
 }
 
 #[allow(unused)]
@@ -53,11 +54,6 @@ pub enum LuaJob {
     },
     StopLive {
         handle: Arc<PluginHandle>,
-    },
-    HasFn {
-        handle: Arc<PluginHandle>,
-        func_name: String,
-        reply: oneshot::Sender<bool>,
     },
     Unload {
         handle: Arc<PluginHandle>,
@@ -226,16 +222,6 @@ impl LuaRuntimeHandle {
     #[allow(unused)]
     pub fn unload(&self, handle: Arc<PluginHandle>) {
         let _ = self.tx.send(LuaJob::Unload { handle });
-    }
-
-    pub async fn has_fn(&self, handle: Arc<PluginHandle>, func_name: &str) -> bool {
-        let (reply, rx) = oneshot::channel();
-        let _ = self.tx.send(LuaJob::HasFn {
-            handle,
-            func_name: func_name.to_string(),
-            reply,
-        });
-        rx.await.unwrap_or(false)
     }
 }
 

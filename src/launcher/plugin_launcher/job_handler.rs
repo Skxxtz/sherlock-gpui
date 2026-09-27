@@ -85,13 +85,6 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                 None => task.abort(),
             }
         }
-        LuaJob::HasFn {
-            handle,
-            func_name,
-            reply,
-        } => {
-            let _ = reply.send(plugin_has_fn(&lua, &registry, &handle, &func_name));
-        }
         LuaJob::StopLive { handle } => {
             if let Some(plugin) = registry.borrow_mut().get_mut(&handle.id) {
                 for task in plugin.live_tasks.drain(..) {
@@ -159,6 +152,9 @@ fn load_plugin(
         .set_environment(env.clone())
         .exec()?;
 
+    let has = |f: &str| matches!(env.get::<LuaValue>(f), Ok(LuaValue::Function(_)));
+    let (has_live, has_refresh) = (has("live"), has("refresh"));
+
     let env_key = lua.create_registry_value(env)?;
 
     registry
@@ -169,6 +165,8 @@ fn load_plugin(
     Ok(PluginHandle {
         id: path.to_path_buf(),
         name,
+        has_live,
+        has_refresh,
     })
 }
 

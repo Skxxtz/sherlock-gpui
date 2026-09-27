@@ -136,6 +136,10 @@ fn spawn_launcher(
         cx.new(|cx| {
             let data_len = data.read(cx).len();
 
+            let data_sub = cx.observe(&data, |this: &mut LauncherView, _, cx| {
+                this.force_filter_and_sort(cx);
+            });
+
             let sub = cx.observe(&text_input, |this: &mut LauncherView, _, cx| {
                 this.context_idx = None;
                 this.navigation.current_mut().reset_selected_index();
@@ -190,7 +194,7 @@ fn spawn_launcher(
             LauncherView {
                 text_input,
                 focus_handle: cx.focus_handle(),
-                _subs: vec![sub],
+                _subs: vec![sub, data_sub],
                 modes,
                 context_idx: None,
                 has_actions: false,
