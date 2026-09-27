@@ -458,11 +458,13 @@ mod docs {
     use super::PluginLauncher;
     use crate::{
         display_name,
-        docs::{launcher::{
-            Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry,
-            plugin_launcher::plugin_capabilities_section,
-
-        }, plugins::plugin_guide_section},
+        docs::{
+            launcher::{
+                Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry,
+                plugin_launcher::plugin_capabilities_section,
+            },
+            plugins::plugin_guide_section,
+        },
         variant_name,
     };
     use indoc::indoc;
