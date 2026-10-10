@@ -12,7 +12,6 @@ use gpui::{
     Styled, StyledImage, div, img, prelude::FluentBuilder, px,
 };
 use std::{
-    hash::{DefaultHasher, Hash, Hasher},
     sync::Arc,
     time::UNIX_EPOCH,
 };
@@ -650,68 +649,4 @@ impl RenderOnce for FileSidebar {
                     )
             })
     }
-}
-
-fn load_thumbnail(path: &str, max_px: u32) -> Option<Arc<gpui::Image>> {
-    let ext = std::path::Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_lowercase());
-
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    let id = hasher.finish();
-
-    if ext.as_deref() == Some("svg") {
-        return load_svg_thumbnail(path, max_px);
-    }
-
-    let file_size = std::fs::metadata(path).ok()?.len();
-    if file_size > 1024 * 1024 {
-        return None;
-    }
-
-    let img = image::open(path).ok()?;
-    let thumb = img.thumbnail(max_px, max_px);
-    let mut bytes = Vec::new();
-    thumb
-        .write_to(
-            &mut std::io::Cursor::new(&mut bytes),
-            image::ImageFormat::Png,
-        )
-        .ok()?;
-
-    Some(Arc::new(gpui::Image {
-        format: gpui::ImageFormat::Png,
-        bytes,
-        id,
-    }))
-}
-
-fn load_svg_thumbnail(path: &str, max_px: u32) -> Option<Arc<gpui::Image>> {
-    let bytes = std::fs::read(path).ok()?;
-    let options = resvg::usvg::Options::default();
-    let tree = resvg::usvg::Tree::from_data(&bytes, &options).ok()?;
-
-    let size = tree.size();
-    let scale = (max_px as f32 / size.width().max(size.height())).min(1.0);
-    let w = (size.width() * scale) as u32;
-    let h = (size.height() * scale) as u32;
-
-    let mut pixmap = resvg::tiny_skia::Pixmap::new(w, h)?;
-    resvg::render(
-        &tree,
-        resvg::tiny_skia::Transform::from_scale(scale, scale),
-        &mut pixmap.as_mut(),
-    );
-
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    let id = hasher.finish();
-
-    Some(Arc::new(gpui::Image {
-        format: gpui::ImageFormat::Png,
-        bytes: pixmap.encode_png().ok()?,
-        id,
-    }))
 }
