@@ -6,6 +6,7 @@ pub mod errors;
 pub mod files;
 pub mod format;
 pub mod intent;
+pub mod image_buf;
 pub mod logging;
 pub mod networking;
 pub mod paths;
