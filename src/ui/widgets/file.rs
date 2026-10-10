@@ -5,16 +5,22 @@ use crate::{
     ui::{
         launcher::views::NavigationViewType, traits::RenderableChildImpl,
         utils::selection::Selection,
-    }, utils::preview_lru::PreviewCache,
+    },
+    utils::{
+        filekinds::{FileCategory, FileKind},
+        preview_lru::PreviewCache,
+    },
 };
 use gpui::{
-    AnyElement, App, Image, ImageSource, IntoElement, ParentElement, RenderOnce, SharedString,
-    Styled, StyledImage, div, img, prelude::FluentBuilder, px,
+    AnyElement, App, Image, ImageSource, IntoElement, ParentElement, RenderImage, RenderOnce,
+    SharedString, Styled, StyledImage, div, img, prelude::FluentBuilder, px,
 };
-use std::{
-    sync::Arc,
-    time::UNIX_EPOCH,
-};
+use std::{sync::Arc, time::UNIX_EPOCH};
+
+enum Preview {
+    Image(Arc<RenderImage>),
+    Text(SharedString),
+}
 
 #[derive(Clone, Default, Debug)]
 pub struct FileData {
@@ -65,25 +71,7 @@ impl FileData {
                 .map(|e| e.to_owned())
         };
 
-        let kind = identify_file_type(extension.as_deref(), is_dir, is_symlink);
-        let is_image = extension.is_some_and(|ext| {
-            matches!(
-                ext.as_str(),
-                "JPG"
-                    | "JPEG"
-                    | "PNG"
-                    | "GIF"
-                    | "WEBP"
-                    | "AVIF"
-                    | "SVG"
-                    | "ICO"
-                    | "BMP"
-                    | "TIFF"
-                    | "HEIC"
-                    | "RAW"
-            )
-        });
-
+        let kind = FileKind::from_extension(extension.as_deref(), is_dir, is_symlink);
         let size = if is_dir {
             std::fs::read_dir(path)
                 .map(|e| format!("{} items", e.filter_map(|e| e.ok()).count()))
@@ -120,20 +108,18 @@ impl FileData {
             permissions,
             executable,
             symlink_target,
-            is_image,
         })
     }
 }
 
 struct FileMeta {
-    kind: &'static str,
+    kind: FileKind,
     size: SharedString,
     modified: String,
     created: String,
     permissions: String,
     executable: bool,
     symlink_target: Option<String>,
-    is_image: bool,
 }
 
 fn format_size(bytes: u64) -> String {
@@ -190,131 +176,6 @@ fn format_permissions(mode: u32) -> String {
         .map(|&(bit, ch)| if mode & bit != 0 { ch } else { '-' })
         .collect();
     format!("{s} ({:04o})", mode & 0o777)
-}
-
-fn identify_file_type(extension: Option<&str>, is_dir: bool, is_symlink: bool) -> &'static str {
-    if is_symlink {
-        return "Symbolic Link";
-    }
-    if is_dir {
-        return "Folder";
-    }
-
-    match extension.unwrap_or("") {
-        // Systems & compiled
-        "rs" => "Rust",
-        "c" => "C",
-        "h" => "C Header",
-        "cpp" | "cc" | "cxx" => "C++",
-        "hpp" | "hxx" => "C++ Header",
-        "go" => "Go",
-        "zig" => "Zig",
-        "s" | "asm" => "Assembly",
-        // JVM
-        "java" => "Java",
-        "kt" | "kts" => "Kotlin",
-        "scala" => "Scala",
-        "class" => "Java Bytecode",
-        "jar" => "Java Archive",
-        // Scripting
-        "py" => "Python",
-        "rb" => "Ruby",
-        "lua" => "Lua",
-        "pl" | "pm" => "Perl",
-        "sh" => "Shell Script",
-        "bash" => "Bash Script",
-        "zsh" => "Zsh Script",
-        "fish" => "Fish Script",
-        "ps1" => "PowerShell Script",
-        // Web
-        "js" | "mjs" | "cjs" => "JavaScript",
-        "ts" | "mts" => "TypeScript",
-        "jsx" => "React JSX",
-        "tsx" => "React TSX",
-        "html" | "htm" => "HTML",
-        "css" => "CSS",
-        "scss" | "sass" => "SCSS",
-        "vue" => "Vue Component",
-        "svelte" => "Svelte Component",
-        "wasm" => "WebAssembly",
-        // Data & config
-        "json" | "jsonc" => "JSON",
-        "yaml" | "yml" => "YAML",
-        "toml" => "TOML",
-        "ini" | "cfg" | "conf" => "Config",
-        "env" => "Environment Config",
-        "xml" => "XML",
-        "csv" => "CSV",
-        "tsv" => "TSV",
-        "sql" => "SQL",
-        "db" | "sqlite" | "sqlite3" => "SQLite Database",
-        // Documents
-        "md" | "markdown" => "Markdown",
-        "rst" => "reStructuredText",
-        "tex" => "LaTeX",
-        "pdf" => "PDF",
-        "txt" => "Plain Text",
-        "doc" | "docx" => "Word Document",
-        "xls" | "xlsx" => "Excel Spreadsheet",
-        "ppt" | "pptx" => "PowerPoint",
-        "odt" => "OpenDocument Text",
-        "ods" => "OpenDocument Spreadsheet",
-        "epub" => "eBook",
-        // Images
-        "jpg" | "jpeg" => "JPEG Image",
-        "png" => "PNG Image",
-        "gif" => "GIF Image",
-        "webp" => "WebP Image",
-        "avif" => "AVIF Image",
-        "svg" => "SVG",
-        "ico" => "Icon",
-        "bmp" => "Bitmap",
-        "tiff" | "tif" => "TIFF Image",
-        "heic" | "heif" => "HEIF Image",
-        "raw" | "cr2" | "nef" => "RAW Image",
-        // Audio
-        "mp3" => "MP3",
-        "flac" => "FLAC",
-        "wav" => "WAV",
-        "ogg" => "OGG",
-        "aac" => "AAC",
-        "m4a" => "M4A",
-        "opus" => "Opus",
-        // Video
-        "mp4" | "m4v" => "MP4",
-        "mkv" => "MKV",
-        "webm" => "WebM",
-        "avi" => "AVI",
-        "mov" => "QuickTime",
-        "wmv" => "WMV",
-        // Archives
-        "zip" => "ZIP Archive",
-        "tar" => "Tar Archive",
-        "gz" | "tgz" => "Gzip Archive",
-        "xz" => "XZ Archive",
-        "bz2" => "Bzip2 Archive",
-        "zst" => "Zstandard Archive",
-        "7z" => "7-Zip Archive",
-        "rar" => "RAR Archive",
-        "deb" => "Debian Package",
-        "rpm" => "RPM Package",
-        "appimage" => "AppImage",
-        "flatpak" => "Flatpak",
-        // Fonts
-        "ttf" => "TrueType Font",
-        "otf" => "OpenType Font",
-        "woff" | "woff2" => "Web Font",
-        // Binary / system
-        "so" => "Shared Library",
-        "a" => "Static Library",
-        "o" => "Object File",
-        "exe" => "Executable",
-        "dll" => "DLL",
-        "lock" => "Lock File",
-        "log" => "Log",
-        "pid" => "PID File",
-        _ => "File",
-    }
 }
 
 impl<'a> RenderableChildImpl<'a> for FileData {
@@ -439,9 +300,16 @@ impl RenderOnce for FileSidebar {
     fn render(self, window: &mut gpui::Window, cx: &mut gpui::App) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
-        let preview = self.meta.is_image
-            .then(|| crate::utils::preview::request_preview(self.loc.clone(), cx))
-            .flatten();
+        let kind = self.meta.kind;
+        let preview = if kind.has_image_preview() {
+            crate::utils::preview::request_preview(self.loc.clone(), cx).map(Preview::Image)
+        } else if kind.is_text() || kind.category() == FileCategory::Other {
+            read_text_preview(self.loc.as_str(), 4096, 20)
+                .map(SharedString::from)
+                .map(Preview::Text)
+        } else {
+            None
+        };
         cx.default_global::<PreviewCache>().flush(window);
 
         // Compact label/value row
@@ -549,7 +417,7 @@ impl RenderOnce for FileSidebar {
                                             .font_family(theme.font_family.clone())
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(theme.secondary_text)
-                                            .child(self.meta.kind),
+                                            .child(self.meta.kind.as_str()),
                                     )
                                     .when(self.meta.executable, |this| {
                                         this.child(
@@ -585,7 +453,7 @@ impl RenderOnce for FileSidebar {
                     .flex_col()
                     .child(section_label("Info"))
                     .child(row("Size", self.meta.size.clone()))
-                    .child(row("Kind", self.meta.kind.into()))
+                    .child(row("Kind", self.meta.kind.as_str().into()))
                     .when_some(self.meta.symlink_target, |this, target| {
                         this.child(row("Points to", target.into()))
                     }),
@@ -605,48 +473,87 @@ impl RenderOnce for FileSidebar {
                     .child(section_label("Permissions"))
                     .child(row("Mode", self.meta.permissions.into())),
             )
-            .when(self.meta.is_image, |this| {
+            .when_some(preview, |this, val| {
                 this.child(separator())
                     .child(section_label("Preview"))
-                    .child(
-                        if let Some(image) = preview {
-                            div()
-                                .w_full()
-                                .mt(px(3.))
-                                .mb(px(12.))
-                                .rounded_md()
-                                .overflow_hidden()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    img(image)
-                                        .w_full()
-                                        .h(px(200.))
-                                        .object_fit(gpui::ObjectFit::Contain),
-                                )
-                        } else {
-                            div()
-                                .w_full()
-                                .aspect_square()
-                                .bg(theme.bg_muted)
-                                .rounded_md()
-                                .flex()
-                                .justify_center()
-                                .items_center()
-                                .child(
-                                    div()
-                                        .px_3()
-                                        .py_1()
-                                        .rounded_sm()
-                                        .bg(theme.bg_selected)
-                                        .font_family(theme.font_family.clone())
-                                        .text_size(px(11.))
-                                        .text_color(theme.secondary_text)
-                                        .child(self.meta.size),
-                                )
-                        },
-                    )
+                    .child(match val {
+                        Preview::Image(image) => div()
+                            .w_full()
+                            .mt(px(3.))
+                            .mb(px(12.))
+                            .rounded_md()
+                            .overflow_hidden()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(
+                                img(image)
+                                    .w_full()
+                                    .h(px(200.))
+                                    .object_fit(gpui::ObjectFit::Contain),
+                            ),
+                        Preview::Text(text) => div()
+                            .w_full()
+                            .mt(px(3.))
+                            .mb(px(12.))
+                            .p_2()
+                            .max_h(px(200.))
+                            .overflow_hidden()
+                            .rounded_md()
+                            .bg(theme.bg_muted)
+                            .font_family("monospace")
+                            .text_size(px(11.))
+                            .text_color(theme.secondary_text)
+                            .children(text.lines().map(|line| {
+                                div()
+                                    .whitespace_nowrap()
+                                    .overflow_hidden()
+                                    .text_ellipsis()
+                                    .child(
+                                        SharedString::from(if line.is_empty() {
+                                            " "
+                                        } else {
+                                            line
+                                        })
+                                        .to_string(),
+                                    )
+                            })),
+                    })
             })
     }
+}
+
+/// First lines of a text file, or None if it looks binary.
+fn read_text_preview<P: AsRef<std::path::Path>>(
+    path: P,
+    max_bytes: usize,
+    max_lines: usize,
+) -> Option<String> {
+    use std::io::Read;
+
+    let path = path.as_ref();
+
+    let mut buf = Vec::with_capacity(max_bytes);
+    std::fs::File::open(path)
+        .ok()?
+        .take(max_bytes as u64)
+        .read_to_end(&mut buf)
+        .ok()?;
+
+    if buf.contains(&0) {
+        return None; // NUL byte → binary
+    }
+    // Cut off a UTF-8 character that may have been split at the 4 KB boundary.
+    let text = match std::str::from_utf8(&buf) {
+        Ok(s) => s,
+        Err(e) if e.error_len().is_none() => std::str::from_utf8(&buf[..e.valid_up_to()]).ok()?,
+        Err(_) => return None, // not UTF-8
+    };
+
+    let preview: Vec<String> = text
+        .lines()
+        .take(max_lines)
+        .map(|l| l.replace('\t', "    ").trim_end().to_owned())
+        .collect();
+    (!preview.iter().all(|l| l.is_empty())).then(|| preview.join("\n"))
 }
