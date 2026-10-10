@@ -31,7 +31,7 @@ use crate::{
     },
     utils::{
         config::{ConfigGuard, ConfigWatcher},
-        errors::SherlockMessage,
+        errors::SherlockMessage, preview_lru::PreviewCache,
     },
 };
 
@@ -130,8 +130,14 @@ fn spawn_launcher(
             .ok()
         });
 
-    cx.open_window(get_window_options(), move |_, cx| {
+    cx.open_window(get_window_options(), move |win, cx| {
         let text_input = cx.new(|cx| TextInput::builder().placeholder("Search").build(cx));
+
+        // cleanup hook for preview cachge
+        win.on_window_should_close(cx, |window, cx| {
+            cx.default_global::<PreviewCache>().clear(window);
+            true
+        });
 
         cx.new(|cx| {
             let data_len = data.read(cx).len();
