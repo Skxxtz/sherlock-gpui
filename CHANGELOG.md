@@ -48,7 +48,8 @@ run `git log main..dev` for all changes
   empty, will not animate. (`e2393b2e`)
 * **MD-RS:** Added badge, image, and div components (`051f45e2`, `051f45e2`,
   `eda442fd`, `fedf0a56`)
-* Added plugin support
+* **Plugins**: implemented basic plugin support
+* **File-Search**: Added preview for text files (`c7565968`),
 
 ### Improved
 
@@ -64,6 +65,7 @@ run `git log main..dev` for all changes
 * **Documentation:** Added README.md and CONTRIBUTING.md auto-gen. (`9b639fde`, `d5bfeccd`)
 * **MD-RS Crate:** Improved formatting of md-rs create for documentation auto-generation and
   refactors. (`0a83ea14`, `5bbfa568`, `7a8b0acb`, `36df4464`, `d5bfeccd`)
+* **File-Search**: Improved image preview (`0b3077bc`, `0152803a`, `1b3584ff`, `8b6681ea`)
 
 ### Removed
 
