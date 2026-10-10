@@ -5,7 +5,7 @@ use crate::{
     ui::{
         launcher::views::NavigationViewType, traits::RenderableChildImpl,
         utils::selection::Selection,
-    },
+    }, utils::preview_lru::PreviewCache,
 };
 use gpui::{
     AnyElement, App, Image, ImageSource, IntoElement, ParentElement, RenderOnce, SharedString,
@@ -437,8 +437,14 @@ struct FileSidebar {
     icon: Option<IconType>,
 }
 impl RenderOnce for FileSidebar {
-    fn render(self, _window: &mut gpui::Window, cx: &mut gpui::App) -> impl IntoElement {
+    fn render(self, window: &mut gpui::Window, cx: &mut gpui::App) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
+
+        let preview = self.meta.is_image
+            .then(|| crate::utils::preview::request_preview(self.loc.clone(), cx))
+            .flatten();
+        cx.default_global::<PreviewCache>().flush(window);
+
         // Compact label/value row
         let row = |label: &'static str, value: SharedString| {
             div()
@@ -604,7 +610,7 @@ impl RenderOnce for FileSidebar {
                 this.child(separator())
                     .child(section_label("Preview"))
                     .child(
-                        if let Some(image) = load_thumbnail(self.loc.as_str(), 150) {
+                        if let Some(image) = preview {
                             div()
                                 .w_full()
                                 .mt(px(3.))

@@ -8,6 +8,8 @@ pub mod format;
 pub mod intent;
 pub mod image_buf;
 pub mod logging;
+pub mod preview_lru;
+pub mod preview;
 pub mod networking;
 pub mod paths;
 pub mod sized_message_sync;
