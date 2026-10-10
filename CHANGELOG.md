@@ -61,7 +61,7 @@ run `git log main..dev` for all changes
 * **NixOS:**
   * Added `cachix`. (`f6041508`)
   * Update hashes. (`20d00580`)
-* **Context Menu Actions:** Limit context menu width to 250px. (`889054f6`)
+* **Context Menu Actions:** Limit context menu width to 500px. (`889054f6`)
 * **Documentation:** Added README.md and CONTRIBUTING.md auto-gen. (`9b639fde`, `d5bfeccd`)
 * **MD-RS Crate:** Improved formatting of md-rs create for documentation auto-generation and
   refactors. (`0a83ea14`, `5bbfa568`, `7a8b0acb`, `36df4464`, `d5bfeccd`)
