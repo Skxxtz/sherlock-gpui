@@ -50,6 +50,7 @@ run `git log main..dev` for all changes
   `eda442fd`, `fedf0a56`)
 * **Plugins**: implemented basic plugin support
 * **File-Search**: Added preview for text files (`c7565968`),
+* **Bookmark Launcher**: added support for librewolf bookmarks (`580da018`)
 
 ### Improved
 
@@ -66,6 +67,7 @@ run `git log main..dev` for all changes
 * **MD-RS Crate:** Improved formatting of md-rs create for documentation auto-generation and
   refactors. (`0a83ea14`, `5bbfa568`, `7a8b0acb`, `36df4464`, `d5bfeccd`)
 * **File-Search**: Improved image preview (`0b3077bc`, `0152803a`, `1b3584ff`, `8b6681ea`)
+* **Bookmark Launcher**: improved bookmark parsing for firefox-based browsers (`dc799526`)
 
 ### Removed
 
