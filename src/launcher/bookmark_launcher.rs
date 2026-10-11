@@ -1,9 +1,12 @@
 use gpui::SharedString;
-use rusqlite::Connection;
-use std::fs;
-use std::path::PathBuf;
+use rusqlite::{Connection, OpenFlags};
+use std::collections::HashSet;
+use std::hash::{DefaultHasher, Hasher};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::{fs, hash::Hash};
 
+use crate::utils::errors::types::DirAction;
 use crate::{
     launcher::{LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData},
     loader::{
@@ -145,87 +148,76 @@ impl BookmarkParser {
     }
 
     fn zen(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
-        fn get_path() -> Option<PathBuf> {
-            let zen_root = home_dir().ok()?.join(".zen");
-            fs::read_dir(&zen_root)
-                .ok()?
-                .filter_map(|entry| {
-                    let path = entry.ok()?.path();
-                    if path.is_dir() && path.join("places.sqlite").exists() {
-                        Some(path.join("places.sqlite"))
-                    } else {
-                        None
-                    }
-                })
-                .next()
-        }
-        let path = get_path().ok_or_else(|| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(
-                    FileAction::Find,
-                    PathBuf::from("~/.zen/../places.sqlite")
-                ),
-                "File does not exist"
-            )
-        })?;
-        let parser = MozillaSqliteParser::new(path, "zen");
-        parser.read(launcher, "zen")
+        let root = home_dir()?.join(".zen");
+        MozillaSqliteParser::run_for_browser(launcher, "zen", || root)
     }
     fn firefox(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
-        fn get_path() -> Option<PathBuf> {
-            let zen_root = home_dir().ok()?.join(".mozilla/firefox/");
-            fs::read_dir(&zen_root)
-                .ok()?
-                .filter_map(|entry| {
-                    let path = entry.ok()?.path();
-                    if path.is_dir() && path.join("places.sqlite").exists() {
-                        Some(path.join("places.sqlite"))
-                    } else {
-                        None
-                    }
-                })
-                .next()
-        }
-        let path = get_path().ok_or_else(|| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(
-                    FileAction::Find,
-                    PathBuf::from("~/.mozilla/firefox/../places.sqlite",)
-                ),
-                "File does not exist"
-            )
-        })?;
-        let parser = MozillaSqliteParser::new(path, "firefox");
-        parser.read(launcher, "firefox")
+        let root = home_dir()?.join(".mozilla/firefox/");
+        MozillaSqliteParser::run_for_browser(launcher, "firefox", || root)
     }
 }
 struct MozillaSqliteParser {
-    path: PathBuf,
+    paths: Vec<PathBuf>,
 }
+
 impl MozillaSqliteParser {
-    fn new(file: PathBuf, prefix: &str) -> Self {
-        let path = if let Ok(cache) = get_cache_dir() {
-            let target = cache.join(format!("bookmarks/{}-places.sqlite", prefix));
-            Self::copy_if_needed(&file, &target);
-            target
-        } else {
-            file.to_path_buf()
-        };
-        Self { path }
+    fn new(paths: impl IntoIterator<Item = PathBuf>) -> Self {
+        let cache = get_cache_dir().ok().map(|c| c.join("bookmarks"));
+
+        let paths = paths
+            .into_iter()
+            .map(|p| {
+                let Some(dir) = &cache else { return p };
+
+                let mut hasher = DefaultHasher::new();
+                p.hash(&mut hasher);
+                let target = dir.join(format!("{:016x}.sqlite", hasher.finish()));
+
+                match Self::copy_if_needed(&p, &target) {
+                    Ok(()) => target,
+                    Err(_) => p,
+                }
+            })
+            .collect();
+
+        Self { paths }
     }
+
+    fn run_for_browser<R>(
+        launcher: Arc<LauncherConfig>,
+        prefix: &'static str,
+        root: R,
+    ) -> Result<Vec<AppData>, SherlockMessage>
+    where
+        R: FnOnce() -> PathBuf,
+    {
+        let root = root();
+
+        let entries = fs::read_dir(&root).map_err(|e| {
+            sherlock_msg!(
+                Error,
+                SherlockErrorType::DirError(DirAction::Read, root),
+                e.to_string()
+            )
+        })?;
+        let paths = entries.filter_map(|entry| {
+            let db = entry.ok()?.path().join("places.sqlite");
+            db.is_file().then_some(db)
+        });
+
+        let parser = MozillaSqliteParser::new(paths);
+        parser.read(launcher, prefix)
+    }
+
     fn read(
         &self,
         launcher: Arc<LauncherConfig>,
-        prefix: &str,
+        prefix: &'static str,
     ) -> Result<Vec<AppData>, SherlockMessage> {
-        let cache_dir = get_cache_dir()?;
-        let cache = cache_dir.join(format!("bookmarks/{}-cache.bin", prefix));
+        let cache = get_cache_dir()?.join(format!("bookmarks/{prefix}-cache.bin"));
 
-        if !file_has_changed(&cache, &self.path)
-            && let Ok(app_data) = BinaryCache::read::<Vec<AppData>, _>(&cache)
-        {
+        let changed = self.paths.iter().any(|p| file_has_changed(&cache, p));
+        if !changed && let Ok(app_data) = BinaryCache::read::<Vec<AppData>, _>(&cache) {
             return Ok(app_data);
         }
 
@@ -238,50 +230,64 @@ impl MozillaSqliteParser {
         });
         Ok(bookmarks)
     }
+
     fn read_new(&self, launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
-        let mut res: Vec<AppData> = Vec::new();
-        let query = "
-            SELECT b.title, p.url
-            FROM moz_bookmarks b
-            JOIN moz_places p ON b.fk = p.id
-            WHERE b.type = 1
-            AND b.title IS NOT NULL
-            AND p.url IS NOT NULL
-            AND b.parent != 7;
-            ";
-        let conn = Connection::open(&self.path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DatabaseError(DbAction::Connect),
-                e
-            )
-        })?;
+        let mut res = Vec::new();
+        let mut seen = HashSet::new();
 
-        if let Ok(mut stmt) = conn.prepare(query) {
-            let event_iter = stmt.query_map([], |row| {
-                let title: String = row.get(0)?;
-                let url: String = row.get(1)?;
-
-                Ok((title, url))
-            });
-
-            if let Ok(rows) = event_iter {
-                for row in rows.flatten() {
-                    let bookmark = AppData {
-                        name: Some(SharedString::from(&row.0)),
-                        icon: resolve_icon_path("sherlock-bookmark"),
-                        search_string: construct_search(Some(&row.0), &row.1, true),
-                        exec: Some(row.1),
-                        priority: PriorityGuard::new_with_launcher(&launcher, 0),
-                        ..AppData::new()
-                    };
-                    res.push(bookmark);
+        for path in &self.paths {
+            match Self::read_db(path) {
+                Ok(rows) => {
+                    for (title, url) in rows {
+                        if !seen.insert(url.clone()) {
+                            continue;
+                        }
+                        res.push(AppData {
+                            name: Some(SharedString::from(&title)),
+                            icon: resolve_icon_path("sherlock-bookmark"),
+                            search_string: construct_search(Some(&title), &url, true),
+                            exec: Some(url),
+                            priority: PriorityGuard::new_with_launcher(&launcher, 0),
+                            ..AppData::new()
+                        });
+                    }
+                }
+                Err(e) => {
+                    let _ = sher_log!(format!("{}: {e:?}", path.display()));
                 }
             }
         }
         Ok(res)
     }
-    fn should_update_cache(dest: &PathBuf, source: &PathBuf) -> bool {
+    fn read_db(path: &Path) -> Result<Vec<(String, String)>, SherlockMessage> {
+        const QUERY: &str = "
+            SELECT b.title, p.url
+            FROM moz_bookmarks b
+            JOIN moz_places p ON b.fk = p.id
+            WHERE b.type = 1
+              AND b.title IS NOT NULL
+              AND p.url IS NOT NULL
+              AND b.parent != 7";
+
+        let db_err = |e| {
+            sherlock_msg!(
+                Warning,
+                SherlockErrorType::DatabaseError(DbAction::Connect),
+                e
+            )
+        };
+
+        let conn =
+            Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(db_err)?;
+        let mut stmt = conn.prepare(QUERY).map_err(db_err)?;
+        let rows = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(db_err)?
+            .flatten()
+            .collect();
+        Ok(rows)
+    }
+    fn should_update_cache(dest: &Path, source: &Path) -> bool {
         if !dest.exists() {
             return true;
         }
@@ -298,18 +304,32 @@ impl MozillaSqliteParser {
         }
         true
     }
-    fn copy_if_needed(src: &PathBuf, dst: &PathBuf) {
-        if Self::should_update_cache(dst, src) {
-            let _ = sher_log!(format!(
-                r#"Bookmark database "{}" is copied to "{}""#,
-                src.display(),
-                dst.display()
-            ));
-            if let Some(parent) = dst.parent() {
-                let _ = fs::create_dir_all(parent);
-            }
-            let _ = fs::copy(src, dst);
+    fn copy_if_needed(src: &Path, dst: &Path) -> std::io::Result<()> {
+        if !Self::should_update_cache(dst, src) {
+            return Ok(());
         }
+
+        let _ = sher_log!(format!(
+            r#"Bookmark database "{}" is copied to "{}""#,
+            src.display(),
+            dst.display()
+        ));
+
+        if let Some(parent) = dst.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::copy(src, dst)?;
+
+        let (src_wal, dst_wal) = (
+            src.with_extension("sqlite-wal"),
+            dst.with_extension("sqlite-wal"),
+        );
+        if src_wal.exists() {
+            fs::copy(&src_wal, &dst_wal)?;
+        } else {
+            let _ = fs::remove_file(&dst_wal);
+        }
+        Ok(())
     }
 }
 struct ChromeParser;
