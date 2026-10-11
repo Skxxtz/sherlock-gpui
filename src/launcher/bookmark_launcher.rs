@@ -88,6 +88,7 @@ impl BookmarkLauncher {
             }
             "brave" | "brave %u" => BookmarkParser::brave(launcher),
             "firefox" | "/usr/lib/firefox/firefox %u" => BookmarkParser::firefox(launcher),
+            "librewolf" => BookmarkParser::librewolf(launcher),
             "chrome" | "google-chrome" | "/usr/bin/google-chrome-stable %u" => {
                 BookmarkParser::chrome(launcher)
             }
@@ -150,6 +151,10 @@ impl BookmarkParser {
     fn zen(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
         let root = home_dir()?.join(".zen");
         MozillaSqliteParser::run_for_browser(launcher, "zen", || root)
+    }
+    fn librewolf(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+        let root = home_dir()?.join(".config/librewolf/librewolf");
+        MozillaSqliteParser::run_for_browser(launcher, "librewolf", || root)
     }
     fn firefox(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
         let root = home_dir()?.join(".mozilla/firefox/");
