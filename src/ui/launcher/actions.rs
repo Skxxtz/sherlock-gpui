@@ -9,21 +9,19 @@ use smallvec::SmallVec;
 use crate::{
     app::reset_generation,
     launcher::{
-        ExecEffect, LauncherValues,
-        emoji_launcher::{ALL_SKIN_TONES, SkinTone},
-        utils::exec_mode::ExecMode,
-        variant_type::LauncherType,
+        ExecEffect, LauncherValues, utils::exec_mode::ExecMode, variant_type::LauncherType,
     },
     loader::utils::{CounterReader, ExecVariable},
     sherlock_msg,
     ui::{
         choice::Choice,
         launcher::{
-            LauncherView, VariableInput, context_menu::ContextMenuAction, views::MoveDirection,
+            LauncherView, VariableInput,
+            context_menu::{ContextMenuAction, wrapper::Move},
+            views::MoveDirection,
         },
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
         traits::RenderableChildDelegate,
-        widgets::emoji::{get_selected_skin_tones, set_all_skin_tones, set_selected_skin_tone},
     },
     utils::{
         command_launch::spawn_detached,
@@ -109,76 +107,8 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some(idx) = self.context_idx {
-            match direction {
-                MoveDirection::Down => {
-                    if idx < self.context_actions.len().saturating_sub(1) {
-                        self.context_idx = Some(idx + 1);
-                    }
-                }
-                MoveDirection::Up => {
-                    if idx > 0 {
-                        self.context_idx = Some(idx - 1);
-                    }
-                }
-                MoveDirection::Left => {
-                    if let Some(action_arc) = self.context_actions.get(idx) {
-                        if let ContextMenuAction::Emoji(act) = action_arc.as_ref() {
-                            act.update_index(|i| {
-                                let new = i.saturating_sub(1).min(5);
-                                set_selected_skin_tone(new.into(), act.for_tone as usize);
-                                new
-                            });
-                        } else if idx > 0 {
-                            self.context_idx = Some(idx - 1);
-                        }
-                    }
-                    if get_selected_skin_tones()
-                        .iter()
-                        .any(|t| matches!(t, SkinTone::Simpsons))
-                    {
-                        set_all_skin_tones(SkinTone::Simpsons);
-                        self.context_actions.iter().for_each(|action| {
-                            if let ContextMenuAction::Emoji(act) = action.as_ref() {
-                                act.update_index(|_| 0)
-                            }
-                        });
-                    }
-                }
-                MoveDirection::Right => {
-                    // Counts the number of `SkinTone::Simpsons` occurrences in the selected
-                    // skintones.
-                    let num_simpsons = || {
-                        get_selected_skin_tones()
-                            .iter()
-                            .filter(|t| matches!(t, SkinTone::Simpsons))
-                            .count()
-                    };
-                    let before = num_simpsons();
-
-                    if let Some(action_arc) = self.context_actions.get(idx) {
-                        if let ContextMenuAction::Emoji(act) = action_arc.as_ref() {
-                            act.update_index(|i| {
-                                let new = (i + 1).clamp(0, 5);
-                                set_selected_skin_tone(new.into(), act.for_tone as usize);
-                                new
-                            });
-                        } else if idx < self.context_actions.len().saturating_sub(1) {
-                            self.context_idx = Some(idx + 1);
-                        }
-                    }
-
-                    // identify change away from "all-simpsons" state
-                    if before > num_simpsons() {
-                        set_all_skin_tones(ALL_SKIN_TONES[1]);
-                        self.context_actions.iter().for_each(|action| {
-                            if let ContextMenuAction::Emoji(act) = action.as_ref() {
-                                act.update_index(|_| 1)
-                            }
-                        });
-                    }
-                }
-            }
+        if self.context_menu.is_open() {
+            self.context_menu.handle_move(direction);
             cx.notify();
             return;
         }
@@ -303,8 +233,8 @@ impl LauncherView {
     }
 
     fn execute_current(&mut self, exit_override: bool, win: &mut Window, cx: &mut Context<Self>) {
-        if let Some(idx) = self.context_idx {
-            let Some(action) = self.context_actions.get(idx) else {
+        if self.context_menu.is_open() {
+            let Some(action) = self.context_menu.get_current() else {
                 return;
             };
             let Some(what) = self
@@ -355,13 +285,15 @@ impl LauncherView {
             .with_selected_item(cx, |item, cx| item.has_actions(cx))
             .unwrap_or_default()
         {
-            self.has_actions = true;
-            self.context_actions = self.navigation.current_actions(cx).unwrap_or_default();
-            self.context_idx = self
-                .context_idx
-                .map(|idx| idx.min(self.context_actions.len().saturating_sub(1)));
+            self.context_menu.has_actions = true;
+            self.context_menu
+                .set_actions(self.navigation.current_actions(cx).unwrap_or_default());
+            self.context_menu.idx = self
+                .context_menu
+                .idx
+                .map(|idx| idx.min(self.context_menu.num_actions().saturating_sub(1)));
         } else {
-            self.context_actions = Default::default();
+            self.context_menu.clear_actions();
             self.close_context(cx);
         }
     }
@@ -445,6 +377,9 @@ impl LauncherView {
             ExecMode::Print { content } => {
                 println!("{content}");
                 self.write_response(content, cx);
+            }
+            ExecMode::Hide { exec } => {
+                println!("exec: {exec}");
             }
             ExecMode::CreateView { mode, launcher } => {
                 self.text_input.update(cx, |this, _| this.reset());
@@ -640,14 +575,15 @@ impl LauncherView {
         _win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.has_actions {
+        if !self.context_menu.can_open() {
             return;
         }
 
-        self.context_actions = self.navigation.current_actions(cx).unwrap_or_default();
+        self.context_menu
+            .set_actions(self.navigation.current_actions(cx).unwrap_or_default());
 
-        // should never be called unless
-        if self.context_actions.is_empty() {
+        // should never be called
+        if self.context_menu.num_actions() == 0 {
             let launcher_type = self
                 .navigation
                 .selected_item_ref(cx)
@@ -668,21 +604,21 @@ impl LauncherView {
         }
 
         // toggle logic
-        if self.context_idx.take().is_none() {
-            self.context_idx = Some(0);
+        if !self.context_menu.close() {
+            self.context_menu.open(0);
         }
 
         cx.notify();
     }
 
     pub(super) fn close_context(&mut self, cx: &mut Context<Self>) {
-        if self.context_idx.take().is_some() {
+        if self.context_menu.close() {
             cx.notify();
         }
     }
 
     pub(super) fn quit(&mut self, _: &Quit, win: &mut Window, cx: &mut Context<Self>) {
-        if self.context_idx.is_some() {
+        if self.context_menu.is_open() {
             self.close_context(cx);
         } else {
             self.close_window(win, cx);

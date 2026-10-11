@@ -24,6 +24,7 @@ use crate::{
         backdrop::Backdrop,
         launcher::{
             LauncherMode, LauncherView,
+            context_menu::wrapper::ContextMenu,
             views::{NavigationStack, NavigationViewType},
         },
         model::Model,
@@ -150,7 +151,7 @@ fn spawn_launcher(
             });
 
             let sub = cx.observe(&text_input, |this: &mut LauncherView, _, cx| {
-                this.context_idx = None;
+                this.context_menu.close();
                 this.navigation.current_mut().reset_selected_index();
                 this.filter_and_sort(cx);
             });
@@ -205,9 +206,7 @@ fn spawn_launcher(
                 focus_handle: cx.focus_handle(),
                 _subs: vec![sub, data_sub],
                 modes,
-                context_idx: None,
-                has_actions: false,
-                context_actions: Arc::new([]),
+                context_menu: ContextMenu::default(),
                 variable_input: Vec::new(),
                 active_bar: 0,
                 navigation,

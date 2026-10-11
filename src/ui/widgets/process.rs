@@ -12,9 +12,10 @@ use gpui::{
     Styled, div, img, prelude::FluentBuilder, px,
 };
 use procfs::ProcResult;
+use sherlock_derive::Hideable;
 use std::sync::Arc;
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Hideable)]
 pub struct ProcessData {
     name: SharedString,
     pid: i32,

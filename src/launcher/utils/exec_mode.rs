@@ -10,7 +10,14 @@ use crate::{
         variant_type::{InnerFunction, LauncherType},
     },
     ui::{
-        launcher::{LauncherMode, context_menu::ContextMenuAction, views::NavigationViewType},
+        launcher::{
+            LauncherMode,
+            context_menu::{
+                ContextMenuAction,
+                quick_actions::{Hideable, QuickAction},
+            },
+            views::NavigationViewType,
+        },
         traits::RenderableChildDelegate,
         widgets::{
             RenderableChild,
@@ -42,6 +49,9 @@ pub enum ExecMode {
     },
     DynamicContextMenuFunc {
         action: Arc<ContextMenuAction>,
+    },
+    Hide {
+        exec: String,
     },
     SwitchView {
         idx: usize,
@@ -86,6 +96,9 @@ impl ExecMode {
 
             "copy" => content().map(|content| Self::Copy { content }),
             "print" => content().map(|content| Self::Print { content }),
+            "hide" => Some(Self::Hide {
+                exec: exec.unwrap_or_default(),
+            }),
 
             k if k.starts_with("inner.") => {
                 let func = InnerFunction::from_str(launcher_type, k.trim_start_matches("inner."));
@@ -131,6 +144,12 @@ impl ExecMode {
                     Self::Copy { content }
                 })
                 .unwrap_or_default(),
+            ContextMenuAction::QuickAction(quick) => match quick {
+                QuickAction::Hide => {
+                    Self::from_method("hide", data.hide_id(), data.launcher_type(), false, || None)
+                        .unwrap_or_default()
+                }
+            },
         }
     }
 

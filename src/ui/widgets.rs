@@ -29,7 +29,7 @@ use crate::{
     },
     loader::utils::{ExecVariable, Priority},
     ui::{
-        launcher::context_menu::ContextMenuAction,
+        launcher::context_menu::{ContextMenuAction, quick_actions::Hideable},
         traits::{RenderableChildDelegate, RenderableChildImpl},
         utils::selection::Selection,
         widgets::{
@@ -260,6 +260,19 @@ macro_rules! renderable_enum {
 
             fn shortcut(&self) -> bool {
                 self.launcher_config().shortcut
+            }
+        }
+
+        impl Hideable for $name {
+            fn hide_id(&self) -> Option<String> {
+                match self {
+                    $(Self::$variant { inner, .. } => Hideable::hide_id(inner), )*
+                }
+            }
+            fn is_hideable(&self) -> bool {
+                match self {
+                    $(Self::$variant { inner, .. } => Hideable::is_hideable(inner), )*
+                }
             }
         }
 

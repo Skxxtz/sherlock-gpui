@@ -4,6 +4,7 @@ use gpui::{
     App, AppContext, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div,
     img, prelude::FluentBuilder, px, rgb, svg,
 };
+use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
@@ -85,7 +86,7 @@ impl Fetchable for ClipData {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct ClipWidget {
     entity: AsyncUpdateEntity<ClipData>,
 }

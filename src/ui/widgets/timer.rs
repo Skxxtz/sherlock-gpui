@@ -4,6 +4,7 @@ use gpui::{
     AnyElement, App, AppContext, Entity, IntoElement, ParentElement, SharedString, Styled, Task,
     div, px,
 };
+use sherlock_derive::Hideable;
 use smallvec::SmallVec;
 
 use crate::{
@@ -37,7 +38,7 @@ struct TimerEntity {
     update_task: Option<Task<()>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct TimerChild {
     update_entity: Entity<TimerEntity>,
     variable: [ExecVariable; 1],

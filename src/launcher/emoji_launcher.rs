@@ -1,6 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use serde::{Deserialize, Serialize};
+use sherlock_derive::Hideable;
 use strum::FromRepr;
 
 use crate::{
@@ -65,7 +66,7 @@ impl LauncherProvider for EmojiPicker {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hideable)]
 pub struct EmojiData {
     pub entry: &'static EmojiEntry,
 }

@@ -4,6 +4,7 @@ use gpui::{
     IntoElement, ParentElement, Styled, div, img, linear_gradient, prelude::FluentBuilder, px,
     relative,
 };
+use sherlock_derive::Hideable;
 use std::{rc::Rc, sync::Arc, time::Duration};
 
 use crate::{
@@ -49,7 +50,7 @@ impl Fetchable for WeatherData {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct WeatherWidget {
     timeout: TimeoutCaller<()>,
     entity: AsyncUpdateEntity<WeatherData>,

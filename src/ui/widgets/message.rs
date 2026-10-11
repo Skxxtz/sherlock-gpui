@@ -4,6 +4,7 @@ use gpui::{
     AnyElement, App, FontWeight, InteractiveElement, IntoElement, MouseButton, ParentElement,
     Styled, div, prelude::FluentBuilder, px, relative,
 };
+use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
@@ -15,7 +16,7 @@ use crate::{
 
 type DismissFunction = Arc<dyn Fn(&mut gpui::App, (LauncherId, usize)) + Send + Sync + 'static>;
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct MessageChild {
     pub message: SherlockMessage,
     pub on_dismiss: Option<DismissFunction>,

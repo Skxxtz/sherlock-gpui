@@ -11,6 +11,7 @@ use gpui::{
     Animation, AnimationExt, AnyElement, App, AppContext, FontWeight, Hsla, InteractiveElement,
     IntoElement, ParentElement, SharedString, Styled, div, prelude::FluentBuilder, px, rgb,
 };
+use sherlock_derive::Hideable;
 use simd_json::prelude::ArrayTrait;
 use suite_223b::{
     calendar::utils::{
@@ -161,7 +162,7 @@ impl Fetchable for EventData {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct EventWidget {
     pub actions: Arc<[Arc<ContextMenuAction>]>,
     pub entity: AsyncUpdateEntity<EventData>,
@@ -169,6 +170,7 @@ pub struct EventWidget {
     animation: Rc<Cell<AnimState>>,
     generation: Rc<Cell<u32>>,
 }
+
 impl EventWidget {
     pub fn new(cx: &mut impl AppContext) -> Self {
         Self {

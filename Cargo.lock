@@ -5914,6 +5914,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sherlock-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "sherlock-gpui"
 version = "0.2.3"
 dependencies = [
@@ -5952,6 +5960,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "sherlock-derive",
  "simd-json",
  "smallvec",
  "smol",

@@ -4,6 +4,7 @@ use gpui::{
     AnyElement, App, AppContext, Image, ImageSource, IntoElement, ParentElement, Styled, div, img,
     prelude::FluentBuilder, px,
 };
+use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
@@ -24,7 +25,7 @@ use crate::{
     utils::errors::SherlockMessage,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct MusicPlayerWidget {
     pub entity: AsyncUpdateEntity<MprisState>,
 }

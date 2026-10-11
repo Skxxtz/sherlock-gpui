@@ -4,6 +4,7 @@ use gpui::{
     App, AppContext, IntoElement, ParentElement, SharedString, Styled, div, prelude::FluentBuilder,
     px, rgb,
 };
+use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
@@ -13,10 +14,12 @@ use crate::{
     utils::intent::{Capabilities, Intent, IntentResult},
 };
 
+#[derive(Hideable)]
 pub struct CalcData {
     capabilities: Capabilities,
     result: Arc<RwLock<Option<(SharedString, IntentResult)>>>,
 }
+
 impl Clone for CalcData {
     fn clone(&self) -> Self {
         println!("calc cloned");

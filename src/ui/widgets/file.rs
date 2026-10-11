@@ -15,6 +15,7 @@ use gpui::{
     AnyElement, App, Image, ImageSource, IntoElement, ParentElement, RenderImage, RenderOnce,
     SharedString, Styled, StyledImage, div, img, prelude::FluentBuilder, px,
 };
+use sherlock_derive::Hideable;
 use std::{sync::Arc, time::UNIX_EPOCH};
 
 enum Preview {
@@ -22,7 +23,7 @@ enum Preview {
     Text(SharedString),
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Hideable)]
 pub struct FileData {
     loc: SharedString,
     name: SharedString,

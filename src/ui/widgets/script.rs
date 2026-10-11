@@ -5,6 +5,7 @@ use gpui::{
     WeakEntity, div, prelude::FluentBuilder,
 };
 use serde::{Deserialize, Serialize};
+use sherlock_derive::Hideable;
 use std::process::{Command, Stdio};
 
 use crate::{
@@ -21,7 +22,7 @@ use crate::{
     utils::command_launch::split_as_command,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct ScriptData {
     pub update_entity: Entity<ScriptDataUpdateEntity>,
     pub command: SharedString,

@@ -5,6 +5,7 @@ use gpui::{
     IntoElement, MouseButton, ObjectFit, ParentElement, Resource, SharedString, SharedUri, Styled,
     StyledImage, StyledText, WeakEntity, div, img, prelude::FluentBuilder, px, relative,
 };
+use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
@@ -33,7 +34,7 @@ use crate::{
     utils::files::{expand_path, home_dir},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct PluginWidget {
     pub state: Entity<PluginTileState>,
     pub plugin_id: Arc<std::path::Path>,

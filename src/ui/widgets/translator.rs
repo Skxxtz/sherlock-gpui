@@ -2,6 +2,7 @@ use gpui::{
     Animation, AnimationExt, App, AppContext, AsyncApp, Entity, FontWeight, IntoElement,
     ParentElement, Styled, div, prelude::FluentBuilder, px,
 };
+use sherlock_derive::Hideable;
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
@@ -34,7 +35,7 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Hideable)]
 pub struct TranslationData {
     update_entity: Entity<TranslationResult>,
 }

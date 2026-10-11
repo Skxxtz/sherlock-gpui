@@ -14,6 +14,7 @@ use gpui::{
     AnyElement, App, FontWeight, IntoElement, ParentElement, SharedString, Styled, div,
     prelude::FluentBuilder, px,
 };
+use sherlock_derive::Hideable;
 use std::sync::Arc;
 
 #[derive(Copy, Clone, Default, Debug)]
@@ -31,7 +32,7 @@ impl ThemeType {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Hideable)]
 pub struct ThemeWidget {
     r#type: ThemeType,
     name: SharedString,

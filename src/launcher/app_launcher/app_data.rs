@@ -6,6 +6,7 @@ use std::{
 
 use gpui::SharedString;
 use serde::{Deserialize, Serialize};
+use sherlock_derive::Hideable;
 
 use crate::{
     launcher::{LauncherConfig, variant_type::LauncherType},
@@ -16,9 +17,10 @@ use crate::{
     ui::launcher::context_menu::ContextMenuAction,
 };
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Hideable)]
 pub struct AppData {
     #[serde(default)]
+    #[hide_id]
     pub name: Option<SharedString>,
     pub exec: Option<String>,
     pub search_string: String,
@@ -35,6 +37,7 @@ pub struct AppData {
     #[serde(default)]
     pub terminal: bool,
 }
+
 impl Eq for AppData {}
 impl Hash for AppData {
     fn hash<H: Hasher>(&self, state: &mut H) {

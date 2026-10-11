@@ -2,7 +2,8 @@ use crate::launcher::{LauncherConfig, LauncherId};
 use crate::tokio_utils::SizedMessageObj;
 use crate::ui::backdrop::Backdrop;
 use crate::ui::choice::Choice;
-use crate::ui::{launcher::context_menu::ContextMenuAction, launcher::views::NavigationStack};
+use crate::ui::launcher::context_menu::wrapper::ContextMenu;
+use crate::ui::launcher::views::NavigationStack;
 use crate::utils::networking::ServerResponse;
 use crate::utils::sized_message_sync::SizedMessage;
 use gpui::WindowHandle;
@@ -58,9 +59,7 @@ pub struct LauncherView {
     pub modes: Arc<[LauncherMode]>,
 
     // context menu
-    pub context_idx: Option<usize>,
-    pub context_actions: Arc<[Arc<ContextMenuAction>]>,
-    pub has_actions: bool,
+    pub context_menu: ContextMenu,
 
     // variable input fields
     pub variable_input: Vec<VariableInput>,

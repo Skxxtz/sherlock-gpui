@@ -17,7 +17,7 @@ use crate::{
     ui::{
         UIFunction,
         launcher::{
-            Execute, LauncherMode, LauncherView, context_menu::ContextMenuAction,
+            Execute, LauncherMode, LauncherView, context_menu::wrapper::ContextMenu,
             views::EntityStyle,
         },
         traits::RenderableChildDelegate,
@@ -40,10 +40,15 @@ impl Render for LauncherView {
             self.last_selected = selected;
         }
 
-        self.has_actions = self
+        let (mask, has_actions) = self
             .navigation
-            .with_selected_item(cx, |itm, cx| itm.has_actions(cx))
-            .unwrap_or(false);
+            .with_selected_item(cx, |itm, cx| {
+                (ContextMenu::availablilty_mask(itm), itm.has_actions(cx))
+            })
+            .unwrap_or((0, false));
+
+        self.context_menu.quick_actions.set_mask(mask);
+        self.context_menu.has_actions = has_actions || !self.context_menu.quick_actions.is_empty();
 
         div()
             .id("sherlock")
@@ -319,7 +324,7 @@ impl LauncherView {
                         )
                     }),
             )
-            .child(self.render_context_menu(theme))
+            .child(self.context_menu.render(theme))
     }
 
     fn render_result_grid(
@@ -411,49 +416,7 @@ impl LauncherView {
                         .size_full(),
                     ),
             )
-            .child(self.render_context_menu(theme))
-    }
-
-    fn render_context_menu(&self, theme: Arc<ThemeData>) -> impl IntoElement {
-        if let Some(active) = self.context_idx {
-            div().inset_0().absolute().child(
-                div()
-                    .p(px(7.))
-                    .bg(theme.bg_app)
-                    .border_color(theme.border)
-                    .border(px(1.))
-                    .rounded_md()
-                    .absolute()
-                    .bottom(px(10.))
-                    .right(px(10.))
-                    .flex()
-                    .flex_col()
-                    .min_w(px(200.))
-                    .max_w(px(500.))
-                    .gap(px(5.))
-                    .children(self.context_actions.iter().enumerate().map(|(i, child)| {
-                        let is_selected = i == active;
-                        match child.as_ref() {
-                            ContextMenuAction::App(_) => child
-                                .render_row(is_selected, theme.clone())
-                                .into_any_element(),
-                            ContextMenuAction::Fn(_) => child
-                                .render_row(is_selected, theme.clone())
-                                .into_any_element(),
-                            ContextMenuAction::Emoji(_) => child
-                                .render_emoji_col(is_selected, theme.clone())
-                                .into_any_element(),
-                        }
-                    }))
-                    .with_animation(
-                        "context-reveal",
-                        Animation::new(Duration::from_millis(120)).with_easing(gpui::ease_in_out),
-                        |this, delta| this.opacity(delta).occlude(),
-                    ),
-            )
-        } else {
-            div()
-        }
+            .child(self.context_menu.render(theme))
     }
 
     fn render_status_bar(&self, theme: Arc<ThemeData>, cx: &mut Context<Self>) -> impl IntoElement {
@@ -526,7 +489,7 @@ impl LauncherView {
         _cx: &mut Context<Self>,
         theme: Arc<ThemeData>,
     ) -> impl IntoElement {
-        if self.has_actions {
+        if self.context_menu.has_actions {
             div()
                 .flex()
                 .items_center()

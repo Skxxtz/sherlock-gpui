@@ -14,14 +14,18 @@ use crate::{
         utils::{ApplicationAction, ApplicationActionSerde},
     },
     ui::{
-        launcher::LauncherView,
+        launcher::{LauncherView, context_menu::quick_actions::QuickAction},
         widgets::emoji::{EmojiAction, get_emoji, get_selected_skin_tones},
     },
 };
 
+pub mod quick_actions;
+pub mod wrapper;
+
 #[derive(Debug, PartialEq)]
 pub enum ContextMenuAction {
     App(ApplicationAction),
+    QuickAction(QuickAction),
     Fn(DynamicFunctionAction),
     Emoji(EmojiAction),
 }
@@ -68,12 +72,13 @@ impl ContextMenuAction {
         let (name, icon) = match self {
             Self::Fn(this) => (this.name.clone(), this.icon.as_ref()),
             Self::App(this) => (this.name.clone(), this.icon.as_ref()),
+            Self::QuickAction(this) => ((*this).into(), None),
             _ => return div(),
         };
 
         div()
             .group("")
-            .rounded_md()
+            .rounded_sm()
             .relative()
             .flex_1()
             .flex()
@@ -144,7 +149,7 @@ impl ContextMenuAction {
             .w_full()
             .justify_between()
             .items_center()
-            .rounded_md()
+            .rounded_sm()
             .relative()
             .gap(px(10.))
             .p(px(4.))

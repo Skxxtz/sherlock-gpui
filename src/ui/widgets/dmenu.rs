@@ -3,6 +3,7 @@ use std::sync::Arc;
 use gpui::{
     AnyElement, App, IntoElement, ParentElement, SharedString, Styled, div, prelude::FluentBuilder,
 };
+use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
@@ -11,7 +12,7 @@ use crate::{
     ui::widgets::{RenderableChildImpl, Selection},
 };
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Hideable)]
 pub struct DmenuData {
     name: SharedString,
 }
