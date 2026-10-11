@@ -1,4 +1,4 @@
-use crate::launcher::calc_launcher::CURRENCIES;
+use crate::launcher::calc_launcher::{CURRENCIES, Course};
 
 macro_rules! define_units {
     ($(
@@ -219,7 +219,7 @@ impl Capabilities {
 }
 
 impl Unit {
-    pub fn factor(&self) -> f64 {
+    pub fn factor(&self) -> Option<f64> {
         // use dynamic factors for currencies
         if self.category() == UnitCategory::Currency
             && let Some(Some(rates)) = CURRENCIES.get()
@@ -242,13 +242,17 @@ impl Unit {
                 Unit::Krw => rates.krw,
                 Unit::Pln => rates.pln,
                 Unit::Pen => rates.pen,
-                _ => 1.0,
+                _ => Course::Invalid,
             };
-            return rate as f64;
+
+            return match rate {
+                Course::Valid(f) => Some(f as f64),
+                Course::Invalid => None,
+            };
         }
 
         // use hardcoded factor
-        self.raw_factor()
+        Some(self.raw_factor())
     }
 }
 

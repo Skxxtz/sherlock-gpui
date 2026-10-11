@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 mod currency;
 mod trading_view_api;
 
-pub use currency::Currency;
+pub use currency::{Course, Currency};
 
 pub static CURRENCIES: OnceLock<Option<Currency>> = OnceLock::new();
 
@@ -56,8 +56,10 @@ impl LauncherProvider for CalculatorLauncher {
 }
 
 fn spawn_currency_update(update_interval: u64) {
-    #[cfg(not(test))]
-    tokio::spawn(async move {
+    let Ok(rt) = tokio::runtime::Handle::try_current() else {
+        return;
+    };
+    rt.spawn(async move {
         match Currency::get_exchange(update_interval).await {
             Ok(r) => {
                 let _result = CURRENCIES.set(Some(r));

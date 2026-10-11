@@ -87,7 +87,7 @@ impl Intent {
 
                 // handle linear
                 // Formula: y = val * (from_factor / to_factor)
-                let result = value * (from.factor() / to.factor());
+                let result = value * (from.factor()? / to.factor()?);
 
                 Some(IntentResult::String(self.format_result(result, to).into()))
             }

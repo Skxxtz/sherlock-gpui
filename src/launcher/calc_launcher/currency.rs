@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use paste::paste;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use strum::EnumIter;
 use strum_macros::EnumString;
 
@@ -12,14 +12,60 @@ use crate::{
     utils::{cache::JsonCache, errors::SherlockMessage, files::home_dir},
 };
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Course {
+    Valid(f32),
+    #[default]
+    Invalid,
+}
+
+impl Serialize for Course {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Valid(f) => serializer.serialize_f32(*f),
+            Self::Invalid => serializer.serialize_f32(0.0),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Course {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let f = f32::deserialize(deserializer)?;
+        Ok(if f == 0.0 {
+            Self::Invalid
+        } else {
+            Self::Valid(f)
+        })
+    }
+}
+
+impl From<f32> for Course {
+    fn from(f: f32) -> Self {
+        if f == 0.0 {
+            Self::Invalid
+        } else {
+            Self::Valid(f)
+        }
+    }
+}
+
 macro_rules! currency_struct {
     ($($iso:ident),*) => {
         paste! {
-            #[derive(Clone, Debug, Deserialize, Serialize, Default)]
+            #[derive(Clone, Debug, Deserialize, Serialize)]
             #[serde(rename_all = "lowercase")]
             pub struct Currency {
-                pub usd: f32,
-                $(pub $iso: f32,)*
+                pub usd: Course,
+                $(pub $iso: Course,)*
+            }
+
+            impl Default for Currency {
+                fn default() -> Self {
+                    Self {
+                        usd: Course::Valid(1.0),
+                        $($iso: Course::Invalid,)*
+                    }
+                }
             }
 
             #[derive(Debug, EnumIter, EnumString, PartialEq)]
@@ -61,11 +107,11 @@ macro_rules! currency_struct {
             impl Currency {
                 pub(super) fn set(&mut self, item: CurrencyItem) {
                     match item.space {
-                        $( CurrencyCode::[< $iso:camel >] => self.$iso = item.factor, )*
+                        $( CurrencyCode::[< $iso:camel >] => self.$iso = item.factor.into(), )*
                     }
                 }
                 pub(super) fn iso_codes() -> &'static [&'static str] {
-                    &[ $( stringify!([< $iso:upper >]), )* ]
+                    &[$( stringify!([< $iso:upper >]), )* ]
                 }
             }
         }

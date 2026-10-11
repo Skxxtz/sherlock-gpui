@@ -12,7 +12,7 @@ impl TimerParser {
         #[inline]
         fn make_timer(value: f64, unit: Unit) -> Option<Intent> {
             Some(Intent::Timer {
-                duration: Duration::from_secs_f64(value * unit.factor()),
+                duration: Duration::from_secs_f64(value * unit.factor()?),
             })
         }
 
