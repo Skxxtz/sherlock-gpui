@@ -31,7 +31,8 @@ use crate::{
     },
     utils::{
         config::{ConfigGuard, ConfigWatcher},
-        errors::SherlockMessage, preview_lru::PreviewCache,
+        errors::SherlockMessage,
+        preview_lru::PreviewCache,
     },
 };
 

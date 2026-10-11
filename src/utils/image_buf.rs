@@ -12,7 +12,11 @@ impl ImageBuf {
     /// Zero-initialized RGBA8 buffer.
     pub fn new(width: u32, height: u32) -> std::io::Result<Self> {
         let len = width as usize * height as usize * 4;
-        let map = if len == 0 { None } else { Some(MmapMut::map_anon(len)?) };
+        let map = if len == 0 {
+            None
+        } else {
+            Some(MmapMut::map_anon(len)?)
+        };
         Ok(Self { map, width, height })
     }
 
@@ -25,8 +29,12 @@ impl ImageBuf {
 
 impl Deref for ImageBuf {
     type Target = [u8];
-    fn deref(&self) -> &[u8] { self.map.as_deref().unwrap_or(&[]) }
+    fn deref(&self) -> &[u8] {
+        self.map.as_deref().unwrap_or(&[])
+    }
 }
 impl DerefMut for ImageBuf {
-    fn deref_mut(&mut self) -> &mut [u8] { self.map.as_deref_mut().unwrap_or(&mut []) }
+    fn deref_mut(&mut self) -> &mut [u8] {
+        self.map.as_deref_mut().unwrap_or(&mut [])
+    }
 }
