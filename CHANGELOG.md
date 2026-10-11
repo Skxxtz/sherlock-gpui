@@ -93,6 +93,7 @@ run `git log main..dev` for all changes
 * **Release Bot:** Release flags were only running when there was an active
   Sherlock server instance running. Now also works with no server running.
   (`dba461ae`, `83212d78`)
+* **Emoji Picker**: fixed multi-color emojis shown wrong on "simpsons" combinations (`777aff85`)
 
 ## [0.2.3-dev] - 03.06.26
 
