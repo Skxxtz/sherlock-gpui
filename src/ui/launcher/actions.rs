@@ -9,7 +9,10 @@ use smallvec::SmallVec;
 use crate::{
     app::reset_generation,
     launcher::{
-        ExecEffect, LauncherValues, utils::exec_mode::ExecMode, variant_type::LauncherType,
+        ExecEffect, LauncherValues,
+        emoji_launcher::{ALL_SKIN_TONES, SkinTone},
+        utils::exec_mode::ExecMode,
+        variant_type::LauncherType,
     },
     loader::utils::{CounterReader, ExecVariable},
     sherlock_msg,
@@ -20,7 +23,7 @@ use crate::{
         },
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
         traits::RenderableChildDelegate,
-        widgets::emoji::set_selected_skin_tone,
+        widgets::emoji::{get_selected_skin_tones, set_all_skin_tones, set_selected_skin_tone},
     },
     utils::{
         command_launch::spawn_detached,
@@ -122,15 +125,37 @@ impl LauncherView {
                     if let Some(action_arc) = self.context_actions.get(idx) {
                         if let ContextMenuAction::Emoji(act) = action_arc.as_ref() {
                             act.update_index(|i| {
-                                set_selected_skin_tone((i - 1).into(), act.for_tone as usize);
-                                i.saturating_sub(1)
+                                let new = i.saturating_sub(1).min(5);
+                                set_selected_skin_tone(new.into(), act.for_tone as usize);
+                                new
                             });
                         } else if idx > 0 {
                             self.context_idx = Some(idx - 1);
                         }
                     }
+                    if get_selected_skin_tones()
+                        .iter()
+                        .any(|t| matches!(t, SkinTone::Simpsons))
+                    {
+                        set_all_skin_tones(SkinTone::Simpsons);
+                        self.context_actions.iter().for_each(|action| {
+                            if let ContextMenuAction::Emoji(act) = action.as_ref() {
+                                act.update_index(|_| 0)
+                            }
+                        });
+                    }
                 }
                 MoveDirection::Right => {
+                    // Counts the number of `SkinTone::Simpsons` occurrences in the selected
+                    // skintones.
+                    let num_simpsons = || {
+                        get_selected_skin_tones()
+                            .iter()
+                            .filter(|t| matches!(t, SkinTone::Simpsons))
+                            .count()
+                    };
+                    let before = num_simpsons();
+
                     if let Some(action_arc) = self.context_actions.get(idx) {
                         if let ContextMenuAction::Emoji(act) = action_arc.as_ref() {
                             act.update_index(|i| {
@@ -141,6 +166,16 @@ impl LauncherView {
                         } else if idx < self.context_actions.len().saturating_sub(1) {
                             self.context_idx = Some(idx + 1);
                         }
+                    }
+
+                    // identify change away from "all-simpsons" state
+                    if before > num_simpsons() {
+                        set_all_skin_tones(ALL_SKIN_TONES[1]);
+                        self.context_actions.iter().for_each(|action| {
+                            if let ContextMenuAction::Emoji(act) = action.as_ref() {
+                                act.update_index(|_| 1)
+                            }
+                        });
                     }
                 }
             }

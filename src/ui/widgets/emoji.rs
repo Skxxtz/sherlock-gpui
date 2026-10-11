@@ -49,6 +49,15 @@ pub fn set_selected_skin_tone(tone: SkinTone, place: usize) {
         w[place] = tone;
     }
 }
+
+pub fn set_all_skin_tones(tone: SkinTone) {
+    let lock = SELECTED_SKIN_TONE.get_or_init(|| RwLock::new([tone, tone]));
+
+    if let Ok(mut w) = lock.write() {
+        *w = [tone, tone];
+    }
+}
+
 pub fn get_selected_skin_tones() -> [SkinTone; 2] {
     let lock =
         SELECTED_SKIN_TONE.get_or_init(|| RwLock::new([SkinTone::Simpsons, SkinTone::Simpsons]));

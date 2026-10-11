@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
     app::theme::ThemeData,
-    launcher::emoji_launcher::ALL_SKIN_TONES,
+    launcher::emoji_launcher::{ALL_SKIN_TONES, SkinTone},
     loader::{
         IconType, resolve_icon_path,
         utils::{ApplicationAction, ApplicationActionSerde},
@@ -137,7 +137,7 @@ impl ContextMenuAction {
         let mut tones = get_selected_skin_tones();
         let col_idx = this.get_index() as usize;
 
-        div()
+        let outer = div()
             .group("skin-tone-container")
             .flex()
             .flex_row()
@@ -172,9 +172,12 @@ impl ContextMenuAction {
                         s.bg(theme.bg_selected)
                     }
                 }
-            })
-            .children(ALL_SKIN_TONES.iter().enumerate().map(|(i, tone)| {
-                tones[this.for_tone as usize] = *tone;
+            });
+
+        // when one part is simpsons, we need to force the other one to be simpsons too. when we
+        // leave simpsons, we have to force the other one to be non-simpsons too.
+        if tones.iter().any(|t| matches!(t, SkinTone::Simpsons)) {
+            return outer.children(ALL_SKIN_TONES.iter().enumerate().map(|(i, tone)| {
                 div()
                     .flex_1()
                     .flex()
@@ -189,9 +192,38 @@ impl ContextMenuAction {
                             .justify_center()
                             .items_center()
                             .w(px(24.))
-                            .child(get_emoji(emoji_entry, &tones).as_str().to_string()),
+                            .child(get_emoji(emoji_entry, &[*tone, *tone]).as_str().to_string()),
                     )
-            }))
+            }));
+        }
+
+        outer.children(ALL_SKIN_TONES.iter().enumerate().map(|(i, tone)| {
+            tones[this.for_tone as usize] = *tone;
+            div()
+                .flex_1()
+                .flex()
+                .justify_center()
+                .items_center()
+                .rounded_sm()
+                .p(px(8.))
+                .when(col_idx == i, |this| this.bg(theme.border_selected))
+                .child(
+                    div()
+                        .flex()
+                        .justify_center()
+                        .items_center()
+                        .w(px(24.))
+                        .child({
+                            if i == 0 {
+                                get_emoji(emoji_entry, &[SkinTone::Simpsons, SkinTone::Simpsons])
+                                    .as_str()
+                                    .to_string()
+                            } else {
+                                get_emoji(emoji_entry, &tones).as_str().to_string()
+                            }
+                        }),
+                )
+        }))
     }
 }
 
