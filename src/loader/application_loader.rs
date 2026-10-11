@@ -1,22 +1,19 @@
 use glob::Pattern;
 use rayon::prelude::*;
-use simd_json;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::File;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
-use super::utils::SherlockAlias;
 use crate::launcher::LauncherConfig;
 use crate::launcher::app_launcher::app_data::AppData;
 use crate::loader::application_loader::parser::DesktopFileParser;
 use crate::prelude::PathHelpers;
 use crate::sherlock_msg;
 use crate::utils::cache::BinaryCache;
-use crate::utils::config::ConfigFileChange;
+use crate::utils::config::{ConfigFileChange, SherlockAlias};
 use crate::utils::errors::types::{FileAction, SherlockErrorType};
 use crate::utils::files::{expand_path, home_dir};
 use crate::utils::{config::ConfigGuard, errors::SherlockMessage, files::read_lines};
@@ -156,7 +153,7 @@ impl ApplicationLoader {
         {
             let config = ConfigGuard::read()?;
             ignore = Self::load_ignore_patterns(&config.files.ignore)?;
-            aliases = RwLock::new(Self::load_aliases(&config.files.alias)?);
+            aliases = RwLock::new(SherlockAlias::load(&config.files.alias)?);
         }
         let parser = DesktopFileParser::new(launcher, &ignore, counts, use_keywords);
 
@@ -186,25 +183,6 @@ impl ApplicationLoader {
                 .filter_map(|l| Pattern::new(&l.to_lowercase()).ok())
                 .collect()),
             Err(e) if e.kind() == ErrorKind::NotFound => Ok(Vec::new()),
-            Err(e) => Err(sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
-                e
-            )),
-        }
-    }
-
-    #[inline(always)]
-    pub fn load_aliases(path: &Path) -> Result<HashMap<String, SherlockAlias>, SherlockMessage> {
-        match File::open(path) {
-            Ok(f) => simd_json::from_reader(f).map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::DeserializationError(path.to_string_lossy().into()),
-                    e
-                )
-            }),
-            Err(e) if e.kind() == ErrorKind::NotFound => Ok(HashMap::new()),
             Err(e) => Err(sherlock_msg!(
                 Warning,
                 SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),

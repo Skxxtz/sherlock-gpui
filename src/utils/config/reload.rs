@@ -7,9 +7,12 @@ use crate::{
     CONFIG,
     app::LauncherEntity,
     launcher::variant_type::{LauncherType, LauncherVariant},
-    loader::{Loader, application_loader::ApplicationLoader},
+    loader::Loader,
     ui::{launcher::LauncherMode, widgets::RenderableChild},
-    utils::{config::ConfigGuard, errors::SherlockMessage},
+    utils::{
+        config::{ConfigGuard, SherlockAlias},
+        errors::SherlockMessage,
+    },
 };
 
 pub fn reload(
@@ -66,7 +69,7 @@ pub fn reload(
 
 fn reload_aliases(data: &LauncherEntity, cx: &mut AsyncApp) -> Result<(), SherlockMessage> {
     let alias_path = ConfigGuard::read_with(|cfg| cfg.files.alias.clone())?;
-    let mut aliases = ApplicationLoader::load_aliases(&alias_path)?;
+    let mut aliases = SherlockAlias::load(&alias_path)?;
     data.update(cx, |this, _cx| {
         for launcher in Rc::make_mut(this)
             .values_mut()

@@ -183,17 +183,6 @@ impl From<ApplicationActionSerde> for ApplicationAction {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
-pub struct SherlockAlias {
-    pub name: Option<String>,
-    pub icon: Option<String>,
-    pub exec: Option<String>,
-    pub keywords: Option<String>,
-    pub actions: Option<Vec<ApplicationAction>>,
-    pub add_actions: Option<Vec<ApplicationAction>>,
-    pub variables: Option<Vec<ExecVariable>>,
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ExecVariable {
     #[serde(rename = "string_input")]

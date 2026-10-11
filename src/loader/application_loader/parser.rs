@@ -9,12 +9,8 @@ use gpui::SharedString;
 
 use crate::{
     launcher::{LauncherConfig, app_launcher::app_data::AppData},
-    loader::{
-        application_loader::should_ignore,
-        resolve_icon_path,
-        utils::{ApplicationAction, SherlockAlias},
-    },
-    utils::files::read_lines,
+    loader::{application_loader::should_ignore, resolve_icon_path, utils::ApplicationAction},
+    utils::{config::SherlockAlias, files::read_lines},
 };
 
 #[derive(PartialEq, Eq)]

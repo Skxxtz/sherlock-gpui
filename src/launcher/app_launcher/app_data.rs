@@ -12,9 +12,10 @@ use crate::{
     launcher::{LauncherConfig, variant_type::LauncherType},
     loader::{
         IconType, resolve_icon_path,
-        utils::{ApplicationAction, ExecVariable, PriorityGuard, SherlockAlias, construct_search},
+        utils::{ApplicationAction, ExecVariable, PriorityGuard, construct_search},
     },
     ui::launcher::context_menu::ContextMenuAction,
+    utils::config::SherlockAlias,
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Hideable)]

@@ -11,6 +11,7 @@ use crate::{
     ui::UIFunction,
 };
 
+mod alias;
 mod config_impl;
 mod defaults;
 mod flags;
@@ -20,6 +21,7 @@ mod reload;
 mod transformer;
 mod watcher;
 
+pub use alias::SherlockAlias;
 pub use defaults::{
     AppearanceDefaults, ConstantDefaults, FileDefaults, KeybindDefaults, OtherDefaults,
 };
