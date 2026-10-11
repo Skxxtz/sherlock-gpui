@@ -96,6 +96,7 @@ run `git log main..dev` for all changes
   Sherlock server instance running. Now also works with no server running.
   (`dba461ae`, `83212d78`)
 * **Emoji Picker**: fixed multi-color emojis shown wrong on "simpsons" combinations (`777aff85`)
+* **Currency Calculator**: fixed invalid usd factor (`caa1814d`)
 
 ## [0.2.3-dev] - 03.06.26
 
