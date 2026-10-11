@@ -16,6 +16,7 @@ mod config_impl;
 mod defaults;
 mod flags;
 mod guard;
+mod ignore;
 mod imp;
 mod reload;
 mod transformer;
@@ -27,6 +28,7 @@ pub use defaults::{
 };
 pub use flags::SherlockFlags;
 pub use guard::ConfigGuard;
+pub use ignore::SherlockIgnore;
 pub use reload::reload;
 pub use transformer::repair_config;
 pub use watcher::{ConfigFileChange, ConfigWatcher};

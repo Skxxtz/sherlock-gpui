@@ -2,7 +2,6 @@ use glob::Pattern;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
@@ -11,12 +10,11 @@ use crate::launcher::LauncherConfig;
 use crate::launcher::app_launcher::app_data::AppData;
 use crate::loader::application_loader::parser::DesktopFileParser;
 use crate::prelude::PathHelpers;
-use crate::sherlock_msg;
 use crate::utils::cache::BinaryCache;
-use crate::utils::config::{ConfigFileChange, SherlockAlias};
+use crate::utils::config::{ConfigFileChange, SherlockAlias, SherlockIgnore};
 use crate::utils::errors::types::{FileAction, SherlockErrorType};
 use crate::utils::files::{expand_path, home_dir};
-use crate::utils::{config::ConfigGuard, errors::SherlockMessage, files::read_lines};
+use crate::utils::{config::ConfigGuard, errors::SherlockMessage};
 
 mod parser;
 
@@ -152,7 +150,7 @@ impl ApplicationLoader {
         let aliases;
         {
             let config = ConfigGuard::read()?;
-            ignore = Self::load_ignore_patterns(&config.files.ignore)?;
+            ignore = SherlockIgnore::load(&config.files.ignore)?;
             aliases = RwLock::new(SherlockAlias::load(&config.files.alias)?);
         }
         let parser = DesktopFileParser::new(launcher, &ignore, counts, use_keywords);
@@ -173,22 +171,6 @@ impl ApplicationLoader {
                 eprintln!("{}", e.error_type);
             }
         });
-    }
-
-    #[inline(always)]
-    fn load_ignore_patterns(path: &Path) -> Result<Vec<Pattern>, SherlockMessage> {
-        match read_lines(path) {
-            Ok(lines) => Ok(lines
-                .map_while(Result::ok)
-                .filter_map(|l| Pattern::new(&l.to_lowercase()).ok())
-                .collect()),
-            Err(e) if e.kind() == ErrorKind::NotFound => Ok(Vec::new()),
-            Err(e) => Err(sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
-                e
-            )),
-        }
     }
 
     pub fn get_applications_dir() -> Arc<[PathBuf]> {
