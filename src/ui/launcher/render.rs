@@ -292,7 +292,8 @@ impl LauncherView {
                         this.child(
                             div()
                                 .h_full()
-                                .w_full()
+                                .w(px(300.))
+                                .flex_shrink_0()
                                 .overflow_x_hidden()
                                 .pb(px(10.))
                                 .child(
@@ -314,8 +315,7 @@ impl LauncherView {
                                                 .with_easing(Ease::ease_out_expo),
                                             |this, frac| this.opacity(frac),
                                         ),
-                                )
-                                .w(px(400.)),
+                                ),
                         )
                     }),
             )
