@@ -530,6 +530,9 @@ impl LauncherView {
                 } else {
                     handle.update(cx, move |this, cx| {
                         this.navigation.set_selected_data_idx(idx, cx);
+                        if this.context_menu.is_open() {
+                            this.context_menu.close();
+                        }
                     })
                 }
             })
