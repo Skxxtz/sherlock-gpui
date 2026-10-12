@@ -44,6 +44,10 @@ impl<F: CommandFactory + Default> FileSearchProvider for CommandBackend<F> {
         F::BINARY_NAME
     }
 
+    fn binary(&self) -> Option<&'static str> {
+        Some(F::BINARY_NAME)
+    }
+
     fn search(
         &self,
         query: Arc<str>,

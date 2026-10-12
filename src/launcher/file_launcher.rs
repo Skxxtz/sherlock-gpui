@@ -12,8 +12,15 @@ use crate::{
         resolve_icon_path,
         utils::{PriorityGuard, RawLauncher},
     },
+    sherlock_msg,
     ui::{model::file::FileSearchBackend, widgets::RenderableChild},
-    utils::errors::SherlockMessage,
+    utils::{
+        errors::{
+            SherlockMessage,
+            types::{FileAction, SherlockErrorType},
+        },
+        files::binary_exists,
+    },
 };
 
 /// The following arguments are available to users:
@@ -31,11 +38,21 @@ pub struct FileLauncher {
 
 impl LauncherProvider for FileLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
-        let backend = raw
+        let backend: FileSearchBackend = raw
             .args
             .get("backend")
             .and_then(|v| serde_json::from_value(v.clone()).ok())
             .unwrap_or_default();
+
+        if let Some(bin) = backend.provider().binary()
+            && !binary_exists(bin)
+        {
+            return Err(sherlock_msg!(
+                Warning,
+                SherlockErrorType::FileError(FileAction::Read, bin.into()),
+                format!("`{bin}` not found in $PATH")
+            ));
+        }
 
         let poll_interval = raw
             .args

@@ -36,6 +36,14 @@ macro_rules! define_backend {
                     )*
                 }
             }
+
+            pub fn provider(&self) -> &dyn FileSearchProvider {
+                match self {
+                    $(
+                        Self::$variant(inner) => inner,
+                    )*
+                }
+            }
         }
 
         impl serde::Serialize for $name {
@@ -86,6 +94,9 @@ impl Default for FileSearchBackend {
 
 #[allow(dead_code)]
 pub trait FileSearchProvider {
+    fn binary(&self) -> Option<&'static str> {
+        None
+    }
     fn name(&self) -> &'static str;
     fn search(
         &self,
