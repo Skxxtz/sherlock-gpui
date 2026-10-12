@@ -9,7 +9,9 @@ use smallvec::SmallVec;
 use crate::{
     app::reset_generation,
     launcher::{
-        ExecEffect, LauncherValues, utils::exec_mode::ExecMode, variant_type::{LauncherType, QuickActionCapabilities},
+        ExecEffect, LauncherValues,
+        utils::exec_mode::ExecMode,
+        variant_type::{LauncherType, QuickActionCapabilities},
     },
     loader::utils::{CounterReader, ExecVariable},
     sherlock_msg,
