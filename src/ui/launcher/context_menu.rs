@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{borrow::Cow, fmt::Debug, sync::Arc};
 
 use gpui::{
     Context, ImageSource, InteractiveElement, IntoElement, ParentElement, SharedString, Styled,
@@ -69,10 +69,13 @@ impl<'de> Deserialize<'de> for ContextMenuAction {
 
 impl ContextMenuAction {
     pub fn render_row(&self, is_selected: bool, theme: Arc<ThemeData>) -> impl IntoElement {
-        let (name, icon) = match self {
-            Self::Fn(this) => (this.name.clone(), this.icon.as_ref()),
-            Self::App(this) => (this.name.clone(), this.icon.as_ref()),
-            Self::QuickAction(this) => ((*this).into(), None),
+        let (name, icon): (SharedString, Option<Cow<IconType>>) = match self {
+            Self::Fn(this) => (this.name.clone(), this.icon.as_ref().map(Cow::Borrowed)),
+            Self::App(this) => (this.name.clone(), this.icon.as_ref().map(Cow::Borrowed)),
+            Self::QuickAction(this) => (
+                this.to_string().into(),
+                resolve_icon_path("sherlock-hide").map(Cow::Owned),
+            ),
             _ => return div(),
         };
 
@@ -109,10 +112,10 @@ impl ContextMenuAction {
             .child(if let Some(icon) = icon {
                 if let Some(svg) = icon.svg() {
                     svg.size(px(16.))
-                        .text_color(theme.primary_text)
+                        .text_color(theme.secondary_text)
                         .into_any_element()
                 } else {
-                    img(icon.clone()).size(px(16.)).into_any_element()
+                    img(icon.into_owned()).size(px(16.)).into_any_element()
                 }
             } else {
                 img(ImageSource::Image(Arc::new(gpui::Image::empty())))
