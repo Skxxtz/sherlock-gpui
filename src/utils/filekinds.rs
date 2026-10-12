@@ -1,23 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FileCategory {
-    Folder,
-    Link,
-    Code,
-    Script,
-    Web,
-    Data,
-    Text,
-    Document,
-    Image,
-    Audio,
-    Video,
-    Archive,
-    Package,
-    Font,
-    Binary,
-    Other,
-}
-
+#[allow(unused)]
 impl FileCategory {
     /// Plain text that can be shown in a text preview.
     pub const fn is_text(self) -> bool {
@@ -40,9 +21,17 @@ macro_rules! define_file_types {
         )*
     ) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum FileCategory {
+            $( $category, )*
+            Directory,
+            Link,
+            Other,
+        }
+
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub enum FileKind {
             SymbolicLink,
-            Folder,
+            Directory,
             $( $( $variant, )* )*
             File,
         }
@@ -51,7 +40,7 @@ macro_rules! define_file_types {
             pub const fn as_str(self) -> &'static str {
                 match self {
                     Self::SymbolicLink => "Symbolic Link",
-                    Self::Folder => "Folder",
+                    Self::Directory => "Directory",
                     $( $( Self::$variant => $label, )* )*
                     Self::File => "File",
                 }
@@ -60,7 +49,7 @@ macro_rules! define_file_types {
             pub const fn category(self) -> FileCategory {
                 match self {
                     Self::SymbolicLink => FileCategory::Link,
-                    Self::Folder => FileCategory::Folder,
+                    Self::Directory => FileCategory::Directory,
                     $( $( Self::$variant => FileCategory::$category, )* )*
                     Self::File => FileCategory::Other,
                 }
@@ -68,7 +57,7 @@ macro_rules! define_file_types {
 
             pub fn from_extension(extension: Option<&str>, is_symlink: bool, is_dir: bool) -> Self {
                 if is_symlink { return Self::SymbolicLink; }
-                if is_dir { return Self::Folder; }
+                if is_dir { return Self::Directory; }
                 match extension.unwrap_or("").to_ascii_lowercase().as_str() {
                     $( $( $($ext)|* => Self::$variant, )* )*
                     _ => Self::File,
@@ -207,9 +196,10 @@ define_file_types! {
     }
 }
 
+#[allow(unused)]
 impl FileKind {
     pub const fn is_dir(self) -> bool {
-        matches!(self, Self::Folder)
+        matches!(self, Self::Directory)
     }
     pub const fn is_image(self) -> bool {
         matches!(self.category(), FileCategory::Image)
