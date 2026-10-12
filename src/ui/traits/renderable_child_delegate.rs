@@ -63,6 +63,7 @@ pub trait RenderableChildDelegate<'a> {
 
     /// Sidebar rendering
     fn sidebar(&self, cx: &mut App) -> Option<AnyElement>;
+    fn has_sidebar(&self) -> bool;
 
     /// Sync update on every keypress
     fn update_sync(&self, query: SharedString, cx: &mut App);

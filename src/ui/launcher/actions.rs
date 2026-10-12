@@ -23,7 +23,7 @@ use crate::{
                 ContextMenuAction,
                 wrapper::{ContextMenu, Move},
             },
-            views::MoveDirection,
+            views::{MoveDirection, NavigationView, NavigationViewType},
         },
         model::Model,
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
@@ -409,6 +409,25 @@ impl LauncherView {
                     self.context_menu.focus_first();
                     self.update_async(cx);
                 }
+            }
+            ExecMode::Info => {
+                if let Some(idx) = self.navigation.selected_data_idx(cx) {
+                    self.sidebar_controller.set_for_item(idx);
+                } else {
+                    self.navigation.push_message(
+                        sherlock_msg!(
+                            Warning,
+                            SherlockErrorType::InvalidAction,
+                            "The current item doesn't support the info action."
+                        ),
+                        cx,
+                    );
+                }
+                // dont close context_menu on `exec_inplace`, only in normal exec
+                if exit_override {
+                    self.context_menu.close();
+                }
+                return Ok(false);
             }
             ExecMode::CreateView { mode, launcher } => {
                 self.text_input.update(cx, |this, _| this.reset());

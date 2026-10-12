@@ -66,7 +66,10 @@ impl QuickActionList {
 impl Default for QuickActionList {
     fn default() -> Self {
         Self {
-            actions: Arc::new([Arc::new(ContextMenuAction::QuickAction(QuickAction::Hide))]),
+            actions: Arc::new([
+                Arc::new(ContextMenuAction::QuickAction(QuickAction::Hide)),
+                Arc::new(ContextMenuAction::QuickAction(QuickAction::Info)),
+            ]),
             active: QuickActionCapabilities::empty(),
         }
     }
@@ -227,15 +230,10 @@ impl ContextMenu {
     }
 
     pub fn get(&self, index: usize) -> Option<&Arc<ContextMenuAction>> {
-        let groups: [&[Arc<ContextMenuAction>]; 2] = [&self.actions, &self.quick_actions.actions];
-        let mut index = index;
-        for g in groups {
-            if index < g.len() {
-                return Some(&g[index]);
-            }
-            index -= g.len();
+        if let Some(action) = self.actions.get(index) {
+            return Some(action);
         }
-        None
+        self.quick_actions.iter().nth(index - self.actions.len())
     }
 
     pub fn get_current(&self) -> Option<&Arc<ContextMenuAction>> {

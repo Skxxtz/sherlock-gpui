@@ -5,6 +5,7 @@ use crate::launcher::variant_type::QuickActionCapabilities;
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum QuickAction {
     Hide,
+    Info,
 }
 
 impl std::fmt::Display for QuickAction {
@@ -12,6 +13,9 @@ impl std::fmt::Display for QuickAction {
         match self {
             Self::Hide => {
                 write!(f, "Hide")
+            }
+            Self::Info => {
+                write!(f, "Info")
             }
         }
     }
@@ -27,6 +31,7 @@ impl QuickAction {
     pub fn requires(&self) -> QuickActionCapabilities {
         match self {
             Self::Hide => QuickActionCapabilities::HIDE,
+            Self::Info => QuickActionCapabilities::INFO,
             _ => QuickActionCapabilities::empty(),
         }
     }

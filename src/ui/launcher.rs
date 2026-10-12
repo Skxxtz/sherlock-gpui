@@ -3,6 +3,7 @@ use crate::tokio_utils::SizedMessageObj;
 use crate::ui::backdrop::Backdrop;
 use crate::ui::choice::Choice;
 use crate::ui::launcher::context_menu::wrapper::ContextMenu;
+use crate::ui::launcher::sidebar_controller::SidebarController;
 use crate::ui::launcher::views::NavigationStack;
 use crate::utils::networking::ServerResponse;
 use crate::utils::sized_message_sync::SizedMessage;
@@ -18,6 +19,7 @@ pub mod actions;
 pub mod context_menu;
 pub mod filter_and_sort;
 pub mod render;
+pub mod sidebar_controller;
 pub mod views;
 
 pub use actions::{
@@ -60,6 +62,7 @@ pub struct LauncherView {
 
     // context menu
     pub context_menu: ContextMenu,
+    pub sidebar_controller: SidebarController,
 
     // variable input fields
     pub variable_input: Vec<VariableInput>,

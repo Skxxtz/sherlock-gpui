@@ -39,11 +39,13 @@ bitflags::bitflags! {
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     pub struct QuickActionCapabilities: u8 {
         const HIDE = 1 << 0;
+        const INFO = 1 << 1;
     }
 }
 
 macro_rules! create_variants {
     (@flag hideable) => { QuickActionCapabilities::HIDE };
+    (@flag hasinfo) => { QuickActionCapabilities::INFO };
     (
         enum $name:ident {
             $( $variant:ident( $inner:ty $(, $extra:ty)* )
@@ -294,7 +296,7 @@ macro_rules! create_variants {
 
 create_variants! {
     enum LauncherType {
-        Apps(AppLauncher): hideable,
+        Apps(AppLauncher): hideable + hasinfo,
         Bookmarks(BookmarkLauncher),
         Calculator(CalculatorLauncher),
         Categories(CategoryLauncher),
@@ -304,7 +306,7 @@ create_variants! {
         Dmenu(DmenuLauncher),
         Emoji(EmojiPicker),
         Event(EventLauncher, EventLauncherFunctions),
-        Files(FileLauncher),
+        Files(FileLauncher): hasinfo,
         Message(MessageLauncher),
         MusicPlayer(MusicPlayerLauncher, MusicPlayerFunctions),
         Plugin(PluginLauncher, PluginFunctions),

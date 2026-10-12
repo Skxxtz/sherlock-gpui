@@ -12,10 +12,12 @@ use crate::{
     ui::{
         launcher::context_menu::ContextMenuAction,
         utils::{render::substitute, selection::Selection},
-        widgets::RenderableChildImpl,
+        widgets::{RenderableChildImpl, app::sidebar::AppDataSidebar},
     },
     utils::config::ConfigGuard,
 };
+
+mod sidebar;
 
 impl<'a> RenderableChildImpl<'a> for AppData {
     fn render(
@@ -118,5 +120,15 @@ impl<'a> RenderableChildImpl<'a> for AppData {
     #[inline(always)]
     fn increment_count(&self) {
         self.priority.increment_count()
+    }
+
+    #[inline(always)]
+    fn sidebar(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<AnyElement> {
+        Some(AppDataSidebar::new(self, launcher).into_any_element())
+    }
+
+    #[inline(always)]
+    fn has_sidebar(&self) -> bool {
+        true
     }
 }

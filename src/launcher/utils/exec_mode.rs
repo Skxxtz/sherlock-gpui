@@ -53,6 +53,7 @@ pub enum ExecMode {
     Hide {
         exec: String,
     },
+    Info,
     SwitchView {
         idx: usize,
     },
@@ -99,6 +100,7 @@ impl ExecMode {
             "hide" => Some(Self::Hide {
                 exec: exec.unwrap_or_default(),
             }),
+            "info" => Some(Self::Info),
 
             k if k.starts_with("inner.") => {
                 let func = InnerFunction::from_str(launcher_type, k.trim_start_matches("inner."));
@@ -147,6 +149,10 @@ impl ExecMode {
             ContextMenuAction::QuickAction(quick) => match quick {
                 QuickAction::Hide => {
                     Self::from_method("hide", data.hide_id(), data.launcher_type(), false, || None)
+                        .unwrap_or_default()
+                }
+                QuickAction::Info => {
+                    Self::from_method("info", None::<&str>, data.launcher_type(), false, || None)
                         .unwrap_or_default()
                 }
             },

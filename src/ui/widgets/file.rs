@@ -248,7 +248,8 @@ impl<'a> RenderableChildImpl<'a> for FileData {
             .into_any_element()
     }
 
-    fn sidebar(&self, _cx: &mut App) -> Option<AnyElement> {
+    #[inline(always)]
+    fn sidebar(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<AnyElement> {
         let meta = self.fetch_meta()?;
         Some(
             FileSidebar {
@@ -259,6 +260,11 @@ impl<'a> RenderableChildImpl<'a> for FileData {
             }
             .into_any_element(),
         )
+    }
+
+    #[inline(always)]
+    fn has_sidebar(&self) -> bool {
+        true
     }
 
     #[inline(always)]

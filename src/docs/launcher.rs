@@ -68,6 +68,14 @@ pub const BASE_FIELDS: &[FieldDoc] = &[
         description: "Controls when the launcher is shown: `Home`, `OnlyHome`, `Search`, or `Persist`.",
     },
     FieldDoc {
+        name: "sidebar_default_on",
+        ty: "bool",
+        required: false,
+        default: Some("true"),
+        description: "Show the sidebar automatically for items that have one. \
+              If false, the sidebar only opens through the `Info` action.",
+    },
+    FieldDoc {
         name: "exit",
         ty: "bool",
         required: false,

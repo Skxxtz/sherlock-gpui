@@ -175,7 +175,13 @@ macro_rules! renderable_enum {
 
             fn sidebar(&self, cx: &mut App) -> Option<AnyElement> {
                 match self {
-                    $(Self::$variant {inner, ..} => inner.sidebar(cx)),*
+                    $(Self::$variant {inner, launcher} => inner.sidebar(launcher, cx)),*
+                }
+            }
+
+            fn has_sidebar(&self) -> bool {
+                match self {
+                    $(Self::$variant {inner, ..} => inner.has_sidebar()),*
                 }
             }
 
@@ -248,6 +254,10 @@ macro_rules! renderable_enum {
 
             fn spawn_focus(&self) -> bool {
                 self.launcher_config().spawn_focus
+            }
+
+            fn sidebar_default_on(&self) -> bool {
+                self.launcher_config().sidebar_default_on
             }
 
             fn launcher_type(&self) -> &LauncherType {

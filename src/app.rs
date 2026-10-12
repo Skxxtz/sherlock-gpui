@@ -25,6 +25,7 @@ use crate::{
         launcher::{
             LauncherMode, LauncherView,
             context_menu::wrapper::ContextMenu,
+            sidebar_controller::SidebarController,
             views::{NavigationStack, NavigationViewType},
         },
         model::Model,
@@ -207,6 +208,7 @@ fn spawn_launcher(
                 _subs: vec![sub, data_sub],
                 modes,
                 context_menu: ContextMenu::default(),
+                sidebar_controller: SidebarController::default(),
                 variable_input: Vec::new(),
                 active_bar: 0,
                 navigation,

@@ -24,18 +24,11 @@ impl MessageView {
     pub fn new(data: Vec<SherlockMessage>, cx: &mut Context<Self>) -> Self {
         let config = Arc::new(LauncherConfig {
             name: Some("Errors".into()),
-            icon: None,
-            alias: None,
-            on_return: None,
-            exit: false,
             priority: 1,
-            limit: None,
             home: HomeType::Home,
             launcher_type: LauncherType::Message(MessageLauncher {}),
-            shortcut: false,
             spawn_focus: true,
-            actions: None,
-            add_actions: None,
+            ..Default::default()
         });
         let messages: Vec<_> = data
             .into_iter()

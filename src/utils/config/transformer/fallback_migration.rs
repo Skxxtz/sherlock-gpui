@@ -241,6 +241,7 @@ impl LegacyRawLauncher {
             shortcut: self.shortcut,
             spawn_focus: self.spawn_focus,
             home: self.home,
+            sidebar_default_on: false,
             binds: self.binds,
             args: Arc::new(self.args),
             actions: self.actions,

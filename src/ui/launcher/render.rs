@@ -38,6 +38,7 @@ impl Render for LauncherView {
         }
 
         self.check_actions(cx);
+        self.sidebar_controller.check_validity(&self.navigation, cx);
 
         div()
             .id("sherlock")
@@ -203,10 +204,15 @@ impl LauncherView {
         let (indices, data) = self
             .navigation
             .with_model(cx, |mdl| (mdl.filtered_indices(), mdl.data()));
+
         let sidebar = self
             .navigation
-            .with_selected_item(cx, |selected_item, cx| selected_item.sidebar(cx))
-            .and_then(|s| s);
+            .with_selected_item(cx, |item, cx| {
+                let allowed = item.sidebar_default_on() || self.sidebar_controller.is_valid();
+                allowed.then(|| item.sidebar(cx)).flatten()
+            })
+            .flatten();
+
         let EntityStyle::Row {
             state,
             selected_index,

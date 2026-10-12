@@ -57,8 +57,11 @@ pub trait RenderableChildImpl<'a> {
     fn based_show<C: AppContext>(&self, _keyword: &str, _cx: &mut C) -> Option<bool> {
         None
     }
-    fn sidebar(&self, _cx: &mut App) -> Option<AnyElement> {
+    fn sidebar(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<AnyElement> {
         None
+    }
+    fn has_sidebar(&self) -> bool {
+        false
     }
     /// Lets the selected item handle a navigation key itself (e.g. move
     /// between items inside a tile). Return `true` if handled; otherwise

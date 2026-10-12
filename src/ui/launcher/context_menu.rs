@@ -74,7 +74,10 @@ impl ContextMenuAction {
             Self::App(this) => (this.name.clone(), this.icon.as_ref().map(Cow::Borrowed)),
             Self::QuickAction(this) => (
                 this.to_string().into(),
-                resolve_icon_path("sherlock-hide").map(Cow::Owned),
+                match this {
+                    QuickAction::Hide => resolve_icon_path("sherlock-hide").map(Cow::Owned),
+                    QuickAction::Info => resolve_icon_path("sherlock-info").map(Cow::Owned),
+                },
             ),
             _ => return div(),
         };

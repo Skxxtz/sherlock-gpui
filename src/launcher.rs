@@ -106,6 +106,10 @@ pub struct LauncherConfig {
     /// If true, enables UI shortcut for this widgets
     pub shortcut: bool,
 
+    /// If true, allows the sidebar to be toggled on without the info action. Note: this will still
+    /// only show the sidebar if it actually has data connted to it.
+    pub sidebar_default_on: bool,
+
     /// If true, this widget can spawn focus
     pub spawn_focus: bool,
 
@@ -130,6 +134,7 @@ pub trait LauncherValues<'a> {
     fn is_async(&self) -> bool;
     fn home(&self) -> HomeType;
     fn spawn_focus(&self) -> bool;
+    fn sidebar_default_on(&self) -> bool;
     fn launcher_type(&'a self) -> &'a LauncherType;
     fn launcher_variant(&'a self) -> LauncherVariant;
     fn shortcut(&self) -> bool;
@@ -168,6 +173,7 @@ impl LauncherConfig {
             priority: raw.priority,
             limit: raw.limit,
             home: raw.home,
+            sidebar_default_on: raw.sidebar_default_on,
             launcher_type,
             shortcut: raw.shortcut,
             spawn_focus: raw.spawn_focus,
