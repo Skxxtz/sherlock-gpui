@@ -15,6 +15,7 @@ impl FileCategory {
 macro_rules! define_file_types {
     (
         $(
+            $( #[alias( $($alias:literal),+ $(,)? )] )?
             $category:ident {
                 $( $variant:ident => $label:literal [ $($ext:literal),* $(,)? ] ),* $(,)?
             }
@@ -34,6 +35,29 @@ macro_rules! define_file_types {
             Directory,
             $( $( $variant, )* )*
             File,
+        }
+
+        impl FileCategory {
+            pub fn from_alias(s: &str) -> Option<Self> {
+                $(
+                    if s.eq_ignore_ascii_case(stringify!($category)) {
+                        return Some(Self::$category);
+                    }
+                )*
+                match s {
+                    $( $( $($alias)|+ => Some(Self::$category), )? )*
+                    "d" | "dir" | "folder" | "directory" => Some(Self::Directory),
+                    "link" | "symlink" => Some(Self::Link),
+                    _ => None,
+                }
+            }
+
+            pub const fn extensions(self) -> Option<&'static [&'static str]> {
+                match self {
+                    $( Self::$category => Some(&[ $( $($ext,)* )* ]), )*
+                    Self::Directory | Self::Link | Self::Other => None,
+                }
+            }
         }
 
         impl FileKind {
@@ -68,6 +92,7 @@ macro_rules! define_file_types {
 }
 
 define_file_types! {
+    #[alias("code")]
     Code {
         Rust              => "Rust"              ["rs"],
         C                 => "C"                 ["c"],
@@ -81,6 +106,7 @@ define_file_types! {
         Kotlin            => "Kotlin"            ["kt", "kts"],
         Scala             => "Scala"             ["scala"],
     }
+    #[alias("script")]
     Script {
         Python            => "Python"            ["py"],
         Ruby              => "Ruby"              ["rb"],
@@ -92,6 +118,7 @@ define_file_types! {
         FishScript        => "Fish Script"       ["fish"],
         PowerShellScript  => "PowerShell Script" ["ps1"],
     }
+    #[alias("code")]
     Web {
         JavaScript        => "JavaScript"        ["js", "mjs", "cjs"],
         TypeScript        => "TypeScript"        ["ts", "mts"],
@@ -103,6 +130,7 @@ define_file_types! {
         VueComponent      => "Vue Component"     ["vue"],
         SvelteComponent   => "Svelte Component"  ["svelte"],
     }
+    #[alias("code")]
     Data {
         Json              => "JSON"              ["json", "jsonc"],
         Yaml              => "YAML"              ["yaml", "yml"],
@@ -114,6 +142,7 @@ define_file_types! {
         Tsv               => "TSV"               ["tsv"],
         Sql               => "SQL"               ["sql"],
     }
+    #[alias("text", "txt")]
     Text {
         Markdown          => "Markdown"          ["md", "markdown"],
         ReStructuredText  => "reStructuredText"  ["rst"],
@@ -123,6 +152,7 @@ define_file_types! {
         LockFile          => "Lock File"         ["lock"],
         PidFile           => "PID File"          ["pid"],
     }
+    #[alias("doc", "docs", "document", "documents")]
     Document {
         Pdf               => "PDF"               ["pdf"],
         WordDocument      => "Word Document"     ["doc", "docx"],
@@ -132,6 +162,7 @@ define_file_types! {
         OpenDocumentSheet => "OpenDocument Spreadsheet" ["ods"],
         EBook             => "eBook"             ["epub"],
     }
+    #[alias("img", "image", "pic", "picture")]
     Image {
         JpegImage         => "JPEG Image"        ["jpg", "jpeg"],
         PngImage          => "PNG Image"         ["png"],
@@ -145,6 +176,7 @@ define_file_types! {
         HeifImage         => "HEIF Image"        ["heic", "heif"],
         RawImage          => "RAW Image"         ["raw", "cr2", "nef"],
     }
+    #[alias("audio", "music")]
     Audio {
         Mp3               => "MP3"               ["mp3"],
         Flac              => "FLAC"              ["flac"],
@@ -154,6 +186,7 @@ define_file_types! {
         M4a               => "M4A"               ["m4a"],
         Opus              => "Opus"              ["opus"],
     }
+    #[alias("video", "vid")]
     Video {
         Mp4               => "MP4"               ["mp4", "m4v"],
         Mkv               => "MKV"               ["mkv"],
@@ -162,6 +195,7 @@ define_file_types! {
         QuickTime         => "QuickTime"         ["mov"],
         Wmv               => "WMV"               ["wmv"],
     }
+    #[alias("archive", "arc")]
     Archive {
         ZipArchive        => "ZIP Archive"       ["zip"],
         TarArchive        => "Tar Archive"       ["tar"],
@@ -173,17 +207,20 @@ define_file_types! {
         RarArchive        => "RAR Archive"       ["rar"],
         JavaArchive       => "Java Archive"      ["jar"],
     }
+    #[alias("package", "pkg")]
     Package {
         DebianPackage     => "Debian Package"    ["deb"],
         RpmPackage        => "RPM Package"       ["rpm"],
         AppImage          => "AppImage"          ["appimage"],
         Flatpak           => "Flatpak"           ["flatpak"],
     }
+    #[alias("font")]
     Font {
         TrueTypeFont      => "TrueType Font"     ["ttf"],
         OpenTypeFont      => "OpenType Font"     ["otf"],
         WebFont           => "Web Font"          ["woff", "woff2"],
     }
+    #[alias("bin", "binary")]
     Binary {
         SharedLibrary     => "Shared Library"    ["so"],
         StaticLibrary     => "Static Library"    ["a"],

@@ -3,6 +3,7 @@ use crate::launcher::LauncherId;
 use crate::launcher::file_launcher::FileLauncher;
 use crate::launcher::{LauncherConfig, variant_type::LauncherType};
 use crate::ui::launcher::LauncherView;
+use crate::ui::model::file::filter::FileFilter;
 use crate::ui::model::utils::CiUtils;
 use crate::ui::widgets::RenderableChild;
 use crate::ui::widgets::file::FileData;
@@ -16,6 +17,7 @@ use tokio::sync::mpsc;
 use utils::{FileResult, ResultHeap};
 
 mod backends;
+pub mod filter;
 mod utils;
 pub mod view;
 
@@ -26,6 +28,7 @@ pub struct FileSearchModel {
     backend: FileSearchBackend,
     launcher: Arc<LauncherConfig>,
     results: Vec<FileResult>,
+    filter: FileFilter,
     poll_interval: u64,
     paths: Arc<Vec<PathBuf>>,
     cancel_tx: Option<mpsc::Sender<()>>,
@@ -54,6 +57,7 @@ impl FileSearchModel {
                 poll_interval,
                 paths,
                 launcher,
+                filter: FileFilter::default(),
                 results: Vec::with_capacity(max_results),
                 cancel_tx: None,
                 _poll_task: None,
@@ -74,6 +78,8 @@ impl FileSearchModel {
         launcher_weak: WeakEntity<LauncherView>,
         cx: &mut App,
     ) {
+        let (filter_raw, query) = FileFilter::parse(&query_lower);
+        let filter = Arc::new(filter_raw);
         // Dropping to cacel running tasks
         self.cancel_tx = None;
         self._poll_task = None;
@@ -88,11 +94,12 @@ impl FileSearchModel {
         let cap = self.results.capacity();
         let paths = Arc::clone(&self.paths);
         std::thread::spawn({
-            let query_lower = Arc::clone(&query_lower);
+            let query = Arc::clone(&query);
+            let filter = Arc::clone(&filter);
             move || {
                 let mut heap = ResultHeap::new(cap);
                 let completed =
-                    backend.search(query_lower, paths, &mut heap, cancel_rx, &result_tx);
+                    backend.search(query, filter, paths, &mut heap, cancel_rx, &result_tx);
                 if completed {
                     let _ = result_tx.try_send(heap.snapshot());
                 }
@@ -141,7 +148,7 @@ impl FileSearchModel {
 
                     if let Some(view) = launcher_weak.upgrade() {
                         cx.update({
-                            let query_lower = Arc::clone(&query_lower);
+                            let query = Arc::clone(&query);
                             |cx| {
                                 view.update(cx, |this, cx| {
                                     // Swap the entity data directly
@@ -154,7 +161,7 @@ impl FileSearchModel {
                                         });
                                     }
                                     // Reuse the exact same apply_results path as regular search
-                                    this.apply_results(indices, query_lower, false, cx);
+                                    this.apply_results(indices, query, false, cx);
                                 });
                             }
                         });

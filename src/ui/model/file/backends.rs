@@ -2,6 +2,7 @@ use crate::ui::model::file::{
     backends::{
         command::CommandBackend, fd::FdFactory, ripgrep::RgFactory, walkdir::WalkdirBackend,
     },
+    filter::FileFilter,
     utils::{FileResult, ResultHeap},
 };
 use std::{path::PathBuf, sync::Arc};
@@ -23,6 +24,7 @@ macro_rules! define_backend {
             pub fn search(
                 &self,
                 query: Arc<str>,
+                filter: Arc<FileFilter>,
                 paths: Arc<Vec<PathBuf>>,
                 heap: &mut ResultHeap,
                 cancel_rx: Receiver<()>,
@@ -30,7 +32,7 @@ macro_rules! define_backend {
             ) -> bool {
                 match self {
                     $(
-                        Self::$variant(inner) => <$inner as FileSearchProvider>::search(inner, query, paths, heap, cancel_rx, result_tx),
+                        Self::$variant(inner) => <$inner as FileSearchProvider>::search(inner, query, filter, paths, heap, cancel_rx, result_tx),
                     )*
                 }
             }
@@ -88,6 +90,7 @@ pub trait FileSearchProvider {
     fn search(
         &self,
         query: Arc<str>,
+        filter: Arc<FileFilter>,
         paths: Arc<Vec<PathBuf>>,
         heap: &mut ResultHeap,
         cancel_rx: Receiver<()>,

@@ -104,7 +104,9 @@ mod docs {
             LauncherDocEntry {
                 name: display_name!(FileLauncher),
                 variant_name: variant_name!(Files),
-                description: "A file search. Allows you to search for files and directories from within Sherlock.",
+                description: "Search for files and directories from within Sherlock. \
+                    Narrow results with filters: `t:<type>` (e.g. `t:d`, `t:img`, `t:doc`) \
+                    and `ext:<ext,...>` (e.g. `ext:pdf,png`). Example: `invoice t:doc`.",
                 args: &[
                     FieldDoc {
                         name: "backend",

@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::ui::model::{
-    file::{FileResult, FileSearchUtility, ResultHeap, backends::FileSearchProvider},
+    file::{
+        FileResult, FileSearchUtility, ResultHeap, backends::FileSearchProvider, filter::FileFilter,
+    },
     utils::CiUtils,
 };
 
@@ -22,6 +24,7 @@ pub trait CommandFactory: Send + Sync {
     fn args<'a>(
         &self,
         query: &'a str,
+        filter: &'a FileFilter,
         paths: &'a [PathBuf],
     ) -> impl Iterator<Item = Cow<'a, OsStr>>;
 }
@@ -44,13 +47,14 @@ impl<F: CommandFactory + Default> FileSearchProvider for CommandBackend<F> {
     fn search(
         &self,
         query: Arc<str>,
+        filter: Arc<FileFilter>,
         paths: Arc<Vec<PathBuf>>,
         heap: &mut ResultHeap,
         mut cancel_rx: mpsc::Receiver<()>,
         tx: &mpsc::Sender<Vec<FileResult>>,
     ) -> bool {
         let child = match std::process::Command::new(F::BINARY_NAME)
-            .args(self.factory.args(query.as_ref(), &paths))
+            .args(self.factory.args(query.as_ref(), &filter, &paths))
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::null())
             .spawn()

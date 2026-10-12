@@ -4,6 +4,7 @@ use crate::ui::model::{
     file::{
         FileSearchUtility, MAX_SEARCH_DEPTH,
         backends::FileSearchProvider,
+        filter::FileFilter,
         utils::{FileResult, ResultHeap},
     },
     utils::CiUtils,
@@ -22,48 +23,52 @@ impl FileSearchProvider for WalkdirBackend {
     fn search(
         &self,
         query: Arc<str>,
+        filter: Arc<FileFilter>,
         paths: Arc<Vec<PathBuf>>,
         heap: &mut ResultHeap,
         mut cancel_rx: mpsc::Receiver<()>,
         tx: &mpsc::Sender<Vec<FileResult>>,
     ) -> bool {
-        let mut files_since_send: usize = 0;
         const BATCH: usize = 16;
+        let mut files_since_send: usize = 0;
 
-        'outer: for path in paths.iter() {
-            for entry in walkdir::WalkDir::new(path)
+        let match_full_path = query.contains('/') || query.contains(std::path::MAIN_SEPARATOR);
+        let default_files_only = filter.types.is_empty();
+
+        for path in paths.iter() {
+            let walker = walkdir::WalkDir::new(path)
                 .follow_links(false)
+                .min_depth(1)
                 .max_depth(MAX_SEARCH_DEPTH)
                 .into_iter()
                 .filter_entry(|e| !FileSearchUtility::is_hidden(e))
-                .filter_map(|e| e.ok())
-                .filter(|e| e.file_type().is_file())
-            {
+                .filter_map(Result::ok);
+
+            for entry in walker {
                 if cancel_rx.try_recv().is_ok() || cancel_rx.is_closed() {
-                    break 'outer;
+                    return false;
                 }
 
-                let os_name = entry.file_name();
-                let score;
-                let matched;
+                let ft = entry.file_type();
+                if default_files_only && !ft.is_file() {
+                    continue;
+                }
 
-                if query.contains('/') || query.contains(std::path::MAIN_SEPARATOR) {
-                    let path_bytes = entry.path().as_os_str().as_encoded_bytes();
-                    if !CiUtils::bytes_contain_ci(path_bytes, query.as_bytes()) {
+                let score = if match_full_path {
+                    let bytes = entry.path().as_os_str().as_encoded_bytes();
+                    if !CiUtils::bytes_contain_ci(bytes, query.as_bytes()) {
                         continue;
                     }
-                    score = FileSearchUtility::score_path(path_bytes, query.as_bytes());
-                    matched = true;
+                    FileSearchUtility::score_path(bytes, query.as_bytes())
                 } else {
-                    let name_bytes = os_name.as_encoded_bytes();
-                    if !CiUtils::bytes_contain_ci(name_bytes, query.as_bytes()) {
+                    let bytes = entry.file_name().as_encoded_bytes();
+                    if !CiUtils::bytes_contain_ci(bytes, query.as_bytes()) {
                         continue;
                     }
-                    score = FileSearchUtility::score_file_ci(name_bytes, &query);
-                    matched = true;
-                }
+                    FileSearchUtility::score_file_ci(bytes, &query)
+                };
 
-                if !matched {
+                if !filter.matches(entry.path(), ft.is_dir(), ft.is_symlink()) {
                     continue;
                 }
 
