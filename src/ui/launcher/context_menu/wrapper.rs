@@ -301,7 +301,7 @@ impl ContextMenu {
                         div()
                             .id("context-menu-scroll")
                             .track_scroll(&self.scroll_handle)
-                            .max_h(px(100.))
+                            .max_h(px(500.))
                             .overflow_y_scroll()
                             .flex()
                             .flex_col()
