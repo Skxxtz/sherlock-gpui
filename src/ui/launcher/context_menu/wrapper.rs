@@ -288,7 +288,7 @@ impl ContextMenu {
                     .absolute()
                     .bottom(px(10.))
                     .right(px(10.))
-                    .min_w(px(200.))
+                    .min_w(px(300.))
                     .max_w(px(500.))
                     .child(
                         div()

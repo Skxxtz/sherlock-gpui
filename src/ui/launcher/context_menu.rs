@@ -86,7 +86,8 @@ impl ContextMenuAction {
             .flex_1()
             .flex()
             .gap(px(10.))
-            .p(px(10.))
+            .py(px(8.))
+            .px(px(10.))
             .cursor_pointer()
             .text_color(if is_selected {
                 theme.primary_text
