@@ -315,8 +315,6 @@ create_variants! {
         Translator(Translator),
         Weather(WeatherLauncher),
         Web(WebLauncher),
-        // Integrate later: TODO
-        // Pipe(PipeLauncher),
     }
 }
 

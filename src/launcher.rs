@@ -21,8 +21,6 @@ pub mod utils;
 pub mod variant_type;
 pub mod weather_launcher;
 pub mod web_launcher;
-// Integrate later: TODO
-// pub mod pipe_launcher;
 
 use crate::{
     launcher::{

@@ -16,10 +16,7 @@ use crate::{
     loader::resolve_icon_path,
     ui::{
         UIFunction,
-        launcher::{
-            Execute, LauncherMode, LauncherView, context_menu::wrapper::ContextMenu,
-            views::EntityStyle,
-        },
+        launcher::{Execute, LauncherMode, LauncherView, views::EntityStyle},
         traits::RenderableChildDelegate,
         utils::{ease::Ease, render::ListItemBorder, selection::Selection},
         widgets::RenderableChild,
