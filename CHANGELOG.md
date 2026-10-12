@@ -51,6 +51,7 @@ run `git log main..dev` for all changes
 * **Plugins**: implemented basic plugin support
 * **File-Search**: Added preview for text files (`c7565968`),
 * **Bookmark Launcher**: added support for librewolf bookmarks (`580da018`)
+* **Context Menu**: added hide quick action to automatically add a `SherlockIgnore` entry (`421e52eb`, `e07e9ca7`)
 
 ### Improved
 
@@ -68,6 +69,7 @@ run `git log main..dev` for all changes
   refactors. (`0a83ea14`, `5bbfa568`, `7a8b0acb`, `36df4464`, `d5bfeccd`)
 * **File-Search**: Improved image preview (`0b3077bc`, `0152803a`, `1b3584ff`, `8b6681ea`)
 * **Bookmark Launcher**: improved bookmark parsing for firefox-based browsers (`dc799526`)
+* **Context Menu**: added support for quick actions like hide, pin, etc in the context menu (`94d4ca7a`, `e07e9ca7`) 
 
 ### Removed
 
@@ -97,6 +99,7 @@ run `git log main..dev` for all changes
   (`dba461ae`, `83212d78`)
 * **Emoji Picker**: fixed multi-color emojis shown wrong on "simpsons" combinations (`777aff85`)
 * **Currency Calculator**: fixed invalid usd factor (`caa1814d`)
+* **Context Menu**: fixed list item clicking with context menu open (`9e4499d2`)
 
 ## [0.2.3-dev] - 03.06.26
 
