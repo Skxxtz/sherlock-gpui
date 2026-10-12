@@ -35,10 +35,19 @@ use crate::{
     utils::errors::SherlockMessage,
 };
 
+bitflags::bitflags! {
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct QuickActionCapabilities: u8 {
+        const HIDE = 1 << 0;
+    }
+}
+
 macro_rules! create_variants {
+    (@flag hideable) => { QuickActionCapabilities::HIDE };
     (
         enum $name:ident {
-            $( $variant:ident( $inner:ty $(, $extra:ty)* ) ),* $(,)?
+            $( $variant:ident( $inner:ty $(, $extra:ty)* )
+               $(: $first:ident $(+ $rest:ident)*)? ),* $(,)?
         }
     ) => {
 
@@ -104,6 +113,21 @@ macro_rules! create_variants {
         }
 
         impl $name {
+            pub const fn capabilities(&self) -> QuickActionCapabilities {
+                match self {
+                    Self::Empty => QuickActionCapabilities::empty(),
+                    $(
+                        Self::$variant(..) => QuickActionCapabilities::from_bits_retain(
+                            0 $(
+                                | create_variants!(@flag $first).bits()
+                                $( | create_variants!(@flag $rest).bits() )*
+                            )?
+                        ),
+                    )*
+                }
+            }
+            pub const fn is_hideable(&self) -> bool { self.capabilities().contains(QuickActionCapabilities::HIDE) }
+
             pub fn variant(&self) -> LauncherVariant {
                 LauncherVariant::from(self)
             }
@@ -270,7 +294,7 @@ macro_rules! create_variants {
 
 create_variants! {
     enum LauncherType {
-        Apps(AppLauncher),
+        Apps(AppLauncher): hideable,
         Bookmarks(BookmarkLauncher),
         Calculator(CalculatorLauncher),
         Categories(CategoryLauncher),

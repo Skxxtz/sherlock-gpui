@@ -7,13 +7,14 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
-    launcher::emoji_launcher::{ALL_SKIN_TONES, SkinTone},
+    launcher::{
+        LauncherValues,
+        emoji_launcher::{ALL_SKIN_TONES, SkinTone},
+        variant_type::QuickActionCapabilities,
+    },
     ui::{
         launcher::{
-            context_menu::{
-                ContextMenuAction,
-                quick_actions::{Hideable, QuickAction},
-            },
+            context_menu::{ContextMenuAction, quick_actions::QuickAction},
             views::MoveDirection,
         },
         widgets::{
@@ -26,27 +27,30 @@ use crate::{
 pub struct QuickActionList {
     actions: Arc<[Arc<ContextMenuAction>]>,
     /// bitmask; i = action i is active
-    active: u8,
+    active: QuickActionCapabilities,
 }
 
 impl QuickActionList {
-    fn iter(&self) -> impl Iterator<Item = &Arc<ContextMenuAction>> + '_ {
-        self.actions
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| self.active & (1 << i) != 0)
-            .map(|(_, a)| a)
+    fn is_active(&self, action: &ContextMenuAction) -> bool {
+        match action {
+            ContextMenuAction::QuickAction(q) => self.active.contains(q.requires()),
+            _ => true,
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Arc<ContextMenuAction>> + '_ {
+        self.actions.iter().filter(|a| self.is_active(a))
     }
 
     pub fn len(&self) -> usize {
-        (self.active & self.mask()).count_ones() as usize
+        self.active.bits().count_ones() as usize
     }
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pub fn set_mask(&mut self, mask: u8) {
+    pub fn set_mask(&mut self, mask: QuickActionCapabilities) {
         self.active = mask;
     }
 
@@ -63,7 +67,7 @@ impl Default for QuickActionList {
     fn default() -> Self {
         Self {
             actions: Arc::new([Arc::new(ContextMenuAction::QuickAction(QuickAction::Hide))]),
-            active: 0,
+            active: QuickActionCapabilities::empty(),
         }
     }
 }
@@ -218,19 +222,8 @@ impl ContextMenu {
         self.set_actions(Default::default());
     }
 
-    pub fn availablilty_mask(itm: &RenderableChild) -> u8 {
-        let mut mask = 0u8;
-        let mut update = |i: usize, on: bool| {
-            if on {
-                mask |= 1 << i
-            } else {
-                mask &= !(1 << i)
-            }
-        };
-
-        update(0, itm.is_hideable());
-
-        mask
+    pub fn availablilty_mask(itm: &RenderableChild) -> QuickActionCapabilities {
+        itm.launcher_type().capabilities()
     }
 
     pub fn get(&self, index: usize) -> Option<&Arc<ContextMenuAction>> {

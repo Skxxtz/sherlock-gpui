@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use crate::{
     app::reset_generation,
     launcher::{
-        ExecEffect, LauncherValues, utils::exec_mode::ExecMode, variant_type::LauncherType,
+        ExecEffect, LauncherValues, utils::exec_mode::ExecMode, variant_type::{LauncherType, QuickActionCapabilities},
     },
     loader::utils::{CounterReader, ExecVariable},
     sherlock_msg,
@@ -290,7 +290,7 @@ impl LauncherView {
             .with_selected_item(cx, |itm, cx| {
                 (ContextMenu::availablilty_mask(itm), itm.has_actions(cx))
             })
-            .unwrap_or((0, false));
+            .unwrap_or((QuickActionCapabilities::empty(), false));
 
         self.context_menu.quick_actions.set_mask(mask);
         self.context_menu.has_actions = has_actions || !self.context_menu.quick_actions.is_empty();
