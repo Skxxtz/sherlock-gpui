@@ -15,7 +15,11 @@ impl CommandFactory for RgFactory {
         query: &'a str,
         paths: &'a [PathBuf],
     ) -> impl Iterator<Item = Cow<'a, OsStr>> {
-        std::iter::once(Cow::Borrowed(OsStr::new("-l")))
+        let flags = ["-l", "-F", "-S", "--"]
+            .into_iter()
+            .map(|f| Cow::Borrowed(OsStr::new(f)));
+
+        flags
             .chain(std::iter::once(Cow::Borrowed(OsStr::new(query))))
             .chain(paths.iter().map(|p| Cow::Borrowed(p.as_os_str())))
     }
