@@ -29,7 +29,7 @@ pub use defaults::{
 pub use flags::SherlockFlags;
 pub use guard::ConfigGuard;
 pub use ignore::SherlockIgnore;
-pub use reload::reload;
+pub use reload::{reload, reload_async};
 pub use transformer::repair_config;
 pub use watcher::{ConfigFileChange, ConfigWatcher};
 

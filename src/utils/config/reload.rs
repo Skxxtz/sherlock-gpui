@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use gpui::AsyncApp;
+use gpui::{App, AppContext, AsyncApp};
 
 use super::{SherlockConfig, watcher::ConfigFileChange};
 use crate::{
@@ -15,8 +15,17 @@ use crate::{
     },
 };
 
-pub fn reload(
+pub fn reload_async(
     cx: &mut AsyncApp,
+    data: &LauncherEntity,
+    initial_messages: &mut Vec<SherlockMessage>,
+    changes: ConfigFileChange,
+) -> Option<Arc<[LauncherMode]>> {
+    cx.update(|cx| reload(cx, data, initial_messages, changes))
+}
+
+pub fn reload(
+    cx: &mut App,
     data: &LauncherEntity,
     initial_messages: &mut Vec<SherlockMessage>,
     changes: ConfigFileChange,
@@ -45,7 +54,7 @@ pub fn reload(
 
     // Reload launchers
     let modes = if changes.launchers() || changes.apps() || changes.ignores() || changes.cache() {
-        let result = match cx.update(|cx| Loader::load_launchers(cx, data.clone(), Some(changes))) {
+        let result = match Loader::load_launchers(cx, data.clone(), Some(changes)) {
             Ok(result) => result,
             Err(e) => {
                 messages.push(e);
@@ -55,7 +64,7 @@ pub fn reload(
         messages.extend(result.messages);
         Some(result.modes)
     } else {
-        None // caller keeps existing modes
+        None
     };
 
     // reload aliases
@@ -67,7 +76,7 @@ pub fn reload(
     modes
 }
 
-fn reload_aliases(data: &LauncherEntity, cx: &mut AsyncApp) -> Result<(), SherlockMessage> {
+fn reload_aliases<C: AppContext>(data: &LauncherEntity, cx: &mut C) -> Result<(), SherlockMessage> {
     let alias_path = ConfigGuard::read_with(|cfg| cfg.files.alias.clone())?;
     let mut aliases = SherlockAlias::load(&alias_path)?;
     data.update(cx, |this, _cx| {

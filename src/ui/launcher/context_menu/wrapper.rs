@@ -260,6 +260,12 @@ impl ContextMenu {
         };
         self.scroll_handle.scroll_to_item(child_index);
     }
+    pub fn focus_first(&mut self) {
+        if self.can_open() {
+            self.idx = Some(0);
+            self.scroll_selected_into_view();
+        }
+    }
     pub fn render(&self, theme: Arc<ThemeData>) -> impl IntoElement {
         if let Some(active) = self.idx {
             let render = |child: &Arc<ContextMenuAction>, is_selected: bool| match child.as_ref() {

@@ -17,14 +17,19 @@ use crate::{
         choice::Choice,
         launcher::{
             LauncherView, VariableInput,
-            context_menu::{ContextMenuAction, wrapper::Move},
+            context_menu::{
+                ContextMenuAction,
+                wrapper::{ContextMenu, Move},
+            },
             views::MoveDirection,
         },
+        model::Model,
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
         traits::RenderableChildDelegate,
     },
     utils::{
         command_launch::spawn_detached,
+        config::{ConfigFileChange, ConfigGuard, SherlockAlias, SherlockIgnore, reload},
         errors::{SherlockMessage, types::SherlockErrorType},
         files::expand_path,
         websearch::websearch,
@@ -279,13 +284,21 @@ impl LauncherView {
         }
     }
 
-    fn refresh_context_actions(&mut self, cx: &mut Context<Self>) {
-        if self
+    pub(super) fn check_actions(&mut self, cx: &mut App) -> bool {
+        let (mask, has_actions) = self
             .navigation
-            .with_selected_item(cx, |item, cx| item.has_actions(cx))
-            .unwrap_or_default()
-        {
-            self.context_menu.has_actions = true;
+            .with_selected_item(cx, |itm, cx| {
+                (ContextMenu::availablilty_mask(itm), itm.has_actions(cx))
+            })
+            .unwrap_or((0, false));
+
+        self.context_menu.quick_actions.set_mask(mask);
+        self.context_menu.has_actions = has_actions || !self.context_menu.quick_actions.is_empty();
+        self.context_menu.has_actions
+    }
+
+    fn refresh_context_actions(&mut self, cx: &mut Context<Self>) {
+        if self.check_actions(cx) {
             self.context_menu
                 .set_actions(self.navigation.current_actions(cx).unwrap_or_default());
             self.context_menu.idx = self
@@ -379,7 +392,21 @@ impl LauncherView {
                 self.write_response(content, cx);
             }
             ExecMode::Hide { exec } => {
-                println!("exec: {exec}");
+                let config = ConfigGuard::read()?;
+                let entry = SherlockAlias::find_app_by_name(&config.files.alias, exec)?;
+                SherlockIgnore::add_entry(&config.files.ignore, &entry)?;
+
+                if !exit_override {
+                    self.navigation.with_model_mut(cx, |model, cx| {
+                        if let Model::Standard { data, .. } = model {
+                            let mut initial_messages = Vec::new();
+                            reload(cx, data, &mut initial_messages, ConfigFileChange::Ignore);
+                        }
+                    });
+                    self.filter_and_sort_sync(cx);
+                    self.context_menu.focus_first();
+                    self.update_async(cx);
+                }
             }
             ExecMode::CreateView { mode, launcher } => {
                 self.text_input.update(cx, |this, _| this.reset());

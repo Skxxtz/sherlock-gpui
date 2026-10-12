@@ -40,15 +40,7 @@ impl Render for LauncherView {
             self.last_selected = selected;
         }
 
-        let (mask, has_actions) = self
-            .navigation
-            .with_selected_item(cx, |itm, cx| {
-                (ContextMenu::availablilty_mask(itm), itm.has_actions(cx))
-            })
-            .unwrap_or((0, false));
-
-        self.context_menu.quick_actions.set_mask(mask);
-        self.context_menu.has_actions = has_actions || !self.context_menu.quick_actions.is_empty();
+        self.check_actions(cx);
 
         div()
             .id("sherlock")

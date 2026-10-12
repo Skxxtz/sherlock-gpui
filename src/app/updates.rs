@@ -31,7 +31,7 @@ use crate::{
         widgets::RenderableChild,
     },
     utils::{
-        config::{ConfigGuard, ConfigWatcher, reload},
+        config::{ConfigGuard, ConfigWatcher, reload_async},
         errors::{
             SherlockMessage,
             types::{SherlockErrorType, SocketAction},
@@ -143,7 +143,7 @@ pub(super) async fn run_event_loop(
             // Config reload
             if let Ok(audit) = watcher.audit()
                 && !audit.is_empty()
-                && let Some(new_modes) = reload(&mut cx, &data, &mut initial_messages, audit)
+                && let Some(new_modes) = reload_async(&mut cx, &data, &mut initial_messages, audit)
             {
                 modes = new_modes;
             }
