@@ -522,7 +522,9 @@ impl LauncherView {
                 if evt.click_count() as u8 >= n_clicks {
                     handle.update(cx, move |this, cx| {
                         this.navigation.set_selected_data_idx(idx, cx);
-                        this.execute_listener(&Execute {}, win, cx);
+                        if !this.context_menu.is_open() {
+                            this.execute_listener(&Execute {}, win, cx);
+                        }
                     })
                 } else {
                     handle.update(cx, move |this, cx| {

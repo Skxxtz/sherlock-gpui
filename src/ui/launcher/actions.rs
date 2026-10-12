@@ -593,9 +593,7 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.context_menu.is_open() {
-            self.execute_current(true, win, cx);
-        }
+        self.execute_current(true, win, cx);
     }
 
     pub(super) fn open_context(
