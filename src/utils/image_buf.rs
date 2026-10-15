@@ -8,6 +8,7 @@ pub struct ImageBuf {
     pub height: u32,
 }
 
+#[allow(unused)]
 impl ImageBuf {
     /// Zero-initialized RGBA8 buffer.
     pub fn new(width: u32, height: u32) -> std::io::Result<Self> {

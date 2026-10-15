@@ -4,12 +4,9 @@ use std::{collections::HashMap, fs::File, io::ErrorKind};
 use crate::{
     loader::utils::{ApplicationAction, ExecVariable},
     sherlock_msg,
-    utils::{
-        config::ConfigGuard,
-        errors::{
-            SherlockMessage,
-            types::{FileAction, SherlockErrorType},
-        },
+    utils::errors::{
+        SherlockMessage,
+        types::{FileAction, SherlockErrorType},
     },
 };
 

@@ -53,14 +53,6 @@ impl QuickActionList {
     pub fn set_mask(&mut self, mask: QuickActionCapabilities) {
         self.active = mask;
     }
-
-    fn mask(&self) -> u8 {
-        if self.actions.len() >= 8 {
-            u8::MAX
-        } else {
-            (1 << self.actions.len()) - 1
-        }
-    }
 }
 
 impl Default for QuickActionList {

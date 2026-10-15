@@ -9,7 +9,7 @@ use md_rs::{
         heading::h4,
         list::{ListStyle, md_list},
         raw::{Raw, raw},
-        span::{bold, br, code, html_strong, italic, keybind},
+        span::{bold, code, html_strong, italic, keybind},
         table::table,
     },
     md, p,

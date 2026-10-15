@@ -32,7 +32,6 @@ impl QuickAction {
         match self {
             Self::Hide => QuickActionCapabilities::HIDE,
             Self::Info => QuickActionCapabilities::INFO,
-            _ => QuickActionCapabilities::empty(),
         }
     }
 }

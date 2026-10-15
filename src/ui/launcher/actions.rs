@@ -23,7 +23,7 @@ use crate::{
                 ContextMenuAction,
                 wrapper::{ContextMenu, Move},
             },
-            views::{MoveDirection, NavigationView, NavigationViewType},
+            views::MoveDirection,
         },
         model::Model,
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
