@@ -29,7 +29,7 @@ impl SidebarController {
         }
 
         // current index is the same as for item
-        let current_data_idx = nav.selected_data_idx(&cx);
+        let current_data_idx = nav.selected_data_idx(cx);
         if current_data_idx != self.for_item {
             self.for_item = None;
             self.valid = false;

@@ -117,8 +117,8 @@ impl<'a> RenderableChildImpl<'a> for FileData {
 
     #[inline(always)]
     fn sidebar(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<AnyElement> {
-        let meta = FileMeta::new(&self)?;
-        Some(FileSidebar::new(&self, meta).into_any_element())
+        let meta = FileMeta::new(self)?;
+        Some(FileSidebar::new(self, meta).into_any_element())
     }
 
     #[inline(always)]

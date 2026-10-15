@@ -121,10 +121,10 @@ impl FileFilter {
         let mut out = Vec::new();
         for t in &self.types {
             match t {
-                TypeFilter::Category(c) => match c.extensions() {
-                    Some(exts) => out.extend(exts),
-                    None => return None,
-                },
+                TypeFilter::Category(c) => {
+                    let exts = c.extensions()?;
+                    out.extend(exts)
+                }
                 _ => return None,
             }
         }

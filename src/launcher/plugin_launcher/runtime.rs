@@ -136,7 +136,7 @@ impl LuaRuntimeHandle {
                 while let Some(defer_fn) = update_rx.recv().await {
                     match defer_fn {
                         PluginDeferFunction::WriteClipboard(content) => {
-                            let _ = cx.update(|cx| cx.write_to_clipboard(content.into()));
+                            cx.update(|cx| cx.write_to_clipboard(content.into()));
                         }
                         PluginDeferFunction::Results { plugin_id, rows } => {
                             cx.update(|cx| super::apply_query_results(&plugin_id, rows, cx));

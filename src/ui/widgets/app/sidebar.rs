@@ -43,7 +43,7 @@ impl AppDataSidebar {
                 .actions
                 .iter()
                 .filter_map(|a| match a.as_ref() {
-                    ContextMenuAction::App(act) => Some(SharedString::from(act.name.clone())),
+                    ContextMenuAction::App(act) => Some(act.name.clone()),
                     _ => None,
                 })
                 .collect(),

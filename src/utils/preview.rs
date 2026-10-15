@@ -155,7 +155,7 @@ pub fn request_preview(path: SharedString, cx: &mut App) -> Option<Arc<RenderIma
     });
     cx.spawn(async move |cx| {
         let img = task.await;
-        let _ = cx.update(|cx| {
+        cx.update(|cx| {
             cx.global_mut::<PreviewCache>().insert(path, img);
             cx.refresh_windows();
         });

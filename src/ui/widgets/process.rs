@@ -116,8 +116,8 @@ impl<'a> RenderableChildImpl<'a> for ProcessData {
 
     #[inline(always)]
     fn sidebar(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<AnyElement> {
-        let meta = ProcessMeta::new(&self).ok()?;
-        Some(ProcessSidebar::new(&self, meta).into_any_element())
+        let meta = ProcessMeta::new(self).ok()?;
+        Some(ProcessSidebar::new(self, meta).into_any_element())
     }
 
     #[inline(always)]
