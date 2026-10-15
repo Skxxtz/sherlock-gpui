@@ -50,3 +50,29 @@ pub fn resolve_icon_path(name: &str) -> Option<IconType> {
 
     result
 }
+
+// Finds icon name for an application.
+// It searches for the correct desktop file and then for the icon.
+pub fn find_desktop_icon(name: &str) -> Option<String> {
+    let dirs = [
+        "/usr/share/applications",
+        "/usr/local/share/applications",
+        "~/.local/share/applications",
+    ];
+    for dir in dirs {
+        for entry in std::fs::read_dir(dir).ok()?.flatten() {
+            let content = std::fs::read_to_string(entry.path()).ok()?;
+            let matches_name = content
+                .lines()
+                .any(|l| l.starts_with("Exec=") && l.to_lowercase().contains(&name.to_lowercase()));
+            if matches_name {
+                let icon = content
+                    .lines()
+                    .find(|l| l.starts_with("Icon="))?
+                    .trim_start_matches("Icon=");
+                return Some(icon.to_string());
+            }
+        }
+    }
+    None
+}

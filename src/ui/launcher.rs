@@ -19,6 +19,7 @@ pub mod actions;
 pub mod context_menu;
 pub mod filter_and_sort;
 pub mod render;
+pub mod sidebar;
 pub mod sidebar_controller;
 pub mod views;
 

@@ -8,6 +8,6 @@ mod setup;
 pub mod utils;
 
 pub struct Loader;
-pub use icon::{CustomIconTheme, IconThemeGuard, IconType, resolve_icon_path};
+pub use icon::{CustomIconTheme, IconThemeGuard, IconType, find_desktop_icon, resolve_icon_path};
 pub use launcher_loader::{LauncherLoadResult, LoadContext};
 pub use setup::SetupResult;

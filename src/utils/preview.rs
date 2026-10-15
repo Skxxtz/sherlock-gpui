@@ -163,3 +163,38 @@ pub fn request_preview(path: SharedString, cx: &mut App) -> Option<Arc<RenderIma
     .detach();
     None
 }
+
+/// First lines of a text file, or None if it looks binary.
+pub fn read_text_preview<P: AsRef<std::path::Path>>(
+    path: P,
+    max_bytes: usize,
+    max_lines: usize,
+) -> Option<String> {
+    use std::io::Read;
+
+    let path = path.as_ref();
+
+    let mut buf = Vec::with_capacity(max_bytes);
+    std::fs::File::open(path)
+        .ok()?
+        .take(max_bytes as u64)
+        .read_to_end(&mut buf)
+        .ok()?;
+
+    if buf.contains(&0) {
+        return None; // NUL byte → binary
+    }
+    // Cut off a UTF-8 character that may have been split at the 4 KB boundary.
+    let text = match std::str::from_utf8(&buf) {
+        Ok(s) => s,
+        Err(e) if e.error_len().is_none() => std::str::from_utf8(&buf[..e.valid_up_to()]).ok()?,
+        Err(_) => return None, // not UTF-8
+    };
+
+    let preview: Vec<String> = text
+        .lines()
+        .take(max_lines)
+        .map(|l| l.replace('\t', "    ").trim_end().to_owned())
+        .collect();
+    (!preview.iter().all(|l| l.is_empty())).then(|| preview.join("\n"))
+}
