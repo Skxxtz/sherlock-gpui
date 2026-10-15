@@ -118,7 +118,7 @@ define_file_types! {
         FishScript        => "Fish Script"       ["fish"],
         PowerShellScript  => "PowerShell Script" ["ps1"],
     }
-    #[alias("code")]
+    #[alias("web")]
     Web {
         JavaScript        => "JavaScript"        ["js", "mjs", "cjs"],
         TypeScript        => "TypeScript"        ["ts", "mts"],
@@ -130,7 +130,7 @@ define_file_types! {
         VueComponent      => "Vue Component"     ["vue"],
         SvelteComponent   => "Svelte Component"  ["svelte"],
     }
-    #[alias("code")]
+    #[alias("data")]
     Data {
         Json              => "JSON"              ["json", "jsonc"],
         Yaml              => "YAML"              ["yaml", "yml"],
