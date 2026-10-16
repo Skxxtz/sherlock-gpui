@@ -29,13 +29,21 @@ pub fn derive_hideable(input: TokenStream) -> TokenStream {
             let ident = f.ident.as_ref().unwrap(); // named fields always have one
             let (id_expr, check_expr) = if is_option(&f.ty) {
                 (
-                    quote! { self.#ident.as_ref().map(::std::string::ToString::to_string) },
+                    quote! {
+                        self.#ident
+                            .as_ref()
+                            .map(::std::string::ToString::to_string)
+                            .filter(|id| !id.is_empty())
+                    },
                     quote! { self.#ident.as_ref().is_some_and(|id| !id.is_empty()) },
                 )
             } else {
                 (
-                    quote! { ::std::option::Option::Some(::std::string::ToString::to_string(&self.#ident)) },
-                    quote! { true },
+                    quote! {
+                        ::std::option::Option::Some(::std::string::ToString::to_string(&self.#ident))
+                            .filter(|id| !id.is_empty())
+                    },
+                    quote! { !self.#ident.is_empty() },
                 )
             };
             quote! {

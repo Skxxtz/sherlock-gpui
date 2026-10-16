@@ -8,15 +8,19 @@ use gpui::{
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        LauncherValues,
+        LauncherId, LauncherValues,
         emoji_launcher::{ALL_SKIN_TONES, SkinTone},
         variant_type::QuickActionCapabilities,
     },
     ui::{
         launcher::{
-            context_menu::{ContextMenuAction, quick_actions::QuickAction},
+            context_menu::{
+                ContextMenuAction,
+                quick_actions::{Hideable, QuickAction},
+            },
             views::MoveDirection,
         },
+        traits::RenderableChildDelegate,
         widgets::{
             RenderableChild,
             emoji::{get_selected_skin_tones, set_all_skin_tones, set_selected_skin_tone},
@@ -75,6 +79,8 @@ pub struct ContextMenu {
 
     pub has_actions: bool,
 
+    cached_for: Option<(LauncherId, usize)>,
+
     scroll_handle: ScrollHandle,
 }
 
@@ -85,6 +91,7 @@ impl Default for ContextMenu {
             actions: Arc::new([]),
             quick_actions: QuickActionList::default(),
             has_actions: true,
+            cached_for: None,
             scroll_handle: ScrollHandle::new(),
         }
     }
@@ -217,8 +224,35 @@ impl ContextMenu {
         self.set_actions(Default::default());
     }
 
-    pub fn availablilty_mask(itm: &RenderableChild) -> QuickActionCapabilities {
-        itm.launcher_type().capabilities()
+    pub fn availability_mask(itm: &RenderableChild) -> QuickActionCapabilities {
+        let mut caps = itm.launcher_type().capabilities();
+        if !itm.is_hideable() {
+            caps.remove(QuickActionCapabilities::HIDE);
+        }
+
+        if !itm.has_sidebar() {
+            caps.remove(QuickActionCapabilities::INFO);
+        }
+
+        caps
+    }
+
+    pub fn refresh_for(
+        &mut self,
+        selected: Option<(LauncherId, usize)>,
+        compute: impl FnOnce() -> (QuickActionCapabilities, bool),
+    ) -> bool {
+        if self.cached_for != selected {
+            let (mask, has_actions) = compute();
+            self.quick_actions.set_mask(mask);
+            self.has_actions = has_actions || !self.quick_actions.is_empty();
+            self.cached_for = selected;
+        }
+        self.has_actions
+    }
+
+    pub fn invalidate(&mut self) {
+        self.cached_for = None;
     }
 
     pub fn get(&self, index: usize) -> Option<&Arc<ContextMenuAction>> {

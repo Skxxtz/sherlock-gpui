@@ -287,16 +287,14 @@ impl LauncherView {
     }
 
     pub(super) fn check_actions(&mut self, cx: &mut App) -> bool {
-        let (mask, has_actions) = self
-            .navigation
-            .with_selected_item(cx, |itm, cx| {
-                (ContextMenu::availablilty_mask(itm), itm.has_actions(cx))
-            })
-            .unwrap_or((QuickActionCapabilities::empty(), false));
-
-        self.context_menu.quick_actions.set_mask(mask);
-        self.context_menu.has_actions = has_actions || !self.context_menu.quick_actions.is_empty();
-        self.context_menu.has_actions
+        let selected_data_idx = self.navigation.selected_data_idx(cx);
+        self.context_menu.refresh_for(selected_data_idx, || {
+            self.navigation
+                .with_selected_item(cx, |itm, cx| {
+                    (ContextMenu::availability_mask(itm), itm.has_actions(cx))
+                })
+                .unwrap_or((QuickActionCapabilities::empty(), false))
+        })
     }
 
     fn refresh_context_actions(&mut self, cx: &mut Context<Self>) {
