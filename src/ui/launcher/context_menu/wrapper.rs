@@ -1,12 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    Animation, AnimationExt, InteractiveElement, IntoElement, ParentElement, ScrollHandle,
-    StatefulInteractiveElement, Styled, div, prelude::FluentBuilder, px,
+    Animation, AnimationExt, App, InteractiveElement, IntoElement, Keystroke, ParentElement,
+    ScrollHandle, StatefulInteractiveElement, Styled, div, prelude::FluentBuilder, px,
 };
 
 use crate::{
-    app::theme::ThemeData,
+    app::{bindings::ReservedKeys, theme::ThemeData},
     launcher::{
         LauncherId, LauncherValues,
         emoji_launcher::{ALL_SKIN_TONES, SkinTone},
@@ -16,6 +16,7 @@ use crate::{
         launcher::{
             context_menu::{
                 ContextMenuAction,
+                action_keys::{ContextActionBinds, assign_keys},
                 quick_actions::{Hideable, QuickAction},
             },
             views::MoveDirection,
@@ -74,13 +75,16 @@ impl Default for QuickActionList {
 pub struct ContextMenu {
     pub idx: Option<usize>,
 
-    pub actions: Arc<[Arc<ContextMenuAction>]>,
-    pub quick_actions: QuickActionList,
+    actions: Arc<[Arc<ContextMenuAction>]>,
+    quick_actions: QuickActionList,
+
+    pub keys: Vec<Option<ContextActionBinds>>,
 
     pub has_actions: bool,
 
     cached_for: Option<(LauncherId, usize)>,
 
+    is_flashing: Option<usize>,
     scroll_handle: ScrollHandle,
 }
 
@@ -90,8 +94,10 @@ impl Default for ContextMenu {
             idx: None,
             actions: Arc::new([]),
             quick_actions: QuickActionList::default(),
+            keys: Vec::new(),
             has_actions: true,
             cached_for: None,
+            is_flashing: None,
             scroll_handle: ScrollHandle::new(),
         }
     }
@@ -216,12 +222,15 @@ impl ContextMenu {
         self.actions.len().saturating_add(self.quick_actions.len())
     }
 
-    pub fn set_actions(&mut self, actions: Arc<[Arc<ContextMenuAction>]>) {
+    pub fn set_actions(&mut self, actions: Arc<[Arc<ContextMenuAction>]>, cx: &mut App) {
         self.actions = actions;
+        let reserved = &cx.global::<ReservedKeys>();
+        self.reassign_keys(reserved);
     }
 
     pub fn clear_actions(&mut self) {
-        self.set_actions(Default::default());
+        self.actions = Default::default();
+        self.keys.clear();
     }
 
     pub fn availability_mask(itm: &RenderableChild) -> QuickActionCapabilities {
@@ -258,6 +267,35 @@ impl ContextMenu {
         self.cached_for = None;
     }
 
+    fn reassign_keys(&mut self, reserved: &ReservedKeys) {
+        let names = self
+            .quick_actions
+            .iter()
+            .chain(self.actions.iter())
+            .map(|a| a.name().unwrap_or(""));
+        let mut keys = assign_keys(names, &reserved.0);
+
+        keys.rotate_left(self.quick_actions.len());
+        self.keys = keys;
+    }
+
+    pub fn action_index_for(&self, keystroke: &Keystroke) -> Option<usize> {
+        let combo = ContextActionBinds::from_keystroke(keystroke)?;
+        self.keys.iter().position(|k| *k == Some(combo))
+    }
+
+    pub fn flash(&mut self, idx: usize) {
+        self.is_flashing = Some(idx);
+    }
+
+    pub fn clear_flash(&mut self) {
+        self.is_flashing = None;
+    }
+
+    pub fn is_flashing(&mut self) -> bool {
+        self.is_flashing.is_some()
+    }
+
     pub fn get(&self, index: usize) -> Option<&Arc<ContextMenuAction>> {
         if let Some(action) = self.actions.get(index) {
             return Some(action);
@@ -287,70 +325,72 @@ impl ContextMenu {
         }
     }
     pub fn render(&self, theme: Arc<ThemeData>) -> impl IntoElement {
-        if let Some(active) = self.idx {
-            let render = |child: &Arc<ContextMenuAction>, is_selected: bool| match child.as_ref() {
+        let Some(active) = self.idx else { return div() };
+
+        let render = |i: usize, child: &Arc<ContextMenuAction>| {
+            let is_selected = i == active;
+            let is_flashing = self.is_flashing == Some(i);
+            match child.as_ref() {
                 ContextMenuAction::Emoji(_) => child
                     .render_emoji_col(is_selected, theme.clone())
                     .into_any_element(),
                 _ => child
-                    .render_row(is_selected, theme.clone())
-                    .into_any_element(),
-            };
-            let offset = self.actions.len();
-
-            let separator = div()
-                .h(px(1.))
-                .mx(px(4.))
-                .my(px(3.))
-                .flex_shrink_0()
-                .bg(theme.border_idle);
-
-            div().inset_0().absolute().child(
-                div()
-                    .p(px(7.))
-                    .bg(theme.bg_app)
-                    .border_color(theme.border)
-                    .border(px(1.))
-                    .rounded_md()
-                    .absolute()
-                    .bottom(px(10.))
-                    .right(px(10.))
-                    .min_w(px(300.))
-                    .max_w(px(500.))
-                    .child(
-                        div()
-                            .id("context-menu-scroll")
-                            .track_scroll(&self.scroll_handle)
-                            .max_h(px(500.))
-                            .overflow_y_scroll()
-                            .flex()
-                            .flex_col()
-                            .gap(px(5.))
-                            .children(
-                                self.actions
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(i, c)| render(c, i == active)),
-                            )
-                            .when(
-                                !self.actions.is_empty() && !self.quick_actions.is_empty(),
-                                |this| this.child(separator),
-                            )
-                            .children(
-                                self.quick_actions
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(i, c)| render(c, i + offset == active)),
-                            ),
+                    .render_row(
+                        is_selected,
+                        is_flashing,
+                        theme.clone(),
+                        self.keys.get(i).copied().flatten(),
                     )
-                    .with_animation(
-                        "context-reveal",
-                        Animation::new(Duration::from_millis(120)).with_easing(gpui::ease_in_out),
-                        |this, delta| this.opacity(delta).occlude(),
-                    ),
-            )
-        } else {
+                    .into_any_element(),
+            }
+        };
+
+        let offset = self.actions.len();
+        let separator = div()
+            .h(px(1.))
+            .mx(px(4.))
+            .my(px(3.))
+            .flex_shrink_0()
+            .bg(theme.border_idle);
+
+        div().inset_0().absolute().child(
             div()
-        }
+                .p(px(7.))
+                .bg(theme.bg_app)
+                .border_color(theme.border)
+                .border(px(1.))
+                .rounded_md()
+                .absolute()
+                .bottom(px(10.))
+                .right(px(10.))
+                .min_w(px(300.))
+                .max_w(px(500.))
+                .child(
+                    div()
+                        .id("context-menu-scroll")
+                        .track_scroll(&self.scroll_handle)
+                        .max_h(px(500.))
+                        .overflow_y_scroll()
+                        .flex()
+                        .flex_col()
+                        .gap(px(5.))
+                        .children(self.actions.iter().enumerate().map(|(i, c)| render(i, c)))
+                        .when(
+                            !self.actions.is_empty() && !self.quick_actions.is_empty(),
+                            |this| this.child(separator),
+                        )
+                        .children(
+                            self.quick_actions
+                                .iter()
+                                .enumerate()
+                                .map(|(i, c)| render(i + offset, c)),
+                        ),
+                )
+                .with_animation(
+                    "context-reveal",
+                    Animation::new(Duration::from_millis(120)).with_easing(gpui::ease_in_out),
+                    |this, delta| this.opacity(delta).occlude(),
+                ),
+        )
     }
 }

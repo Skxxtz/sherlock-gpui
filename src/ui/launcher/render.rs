@@ -61,6 +61,7 @@ impl Render for LauncherView {
             .on_action(cx.listener(Self::shortcut_listener))
             .on_action(cx.listener(Self::quit))
             .on_action(cx.listener(Self::open_context))
+            .on_key_down(cx.listener(Self::context_menu_binds_listener))
             .on_key_up(cx.listener(Self::inner_bind_listener))
             .child(self.render_search_bar(theme.clone()))
             .when(!self.config_initialized, |this| {

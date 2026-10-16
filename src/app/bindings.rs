@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use gpui::{App, KeyBinding, Modifiers};
+use gpui::{App, AsKeystroke, Global, KeyBinding, Modifiers};
 use smallvec::SmallVec;
 
 use crate::{
@@ -10,6 +10,7 @@ use crate::{
         launcher::{
             Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft,
             SelectionRight, SelectionUp, actions::ExecuteInplace,
+            context_menu::action_keys::ContextActionBinds,
         },
         search_bar::actions::{
             Backspace, Copy, Cut, Delete, DeleteAll, End, Home, Paste, SelectAll, ShortcutAction,
@@ -17,6 +18,9 @@ use crate::{
     },
     utils::config::ConfigGuard,
 };
+
+pub struct ReservedKeys(pub Vec<ContextActionBinds>);
+impl Global for ReservedKeys {}
 
 pub(super) fn register_bindings(cx: &mut App) {
     let mut bindings: HashMap<String, KeyBinding> = HashMap::new();
@@ -85,6 +89,17 @@ pub(super) fn register_bindings(cx: &mut App) {
     // ORDER MATTERS: MORE SPECIFIC ONES HAVE TO COME LAST
     let mut bindings: Vec<KeyBinding> = bindings.into_values().collect();
     bindings.sort_by_key(|b| b.predicate().is_some());
+
+    // store them in ReservedKeys
+    let reserved = bindings
+        .iter()
+        .filter_map(|b| match b.keystrokes() {
+            [single] => ContextActionBinds::from_keystroke(single.as_keystroke()),
+            _ => None,
+        })
+        .collect();
+    cx.set_global(ReservedKeys(reserved));
+
     cx.bind_keys(bindings);
 }
 

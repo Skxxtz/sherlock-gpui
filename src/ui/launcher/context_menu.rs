@@ -14,11 +14,15 @@ use crate::{
         utils::{ApplicationAction, ApplicationActionSerde},
     },
     ui::{
-        launcher::{LauncherView, context_menu::quick_actions::QuickAction},
+        launcher::{
+            LauncherView,
+            context_menu::{action_keys::ContextActionBinds, quick_actions::QuickAction},
+        },
         widgets::emoji::{EmojiAction, get_emoji, get_selected_skin_tones},
     },
 };
 
+pub mod action_keys;
 pub mod quick_actions;
 pub mod wrapper;
 
@@ -68,7 +72,21 @@ impl<'de> Deserialize<'de> for ContextMenuAction {
 }
 
 impl ContextMenuAction {
-    pub fn render_row(&self, is_selected: bool, theme: Arc<ThemeData>) -> impl IntoElement {
+    pub fn name(&self) -> Option<&str> {
+        match self {
+            Self::App(act) => Some(&act.name),
+            Self::Fn(act) => Some(&act.name),
+            Self::QuickAction(q) => Some(q.name()),
+            Self::Emoji(_) => None,
+        }
+    }
+    pub fn render_row(
+        &self,
+        is_flashing: bool,
+        is_selected: bool,
+        theme: Arc<ThemeData>,
+        key: Option<ContextActionBinds>,
+    ) -> impl IntoElement {
         let (name, icon): (SharedString, Option<Cow<IconType>>) = match self {
             Self::Fn(this) => (this.name.clone(), this.icon.as_ref().map(Cow::Borrowed)),
             Self::App(this) => (this.name.clone(), this.icon.as_ref().map(Cow::Borrowed)),
@@ -101,7 +119,9 @@ impl ContextMenuAction {
             .font_family(theme.font_family.clone())
             .line_height(relative(1.0))
             .items_center()
-            .bg(if is_selected {
+            .bg(if is_selected && is_flashing {
+                theme.bg_idle
+            } else if is_flashing || is_selected {
                 theme.bg_selected
             } else {
                 theme.bg_idle
@@ -128,11 +148,13 @@ impl ContextMenuAction {
             })
             .child(
                 div()
+                    .min_w_0()
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_ellipsis()
                     .child(name),
             )
+            .when_some(key, |row, key| row.child(key.hint(&theme)))
     }
     pub fn render_emoji_col(
         &self,

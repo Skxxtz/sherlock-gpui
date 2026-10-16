@@ -10,14 +10,7 @@ pub enum QuickAction {
 
 impl std::fmt::Display for QuickAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Hide => {
-                write!(f, "Hide")
-            }
-            Self::Info => {
-                write!(f, "Info")
-            }
-        }
+        write!(f, "{}", self.name())
     }
 }
 
@@ -32,6 +25,13 @@ impl QuickAction {
         match self {
             Self::Hide => QuickActionCapabilities::HIDE,
             Self::Info => QuickActionCapabilities::INFO,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Hide => "Hide",
+            Self::Info => "Info",
         }
     }
 }

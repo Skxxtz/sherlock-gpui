@@ -1,7 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use gpui::{
-    App, AppContext, ClipboardItem, Context, Focusable, KeyUpEvent, SharedString, Window, actions,
+    App, AppContext, ClipboardItem, Context, Focusable, KeyDownEvent, KeyUpEvent, SharedString,
+    Window, actions,
 };
 use simd_json::prelude::{ArrayTrait, Indexed};
 use smallvec::SmallVec;
@@ -239,6 +244,29 @@ impl LauncherView {
         }
     }
 
+    fn execute_context_action(
+        &mut self,
+        action: Arc<ContextMenuAction>,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(what) = self
+            .navigation
+            .with_selected_item(cx, |item, cx| item.build_action_exec(action, cx))
+        else {
+            return;
+        };
+
+        // deliberately no closing here
+        if let Err(e) = self.execute_helper(what, "", false, cx) {
+            self.navigation.push_message(e, cx)
+        }
+
+        self.refresh_context_actions(cx);
+        self.focus_search_bar(win, cx);
+        cx.notify();
+    }
+
     fn execute_current(&mut self, exit_override: bool, win: &mut Window, cx: &mut Context<Self>) {
         if self.context_menu.is_open() {
             let Some(action) = self.context_menu.get_current() else {
@@ -300,7 +328,7 @@ impl LauncherView {
     fn refresh_context_actions(&mut self, cx: &mut Context<Self>) {
         if self.check_actions(cx) {
             self.context_menu
-                .set_actions(self.navigation.current_actions(cx).unwrap_or_default());
+                .set_actions(self.navigation.current_actions(cx).unwrap_or_default(), cx);
             self.context_menu.idx = self
                 .context_menu
                 .idx
@@ -497,6 +525,39 @@ impl LauncherView {
         }
     }
 
+    pub(super) fn context_menu_binds_listener(
+        &mut self,
+        ev: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.context_menu.is_open() || self.context_menu.is_flashing() {
+            return;
+        }
+        let Some(idx) = self.context_menu.action_index_for(&ev.keystroke) else {
+            return;
+        };
+        let Some(action) = self.context_menu.get(idx).cloned() else {
+            return;
+        };
+
+        cx.stop_propagation();
+        self.context_menu.flash(idx); // visible right away
+        cx.notify();
+
+        cx.spawn_in(window, async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_millis(120))
+                .await;
+            let _ = this.update_in(cx, |this, window, cx| {
+                this.context_menu.clear_flash();
+                this.execute_context_action(action, window, cx);
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub(super) fn inner_bind_listener(
         &mut self,
         ev: &KeyUpEvent,
@@ -626,7 +687,7 @@ impl LauncherView {
         }
 
         self.context_menu
-            .set_actions(self.navigation.current_actions(cx).unwrap_or_default());
+            .set_actions(self.navigation.current_actions(cx).unwrap_or_default(), cx);
 
         // should never be called
         if self.context_menu.num_actions() == 0 {
