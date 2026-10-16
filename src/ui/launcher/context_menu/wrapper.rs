@@ -234,6 +234,9 @@ impl ContextMenu {
             caps.remove(QuickActionCapabilities::INFO);
         }
 
+        // TODO: we could make a check for config values to allow users to allow/disallow certain
+        // quickactions from the config files like: QuickActions: `["hide", "info", ..]`
+
         caps
     }
 
