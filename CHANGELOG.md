@@ -51,7 +51,14 @@ run `git log main..dev` for all changes
 * **Plugins**: implemented basic plugin support
 * **File-Search**: Added preview for text files (`c7565968`),
 * **Bookmark Launcher**: added support for librewolf bookmarks (`580da018`)
-* **Context Menu**: added hide quick action to automatically add a `SherlockIgnore` entry (`421e52eb`, `e07e9ca7`)
+* **Context Menu**: 
+    * added hide quick action to automatically add a `SherlockIgnore` entry
+    (`421e52eb`, `e07e9ca7`)
+    * added `info` quick action to show the sidebar with info about an item
+    (`481699d2`)
+    * added `sidebar_default_on` key on launcher config to
+    configure whether the sidebar should always show or only on the `Info` quick
+    action (`481699d2`)
 
 ### Improved
 
