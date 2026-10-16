@@ -40,7 +40,7 @@ run `git log main..dev` for all changes
 
 ## [Unreleased]
 
-* as of **22a08f87f26b6b0c9cac4277387b8f70a1a9d83e**
+* as of **fa91129f4dcd96cd3ad456e2ab36f57392a05027**
 
 ### Added
 
@@ -59,6 +59,7 @@ run `git log main..dev` for all changes
     * added `sidebar_default_on` key on launcher config to
     configure whether the sidebar should always show or only on the `Info` quick
     action (`481699d2`)
+    * added shortcut keys (`fa91129f`)
 
 ### Improved
 
