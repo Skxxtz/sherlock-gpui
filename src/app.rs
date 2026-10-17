@@ -28,7 +28,6 @@ use crate::{
             navigator::{Navigator, handle::ViewKind},
             sidebar_controller::SidebarController,
         },
-        model::Model,
         search_bar::{EmptyBackspace, TextInput},
     },
     utils::{
@@ -160,17 +159,13 @@ fn spawn_launcher(
             let backspace_sub = cx.subscribe(&text_input, |this, _, _: &EmptyBackspace, cx| {
                 if !matches!(this.navigation.current_kind(), ViewKind::Home) {
         this.navigation.back();
-        if let Some(c) = this.navigation.with_model(cx, |mdl| mdl.last_query()) {
+        if let Some(c) = this.navigation.with_model(cx, |m| m.last_query()) {
             this.text_input.update(cx, |ipt, _| ipt.set_text(c));
         }
         this.force_filter_and_sort(cx);
     } else if this.navigation.current().mode != LauncherMode::Home {
         this.navigation.current_mut().mode = LauncherMode::Home;
-        this.navigation.with_model_mut(cx, |mdl, _| {
-            if let Model::Standard { last_query, .. } = mdl {
-                *last_query = None;
-            }
-        });
+        this.navigation.with_model_mut(cx, |m, _| m.last_query = None);
         this.filter_and_sort(cx);
     }
             });

@@ -30,7 +30,6 @@ use crate::{
             },
             navigator::views::MoveDirection,
         },
-        model::Model,
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
         traits::RenderableChildDelegate,
     },
@@ -423,10 +422,13 @@ impl LauncherView {
 
                 if !exit_override {
                     self.navigation.with_model_mut(cx, |model, cx| {
-                        if let Model::Standard { data, .. } = model {
-                            let mut initial_messages = Vec::new();
-                            reload(cx, data, &mut initial_messages, ConfigFileChange::Ignore);
-                        }
+                        let mut initial_messages = Vec::new();
+                        reload(
+                            cx,
+                            &model.data,
+                            &mut initial_messages,
+                            ConfigFileChange::Ignore,
+                        );
                     });
                     self.filter_and_sort_sync(cx);
                     self.context_menu.focus_first();

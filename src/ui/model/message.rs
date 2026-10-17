@@ -103,14 +103,7 @@ impl MessageView {
     }
     /// This removes a message from the Model. It requires a filter and sort afterwards
     pub fn remove_message(&mut self, idx: (LauncherId, usize), cx: &mut App) {
-        let Model::Standard {
-            data,
-            filtered_indices,
-            ..
-        } = &mut self.model
-        else {
-            return;
-        };
+        let data = self.model.data();
 
         let removed = data.update(cx, |this, _| {
             if this.get(&idx.0).is_some_and(|l| idx.1 < l.children.len()) {
@@ -122,7 +115,7 @@ impl MessageView {
         });
 
         if let Some(RenderableChild::Message { inner, .. }) = removed {
-            let mut vec = filtered_indices.to_vec();
+            let mut vec = self.model.filtered.to_vec();
             if let Some(pos) = vec.iter().position(|&x| x == idx) {
                 vec.remove(pos);
             }
@@ -133,23 +126,15 @@ impl MessageView {
                 }
             }
 
-            *filtered_indices = Arc::from(vec);
+            self.model.filtered = Arc::from(vec);
             self.count.update(|i| i.saturating_sub(inner.count));
         }
     }
     pub fn clear_messages(&mut self, cx: &mut App) {
-        let Model::Standard {
-            data,
-            filtered_indices,
-            ..
-        } = &mut self.model
-        else {
-            return;
-        };
-
-        data.update(cx, |this, _| *this = Rc::new(HashMap::new()));
-        *filtered_indices = Arc::from([]);
-
+        self.model
+            .data
+            .update(cx, |this, _| *this = Rc::new(HashMap::new()));
+        self.model.filtered = Arc::from([]);
         self.count.set(0);
     }
 }

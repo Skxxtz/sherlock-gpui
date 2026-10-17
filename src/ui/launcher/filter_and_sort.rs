@@ -1,10 +1,9 @@
 use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
-use crate::app::{LauncherEntity, LauncherEntityInner, LauncherWeakEntity};
+use crate::app::{LauncherEntity, LauncherEntityInner};
 use crate::launcher::{LauncherId, LauncherValues};
 use crate::ui::launcher::navigator::handle::ViewKind;
 use crate::ui::launcher::{LauncherMode, LauncherView, ModeTransition};
-use crate::ui::model::Model;
 use crate::ui::traits::RenderableChildDelegate;
 use crate::ui::utils::scoring::SortKey;
 use crate::ui::utils::search::SherlockSearch;
@@ -37,28 +36,12 @@ impl LauncherView {
         }
 
         self.active_bar = 0;
-        self.navigation.with_model_mut(cx, |mdl, _| match mdl {
-            Model::Standard {
-                filtered_indices: idx,
-                last_query: q,
-                ..
+        self.navigation.with_model_mut(cx, |mdl, _| {
+            if mdl.filtered != results {
+                changed = true;
+                mdl.filtered = results;
             }
-            | Model::FileSearch {
-                filtered_indices: idx,
-                last_query: q,
-                ..
-            }
-            | Model::Process {
-                filtered_indices: idx,
-                last_query: q,
-                ..
-            } => {
-                if idx != &results {
-                    changed = true;
-                    *idx = results;
-                }
-                *q = Some(query.clone());
-            }
+            mdl.last_query = Some(query.clone());
         });
 
         self.update_sync(query, cx);
@@ -120,69 +103,33 @@ impl LauncherView {
             }
         }
 
-        enum ModelKind {
-            BufferedSearch {
-                weak_data: LauncherWeakEntity,
-                last_query: Option<SharedString>,
-            },
-            Standard {
-                data: LauncherEntity,
-            },
-        }
-
-        let kind = self.navigation.with_model(cx, |mdl| match mdl {
-            Model::FileSearch {
-                data, last_query, ..
-            }
-            | Model::Process {
-                data, last_query, ..
-            } => ModelKind::BufferedSearch {
-                weak_data: data.downgrade(),
-                last_query: last_query.clone(),
-            },
-            Model::Standard { data, .. } => ModelKind::Standard { data: data.clone() },
+        let (data, last_query, is_static) = self.navigation.with_model(cx, |m| {
+            (m.data.clone(), m.last_query.clone(), m.source.is_static())
         });
 
-        match kind {
-            ModelKind::BufferedSearch {
-                weak_data,
-                last_query,
-            } => {
-                if !force && last_query.is_some_and(|s| s == query) {
-                    return;
-                }
-
-                let weak_self = cx.entity().downgrade();
-                self.navigation.with_model_mut(cx, |mdl, cx| match mdl {
-                    Model::FileSearch { search, .. } => {
-                        search.search(query.into(), weak_data, weak_self, cx);
-                    }
-                    Model::Process { search, .. } => {
-                        search.search(query.into(), weak_data, weak_self, cx);
-                    }
-                    _ => {}
-                });
+        // Handle searches on non-static models (file, process).
+        if !is_static {
+            if !force && last_query.as_ref() == Some(&query) {
+                return;
             }
-            ModelKind::Standard { data } => {
-                crate::launcher::plugin_launcher::dispatch_query(data.read(cx), &query);
 
-                // drop active tasks
-                self.navigation.with_model_mut(cx, |mdl, _| {
-                    if let Model::Standard {
-                        deferred_render_task,
-                        ..
-                    } = mdl
-                    {
-                        *deferred_render_task = None;
-                    }
-                });
+            let view = cx.entity().downgrade();
+            let weak_data = data.downgrade();
+            self.navigation.with_model_mut(cx, |m, cx| {
+                m.source.search(query.into(), weak_data, view, cx)
+            });
+            return;
+        }
 
-                if sync {
-                    self.filter_update_sync(data, query, force, cx);
-                } else {
-                    self.filter_update_async(data, query, force, cx);
-                }
-            }
+        crate::launcher::plugin_launcher::dispatch_query(data.read(cx), &query);
+
+        // drop active tasks
+        self.navigation.with_model_mut(cx, |m, _| m.pending = None);
+
+        if sync {
+            self.filter_update_sync(data, query, force, cx);
+        } else {
+            self.filter_update_async(data, query, force, cx);
         }
     }
     fn filter_update_sync(
@@ -229,15 +176,8 @@ impl LauncherView {
         ));
 
         // set active render task
-        self.navigation.with_model_mut(cx, |mdl, _| {
-            if let Model::Standard {
-                deferred_render_task,
-                ..
-            } = mdl
-            {
-                *deferred_render_task = render_task;
-            }
-        })
+        self.navigation
+            .with_model_mut(cx, |m, _| m.pending = render_task);
     }
     fn compute_filtered_results<C: AppContext>(
         data_arc: LauncherEntityInner,
