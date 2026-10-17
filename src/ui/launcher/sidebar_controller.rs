@@ -1,13 +1,17 @@
-use gpui::App;
+use gpui::{App, ScrollHandle};
 
 use crate::{
     launcher::LauncherId,
     ui::launcher::navigator::{Navigator, handle::ViewKind},
 };
+use scroll::SidebarScroll;
+
+mod scroll;
 
 #[derive(Default)]
 pub struct SidebarController {
     for_item: Option<(LauncherId, usize)>,
+    scroll: SidebarScroll,
     valid: bool,
 }
 
@@ -46,5 +50,15 @@ impl SidebarController {
 
     pub fn launcher(&self) -> Option<LauncherId> {
         self.for_item.map(|(id, _)| id)
+    }
+
+    /// Restores the remembered sidebar scroll position
+    pub fn sync_scroll(&mut self) {
+        self.scroll.sync();
+    }
+
+    /// Scroll handle to attatch to the sidebar
+    pub fn scroll_handle(&self) -> &ScrollHandle {
+        &self.scroll.handle
     }
 }

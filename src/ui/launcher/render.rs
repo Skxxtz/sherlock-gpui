@@ -198,7 +198,11 @@ impl LauncherView {
             .child(self.navigation.current().mode.display_str())
     }
 
-    fn render_results(&self, cx: &mut Context<Self>, _theme: Arc<ThemeData>) -> impl IntoElement {
+    fn render_results(
+        &mut self,
+        cx: &mut Context<Self>,
+        _theme: Arc<ThemeData>,
+    ) -> impl IntoElement {
         let (indices, data) = self
             .navigation
             .with_model(cx, |mdl| (mdl.filtered_indices(), mdl.data()));
@@ -210,6 +214,10 @@ impl LauncherView {
                 allowed.then(|| item.sidebar(cx)).flatten()
             })
             .flatten();
+
+        if sidebar.is_some() {
+            self.sidebar_controller.sync_scroll();
+        }
 
         let layout = &self.navigation.current().layout;
         let (selected_idx, state) = (layout.selected, layout.list.clone());
@@ -293,6 +301,7 @@ impl LauncherView {
                                         .id("sidebar")
                                         .overflow_y_scroll()
                                         .overflow_x_hidden()
+                                        .track_scroll(self.sidebar_controller.scroll_handle())
                                         .size_full()
                                         .p(px(16.))
                                         .rounded_lg()
