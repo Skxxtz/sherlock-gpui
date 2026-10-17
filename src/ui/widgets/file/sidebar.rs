@@ -5,18 +5,15 @@ use crate::{
     app::theme::{ActiveTheme, ThemeData},
     loader::IconType,
     ui::{launcher::sidebar::wrapper::Sidebar, widgets::file::FileData},
-    utils::{filekinds::FileCategory, preview::PreviewState, preview_lru::PreviewCache},
+    utils::{
+        preview::{Preview, PreviewKind, PreviewState, THUMB_PX},
+        preview_lru::PreviewCache,
+    },
 };
 use gpui::{
-    Div, IntoElement, ParentElement, RenderImage, RenderOnce, SharedString, Styled, StyledImage,
-    div, img, prelude::FluentBuilder, px,
+    Div, IntoElement, ParentElement, Pixels, RenderOnce, SharedString, Styled, StyledImage, div,
+    img, prelude::FluentBuilder, px,
 };
-
-enum Preview {
-    Image(Arc<RenderImage>),
-    Text(SharedString),
-    Loading,
-}
 
 #[derive(IntoElement)]
 pub struct FileSidebar {
@@ -42,19 +39,8 @@ impl RenderOnce for FileSidebar {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
         let kind = self.meta.kind;
-        let preview = if kind.has_image_preview() {
-            match crate::utils::preview::request_preview(self.loc.clone(), cx) {
-                PreviewState::Ready(img) => Some(Preview::Image(img)),
-                PreviewState::Loading => Some(Preview::Loading),
-                PreviewState::Failed => None,
-            }
-        } else if kind.is_text() || kind.category() == FileCategory::Other {
-            crate::utils::preview::read_text_preview(self.loc.as_str(), 4096, 20)
-                .map(SharedString::from)
-                .map(Preview::Text)
-        } else {
-            None
-        };
+        let state = PreviewState::request(self.loc.clone(), kind, cx);
+
         cx.default_global::<PreviewCache>().flush(window);
 
         let badges = std::iter::once(SharedString::from(kind.as_str()))
@@ -78,17 +64,17 @@ impl RenderOnce for FileSidebar {
             .separator()
             .section("Permissions")
             .row("Mode", self.meta.permissions)
-            .when_some(preview, |s, preview| {
+            .when(!matches!(state, PreviewState::Failed), |s| {
                 s.separator()
                     .section("Preview")
-                    .child(render_preview(preview, &theme))
+                    .child(render_preview(state, &theme))
             })
     }
 }
 
-fn render_preview(preview: Preview, theme: &ThemeData) -> Div {
-    match preview {
-        Preview::Image(image) => div()
+fn render_preview(state: PreviewState, theme: &Arc<ThemeData>) -> Div {
+    match state {
+        PreviewState::Ready(Preview::Image(image)) => div()
             .w_full()
             .mt(px(3.))
             .mb(px(12.))
@@ -104,7 +90,7 @@ fn render_preview(preview: Preview, theme: &ThemeData) -> Div {
                     .object_fit(gpui::ObjectFit::Contain),
             ),
 
-        Preview::Text(text) => div()
+        PreviewState::Ready(Preview::Text(text)) => div()
             .w_full()
             .mt(px(3.))
             .mb(px(12.))
@@ -125,6 +111,12 @@ fn render_preview(preview: Preview, theme: &ThemeData) -> Div {
                         if line.is_empty() { " " } else { line }.to_owned(),
                     ))
             })),
-        Preview::Loading => div().w_full().h(px(300.)).rounded_md().bg(theme.bg_idle),
+        PreviewState::Loading(PreviewKind::Thumbnail(_)) => placeholder(px(THUMB_PX as f32), theme),
+        PreviewState::Loading(_) => placeholder(px(80.), theme),
+        PreviewState::Failed => div(),
     }
+}
+
+fn placeholder(h: Pixels, theme: &Arc<ThemeData>) -> Div {
+    div().w_full().h(h).rounded_md().bg(theme.bg_idle)
 }
