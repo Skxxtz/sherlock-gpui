@@ -14,6 +14,16 @@ use image::{ColorType, Frame, ImageBuffer, ImageDecoder, ImageReader, Rgba, imag
 use memmap2::MmapMut;
 use std::{path::PathBuf, sync::Arc};
 
+/// Result of asking for a thumbnail
+pub enum PreviewState {
+    /// Rendered and cached; ready to draw.
+    Ready(Arc<RenderImage>),
+    /// Rendering in the background; reserve the space, windows refresh when done.
+    Loading,
+    /// Rendering failed or the format isn't supported; show no preview.
+    Failed,
+}
+
 fn load_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
     let decoder = ImageReader::open(path)
         .map_err(|e| {
@@ -97,21 +107,33 @@ fn load_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
 
 /// Runs on a background thread. Big decode buffer is unmapped before returning.
 pub fn make_preview(path: &str, max_px: u32) -> Option<Arc<RenderImage>> {
-    let mut thumb = if path.to_lowercase().ends_with(".svg") {
-        render_svg(path, max_px)?
-    } else {
-        let full = load_rgba(path).ok()?;
-        let view = ImageBuffer::<Rgba<u8>, &[u8]>::from_raw(full.width, full.height, &full)?;
-        imageops::thumbnail(
-            &view,
-            max_px,
-            max_px.min(max_px * full.height / full.width.max(1)).max(1),
-        )
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase);
+
+    let mut thumb = match ext.as_deref() {
+        Some("svg") => render_svg(path, max_px)?,
+        Some("pdf") => render_pdf(path, max_px)?,
+        _ => raster_thumb(path, max_px)?,
     };
+
     for px in thumb.chunks_exact_mut(4) {
         px.swap(0, 2);
     } // RGBA → BGRA for GPUI
     Some(Arc::new(RenderImage::new([Frame::new(thumb)])))
+}
+
+fn raster_thumb(path: &str, max_px: u32) -> Option<image::RgbaImage> {
+    let full = load_rgba(path).ok()?;
+    let (w, h) = (full.width.max(1), full.height.max(1));
+    let s = (max_px as f32 / w.max(h) as f32).min(1.0); // fit, never upscale
+    let (tw, th) = (
+        ((w as f32 * s) as u32).max(1),
+        ((h as f32 * s) as u32).max(1),
+    );
+    let view = ImageBuffer::<Rgba<u8>, &[u8]>::from_raw(full.width, full.height, &full)?;
+    Some(imageops::thumbnail(&view, tw, th))
 }
 
 fn render_svg(path: &str, max_px: u32) -> Option<image::RgbaImage> {
@@ -133,13 +155,13 @@ fn render_svg(path: &str, max_px: u32) -> Option<image::RgbaImage> {
 }
 
 /// Returns the preview if ready; otherwise starts loading it in the background.
-pub fn request_preview(path: SharedString, cx: &mut App) -> Option<Arc<RenderImage>> {
+pub fn request_preview(path: SharedString, cx: &mut App) -> PreviewState {
     let cache = cx.default_global::<PreviewCache>();
     if let Some(hit) = cache.get(&path) {
-        return hit;
+        return hit.map_or(PreviewState::Failed, PreviewState::Ready);
     }
     if !cache.pending.insert(path.clone()) {
-        return None;
+        return PreviewState::Loading;
     }
 
     let task = cx.background_spawn({
@@ -161,7 +183,8 @@ pub fn request_preview(path: SharedString, cx: &mut App) -> Option<Arc<RenderIma
         });
     })
     .detach();
-    None
+
+    PreviewState::Loading
 }
 
 /// First lines of a text file, or None if it looks binary.
@@ -197,4 +220,34 @@ pub fn read_text_preview<P: AsRef<std::path::Path>>(
         .map(|l| l.replace('\t', "    ").trim_end().to_owned())
         .collect();
     (!preview.iter().all(|l| l.is_empty())).then(|| preview.join("\n"))
+}
+
+fn render_pdf(path: &str, max_px: u32) -> Option<image::RgbaImage> {
+    use mupdf::{Colorspace, Document, Matrix};
+
+    let doc = Document::open(path).ok()?;
+    let page = doc.load_page(0).ok()?;
+    let b = page.bounds().ok()?;
+    let scale = (max_px as f32 / (b.x1 - b.x0).max(b.y1 - b.y0)).min(1.0);
+    // No alpha: pages without a painted background would otherwise be transparent,
+    // which makes black text invisible on a dark theme.
+    let pix = page
+        .to_pixmap(
+            &Matrix::new_scale(scale, scale),
+            &Colorspace::device_rgb(),
+            false,
+            false,
+        )
+        .ok()?;
+
+    let (w, h) = (pix.width(), pix.height());
+    let src = pix.samples();
+    let stride = src.len() / h.max(1) as usize;
+    let mut out = Vec::with_capacity(w as usize * h as usize * 4);
+    for row in src.chunks_exact(stride) {
+        for px in row[..w as usize * 3].chunks_exact(3) {
+            out.extend_from_slice(&[px[0], px[1], px[2], 255]);
+        }
+    }
+    image::RgbaImage::from_raw(w, h, out)
 }

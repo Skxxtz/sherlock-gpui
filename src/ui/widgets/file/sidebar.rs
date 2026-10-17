@@ -5,7 +5,7 @@ use crate::{
     app::theme::{ActiveTheme, ThemeData},
     loader::IconType,
     ui::{launcher::sidebar::wrapper::Sidebar, widgets::file::FileData},
-    utils::{filekinds::FileCategory, preview_lru::PreviewCache},
+    utils::{filekinds::FileCategory, preview::PreviewState, preview_lru::PreviewCache},
 };
 use gpui::{
     Div, IntoElement, ParentElement, RenderImage, RenderOnce, SharedString, Styled, StyledImage,
@@ -15,6 +15,7 @@ use gpui::{
 enum Preview {
     Image(Arc<RenderImage>),
     Text(SharedString),
+    Loading,
 }
 
 #[derive(IntoElement)]
@@ -42,7 +43,11 @@ impl RenderOnce for FileSidebar {
 
         let kind = self.meta.kind;
         let preview = if kind.has_image_preview() {
-            crate::utils::preview::request_preview(self.loc.clone(), cx).map(Preview::Image)
+            match crate::utils::preview::request_preview(self.loc.clone(), cx) {
+                PreviewState::Ready(img) => Some(Preview::Image(img)),
+                PreviewState::Loading => Some(Preview::Loading),
+                PreviewState::Failed => None,
+            }
         } else if kind.is_text() || kind.category() == FileCategory::Other {
             crate::utils::preview::read_text_preview(self.loc.as_str(), 4096, 20)
                 .map(SharedString::from)
@@ -120,5 +125,6 @@ fn render_preview(preview: Preview, theme: &ThemeData) -> Div {
                         if line.is_empty() { " " } else { line }.to_owned(),
                     ))
             })),
+        Preview::Loading => div().w_full().h(px(300.)).rounded_md().bg(theme.bg_idle),
     }
 }

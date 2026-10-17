@@ -265,6 +265,7 @@ impl FileKind {
                 | Self::Icon
                 | Self::Bitmap
                 | Self::TiffImage
+                | Self::Pdf
         )
     }
 }
