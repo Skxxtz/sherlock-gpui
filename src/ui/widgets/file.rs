@@ -3,7 +3,7 @@ use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::{IconType, resolve_icon_path, utils::Priority},
     ui::{
-        launcher::views::NavigationViewType,
+        launcher::navigator::handle::ViewKind,
         traits::RenderableChildImpl,
         utils::selection::Selection,
         widgets::file::{metadata::FileMeta, sidebar::FileSidebar},
@@ -130,7 +130,7 @@ impl<'a> RenderableChildImpl<'a> for FileData {
     fn build_exec(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         if self.loc.ends_with('/') {
             return Some(ExecMode::CreateView {
-                mode: NavigationViewType::Files {
+                mode: ViewKind::Files {
                     dir: Some(self.loc.clone()),
                 },
                 launcher: Arc::clone(launcher),

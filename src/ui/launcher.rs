@@ -3,8 +3,8 @@ use crate::tokio_utils::SizedMessageObj;
 use crate::ui::backdrop::Backdrop;
 use crate::ui::choice::Choice;
 use crate::ui::launcher::context_menu::wrapper::ContextMenu;
+use crate::ui::launcher::navigator::Navigator;
 use crate::ui::launcher::sidebar_controller::SidebarController;
-use crate::ui::launcher::views::NavigationStack;
 use crate::utils::networking::ServerResponse;
 use crate::utils::sized_message_sync::SizedMessage;
 use gpui::WindowHandle;
@@ -18,10 +18,10 @@ use crate::ui::search_bar::TextInput;
 pub mod actions;
 pub mod context_menu;
 pub mod filter_and_sort;
+pub mod navigator;
 pub mod render;
 pub mod sidebar;
 pub mod sidebar_controller;
-pub mod views;
 
 pub use actions::{
     Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft, SelectionRight,
@@ -70,7 +70,7 @@ pub struct LauncherView {
     pub active_bar: usize,
 
     // Model
-    pub navigation: NavigationStack,
+    pub navigation: Navigator,
 
     // State
     pub config_initialized: bool,

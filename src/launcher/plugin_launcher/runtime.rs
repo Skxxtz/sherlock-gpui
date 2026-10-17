@@ -12,7 +12,7 @@ use crate::{
     app::{LauncherEntityGlobal, theme::ThemeData},
     launcher::plugin_launcher::api::protocol::PluginDeferFunction,
     sherlock_msg,
-    ui::launcher::views::MessageViewGlobal,
+    ui::launcher::navigator::MessageViewGlobal,
     utils::errors::types::SherlockErrorType,
 };
 

@@ -2,7 +2,7 @@ use gpui::App;
 
 use crate::{
     launcher::LauncherId,
-    ui::launcher::views::{NavigationStack, NavigationViewType},
+    ui::launcher::navigator::{Navigator, handle::ViewKind},
 };
 
 #[derive(Default)]
@@ -12,7 +12,7 @@ pub struct SidebarController {
 }
 
 impl SidebarController {
-    pub fn check_validity(&mut self, nav: &NavigationStack, cx: &App) {
+    pub fn check_validity(&mut self, nav: &Navigator, cx: &App) {
         // sidebar has a foritem
         if self.for_item.is_none() {
             self.valid = false;
@@ -20,10 +20,7 @@ impl SidebarController {
         }
 
         // current view allows sidebar
-        if !matches!(
-            nav.current_kind(),
-            NavigationViewType::Home | NavigationViewType::Files { .. }
-        ) {
+        if !matches!(nav.current_kind(), ViewKind::Home | ViewKind::Files { .. }) {
             self.valid = false;
             return;
         }

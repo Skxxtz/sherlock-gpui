@@ -25,8 +25,8 @@ use crate::{
         launcher::{
             LauncherMode, LauncherView,
             context_menu::wrapper::ContextMenu,
+            navigator::{Navigator, handle::ViewKind},
             sidebar_controller::SidebarController,
-            views::{NavigationStack, NavigationViewType},
         },
         model::Model,
         search_bar::{EmptyBackspace, TextInput},
@@ -153,31 +153,31 @@ fn spawn_launcher(
 
             let sub = cx.observe(&text_input, |this: &mut LauncherView, _, cx| {
                 this.context_menu.close();
-                this.navigation.current_mut().reset_selected_index();
+                this.navigation.current_mut().layout.reset();
                 this.filter_and_sort(cx);
             });
 
             let backspace_sub = cx.subscribe(&text_input, |this, _, _: &EmptyBackspace, cx| {
-                if this.navigation.current_kind() != NavigationViewType::Home {
-                    this.navigation.set_prev_and_cleanup();
-                    if let Some(c) = this.navigation.with_model(cx, |mdl| mdl.last_query()) {
-                        this.text_input.update(cx, |ipt, _| ipt.set_text(c));
-                    }
-                    this.force_filter_and_sort(cx);
-                } else if this.navigation.current().mode != LauncherMode::Home {
-                    this.navigation.current_mut().mode = LauncherMode::Home;
-                    this.navigation.with_model_mut(cx, |mdl, _| {
-                        if let Model::Standard { last_query, .. } = mdl {
-                            *last_query = None;
-                        }
-                    });
-                    this.filter_and_sort(cx);
-                }
+                if !matches!(this.navigation.current_kind(), ViewKind::Home) {
+        this.navigation.back();
+        if let Some(c) = this.navigation.with_model(cx, |mdl| mdl.last_query()) {
+            this.text_input.update(cx, |ipt, _| ipt.set_text(c));
+        }
+        this.force_filter_and_sort(cx);
+    } else if this.navigation.current().mode != LauncherMode::Home {
+        this.navigation.current_mut().mode = LauncherMode::Home;
+        this.navigation.with_model_mut(cx, |mdl, _| {
+            if let Model::Standard { last_query, .. } = mdl {
+                *last_query = None;
+            }
+        });
+        this.filter_and_sort(cx);
+    }
             });
 
             text_input.update(cx, |this, _| this._sub = Some(backspace_sub));
 
-            let mut navigation = NavigationStack::new(data, initial_messages, data_len, cx);
+            let mut navigation = Navigator::new(data, initial_messages, data_len, cx);
 
             let mode = ConfigGuard::read_with(|c| {
                 c.runtime
@@ -197,9 +197,9 @@ fn spawn_launcher(
             .unwrap_or(LauncherMode::Home);
 
             if let LauncherMode::Alias { launcher, .. } = &mode
-                && let Ok(view) = NavigationViewType::try_from(&launcher.launcher_type)
+                && let Some(view) = ViewKind::try_from(&launcher.launcher_type).ok().and_then(|kind| kind.build(launcher.clone(), cx))
             {
-                navigation.push(view.create_view(launcher.clone(), cx));
+                navigation.push(view);
             }
 
             LauncherView {

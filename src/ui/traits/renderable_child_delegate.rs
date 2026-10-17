@@ -82,7 +82,7 @@ pub trait RenderableChildDelegate<'a> {
     /// the launcher moves to the next/previous row.
     fn move_inner(
         &self,
-        direction: &crate::ui::launcher::views::MoveDirection,
+        direction: &crate::ui::launcher::navigator::views::MoveDirection,
         cx: &mut App,
     ) -> bool;
 

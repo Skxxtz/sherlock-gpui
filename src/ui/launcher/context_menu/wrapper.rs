@@ -19,7 +19,7 @@ use crate::{
                 action_keys::{ContextActionBinds, assign_keys},
                 quick_actions::{Hideable, QuickAction},
             },
-            views::MoveDirection,
+            navigator::views::MoveDirection,
         },
         traits::RenderableChildDelegate,
         widgets::{

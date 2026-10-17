@@ -18,6 +18,7 @@ use tokio::{
 use crate::app::LauncherEntity;
 use crate::launcher::Launcher;
 use crate::launcher::variant_type::LauncherType;
+use crate::ui::launcher::navigator::views::NavView;
 use crate::utils::intent::Intent;
 use crate::utils::intent::cursor::Cursor;
 use crate::utils::intent::parsers::timer::TimerParser;
@@ -27,7 +28,7 @@ use crate::{
     sherlock_msg,
     tokio_utils::AsyncSizedMessage,
     ui::{
-        launcher::{LauncherMode, LauncherView, views::NavigationViewType},
+        launcher::{LauncherMode, LauncherView},
         widgets::RenderableChild,
     },
     utils::{
@@ -289,9 +290,7 @@ fn add_data_page(
 ) {
     if let Some(current_window) = win {
         let _ = current_window.update(cx, |this, _win, cx| {
-            let launcher = Arc::new(LauncherConfig::default_dmenu());
-            this.navigation
-                .push(NavigationViewType::Dmenu { entity }.create_view(launcher, cx));
+            this.navigation.push(NavView::dmenu(entity, cx))
         });
     }
 }

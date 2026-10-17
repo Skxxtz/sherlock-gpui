@@ -203,7 +203,7 @@ macro_rules! renderable_enum {
                 }
             }
 
-            fn move_inner(&self, direction: &crate::ui::launcher::views::MoveDirection, cx: &mut App) -> bool {
+            fn move_inner(&self, direction: &crate::ui::launcher::navigator::views::MoveDirection, cx: &mut App) -> bool {
                 match self {
                     $(Self::$variant {inner, ..} => inner.move_inner(direction, cx)),*
                 }

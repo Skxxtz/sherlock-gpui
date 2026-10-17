@@ -16,7 +16,7 @@ use crate::{
     loader::utils::RawLauncher,
     sherlock_msg, skip_func_if_nav,
     ui::{
-        launcher::views::MessageViewGlobal,
+        launcher::navigator::MessageViewGlobal,
         widgets::{RenderableChild, plugin::PluginWidget},
     },
     utils::{

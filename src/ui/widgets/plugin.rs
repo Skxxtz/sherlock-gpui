@@ -26,7 +26,7 @@ use crate::{
     ui::{
         launcher::{
             context_menu::{ContextMenuAction, DynamicFunctionAction},
-            views::MoveDirection,
+            navigator::views::MoveDirection,
         },
         traits::RenderableChildImpl,
         utils::selection::Selection,

@@ -84,7 +84,7 @@ impl fmt::Display for ContextActionBinds {
 }
 
 /// Mnemonic candidates, best first: word initials, then all letters, then digits;
-/// ctrl before alt. 
+/// ctrl before alt.
 fn candidates(name: &str) -> impl Iterator<Item = ContextActionBinds> + '_ {
     let letters = name
         .split_whitespace()

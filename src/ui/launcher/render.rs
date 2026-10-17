@@ -16,7 +16,7 @@ use crate::{
     loader::resolve_icon_path,
     ui::{
         UIFunction,
-        launcher::{Execute, LauncherMode, LauncherView, views::EntityStyle},
+        launcher::{Execute, LauncherMode, LauncherView, navigator::views::Grid},
         traits::RenderableChildDelegate,
         utils::{ease::Ease, render::ListItemBorder, selection::Selection},
         widgets::RenderableChild,
@@ -69,17 +69,14 @@ impl Render for LauncherView {
             })
             .child(self.render_mode_label(theme.clone()))
             .child(
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .child(match self.navigation.current().style {
-                        EntityStyle::Grid { .. } => self
-                            .render_result_grid(cx, theme.clone())
+                div().flex_1().min_h_0().child(
+                    match self.navigation.current().layout.grid.clone() {
+                        Some(grid) => self
+                            .render_result_grid(grid, cx, theme.clone())
                             .into_any_element(),
-                        EntityStyle::Row { .. } => {
-                            self.render_results(cx, theme.clone()).into_any_element()
-                        }
-                    }),
+                        None => self.render_results(cx, theme.clone()).into_any_element(),
+                    },
+                ),
             )
             .child(self.render_status_bar(theme, cx))
     }
@@ -214,13 +211,8 @@ impl LauncherView {
             })
             .flatten();
 
-        let EntityStyle::Row {
-            state,
-            selected_index,
-        } = &self.navigation.current().style
-        else {
-            return div().id("results-container");
-        };
+        let layout = &self.navigation.current().layout;
+        let (selected_idx, state) = (layout.selected, layout.list.clone());
         let query = self.text_input.read(cx).content.clone();
 
         let theme = cx.global::<ActiveTheme>().0.clone();
@@ -237,9 +229,8 @@ impl LauncherView {
                     .min_h_0()
                     .size_full()
                     .child({
-                        let selected_idx = *selected_index;
                         let view_handle = cx.entity().clone();
-                        list(state.clone(), {
+                        list(state, {
                             let theme = theme.clone();
                             move |idx, _win, cx| {
                                 let data_idx = match indices.get(idx) {
@@ -325,6 +316,7 @@ impl LauncherView {
 
     fn render_result_grid(
         &self,
+        grid: Grid,
         cx: &mut Context<Self>,
         theme: Arc<ThemeData>,
     ) -> impl IntoElement {
@@ -332,20 +324,7 @@ impl LauncherView {
             .navigation
             .with_model(cx, |mdl| (mdl.filtered_indices(), mdl.data()));
 
-        let style = &self.navigation.current().style;
-        let EntityStyle::Grid {
-            scroll_handle,
-            selected_index,
-            columns,
-            ..
-        } = style
-        else {
-            return div().id("results-container");
-        };
-
-        let selected_idx = *selected_index;
-        let col_count = *columns;
-
+        let selected_idx = self.navigation.current().layout.selected;
         let query = self.text_input.read(cx).content.clone();
 
         div()
@@ -361,7 +340,7 @@ impl LauncherView {
                     .min_h_0()
                     .size_full()
                     .child(
-                        gpui::uniform_list("emoji-grid", indices.len().div_ceil(col_count), {
+                        gpui::uniform_list("emoji-grid", indices.len().div_ceil(grid.columns), {
                             let theme = theme.clone();
                             let handle = cx.entity().clone();
                             move |range, _win, cx| {
@@ -372,8 +351,8 @@ impl LauncherView {
                                             .flex_row()
                                             .w_full()
                                             .gap(px(2.0))
-                                            .children((0..col_count).map(|col_idx| {
-                                                let item_idx = row_idx * col_count + col_idx;
+                                            .children((0..grid.columns).map(|col_idx| {
+                                                let item_idx = row_idx * grid.columns + col_idx;
 
                                                 if let Some(&data_idx) = indices.get(item_idx) {
                                                     let data_snapshot = data.read(cx).clone();
@@ -408,7 +387,7 @@ impl LauncherView {
                             }
                         })
                         .gap(px(2.0))
-                        .track_scroll(scroll_handle)
+                        .track_scroll(&grid.scroll)
                         .size_full(),
                     ),
             )
@@ -456,7 +435,7 @@ impl LauncherView {
                 gpui::MouseButton::Left,
                 cx.listener(|this, _: &MouseDownEvent, _, cx| {
                     this.text_input.update(cx, |this, _| this.reset());
-                    this.navigation.set_messages_active();
+                    this.navigation.show_messages();
                     this.filter_and_sort(cx);
                 }),
             )

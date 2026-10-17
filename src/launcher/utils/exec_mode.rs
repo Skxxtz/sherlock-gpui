@@ -16,7 +16,7 @@ use crate::{
                 ContextMenuAction,
                 quick_actions::{Hideable, QuickAction},
             },
-            views::NavigationViewType,
+            navigator::handle::ViewKind,
         },
         traits::RenderableChildDelegate,
         widgets::{
@@ -44,7 +44,7 @@ pub enum ExecMode {
         category: LauncherMode,
     },
     CreateView {
-        mode: NavigationViewType,
+        mode: ViewKind,
         launcher: Arc<LauncherConfig>,
     },
     DynamicContextMenuFunc {
@@ -54,9 +54,7 @@ pub enum ExecMode {
         exec: String,
     },
     Info,
-    SwitchView {
-        idx: usize,
-    },
+    ShowMessages,
     Web {
         engine: Option<String>,
         browser: Option<String>,
@@ -186,18 +184,18 @@ impl ExecMode {
             },
             LauncherType::Debug(_) => Self::None,
             LauncherType::Emoji(_) => Self::CreateView {
-                mode: NavigationViewType::Emoji,
+                mode: ViewKind::Emoji,
                 launcher: Arc::clone(launcher),
             },
             LauncherType::Files(_) => Self::CreateView {
-                mode: NavigationViewType::Files { dir: None },
+                mode: ViewKind::Files { dir: None },
                 launcher: Arc::clone(launcher),
             },
             LauncherType::Process(_) => Self::CreateView {
-                mode: NavigationViewType::Process,
+                mode: ViewKind::Process,
                 launcher: Arc::clone(launcher),
             },
-            LauncherType::Message(_) => Self::SwitchView { idx: 0 },
+            LauncherType::Message(_) => Self::ShowMessages,
             LauncherType::Web(web) => Self::Web {
                 engine: Some(web.engine.clone()),
                 browser: web.browser.clone(),

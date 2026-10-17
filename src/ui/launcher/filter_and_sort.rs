@@ -2,7 +2,7 @@ use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
 use crate::app::{LauncherEntity, LauncherEntityInner, LauncherWeakEntity};
 use crate::launcher::{LauncherId, LauncherValues};
-use crate::ui::launcher::views::NavigationViewType;
+use crate::ui::launcher::navigator::handle::ViewKind;
 use crate::ui::launcher::{LauncherMode, LauncherView, ModeTransition};
 use crate::ui::model::Model;
 use crate::ui::traits::RenderableChildDelegate;
@@ -26,10 +26,7 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let Some(state) = self.navigation.current().style.list_state() else {
-            return;
-        };
-
+        let state = &self.navigation.current().layout.list;
         let mut changed = force;
         let query: SharedString = query.into();
 
@@ -110,11 +107,14 @@ impl LauncherView {
                     query = "".into();
                 }
                 ModeTransition::PushStack(launcher) => {
-                    let Ok(view) = NavigationViewType::try_from(&launcher.launcher_type) else {
+                    let Some(view) = ViewKind::try_from(&launcher.launcher_type)
+                        .ok()
+                        .and_then(|kind| kind.build(launcher, cx))
+                    else {
                         return;
                     };
                     self.text_input.update(cx, |this, _| this.reset());
-                    self.navigation.push(view.create_view(launcher, cx));
+                    self.navigation.push(view);
                     query = "".into();
                 }
             }

@@ -28,7 +28,7 @@ use crate::{
                 ContextMenuAction,
                 wrapper::{ContextMenu, Move},
             },
-            views::MoveDirection,
+            navigator::views::MoveDirection,
         },
         model::Model,
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
@@ -100,11 +100,10 @@ impl LauncherView {
         // early return on invalid index
         // or
         // early return if not a list view
-        if !self.valid_selection_idx(n, cx)
-            || self.navigation.current_mut().style.focus_nth(n).is_none()
-        {
+        if !self.valid_selection_idx(n, cx) {
             return;
         }
+        self.navigation.current_mut().layout.focus_nth(n);
 
         // Handle variable inputs
         self.update_vars(cx);
@@ -134,9 +133,7 @@ impl LauncherView {
             return;
         }
 
-        let current_style = &mut self.navigation.current_mut().style;
-
-        if let Some((old, target_idx)) = current_style.next_index(direction)
+        if let Some((old, target_idx)) = self.navigation.current().layout.next_index(direction)
             && self.valid_selection_idx(target_idx, cx)
         {
             self.focus_nth(target_idx, cx);
@@ -455,9 +452,12 @@ impl LauncherView {
                 }
                 return Ok(false);
             }
-            ExecMode::CreateView { mode, launcher } => {
+            ExecMode::CreateView { launcher, mode } => {
+                let Some(view) = mode.build(launcher, cx) else {
+                    return Ok(false);
+                };
                 self.text_input.update(cx, |this, _| this.reset());
-                self.navigation.push(mode.create_view(launcher, cx));
+                self.navigation.push(view);
                 self.filter_and_sort(cx);
                 return Ok(false);
             }
@@ -473,7 +473,8 @@ impl LauncherView {
                 cx.notify();
                 return Ok(opts.exit && exit_override);
             }
-            ExecMode::SwitchView { idx } if self.navigation.set_active_idx(idx) => {
+            ExecMode::ShowMessages => {
+                self.navigation.show_messages();
                 self.text_input.update(cx, |this, _| this.reset());
                 self.filter_and_sort(cx);
                 return Ok(false);
@@ -494,7 +495,6 @@ impl LauncherView {
             ExecMode::None => {
                 return Ok(false);
             }
-            _ => {}
         };
 
         Ok(exit_override)
@@ -506,11 +506,10 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some(what) =
-            self.navigation
-                .with_nth_shortcut_item(action.index, cx, |item_opt, cx| {
-                    item_opt.and_then(|item| ExecMode::from_child(item, cx))
-                })
+        if let Some(what) = self
+            .navigation
+            .with_nth_shortcut_item(action.index, cx, ExecMode::from_child)
+            .flatten()
         {
             let keyword = self.text_input.read(cx).content.clone();
             match self.execute_helper(what, keyword.as_ref(), true, cx) {
@@ -751,7 +750,7 @@ impl LauncherView {
     }
 
     pub(super) fn update_vars(&mut self, cx: &mut Context<Self>) {
-        let Some(idx) = self.navigation.selected_item_index(cx) else {
+        let Some(idx) = self.navigation.selected_data_idx(cx) else {
             self.variable_input.clear();
             return;
         };
