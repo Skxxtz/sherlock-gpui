@@ -262,6 +262,15 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         self.postfix()
     }
 
+    /// Postfix `%` (percent), one level above [`power`](Self::power).
+    ///
+    /// - `50%` → `sink.percent(50)` = 0.5
+    /// - `10%%` → loops: `(10%)%`
+    /// - only percent if no operand follows: `10 % 3` is left for
+    ///   [`multiplicative`](Self::multiplicative) as modulo
+    /// - binds weaker than `^`: `2^2%` = `(2^2)%`
+    ///
+    /// No `%` next → the value is passed up unchanged.
     fn postfix(&mut self) -> Result<S::Out, Error> {
         let mut e = self.power()?;
         while self.peek() == Some(Token::Percent) && !starts_operand(self.next.map(|s| s.tok)) {
@@ -271,6 +280,15 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         Ok(e)
     }
 
+    /// `^`, one level above [`factorial`](Self::factorial).
+    ///
+    /// - `2^3` → `sink.binary(Pow, 2, 3)`
+    /// - right to left: the exponent is parsed by [`unary`](Self::unary),
+    ///   which comes back here, so `2^3^2` = `2^(3^2)` = 512
+    /// - signed exponent works: `2^-1` = 0.5
+    /// - binds tighter than a leading `-`: `-2^2` = `-(2^2)` = -4
+    ///
+    /// No `^` next → the value is passed up unchanged.
     fn power(&mut self) -> Result<S::Out, Error> {
         let base = self.factorial()?;
         if self.eat(Token::Caret)? {
