@@ -7,8 +7,15 @@
 use crate::Error;
 use crate::parser::{Expr, Op};
 
+/// Variable bindings, e.g. `&[("x", 2.0)]`. Checked before constants.
+pub type Vars<'a> = &'a [(&'a str, f64)];
+
 pub fn eval(e: &Expr) -> Result<f64, Error> {
-    let v = eval_inner(e)?;
+    eval_with(e, &[])
+}
+
+pub fn eval_with(e: &Expr, vars: Vars) -> Result<f64, Error> {
+    let v = eval_inner(e, vars)?;
     if v.is_finite() {
         Ok(v)
     } else {
@@ -16,21 +23,26 @@ pub fn eval(e: &Expr) -> Result<f64, Error> {
     }
 }
 
-fn eval_inner(e: &Expr) -> Result<f64, Error> {
+fn eval_inner(e: &Expr, vars: Vars) -> Result<f64, Error> {
     Ok(match e {
         Expr::Num(n) => *n,
-        Expr::Var(name) => constant(name).ok_or_else(|| Error::UnknownVariable(name.clone()))?,
-        Expr::Neg(e) => -eval_inner(e)?,
-        Expr::Percent(e) => eval_inner(e)? / 100.0,
-        Expr::Factorial(e) => factorial(eval_inner(e)?)?,
+        Expr::Var(name) => vars
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, v)| *v)
+            .or_else(|| constant(name))
+            .ok_or_else(|| Error::UnknownVariable(name.clone()))?,
+        Expr::Neg(e) => -eval_inner(e, vars)?,
+        Expr::Percent(e) => eval_inner(e, vars)? / 100.0,
+        Expr::Factorial(e) => factorial(eval_inner(e, vars)?)?,
         Expr::Binary(op, l, r) => {
-            let a = eval_inner(l)?;
+            let a = eval_inner(l, vars)?;
             // calculator-style percent: `200 + 10%` = 220
             if let (Op::Add | Op::Sub, Expr::Percent(p)) = (op, r.as_ref()) {
-                let delta = a * eval_inner(p)? / 100.0;
+                let delta = a * eval_inner(p, vars)? / 100.0;
                 return Ok(if *op == Op::Add { a + delta } else { a - delta });
             }
-            let b = eval_inner(r)?;
+            let b = eval_inner(r, vars)?;
             match op {
                 Op::Add => a + b,
                 Op::Sub => a - b,
@@ -40,14 +52,34 @@ fn eval_inner(e: &Expr) -> Result<f64, Error> {
                 Op::Pow => a.powf(b),
             }
         }
+        // `x(2)` with a bound variable `x` is implicit multiplication
+        Expr::Call(name, args)
+            if args.len() == 1
+                && !is_function(name)
+                && (vars.iter().any(|(n, _)| n == name) || constant(name).is_some()) =>
+        {
+            eval_inner(&Expr::Var(name.clone()), vars)? * eval_inner(&args[0], vars)?
+        }
         Expr::Call(name, args) => {
-            let args = args.iter().map(eval_inner).collect::<Result<Vec<_>, _>>()?;
+            let args = args
+                .iter()
+                .map(|a| eval_inner(a, vars))
+                .collect::<Result<Vec<_>, _>>()?;
             call(name, &args)?
         }
     })
 }
 
-fn constant(name: &str) -> Option<f64> {
+const FUNCTIONS: &[&str] = &[
+    "sqrt", "cbrt", "abs", "exp", "ln", "log2", "log", "sin", "cos", "tan", "asin", "acos", "atan",
+    "sinh", "cosh", "tanh", "floor", "ceil", "round", "min", "max",
+];
+
+pub(crate) fn is_function(name: &str) -> bool {
+    FUNCTIONS.contains(&name)
+}
+
+pub(crate) fn constant(name: &str) -> Option<f64> {
     use std::f64::consts;
     Some(match name {
         "pi" | "π" => consts::PI,
@@ -114,11 +146,7 @@ fn call(name: &str, a: &[f64]) -> Result<f64, Error> {
             let pick = if name == "min" { f64::min } else { f64::max };
             Ok(a.iter().copied().reduce(pick).unwrap())
         }
-        // implicit multiplication with a constant: `pi(2)` = `pi * 2`
-        _ => match (constant(name), a) {
-            (Some(c), [x]) => Ok(c * x),
-            _ => Err(Error::UnknownFunction(name.to_string())),
-        },
+        _ => Err(Error::UnknownFunction(name.to_string())),
     }
 }
 

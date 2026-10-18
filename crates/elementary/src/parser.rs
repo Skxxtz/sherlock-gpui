@@ -45,6 +45,18 @@ pub fn parse(tokens: &[Spanned]) -> Result<Expr, Error> {
     }
 }
 
+/// Parse `lhs = rhs`. Exactly one `=` is required.
+pub fn parse_equation(tokens: &[Spanned]) -> Result<(Expr, Expr), Error> {
+    let eqs: Vec<usize> = (0..tokens.len())
+        .filter(|&i| tokens[i].tok == Token::Eq)
+        .collect();
+    match eqs.as_slice() {
+        [] => Err(Error::NotAnEquation),
+        [i] => Ok((parse(&tokens[..*i])?, parse(&tokens[i + 1..])?)),
+        [_, second, ..] => Err(Error::UnexpectedToken(tokens[*second].pos)),
+    }
+}
+
 struct Parser<'a> {
     t: &'a [Spanned],
     i: usize,
@@ -302,6 +314,24 @@ mod tests {
         assert_eq!(p("max(1, 2, 3)"), "(max 1 2 3)");
         assert_eq!(p("f()"), "(f )");
         assert_eq!(p("sin(pi/2)^2"), "(^ (sin (/ pi 2)) 2)");
+    }
+
+    #[test]
+    fn equation() {
+        let (l, r) = parse_equation(&tokenize("2x + 1 = 7").unwrap()).unwrap();
+        assert_eq!((sx(&l), sx(&r)), ("(+ (* 2 x) 1)".into(), "7".into()));
+        assert_eq!(
+            parse_equation(&tokenize("1 + 2").unwrap()),
+            Err(Error::NotAnEquation)
+        );
+        assert_eq!(
+            parse_equation(&tokenize("x = 1 = 2").unwrap()),
+            Err(Error::UnexpectedToken(6))
+        );
+        assert_eq!(
+            parse_equation(&tokenize("= 2").unwrap()),
+            Err(Error::UnexpectedEnd)
+        );
     }
 
     #[test]

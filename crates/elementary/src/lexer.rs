@@ -16,6 +16,7 @@ pub enum Token {
     LParen,
     RParen,
     Comma,
+    Eq,
 }
 
 /// A token plus its byte offset in the input.
@@ -111,6 +112,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Spanned>, Error> {
             '(' => Token::LParen,
             ')' => Token::RParen,
             ',' => Token::Comma,
+            '=' => Token::Eq,
             other => return Err(Error::UnexpectedChar(other, pos)),
         };
         chars.next();
