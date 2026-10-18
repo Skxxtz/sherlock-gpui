@@ -19,21 +19,27 @@ pub type Vars<'v> = &'v [(&'v str, f64)];
 /// (needed for `200 + 10%` = 220).
 #[derive(Debug, Clone, Copy)]
 pub struct Val {
+    /// The number.
     pub v: f64,
+    /// Came straight from a postfix `%`.
     pub pct: bool,
 }
 
 impl Val {
+    /// A normal value, no percent flag.
     fn plain(v: f64) -> Val {
         Val { v, pct: false }
     }
 }
 
+/// Sink that computes values while parsing.
 pub struct EvalSink<'v> {
+    /// Variable bindings (empty for `eval_str`).
     pub vars: Vars<'v>,
 }
 
 impl EvalSink<'_> {
+    /// Value of a name: variable first, then constant.
     fn lookup(&self, name: &str) -> Option<f64> {
         self.vars
             .iter()
@@ -46,20 +52,24 @@ impl EvalSink<'_> {
 impl<'a> Sink<'a> for EvalSink<'_> {
     type Out = Val;
 
+    /// `42`
     fn num(&mut self, n: f64) -> Result<Val, Error> {
         Ok(Val::plain(n))
     }
 
+    /// `pi`, `x`
     fn var(&mut self, name: &'a str) -> Result<Val, Error> {
         self.lookup(name)
             .map(Val::plain)
             .ok_or_else(|| Error::UnknownVariable(name.to_string()))
     }
 
+    /// `-a`
     fn neg(&mut self, e: Val) -> Result<Val, Error> {
         Ok(Val::plain(-e.v))
     }
 
+    /// `a%` = `a / 100`, flagged as percent.
     fn percent(&mut self, e: Val) -> Result<Val, Error> {
         Ok(Val {
             v: e.v / 100.0,
@@ -67,10 +77,12 @@ impl<'a> Sink<'a> for EvalSink<'_> {
         })
     }
 
+    /// `a!`
     fn factorial(&mut self, e: Val) -> Result<Val, Error> {
         factorial(e.v).map(Val::plain)
     }
 
+    /// `a op b`; `a ± b%` means `a ± a·b`.
     fn binary(&mut self, op: Op, l: Val, r: Val) -> Result<Val, Error> {
         Ok(Val::plain(match (op, r.pct) {
             (Op::Add, true) => l.v + l.v * r.v,
@@ -79,6 +91,7 @@ impl<'a> Sink<'a> for EvalSink<'_> {
         }))
     }
 
+    /// `sin(a)`, or `pi(a)` as multiplication.
     fn call(&mut self, name: &'a str, args: Args<Val>) -> Result<Val, Error> {
         if let Some(f) = Func::from_name(name) {
             let a: SmallVec<[f64; 4]> = args.iter().map(|v| v.v).collect();
@@ -92,6 +105,7 @@ impl<'a> Sink<'a> for EvalSink<'_> {
     }
 }
 
+/// Plain arithmetic for one binary operator.
 pub(crate) fn apply_op(op: Op, a: f64, b: f64) -> f64 {
     match op {
         Op::Add => a + b,
@@ -103,6 +117,7 @@ pub(crate) fn apply_op(op: Op, a: f64, b: f64) -> f64 {
     }
 }
 
+/// NaN or infinity → `Error::NotFinite`.
 fn finite(v: f64) -> Result<f64, Error> {
     if v.is_finite() {
         Ok(v)
