@@ -12,19 +12,21 @@ use crate::eval::eval_with;
 use crate::func::{Func, constant};
 use crate::parser::{Expr, Op};
 
+/// One solution of the equation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Root {
+    /// A real number.
     Real(f64),
     /// `re ± im·i` – stored once per conjugate pair.
-    Complex {
-        re: f64,
-        im: f64,
-    },
+    Complex { re: f64, im: f64 },
 }
 
+/// Result of `solve`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Solution {
+    /// The unknown that was solved for.
     pub var: String,
+    /// All roots found, sorted (real ones ascending).
     pub roots: Vec<Root>,
 }
 
@@ -38,13 +40,17 @@ const GRID: &[(i64, i64, f64)] = &[
     (100, 1000, 1.0),
 ];
 
+/// The scan points from `GRID`, ascending.
 fn grid() -> impl Iterator<Item = f64> {
     // integer index × step, so e.g. 0 is hit exactly
     GRID.iter()
         .flat_map(|&(a, b, step)| (a..=b).map(move |k| k as f64 * step))
 }
+
+/// Below this, a coefficient counts as zero.
 const EPS: f64 = 1e-12;
 
+/// Solve `lhs = rhs`: exact formula if possible, else numeric search.
 pub fn solve(lhs: Expr, rhs: Expr) -> Result<Solution, Error> {
     let var = unknown(&lhs, &rhs)?;
     let f = Expr::Binary(Op::Sub, Box::new(lhs), Box::new(rhs));
@@ -73,6 +79,7 @@ fn unknown<'a>(l: &Expr<'a>, r: &Expr<'a>) -> Result<&'a str, Error> {
     }
 }
 
+/// Add every free name in `e` to `out` (no duplicates).
 fn collect_vars<'a>(e: &Expr<'a>, out: &mut Vec<&'a str>) {
     let mut add = |n: &'a str| {
         if constant(n).is_none() && !out.contains(&n) {
@@ -150,18 +157,22 @@ fn poly(e: &Expr, var: &str) -> Result<Option<Poly>, Error> {
     })
 }
 
+/// No `x` or `x²` part.
 fn is_const(p: Poly) -> bool {
     p[1] == 0.0 && p[2] == 0.0
 }
 
+/// `k · a`
 fn scale(a: Poly, k: f64) -> Poly {
     a.map(|c| c * k)
 }
 
+/// `a + b`
 fn add(a: Poly, b: Poly) -> Poly {
     [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 }
 
+/// `a · b`; `None` if the result is above degree 2.
 fn mul(a: Poly, b: Poly) -> Option<Poly> {
     let mut r = [0.0; 5];
     for i in 0..3 {
@@ -172,6 +183,7 @@ fn mul(a: Poly, b: Poly) -> Option<Poly> {
     (r[3] == 0.0 && r[4] == 0.0).then_some([r[0], r[1], r[2]])
 }
 
+/// Roots of `a·x² + b·x + c` by formula.
 fn exact([c, b, a]: Poly) -> Result<Vec<Root>, Error> {
     let tiny = |v: f64| v.abs() < EPS;
     if tiny(a) && tiny(b) {
@@ -204,6 +216,7 @@ fn exact([c, b, a]: Poly) -> Result<Vec<Root>, Error> {
 
 // ---------- numeric path ----------
 
+/// Real roots of `f` via grid scan + bisection.
 fn numeric(f: &Expr, var: &str) -> Result<Vec<Root>, Error> {
     let prog = std::cell::RefCell::new(Program::compile(f, var)?);
     let at = |x: f64| prog.borrow_mut().run(x);
