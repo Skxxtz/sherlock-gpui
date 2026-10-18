@@ -4,7 +4,7 @@ use std::{collections::HashMap, fs::File, io::ErrorKind};
 use crate::{
     loader::utils::ApplicationAction,
     sherlock_msg,
-    ui::variables::runtime_argument::RuntimeArgument,
+    ui::runtime_arguments::RuntimeArgument,
     utils::errors::{
         SherlockMessage,
         types::{FileAction, SherlockErrorType},

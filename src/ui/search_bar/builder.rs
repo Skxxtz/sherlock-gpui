@@ -1,6 +1,5 @@
 use crate::ui::{
-    search_bar::TextInput, utils::timeout::TimeoutCaller,
-    variables::runtime_argument::RuntimeArgument,
+    runtime_arguments::RuntimeArgument, search_bar::TextInput, utils::timeout::TimeoutCaller,
 };
 use gpui::{Context, SharedString};
 

@@ -9,8 +9,13 @@ use crate::{
     loader::utils::{ApplicationActionSerde, RawLauncher},
     ui::{
         choice::ChoiceOption,
-        variables::runtime_argument::{
-            ChoiceVar, ChoiceVarBody, CommandVar, PasswordVar, PathVar, RuntimeArgument, StringVar,
+        runtime_arguments::{
+            RuntimeArgument,
+            choice::{ChoiceVar, ChoiceVarBody},
+            command::CommandVar,
+            password::PasswordVar,
+            path::PathVar,
+            string::StringVar,
         },
     },
     utils::config::HomeType,

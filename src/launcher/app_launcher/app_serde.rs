@@ -12,7 +12,7 @@ use crate::{
         resolve_icon_path,
         utils::{ApplicationAction, PriorityGuard},
     },
-    ui::{launcher::context_menu::ContextMenuAction, variables::runtime_argument::RuntimeArgument},
+    ui::{launcher::context_menu::ContextMenuAction, runtime_arguments::RuntimeArgument},
 };
 
 /// Deserializes a map of `{ "App Name": AppData }` where the key becomes

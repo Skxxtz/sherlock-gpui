@@ -13,7 +13,7 @@ use md_rs::{
     list, list_iter, md, p,
 };
 
-use crate::{docs::Documentation, ui::variables::runtime_argument::RuntimeArgument};
+use crate::{docs::Documentation, ui::runtime_arguments::RuntimeArgument};
 
 struct ExecVariableDoc {
     title: &'static str,

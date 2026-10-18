@@ -11,8 +11,8 @@ use md_rs::{
 
 use crate::{
     docs::book::{BookEntry, TopLevelEntry},
-    launcher::{Launcher, LauncherConfig},
-    ui::variables::runtime_argument::RuntimeArgument,
+    launcher::LauncherConfig,
+    ui::runtime_arguments::RuntimeArgument,
 };
 
 pub struct Configuration;

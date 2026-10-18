@@ -30,9 +30,9 @@ use crate::{
             },
             navigator::views::MoveDirection,
         },
+        runtime_arguments::RuntimeArgument,
         search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
         traits::RenderableChildDelegate,
-        variables::runtime_argument::RuntimeArgument,
     },
     utils::{
         command_launch::spawn_detached,

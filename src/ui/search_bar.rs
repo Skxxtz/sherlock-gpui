@@ -11,8 +11,8 @@ use gpui::{
 use crate::{
     app::theme::ActiveTheme,
     ui::{
-        choice::Choice, search_bar::builder::TextInputBuilder, utils::timeout::TimeoutCaller,
-        variables::runtime_argument::RuntimeArgument,
+        choice::Choice, runtime_arguments::RuntimeArgument, search_bar::builder::TextInputBuilder,
+        utils::timeout::TimeoutCaller,
     },
     utils::paths::{get_nth_command_completion, get_nth_path_completion},
 };

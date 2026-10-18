@@ -16,8 +16,8 @@ use crate::{
     loader::utils::Priority,
     ui::{
         launcher::context_menu::{ContextMenuAction, DynamicFunctionAction},
+        runtime_arguments::RuntimeArgument,
         utils::{search::SherlockSearch, timeout::Timeout},
-        variables::runtime_argument::RuntimeArgument,
         widgets::{
             RenderableChildImpl, Selection,
             timer::{

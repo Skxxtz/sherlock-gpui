@@ -12,8 +12,8 @@ use crate::{
     loader::utils::Priority,
     ui::{
         launcher::{context_menu::ContextMenuAction, navigator::views::MoveDirection},
+        runtime_arguments::RuntimeArgument,
         utils::selection::Selection,
-        variables::runtime_argument::RuntimeArgument,
     },
 };
 

@@ -14,7 +14,7 @@ use crate::{
         IconType, resolve_icon_path,
         utils::{ApplicationAction, PriorityGuard, construct_search},
     },
-    ui::{launcher::context_menu::ContextMenuAction, variables::runtime_argument::RuntimeArgument},
+    ui::{launcher::context_menu::ContextMenuAction, runtime_arguments::RuntimeArgument},
     utils::config::SherlockAlias,
 };
 

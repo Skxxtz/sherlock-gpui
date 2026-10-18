@@ -11,7 +11,7 @@ use crate::{
     launcher::{LauncherConfig, utils::binds::BindSerde, variant_type::LauncherVariant},
     loader::{IconType, resolve_icon_path},
     sherlock_msg,
-    ui::variables::runtime_argument::RuntimeArgument,
+    ui::runtime_arguments::RuntimeArgument,
     utils::{
         cache::BinaryCache,
         config::HomeType,

@@ -11,8 +11,8 @@ use crate::{
     loader::utils::Priority,
     ui::{
         launcher::context_menu::ContextMenuAction,
+        runtime_arguments::RuntimeArgument,
         utils::{render::substitute, selection::Selection},
-        variables::runtime_argument::RuntimeArgument,
         widgets::{RenderableChildImpl, app::sidebar::AppDataSidebar},
     },
     utils::config::ConfigGuard,

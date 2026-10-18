@@ -28,9 +28,9 @@ use crate::{
             context_menu::{ContextMenuAction, DynamicFunctionAction},
             navigator::views::MoveDirection,
         },
+        runtime_arguments::RuntimeArgument,
         traits::RenderableChildImpl,
         utils::selection::Selection,
-        variables::runtime_argument::RuntimeArgument,
     },
     utils::files::{expand_path, home_dir},
 };

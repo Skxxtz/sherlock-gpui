@@ -10,8 +10,8 @@ use crate::{
         variant_type::InnerFunction,
     },
     ui::{
-        launcher::context_menu::ContextMenuAction, utils::selection::Selection,
-        variables::runtime_argument::RuntimeArgument,
+        launcher::context_menu::ContextMenuAction, runtime_arguments::RuntimeArgument,
+        utils::selection::Selection,
     },
     utils::errors::SherlockMessage,
 };

@@ -30,9 +30,9 @@ use crate::{
     loader::utils::Priority,
     ui::{
         launcher::context_menu::{ContextMenuAction, quick_actions::Hideable},
+        runtime_arguments::RuntimeArgument,
         traits::{RenderableChildDelegate, RenderableChildImpl},
         utils::selection::Selection,
-        variables::runtime_argument::RuntimeArgument,
         widgets::{
             audio::MusicPlayerWidget, clipboard::ClipWidget, dmenu::DmenuData, event::EventWidget,
             message::MessageChild, plugin::PluginWidget, process::ProcessData, script::ScriptData,
