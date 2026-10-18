@@ -2,90 +2,68 @@
 
 use crate::Error;
 
-/// A built-in function. Trig works in degrees.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Func {
-    Sqrt,
-    Cbrt,
-    Abs,
-    Exp,
-    Ln,
-    Log2,
-    Log,
-    Sin,
-    Cos,
-    Tan,
-    Asin,
-    Acos,
-    Atan,
-    Sinh,
-    Cosh,
-    Tanh,
-    Floor,
-    Ceil,
-    Round,
-    Min,
-    Max,
+/// Declares the function enum plus `from_name` and `name`, both generated
+/// from the `#[name = "…"]` on each variant.
+macro_rules! functions {
+    (
+        $(#[$meta:meta])*
+        $vis:vis enum $Enum:ident {
+            $( #[name = $name:literal] $Variant:ident ),* $(,)?
+        }
+    ) => {
+        $(#[$meta])*
+        $vis enum $Enum {
+            $( $Variant ),*
+        }
+
+        impl $Enum {
+            /// `"sin"` → `Func::Sin`; `None` if unknown.
+            pub fn from_name(name: &str) -> Option<Self> {
+                match name {
+                    $( $name => Some(Self::$Variant), )*
+                    _ => None,
+                }
+            }
+
+            /// `Func::Sin` → `"sin"` (for error messages).
+            pub fn name(self) -> &'static str {
+                match self {
+                    $( Self::$Variant => $name, )*
+                }
+            }
+        }
+    };
+}
+
+functions! {
+    /// A built-in function. Trig works in degrees.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Func {
+        #[name = "sqrt"] Sqrt,
+        #[name = "cbrt"] Cbrt,
+        #[name = "abs"] Abs,
+        #[name = "exp"] Exp,
+        #[name = "ln"] Ln,
+        #[name = "log2"] Log2,
+        #[name = "log"] Log,
+        #[name = "sin"] Sin,
+        #[name = "cos"] Cos,
+        #[name = "tan"] Tan,
+        #[name = "asin"] Asin,
+        #[name = "acos"] Acos,
+        #[name = "atan"] Atan,
+        #[name = "sinh"] Sinh,
+        #[name = "cosh"] Cosh,
+        #[name = "tanh"] Tanh,
+        #[name = "floor"] Floor,
+        #[name = "ceil"] Ceil,
+        #[name = "round"] Round,
+        #[name = "min"] Min,
+        #[name = "max"] Max,
+    }
 }
 
 impl Func {
-    /// `"sin"` → `Func::Sin`; `None` if unknown.
-    pub fn from_name(name: &str) -> Option<Func> {
-        use Func::*;
-        Some(match name {
-            "sqrt" => Sqrt,
-            "cbrt" => Cbrt,
-            "abs" => Abs,
-            "exp" => Exp,
-            "ln" => Ln,
-            "log2" => Log2,
-            "log" => Log,
-            "sin" => Sin,
-            "cos" => Cos,
-            "tan" => Tan,
-            "asin" => Asin,
-            "acos" => Acos,
-            "atan" => Atan,
-            "sinh" => Sinh,
-            "cosh" => Cosh,
-            "tanh" => Tanh,
-            "floor" => Floor,
-            "ceil" => Ceil,
-            "round" => Round,
-            "min" => Min,
-            "max" => Max,
-            _ => return None,
-        })
-    }
-
-    /// `Func::Sin` → `"sin"` (for error messages).
-    pub fn name(self) -> &'static str {
-        use Func::*;
-        match self {
-            Sqrt => "sqrt",
-            Cbrt => "cbrt",
-            Abs => "abs",
-            Exp => "exp",
-            Ln => "ln",
-            Log2 => "log2",
-            Log => "log",
-            Sin => "sin",
-            Cos => "cos",
-            Tan => "tan",
-            Asin => "asin",
-            Acos => "acos",
-            Atan => "atan",
-            Sinh => "sinh",
-            Cosh => "cosh",
-            Tanh => "tanh",
-            Floor => "floor",
-            Ceil => "ceil",
-            Round => "round",
-            Min => "min",
-            Max => "max",
-        }
-    }
-
     /// Run with arguments `a`; checks the argument count.
     pub fn apply(self, a: &[f64]) -> Result<f64, Error> {
         use Func::*;
@@ -177,4 +155,17 @@ pub fn factorial(n: f64) -> Result<f64, Error> {
         return Err(Error::NotFinite); // 171! overflows f64
     }
     Ok((2..=n as u64).fold(1.0, |acc, k| acc * k as f64))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Func;
+
+    #[test]
+    fn names_round_trip() {
+        for name in ["sqrt", "log2", "sin", "max"] {
+            assert_eq!(Func::from_name(name).unwrap().name(), name);
+        }
+        assert_eq!(Func::from_name("foo"), None);
+    }
 }
