@@ -228,6 +228,17 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         }
     }
 
+    /// `*`, `/`, `%` (modulo) and implicit multiplication,
+    /// one level above `additive`.
+    ///
+    /// - `2 * 3` → `sink.binary(Mul, 2, 3)`
+    /// - left to right (loop): `8 / 2 / 2` = `(8 / 2) / 2` = 2
+    /// - `10 % 3` → modulo; `postfix` already took any percent `%`,
+    ///   so a `%` that reaches this level is always modulo
+    /// - implicit: a name or `(` right after a value multiplies:
+    ///   `2pi`, `2(3+4)`, `2 sin(x)`. A number does not: `2 3` is an error
+    ///
+    /// No `*`, `/`, `%`, name or `(` next → the value is passed up unchanged.
     fn multiplicative(&mut self) -> Result<S::Out, Error> {
         let mut lhs = self.unary()?;
         loop {
@@ -251,6 +262,15 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         }
     }
 
+    /// Leading sign, one level above `multiplicative`.
+    ///
+    /// - `-5` → `sink.neg(5)`
+    /// - `+5` → just 5
+    /// - stacks: `--5` = 5, `2 - -3` = 5
+    /// - binds weaker than `^` and `%`: `-2^2` = `-(2^2)` = -4
+    ///
+    /// Only a `-` at the start of a value is a sign. A `-` between two
+    /// values never reaches here; `additive` takes it as subtraction.
     fn unary(&mut self) -> Result<S::Out, Error> {
         if self.eat(Token::Minus)? {
             let e = self.unary()?;
