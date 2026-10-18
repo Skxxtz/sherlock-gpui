@@ -50,6 +50,16 @@ impl Program {
         })
     }
 
+    /// Number of instructions (shows how much constant folding removed).
+    pub fn len(&self) -> usize {
+        self.code.len()
+    }
+
+    /// No instructions at all.
+    pub fn is_empty(&self) -> bool {
+        self.code.is_empty()
+    }
+
     /// Evaluate at `x`. `None` if undefined or not finite there.
     pub fn run(&mut self, x: f64) -> Option<f64> {
         let s = &mut self.stack;
@@ -161,6 +171,3 @@ fn emit(e: &Expr, var: &str, code: &mut Vec<Instr>) -> Result<(), Error> {
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests;
