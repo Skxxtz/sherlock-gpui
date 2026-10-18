@@ -83,6 +83,23 @@ pub fn tokenize(input: &str) -> Result<Vec<Spanned>, Error> {
                 });
                 continue;
             }
+            c if superscript_digit(c).is_some() => {
+                // `x²` / `x¹⁰` → `x ^ 2` / `x ^ 10`
+                let mut n = 0.0;
+                while let Some(d) = chars.peek().and_then(|&(_, c)| superscript_digit(c)) {
+                    n = n * 10.0 + d as f64;
+                    chars.next();
+                }
+                out.push(Spanned {
+                    tok: Token::Caret,
+                    pos,
+                });
+                out.push(Spanned {
+                    tok: Token::Num(n),
+                    pos,
+                });
+                continue;
+            }
             '+' => Token::Plus,
             '-' | '−' => Token::Minus,
             '×' | '·' => Token::Star,
@@ -98,6 +115,17 @@ pub fn tokenize(input: &str) -> Result<Vec<Spanned>, Error> {
         out.push(Spanned { tok, pos });
     }
     Ok(out)
+}
+
+fn superscript_digit(c: char) -> Option<u32> {
+    match c {
+        '⁰' => Some(0),
+        '¹' => Some(1),
+        '²' => Some(2),
+        '³' => Some(3),
+        '⁴'..='⁹' => Some(c as u32 - '⁴' as u32 + 4),
+        _ => None,
+    }
 }
 
 /// End byte of a number starting at `start`: digits, optional fraction,
@@ -184,6 +212,16 @@ mod tests {
                 Num(1.0)
             ]
         );
+    }
+
+    #[test]
+    fn superscripts() {
+        assert_eq!(toks("3²"), vec![Num(3.0), Caret, Num(2.0)]);
+        assert_eq!(
+            toks("x¹⁰+1"),
+            vec![Ident("x".into()), Caret, Num(10.0), Plus, Num(1.0)]
+        );
+        assert_eq!(toks("2⁴⁹"), vec![Num(2.0), Caret, Num(49.0)]);
     }
 
     #[test]
