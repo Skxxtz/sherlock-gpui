@@ -262,12 +262,12 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         self.postfix()
     }
 
-    /// Postfix `%` (percent), one level above [`power`](Self::power).
+    /// Postfix `%` (percent), one level above `power`.
     ///
     /// - `50%` → `sink.percent(50)` = 0.5
     /// - `10%%` → loops: `(10%)%`
     /// - only percent if no operand follows: `10 % 3` is left for
-    ///   [`multiplicative`](Self::multiplicative) as modulo
+    ///   `multiplicative` as modulo
     /// - binds weaker than `^`: `2^2%` = `(2^2)%`
     ///
     /// No `%` next → the value is passed up unchanged.
@@ -280,10 +280,10 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         Ok(e)
     }
 
-    /// `^`, one level above [`factorial`](Self::factorial).
+    /// `^`, one level above `factorial`.
     ///
     /// - `2^3` → `sink.binary(Pow, 2, 3)`
-    /// - right to left: the exponent is parsed by [`unary`](Self::unary),
+    /// - right to left: the exponent is parsed by `unary`,
     ///   which comes back here, so `2^3^2` = `2^(3^2)` = 512
     /// - signed exponent works: `2^-1` = 0.5
     /// - binds tighter than a leading `-`: `-2^2` = `-(2^2)` = -4
@@ -298,7 +298,7 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         Ok(base)
     }
 
-    /// Postfix `!`, one level above [`primary`](Self::primary).
+    /// Postfix `!`, one level above `primary`.
     /// Takes a value and applies every `!` directly after it.
     ///
     /// - `5!` → `sink.factorial(5)`
@@ -320,7 +320,7 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
     /// - number: `42` → `sink.num`
     /// - name: `pi` → `sink.var`
     /// - call: `sin(…)` → name directly followed by `(` → `sink.call`
-    /// - group: `( … )` → restarts at [`additive`](Self::additive), so
+    /// - group: `( … )` → restarts at `additive`, so
     ///   anything goes inside the brackets
     ///
     /// Anything else (an operator, `)`, end of input) is an error:
