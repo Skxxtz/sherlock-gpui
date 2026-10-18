@@ -60,6 +60,7 @@ run `git log main..dev` for all changes
     configure whether the sidebar should always show or only on the `Info` quick
     action (`481699d2`)
     * added shortcut keys (`fa91129f`)
+* **Runtime Arguments**: Added validation chars and default values (`ca414c98`, `dfaadb9f`, `95430689`)
 
 ### Improved
 
@@ -78,6 +79,7 @@ run `git log main..dev` for all changes
 * **File-Search**: Improved image preview (`0b3077bc`, `0152803a`, `1b3584ff`, `8b6681ea`)
 * **Bookmark Launcher**: improved bookmark parsing for firefox-based browsers (`dc799526`)
 * **Context Menu**: added support for quick actions like hide, pin, etc in the context menu (`94d4ca7a`, `e07e9ca7`) 
+* **Runtime Arguments**: Added shorthand notation for choice runtime argument (`220115bd`)
 
 ### Removed
 
