@@ -100,7 +100,7 @@ impl EntityInputHandler for TextInput {
     ) {
         // Handle rulesets
         if let Some(char_set) = self.variable.as_ref().and_then(|v| v.validation())
-            && new_text.chars().all(|c| char_set.contains(c))
+            && !char_set.contains_all(new_text)
         {
             self.validity = ValidityState::Invalid;
             cx.notify();
