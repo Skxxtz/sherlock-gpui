@@ -43,7 +43,7 @@ impl SherlockFlags {
         let config_dir = self.config_dir.take().unwrap_or(paths::get_config_dir()?);
         let home = home_dir()?;
         let mut path = match &self.config {
-            Some(path) => expand_path(path, &home),
+            Some(path) => expand_path(path, home),
             _ => config_dir.join("config.toml"),
         };
 
@@ -101,7 +101,7 @@ impl SherlockFlags {
                                 .into_iter()
                                 .map(|s| {
                                     if s.file.starts_with("~/") {
-                                        expand_path(s.file, &home)
+                                        expand_path(s.file, home)
                                     } else {
                                         s.file
                                     }

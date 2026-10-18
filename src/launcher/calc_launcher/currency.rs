@@ -9,7 +9,7 @@ use crate::{
     launcher::calc_launcher::trading_view_api::{
         CurrencyItem, TradingViewApiRequest, TradingViewApiResponse,
     },
-    utils::{cache::JsonCache, errors::SherlockMessage, files::home_dir},
+    utils::{cache::JsonCache, errors::SherlockMessage, files::home_dir_owned},
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -148,7 +148,7 @@ impl From<TradingViewApiResponse> for Currency {
 
 impl JsonCache for Currency {
     fn cache_path() -> std::path::PathBuf {
-        home_dir()
+        home_dir_owned()
             .unwrap_or_else(|_| PathBuf::from("."))
             .join(".cache/sherlock/currency/currency.json")
     }

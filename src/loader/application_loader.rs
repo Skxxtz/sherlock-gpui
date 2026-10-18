@@ -13,7 +13,7 @@ use crate::prelude::PathHelpers;
 use crate::utils::cache::BinaryCache;
 use crate::utils::config::{ConfigFileChange, SherlockAlias, SherlockIgnore};
 use crate::utils::errors::types::{FileAction, SherlockErrorType};
-use crate::utils::files::{expand_path, home_dir};
+use crate::utils::files::{expand_path, home_dir_owned};
 use crate::utils::{config::ConfigGuard, errors::SherlockMessage};
 
 mod parser;
@@ -174,7 +174,7 @@ impl ApplicationLoader {
     }
 
     pub fn get_applications_dir() -> Arc<[PathBuf]> {
-        let home = home_dir().unwrap_or_default();
+        let home = home_dir_owned().unwrap_or_default();
         let xdg_data_home = env::var("XDG_DATA_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|_| home.join(".local/share"));

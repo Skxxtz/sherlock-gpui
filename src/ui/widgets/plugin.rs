@@ -370,7 +370,7 @@ fn image_source(src: &str) -> ImageSource {
         return ImageSource::Resource(Resource::Uri(SharedUri::from(src.to_string())));
     }
     let path = match home_dir() {
-        Ok(home) => expand_path(src, &home),
+        Ok(home) => expand_path(src, home),
         Err(_) => src.into(),
     };
     ImageSource::Resource(Resource::Path(Arc::from(path)))

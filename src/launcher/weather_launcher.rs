@@ -15,7 +15,7 @@ use crate::ui::widgets::RenderableChild;
 use crate::ui::widgets::weather::WeatherWidget;
 use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::{NetworkAction, SherlockErrorType};
-use crate::utils::files::home_dir;
+use crate::utils::files::home_dir_owned;
 use crate::{
     launcher::{LauncherProvider, LauncherType},
     loader::utils::RawLauncher,
@@ -85,7 +85,7 @@ pub struct WeatherData {
 }
 impl WeatherData {
     pub fn from_cache(launcher: &WeatherLauncher) -> Option<Self> {
-        let mut path = home_dir().ok()?;
+        let mut path = home_dir_owned().ok()?;
         path.push(format!(
             ".cache/sherlock/weather/{}.json",
             launcher.location
@@ -116,7 +116,7 @@ impl WeatherData {
     }
 
     fn cache(&self) -> Option<()> {
-        let mut path = home_dir().ok()?;
+        let mut path = home_dir_owned().ok()?;
         path.push(format!(".cache/sherlock/weather/{}.json", self.location));
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).ok()?;

@@ -3,11 +3,15 @@ use std::{
     fs::File,
     io::{self, BufRead},
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 
 use crate::{sherlock_msg, utils::errors::types::SherlockErrorType};
 
 use super::errors::SherlockMessage;
+
+static HOME: OnceLock<PathBuf> = OnceLock::new();
+static HOME_STR: OnceLock<String> = OnceLock::new();
 
 pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
@@ -26,10 +30,30 @@ pub fn expand_path<T: AsRef<Path>>(path: T, home: &Path) -> PathBuf {
     }
     path.to_path_buf()
 }
-pub fn home_dir() -> Result<PathBuf, SherlockMessage> {
-    env::var("HOME")
-        .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::EnvError("$HOME".into()), e))
-        .map(PathBuf::from)
+
+pub fn home_dir() -> Result<&'static Path, SherlockMessage> {
+    if let Some(home) = HOME.get() {
+        return Ok(home);
+    }
+    let home = env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
+        sherlock_msg!(
+            Warning,
+            SherlockErrorType::EnvError("$HOME".into()),
+            "Variable `$HOME` is not set."
+        )
+    })?;
+    Ok(HOME.get_or_init(|| home))
+}
+
+#[inline(always)]
+pub fn home_dir_owned() -> Result<PathBuf, SherlockMessage> {
+    home_dir().map(|p| p.to_path_buf())
+}
+
+#[inline(always)]
+pub fn home_str() -> Result<&'static str, SherlockMessage> {
+    let home = home_dir()?;
+    Ok(HOME_STR.get_or_init(|| home.to_string_lossy().into_owned()))
 }
 
 pub fn binary_exists(name: &str) -> bool {

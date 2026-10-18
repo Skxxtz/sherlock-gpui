@@ -19,7 +19,7 @@ impl SherlockConfig {
     pub fn to_file(loc: &Path, ext: &str) -> Result<(), SherlockMessage> {
         // create config location
         let home = home_dir()?;
-        let path = expand_path(loc, &home);
+        let path = expand_path(loc, home);
 
         fn ensure_dir(path: &Path, label: &str) {
             match std::fs::create_dir(path) {
@@ -117,19 +117,19 @@ impl SherlockConfig {
 
         // Override config files from flags
         if let Some(config) = sherlock_flags.config.as_deref() {
-            self.files.config = expand_path(config, &home).into();
+            self.files.config = expand_path(config, home).into();
         }
         if let Some(fallback) = sherlock_flags.fallback.as_deref() {
-            self.files.fallback = expand_path(fallback, &home).into();
+            self.files.fallback = expand_path(fallback, home).into();
         }
         if let Some(alias) = sherlock_flags.alias.as_deref() {
-            self.files.alias = expand_path(alias, &home).into();
+            self.files.alias = expand_path(alias, home).into();
         }
         if let Some(ignore) = sherlock_flags.ignore.as_deref() {
-            self.files.ignore = expand_path(ignore, &home).into();
+            self.files.ignore = expand_path(ignore, home).into();
         }
         if let Some(cache) = sherlock_flags.cache.as_deref() {
-            self.caching.cache = expand_path(cache, &home).into();
+            self.caching.cache = expand_path(cache, home).into();
         }
         self.runtime.sub_menu = sherlock_flags.sub_menu.take();
         self.runtime.method = sherlock_flags.method.take();

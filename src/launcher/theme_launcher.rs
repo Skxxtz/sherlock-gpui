@@ -46,7 +46,7 @@ impl LauncherProvider for ThemePicker {
             .and_then(|p| p.as_str())
             .unwrap_or("~/.config/sherlock/themes/");
         let home = home_dir()?;
-        let path = expand_path(path_str, &home);
+        let path = expand_path(path_str, home);
 
         let builtin = [
             ("Default", ThemeData::dark()),

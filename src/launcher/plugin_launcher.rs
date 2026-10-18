@@ -75,7 +75,7 @@ impl LauncherProvider for PluginLauncher {
             .args
             .get("path")
             .and_then(|p| p.as_str())
-            .map(|s| expand_path(s, &home))
+            .map(|s| expand_path(s, home))
         else {
             return Err(sherlock_msg!(
                 Warning,
