@@ -5,3 +5,11 @@ edition = "2024"
 description = "Small math expression parser and evaluator for Sherlock"
 
 [dependencies]
+
+[dev-dependencies]
+criterion = "0.5"
+meval = "0.2.0"
+
+[[bench]]
+name = "eval"
+harness = false
