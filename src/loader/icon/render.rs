@@ -1,5 +1,6 @@
 use crate::loader::icon::cache::IconType;
 use crate::utils::paths::get_cache_dir;
+use resvg::usvg;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

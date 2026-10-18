@@ -1,6 +1,5 @@
 use ::tokio::net::UnixStream;
 use gpui::{App, Application, QuitMode, SharedString};
-use once_cell::sync::OnceCell;
 use std::sync::{OnceLock, RwLock};
 use tokio::io::AsyncWriteExt;
 
@@ -27,9 +26,9 @@ mod utils;
 mod wayland;
 
 /// Holds the icon cache, containing all known icon names and their file locations.
-static ICONS: OnceCell<RwLock<CustomIconTheme>> = OnceCell::new();
+static ICONS: OnceLock<RwLock<CustomIconTheme>> = OnceLock::new();
 /// Holed the global config struct for user-specified config values.
-static CONFIG: OnceCell<RwLock<SherlockConfig>> = OnceCell::new();
+static CONFIG: OnceLock<RwLock<SherlockConfig>> = OnceLock::new();
 /// Holds the string used to show and hide the context menu.
 static CONTEXT_MENU_BIND: OnceLock<String> = OnceLock::new();
 /// Holds the modifier key char
