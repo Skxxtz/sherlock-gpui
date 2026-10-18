@@ -1,4 +1,6 @@
-//! Turns tokens into an expression tree (precedence climbing).
+//! Parses tokens with precedence climbing. Generic over a [`Sink`], so the
+//! same parser can build a tree ([`TreeSink`]) or compute a value directly
+//! (`eval::EvalSink`) without allocating any nodes.
 //!
 //! Precedence, lowest to highest:
 //! 1. `+ -`
@@ -12,19 +14,10 @@
 //! `%` is modulo when an operand follows it (`10 % 3`), otherwise percent
 //! (`10%`, `10%)`, `10% * 2`). So `-3^2` = `-9`.
 
-use crate::Error;
-use crate::lexer::{Spanned, Token};
+use smallvec::SmallVec;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Expr {
-    Num(f64),
-    Var(String),
-    Neg(Box<Expr>),
-    Percent(Box<Expr>),
-    Factorial(Box<Expr>),
-    Binary(Op, Box<Expr>, Box<Expr>),
-    Call(String, Vec<Expr>),
-}
+use crate::Error;
+use crate::lexer::{Lexer, Spanned, Token};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Op {
@@ -36,58 +29,192 @@ pub enum Op {
     Pow,
 }
 
-pub fn parse(tokens: &[Spanned]) -> Result<Expr, Error> {
-    let mut p = Parser { t: tokens, i: 0 };
-    let e = p.additive()?;
-    match p.t.get(p.i) {
-        None => Ok(e),
-        Some(s) => Err(Error::UnexpectedToken(s.pos)),
+pub type Args<T> = SmallVec<[T; 4]>;
+
+/// Receives parse events bottom-up and builds the output.
+pub trait Sink<'a> {
+    type Out;
+    fn num(&mut self, n: f64) -> Result<Self::Out, Error>;
+    fn var(&mut self, name: &'a str) -> Result<Self::Out, Error>;
+    fn neg(&mut self, e: Self::Out) -> Result<Self::Out, Error>;
+    fn percent(&mut self, e: Self::Out) -> Result<Self::Out, Error>;
+    fn factorial(&mut self, e: Self::Out) -> Result<Self::Out, Error>;
+    fn binary(&mut self, op: Op, l: Self::Out, r: Self::Out) -> Result<Self::Out, Error>;
+    fn call(&mut self, name: &'a str, args: Args<Self::Out>) -> Result<Self::Out, Error>;
+}
+
+// ---------- tree ----------
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr<'a> {
+    Num(f64),
+    Var(&'a str),
+    Neg(Box<Expr<'a>>),
+    Percent(Box<Expr<'a>>),
+    Factorial(Box<Expr<'a>>),
+    Binary(Op, Box<Expr<'a>>, Box<Expr<'a>>),
+    Call(&'a str, Vec<Expr<'a>>),
+}
+
+impl<'a> Expr<'a> {
+    /// Does `var` appear anywhere (as a variable or as `var(…)`)?
+    pub fn contains(&self, var: &str) -> bool {
+        match self {
+            Expr::Num(_) => false,
+            Expr::Var(n) => *n == var,
+            Expr::Neg(e) | Expr::Percent(e) | Expr::Factorial(e) => e.contains(var),
+            Expr::Binary(_, l, r) => l.contains(var) || r.contains(var),
+            Expr::Call(n, args) => *n == var || args.iter().any(|a| a.contains(var)),
+        }
     }
+
+    /// Feed this tree into another sink (e.g. to evaluate it).
+    pub fn replay<S: Sink<'a>>(&self, s: &mut S) -> Result<S::Out, Error> {
+        match self {
+            Expr::Num(n) => s.num(*n),
+            Expr::Var(v) => s.var(v),
+            Expr::Neg(e) => {
+                let e = e.replay(s)?;
+                s.neg(e)
+            }
+            Expr::Percent(e) => {
+                let e = e.replay(s)?;
+                s.percent(e)
+            }
+            Expr::Factorial(e) => {
+                let e = e.replay(s)?;
+                s.factorial(e)
+            }
+            Expr::Binary(op, l, r) => {
+                let l = l.replay(s)?;
+                let r = r.replay(s)?;
+                s.binary(*op, l, r)
+            }
+            Expr::Call(n, args) => {
+                let args = args
+                    .iter()
+                    .map(|a| a.replay(s))
+                    .collect::<Result<Args<_>, _>>()?;
+                s.call(n, args)
+            }
+        }
+    }
+}
+
+pub struct TreeSink;
+
+impl<'a> Sink<'a> for TreeSink {
+    type Out = Expr<'a>;
+    fn num(&mut self, n: f64) -> Result<Expr<'a>, Error> {
+        Ok(Expr::Num(n))
+    }
+    fn var(&mut self, name: &'a str) -> Result<Expr<'a>, Error> {
+        Ok(Expr::Var(name))
+    }
+    fn neg(&mut self, e: Expr<'a>) -> Result<Expr<'a>, Error> {
+        Ok(Expr::Neg(Box::new(e)))
+    }
+    fn percent(&mut self, e: Expr<'a>) -> Result<Expr<'a>, Error> {
+        Ok(Expr::Percent(Box::new(e)))
+    }
+    fn factorial(&mut self, e: Expr<'a>) -> Result<Expr<'a>, Error> {
+        Ok(Expr::Factorial(Box::new(e)))
+    }
+    fn binary(&mut self, op: Op, l: Expr<'a>, r: Expr<'a>) -> Result<Expr<'a>, Error> {
+        Ok(Expr::Binary(op, Box::new(l), Box::new(r)))
+    }
+    fn call(&mut self, name: &'a str, args: Args<Expr<'a>>) -> Result<Expr<'a>, Error> {
+        Ok(Expr::Call(name, args.into_vec()))
+    }
+}
+
+// ---------- entry points ----------
+
+/// Parse a whole expression into `sink`.
+pub fn parse<'a, S: Sink<'a>>(src: &'a str, sink: &mut S) -> Result<S::Out, Error> {
+    let mut p = Parser::new(src, sink)?;
+    let out = p.additive()?;
+    p.expect_end()?;
+    Ok(out)
+}
+
+pub fn parse_tree(src: &str) -> Result<Expr<'_>, Error> {
+    parse(src, &mut TreeSink)
 }
 
 /// Parse `lhs = rhs`. Exactly one `=` is required.
-pub fn parse_equation(tokens: &[Spanned]) -> Result<(Expr, Expr), Error> {
-    let eqs: Vec<usize> = (0..tokens.len())
-        .filter(|&i| tokens[i].tok == Token::Eq)
-        .collect();
-    match eqs.as_slice() {
-        [] => Err(Error::NotAnEquation),
-        [i] => Ok((parse(&tokens[..*i])?, parse(&tokens[i + 1..])?)),
-        [_, second, ..] => Err(Error::UnexpectedToken(tokens[*second].pos)),
+pub fn parse_equation(src: &str) -> Result<(Expr<'_>, Expr<'_>), Error> {
+    let mut sink = TreeSink;
+    let mut p = Parser::new(src, &mut sink)?;
+    let lhs = p.additive()?;
+    match p.cur {
+        None => return Err(Error::NotAnEquation),
+        Some(Spanned { tok: Token::Eq, .. }) => p.bump()?,
+        Some(s) => return Err(Error::UnexpectedToken(s.pos)),
     }
+    let rhs = p.additive()?;
+    p.expect_end()?;
+    Ok((lhs, rhs))
 }
 
-struct Parser<'a> {
-    t: &'a [Spanned],
-    i: usize,
+// ---------- parser ----------
+
+struct Parser<'a, 's, S> {
+    lex: Lexer<'a>,
+    cur: Option<Spanned<'a>>,
+    next: Option<Spanned<'a>>,
+    sink: &'s mut S,
 }
 
-impl Parser<'_> {
-    fn peek(&self) -> Option<&Token> {
-        self.peek_at(0)
+impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
+    fn new(src: &'a str, sink: &'s mut S) -> Result<Self, Error> {
+        let mut lex = Lexer::new(src);
+        let cur = lex.next_token()?;
+        let next = lex.next_token()?;
+        Ok(Parser {
+            lex,
+            cur,
+            next,
+            sink,
+        })
     }
 
-    fn peek_at(&self, n: usize) -> Option<&Token> {
-        self.t.get(self.i + n).map(|s| &s.tok)
+    fn bump(&mut self) -> Result<(), Error> {
+        self.cur = self.next.take();
+        if self.cur.is_some() {
+            self.next = self.lex.next_token()?;
+        }
+        Ok(())
     }
 
-    fn eat(&mut self, tok: &Token) -> bool {
+    fn peek(&self) -> Option<Token<'a>> {
+        self.cur.map(|s| s.tok)
+    }
+
+    fn eat(&mut self, tok: Token) -> Result<bool, Error> {
         if self.peek() == Some(tok) {
-            self.i += 1;
-            true
+            self.bump()?;
+            Ok(true)
         } else {
-            false
+            Ok(false)
         }
     }
 
     fn err_here(&self) -> Error {
-        match self.t.get(self.i) {
+        match self.cur {
             Some(s) => Error::UnexpectedToken(s.pos),
             None => Error::UnexpectedEnd,
         }
     }
 
-    fn additive(&mut self) -> Result<Expr, Error> {
+    fn expect_end(&self) -> Result<(), Error> {
+        match self.cur {
+            None => Ok(()),
+            Some(s) => Err(Error::UnexpectedToken(s.pos)),
+        }
+    }
+
+    fn additive(&mut self) -> Result<S::Out, Error> {
         let mut lhs = self.multiplicative()?;
         loop {
             let op = match self.peek() {
@@ -95,13 +222,13 @@ impl Parser<'_> {
                 Some(Token::Minus) => Op::Sub,
                 _ => return Ok(lhs),
             };
-            self.i += 1;
+            self.bump()?;
             let rhs = self.multiplicative()?;
-            lhs = bin(op, lhs, rhs);
+            lhs = self.sink.binary(op, lhs, rhs)?;
         }
     }
 
-    fn multiplicative(&mut self) -> Result<Expr, Error> {
+    fn multiplicative(&mut self) -> Result<S::Out, Error> {
         let mut lhs = self.unary()?;
         loop {
             let op = match self.peek() {
@@ -113,73 +240,71 @@ impl Parser<'_> {
                 // implicit multiplication; `2 3` is rejected as a likely typo
                 Some(Token::Ident(_) | Token::LParen) => {
                     let rhs = self.unary()?;
-                    lhs = bin(Op::Mul, lhs, rhs);
+                    lhs = self.sink.binary(Op::Mul, lhs, rhs)?;
                     continue;
                 }
                 _ => return Ok(lhs),
             };
-            self.i += 1;
+            self.bump()?;
             let rhs = self.unary()?;
-            lhs = bin(op, lhs, rhs);
+            lhs = self.sink.binary(op, lhs, rhs)?;
         }
     }
 
-    fn unary(&mut self) -> Result<Expr, Error> {
-        if self.eat(&Token::Minus) {
-            return Ok(Expr::Neg(Box::new(self.unary()?)));
+    fn unary(&mut self) -> Result<S::Out, Error> {
+        if self.eat(Token::Minus)? {
+            let e = self.unary()?;
+            return self.sink.neg(e);
         }
-        if self.eat(&Token::Plus) {
+        if self.eat(Token::Plus)? {
             return self.unary();
         }
         self.postfix()
     }
 
-    fn postfix(&mut self) -> Result<Expr, Error> {
+    fn postfix(&mut self) -> Result<S::Out, Error> {
         let mut e = self.power()?;
-        while self.peek() == Some(&Token::Percent) && !starts_operand(self.peek_at(1)) {
-            self.i += 1;
-            e = Expr::Percent(Box::new(e));
+        while self.peek() == Some(Token::Percent) && !starts_operand(self.next.map(|s| s.tok)) {
+            self.bump()?;
+            e = self.sink.percent(e)?;
         }
         Ok(e)
     }
 
-    fn power(&mut self) -> Result<Expr, Error> {
+    fn power(&mut self) -> Result<S::Out, Error> {
         let base = self.factorial()?;
-        if self.eat(&Token::Caret) {
+        if self.eat(Token::Caret)? {
             let exp = self.unary()?; // right-assoc, allows `2^-1`
-            return Ok(bin(Op::Pow, base, exp));
+            return self.sink.binary(Op::Pow, base, exp);
         }
         Ok(base)
     }
 
-    fn factorial(&mut self) -> Result<Expr, Error> {
+    fn factorial(&mut self) -> Result<S::Out, Error> {
         let mut e = self.primary()?;
-        while self.eat(&Token::Bang) {
-            e = Expr::Factorial(Box::new(e));
+        while self.eat(Token::Bang)? {
+            e = self.sink.factorial(e)?;
         }
         Ok(e)
     }
 
-    fn primary(&mut self) -> Result<Expr, Error> {
-        let Some(tok) = self.peek().cloned() else {
-            return Err(Error::UnexpectedEnd);
-        };
-        match tok {
-            Token::Num(n) => {
-                self.i += 1;
-                Ok(Expr::Num(n))
+    fn primary(&mut self) -> Result<S::Out, Error> {
+        match self.peek() {
+            Some(Token::Num(n)) => {
+                self.bump()?;
+                self.sink.num(n)
             }
-            Token::Ident(name) => {
-                self.i += 1;
-                if self.eat(&Token::LParen) {
+            Some(Token::Ident(name)) => {
+                self.bump()?;
+                if self.eat(Token::LParen)? {
                     let args = self.args()?;
-                    Ok(Expr::Call(name, args))
+                    self.sink.call(name, args)
                 } else {
-                    Ok(Expr::Var(name))
+                    self.sink.var(name)
                 }
             }
-            Token::LParen => {
-                self.i += 1;
+            Some(Token::LParen) => {
+                self.bump()?;
                 let e = self.additive()?;
                 self.expect_rparen()?;
                 Ok(e)
@@ -189,14 +314,14 @@ impl Parser<'_> {
     }
 
     /// Arguments after `name(`, including the closing `)`.
-    fn args(&mut self) -> Result<Vec<Expr>, Error> {
-        let mut args = Vec::new();
-        if self.eat(&Token::RParen) {
+    fn args(&mut self) -> Result<Args<S::Out>, Error> {
+        let mut args = Args::new();
+        if self.eat(Token::RParen)? {
             return Ok(args);
         }
         loop {
             args.push(self.additive()?);
-            if !self.eat(&Token::Comma) {
+            if !self.eat(Token::Comma)? {
                 break;
             }
         }
@@ -205,10 +330,10 @@ impl Parser<'_> {
     }
 
     fn expect_rparen(&mut self) -> Result<(), Error> {
-        if self.eat(&Token::RParen) {
+        if self.eat(Token::RParen)? {
             Ok(())
         } else {
-            Err(match self.t.get(self.i) {
+            Err(match self.cur {
                 Some(s) => Error::UnexpectedToken(s.pos),
                 None => Error::MissingParen,
             })
@@ -216,24 +341,19 @@ impl Parser<'_> {
     }
 }
 
-fn starts_operand(t: Option<&Token>) -> bool {
+fn starts_operand(t: Option<Token>) -> bool {
     matches!(t, Some(Token::Num(_) | Token::Ident(_) | Token::LParen))
-}
-
-fn bin(op: Op, l: Expr, r: Expr) -> Expr {
-    Expr::Binary(op, Box::new(l), Box::new(r))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer::tokenize;
 
     /// Compact S-expression form for readable assertions.
     fn sx(e: &Expr) -> String {
         match e {
             Expr::Num(n) => n.to_string(),
-            Expr::Var(v) => v.clone(),
+            Expr::Var(v) => v.to_string(),
             Expr::Neg(e) => format!("(neg {})", sx(e)),
             Expr::Percent(e) => format!("(% {})", sx(e)),
             Expr::Factorial(e) => format!("(! {})", sx(e)),
@@ -256,11 +376,11 @@ mod tests {
     }
 
     fn p(s: &str) -> String {
-        sx(&parse(&tokenize(s).unwrap()).unwrap())
+        sx(&parse_tree(s).unwrap())
     }
 
     fn perr(s: &str) -> Error {
-        parse(&tokenize(s).unwrap()).unwrap_err()
+        parse_tree(s).unwrap_err()
     }
 
     #[test]
@@ -318,20 +438,11 @@ mod tests {
 
     #[test]
     fn equation() {
-        let (l, r) = parse_equation(&tokenize("2x + 1 = 7").unwrap()).unwrap();
+        let (l, r) = parse_equation("2x + 1 = 7").unwrap();
         assert_eq!((sx(&l), sx(&r)), ("(+ (* 2 x) 1)".into(), "7".into()));
-        assert_eq!(
-            parse_equation(&tokenize("1 + 2").unwrap()),
-            Err(Error::NotAnEquation)
-        );
-        assert_eq!(
-            parse_equation(&tokenize("x = 1 = 2").unwrap()),
-            Err(Error::UnexpectedToken(6))
-        );
-        assert_eq!(
-            parse_equation(&tokenize("= 2").unwrap()),
-            Err(Error::UnexpectedEnd)
-        );
+        assert_eq!(parse_equation("1 + 2"), Err(Error::NotAnEquation));
+        assert_eq!(parse_equation("x = 1 = 2"), Err(Error::UnexpectedToken(6)));
+        assert_eq!(parse_equation("= 2"), Err(Error::UnexpectedToken(0)));
     }
 
     #[test]

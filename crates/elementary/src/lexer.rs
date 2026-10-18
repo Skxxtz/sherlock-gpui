@@ -1,11 +1,11 @@
-//! Turns an input string into a flat list of tokens.
+//! Streaming lexer: produces tokens on demand, names borrow from the input.
 
 use crate::Error;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Token<'a> {
     Num(f64),
-    Ident(String),
+    Ident(&'a str),
     Plus,
     Minus,
     Star,
@@ -20,91 +20,90 @@ pub enum Token {
 }
 
 /// A token plus its byte offset in the input.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Spanned {
-    pub tok: Token,
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Spanned<'a> {
+    pub tok: Token<'a>,
     pub pos: usize,
 }
 
-pub fn tokenize(input: &str) -> Result<Vec<Spanned>, Error> {
-    let bytes = input.as_bytes();
-    let mut out = Vec::new();
-    let mut chars = input.char_indices().peekable();
+pub struct Lexer<'a> {
+    src: &'a str,
+    pos: usize,
+    /// Second token of a superscript (`²` → `^`, `2`).
+    pending: Option<Spanned<'a>>,
+}
 
-    while let Some(&(pos, c)) = chars.peek() {
+impl<'a> Lexer<'a> {
+    pub fn new(src: &'a str) -> Self {
+        Lexer {
+            src,
+            pos: 0,
+            pending: None,
+        }
+    }
+
+    fn peek_char(&self) -> Option<char> {
+        self.src[self.pos..].chars().next()
+    }
+
+    pub fn next_token(&mut self) -> Result<Option<Spanned<'a>>, Error> {
+        if let Some(t) = self.pending.take() {
+            return Ok(Some(t));
+        }
+        while let Some(c) = self.peek_char().filter(|c| c.is_whitespace()) {
+            self.pos += c.len_utf8();
+        }
+        let start = self.pos;
+        let Some(c) = self.peek_char() else {
+            return Ok(None);
+        };
+        let at = |tok| Ok(Some(Spanned { tok, pos: start }));
+
         let tok = match c {
-            c if c.is_whitespace() => {
-                chars.next();
-                continue;
-            }
             '0'..='9' | '.' => {
-                let end = number_end(bytes, pos);
-                let text = &input[pos..end];
+                let end = number_end(self.src.as_bytes(), start);
+                let text = &self.src[start..end];
                 let n = text
                     .parse::<f64>()
-                    .map_err(|_| Error::InvalidNumber(text.to_string(), pos))?;
-                while chars.peek().is_some_and(|&(i, _)| i < end) {
-                    chars.next();
-                }
-                out.push(Spanned {
-                    tok: Token::Num(n),
-                    pos,
-                });
-                continue;
+                    .map_err(|_| Error::InvalidNumber(text.to_string(), start))?;
+                self.pos = end;
+                return at(Token::Num(n));
             }
             c if c.is_alphabetic() || c == '_' => {
-                let mut end = pos;
-                while let Some(&(i, ch)) = chars.peek() {
-                    if (ch.is_alphanumeric() || ch == '_') && superscript_digit(ch).is_none() {
-                        end = i + ch.len_utf8();
-                        chars.next();
-                    } else {
-                        break;
-                    }
-                }
-                out.push(Spanned {
-                    tok: Token::Ident(input[pos..end].to_string()),
-                    pos,
-                });
-                continue;
-            }
-            '*' => {
-                chars.next();
-                // `**` is an alias for `^`
-                if chars.peek().is_some_and(|&(_, c)| c == '*') {
-                    chars.next();
-                    out.push(Spanned {
-                        tok: Token::Caret,
-                        pos,
-                    });
-                    continue;
-                }
-                out.push(Spanned {
-                    tok: Token::Star,
-                    pos,
-                });
-                continue;
+                let rest = &self.src[start..];
+                let len = rest
+                    .char_indices()
+                    .find(|&(_, ch)| {
+                        !(ch.is_alphanumeric() || ch == '_') || superscript_digit(ch).is_some()
+                    })
+                    .map_or(rest.len(), |(i, _)| i);
+                self.pos += len;
+                return at(Token::Ident(&rest[..len]));
             }
             c if superscript_digit(c).is_some() => {
                 // `x²` / `x¹⁰` → `x ^ 2` / `x ^ 10`
                 let mut n = 0.0;
-                while let Some(d) = chars.peek().and_then(|&(_, c)| superscript_digit(c)) {
+                while let Some(ch) = self.peek_char() {
+                    let Some(d) = superscript_digit(ch) else {
+                        break;
+                    };
                     n = n * 10.0 + d as f64;
-                    chars.next();
+                    self.pos += ch.len_utf8();
                 }
-                out.push(Spanned {
-                    tok: Token::Caret,
-                    pos,
-                });
-                out.push(Spanned {
+                self.pending = Some(Spanned {
                     tok: Token::Num(n),
-                    pos,
+                    pos: start,
                 });
-                continue;
+                return at(Token::Caret);
             }
+            // `**` is an alias for `^`
+            '*' if self.src[start + 1..].starts_with('*') => {
+                self.pos += 2;
+                return at(Token::Caret);
+            }
+            '*' | '×' | '·' => Token::Star,
             '+' => Token::Plus,
             '-' | '−' => Token::Minus,
-            '×' | '·' => Token::Star,
             '/' | '÷' => Token::Slash,
             '^' => Token::Caret,
             '%' => Token::Percent,
@@ -113,10 +112,19 @@ pub fn tokenize(input: &str) -> Result<Vec<Spanned>, Error> {
             ')' => Token::RParen,
             ',' => Token::Comma,
             '=' => Token::Eq,
-            other => return Err(Error::UnexpectedChar(other, pos)),
+            other => return Err(Error::UnexpectedChar(other, start)),
         };
-        chars.next();
-        out.push(Spanned { tok, pos });
+        self.pos += c.len_utf8();
+        at(tok)
+    }
+}
+
+/// Lex the whole input at once (tests and debugging).
+pub fn tokenize(input: &str) -> Result<Vec<Spanned<'_>>, Error> {
+    let mut lx = Lexer::new(input);
+    let mut out = Vec::new();
+    while let Some(t) = lx.next_token()? {
+        out.push(t);
     }
     Ok(out)
 }
@@ -163,7 +171,7 @@ mod tests {
     use super::*;
     use Token::*;
 
-    fn toks(s: &str) -> Vec<Token> {
+    fn toks(s: &str) -> Vec<Token<'_>> {
         tokenize(s).unwrap().into_iter().map(|t| t.tok).collect()
     }
 
@@ -177,8 +185,8 @@ mod tests {
 
     #[test]
     fn exponent_without_digits_stays_ident() {
-        assert_eq!(toks("2e"), vec![Num(2.0), Ident("e".into())]);
-        assert_eq!(toks("2ex"), vec![Num(2.0), Ident("ex".into())]);
+        assert_eq!(toks("2e"), vec![Num(2.0), Ident("e")]);
+        assert_eq!(toks("2ex"), vec![Num(2.0), Ident("ex")]);
     }
 
     #[test]
@@ -188,9 +196,9 @@ mod tests {
             vec![
                 Num(2.0),
                 Star,
-                Ident("sin".into()),
+                Ident("sin"),
                 LParen,
-                Ident("pi".into()),
+                Ident("pi"),
                 Slash,
                 Num(4.0),
                 RParen,
@@ -223,7 +231,7 @@ mod tests {
         assert_eq!(toks("3²"), vec![Num(3.0), Caret, Num(2.0)]);
         assert_eq!(
             toks("x¹⁰+1"),
-            vec![Ident("x".into()), Caret, Num(10.0), Plus, Num(1.0)]
+            vec![Ident("x"), Caret, Num(10.0), Plus, Num(1.0)]
         );
         assert_eq!(toks("2⁴⁹"), vec![Num(2.0), Caret, Num(49.0)]);
     }

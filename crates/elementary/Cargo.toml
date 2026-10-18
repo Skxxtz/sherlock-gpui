@@ -5,6 +5,7 @@ edition = "2024"
 description = "Small math expression parser and evaluator for Sherlock"
 
 [dependencies]
+smallvec = "1.15.1"
 
 [dev-dependencies]
 criterion = "0.5"

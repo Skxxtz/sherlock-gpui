@@ -2,11 +2,14 @@
 //!
 //! 1. Exact: if `lhs - rhs` is a polynomial of degree ≤ 2 in the unknown,
 //!    use the closed formula (complex roots included).
-//! 2. Numeric: otherwise scan [-RANGE, RANGE] for sign changes and bisect.
+//! 2. Numeric: otherwise scan [-1000, 1000] (finer near 0) for sign
+//!    changes and bisect.
 //!    Finds real roots where the function crosses zero.
 
 use crate::Error;
-use crate::eval::{constant, eval, eval_with, is_function};
+use crate::compile::Program;
+use crate::eval::eval_with;
+use crate::func::{Func, constant};
 use crate::parser::{Expr, Op};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,41 +28,60 @@ pub struct Solution {
     pub roots: Vec<Root>,
 }
 
-const RANGE: f64 = 1000.0;
-const STEPS: usize = 20_000;
+/// Scan grid as `(first, last, step)` in units of `step`: fine near 0,
+/// coarser further out. Covers [-1000, 1000] with ~5600 points.
+const GRID: &[(i64, i64, f64)] = &[
+    (-1000, -101, 1.0),
+    (-1000, -101, 0.1),
+    (-1000, 999, 0.01),
+    (100, 999, 0.1),
+    (100, 1000, 1.0),
+];
+
+fn grid() -> impl Iterator<Item = f64> {
+    // integer index × step, so e.g. 0 is hit exactly
+    GRID.iter()
+        .flat_map(|&(a, b, step)| (a..=b).map(move |k| k as f64 * step))
+}
 const EPS: f64 = 1e-12;
 
-pub fn solve(lhs: &Expr, rhs: &Expr) -> Result<Solution, Error> {
-    let var = unknown(lhs, rhs)?;
-    let f = Expr::Binary(Op::Sub, Box::new(lhs.clone()), Box::new(rhs.clone()));
+pub fn solve(lhs: Expr, rhs: Expr) -> Result<Solution, Error> {
+    let var = unknown(&lhs, &rhs)?;
+    let f = Expr::Binary(Op::Sub, Box::new(lhs), Box::new(rhs));
 
-    let roots = match poly(&f, &var)? {
+    let roots = match poly(&f, var)? {
         Some(p) => exact(p)?,
-        None => numeric(&f, &var)?,
+        None => numeric(&f, var)?,
     };
-    Ok(Solution { var, roots })
+    Ok(Solution {
+        var: var.to_string(),
+        roots,
+    })
 }
 
 /// The single free variable (a name that isn't a known constant).
-fn unknown(l: &Expr, r: &Expr) -> Result<String, Error> {
+fn unknown<'a>(l: &Expr<'a>, r: &Expr<'a>) -> Result<&'a str, Error> {
     let mut names = Vec::new();
     collect_vars(l, &mut names);
     collect_vars(r, &mut names);
-    match names.len() {
-        0 => Err(Error::NoUnknown),
-        1 => Ok(names.pop().unwrap()),
-        _ => Err(Error::TooManyUnknowns(names)),
+    match names.as_slice() {
+        [] => Err(Error::NoUnknown),
+        [v] => Ok(v),
+        _ => Err(Error::TooManyUnknowns(
+            names.iter().map(|n| n.to_string()).collect(),
+        )),
     }
 }
 
-fn collect_vars(e: &Expr, out: &mut Vec<String>) {
+fn collect_vars<'a>(e: &Expr<'a>, out: &mut Vec<&'a str>) {
+    let mut add = |n: &'a str| {
+        if constant(n).is_none() && !out.contains(&n) {
+            out.push(n);
+        }
+    };
     match e {
         Expr::Num(_) => {}
-        Expr::Var(n) => {
-            if constant(n).is_none() && !out.contains(n) {
-                out.push(n.clone());
-            }
-        }
+        Expr::Var(n) => add(n),
         Expr::Neg(e) | Expr::Percent(e) | Expr::Factorial(e) => collect_vars(e, out),
         Expr::Binary(_, l, r) => {
             collect_vars(l, out);
@@ -67,21 +89,11 @@ fn collect_vars(e: &Expr, out: &mut Vec<String>) {
         }
         Expr::Call(name, args) => {
             // `x(2)` → x is a variable, not a function
-            if !is_function(name) && constant(name).is_none() && !out.contains(name) {
-                out.push(name.clone());
+            if Func::from_name(name).is_none() {
+                add(name);
             }
             args.iter().for_each(|a| collect_vars(a, out))
         }
-    }
-}
-
-fn contains(e: &Expr, var: &str) -> bool {
-    match e {
-        Expr::Num(_) => false,
-        Expr::Var(n) => n == var,
-        Expr::Neg(e) | Expr::Percent(e) | Expr::Factorial(e) => contains(e, var),
-        Expr::Binary(_, l, r) => contains(l, var) || contains(r, var),
-        Expr::Call(name, args) => name == var || args.iter().any(|a| contains(a, var)),
     }
 }
 
@@ -92,14 +104,14 @@ type Poly = [f64; 3];
 
 /// `Ok(None)` = not a polynomial of degree ≤ 2, try numerically.
 fn poly(e: &Expr, var: &str) -> Result<Option<Poly>, Error> {
-    if !contains(e, var) {
-        return Ok(Some([eval(e)?, 0.0, 0.0]));
+    if !e.contains(var) {
+        return Ok(Some([eval_with(e, &[])?, 0.0, 0.0]));
     }
     let p = |e| poly(e, var);
     Ok(match e {
         Expr::Var(_) => Some([0.0, 1.0, 0.0]),
         // `x(a)` = `x * a`
-        Expr::Call(name, args) if name == var && args.len() == 1 => {
+        Expr::Call(name, args) if *name == var && args.len() == 1 => {
             let a = p(&args[0])?;
             a.and_then(|a| mul([0.0, 1.0, 0.0], a))
         }
@@ -110,10 +122,10 @@ fn poly(e: &Expr, var: &str) -> Result<Option<Poly>, Error> {
             let Expr::Percent(pct) = r.as_ref() else {
                 unreachable!()
             };
-            if contains(pct, var) {
+            if pct.contains(var) {
                 return Ok(None);
             }
-            let k = eval(pct)? / 100.0;
+            let k = eval_with(pct, &[])? / 100.0;
             p(l)?.map(|a| scale(a, if *op == Op::Add { 1.0 + k } else { 1.0 - k }))
         }
         Expr::Binary(op, l, r) => {
@@ -193,8 +205,8 @@ fn exact([c, b, a]: Poly) -> Result<Vec<Root>, Error> {
 // ---------- numeric path ----------
 
 fn numeric(f: &Expr, var: &str) -> Result<Vec<Root>, Error> {
-    let at = |x: f64| eval_with(f, &[(var, x)]).ok();
-    let step = 2.0 * RANGE / STEPS as f64;
+    let prog = std::cell::RefCell::new(Program::compile(f, var)?);
+    let at = |x: f64| prog.borrow_mut().run(x);
     let mut roots: Vec<f64> = Vec::new();
     let mut push = |x: f64| {
         let x = clean(x);
@@ -204,8 +216,7 @@ fn numeric(f: &Expr, var: &str) -> Result<Vec<Root>, Error> {
     };
 
     let mut prev: Option<(f64, f64)> = None;
-    for i in 0..=STEPS {
-        let x = -RANGE + i as f64 * step;
+    for x in grid() {
         let Some(y) = at(x) else {
             prev = None; // undefined here: don't bridge across it
             continue;

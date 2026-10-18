@@ -8,8 +8,10 @@
 //! assert_eq!(s.roots, vec![elementary::Root::Real(2.0), elementary::Root::Real(3.0)]);
 //! ```
 
+pub mod compile;
 mod error;
 pub mod eval;
+pub mod func;
 pub mod lexer;
 pub mod parser;
 pub mod solve;
@@ -23,9 +25,7 @@ pub fn eval_str<S: AsRef<str>>(expr: S) -> Result<f64, Error> {
     if expr.is_empty() {
         return Err(Error::Empty);
     }
-    let tokens = lexer::tokenize(expr)?;
-    let tree = parser::parse(&tokens)?;
-    eval::eval(&tree)
+    eval::eval_str(expr)
 }
 
 /// Solve an equation with one unknown, e.g. `x² - 5x + 6 = 0`.
@@ -34,9 +34,8 @@ pub fn solve_str<S: AsRef<str>>(equation: S) -> Result<Solution, Error> {
     if input.is_empty() {
         return Err(Error::Empty);
     }
-    let tokens = lexer::tokenize(input)?;
-    let (lhs, rhs) = parser::parse_equation(&tokens)?;
-    solve::solve(&lhs, &rhs)
+    let (lhs, rhs) = parser::parse_equation(input)?;
+    solve::solve(lhs, rhs)
 }
 
 #[cfg(test)]

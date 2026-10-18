@@ -13,7 +13,9 @@ const SHARED: &[(&str, &str)] = &[
 fn eval(c: &mut Criterion) {
     for (name, expr) in SHARED {
         let mut g = c.benchmark_group(format!("eval/{name}"));
-        g.bench_function("elementary", |b| b.iter(|| elementary::eval_str(black_box(*expr))));
+        g.bench_function("elementary", |b| {
+            b.iter(|| elementary::eval_str(black_box(*expr)))
+        });
         g.bench_function("meval", |b| b.iter(|| meval::eval_str(black_box(*expr))));
         g.finish();
     }
@@ -28,7 +30,13 @@ fn eval(c: &mut Criterion) {
 
 fn solve(c: &mut Criterion) {
     let mut g = c.benchmark_group("solve");
-    for expr in ["2x + 1 = 7", "x² - 5x + 6 = 0", "x³ - 6x² + 11x - 6 = 0", "2^x = 1024", "tan(x) = 1"] {
+    for expr in [
+        "2x + 1 = 7",
+        "x² - 5x + 6 = 0",
+        "x³ - 6x² + 11x - 6 = 0",
+        "2^x = 1024",
+        "tan(x) = 1",
+    ] {
         g.bench_function(expr, |b| b.iter(|| elementary::solve_str(black_box(expr))));
     }
     g.finish();

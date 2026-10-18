@@ -1,21 +1,109 @@
-//! Evaluates an expression tree to an `f64`.
+//! Evaluates expressions to an `f64`.
 //!
 //! - Trig functions work in degrees.
 //! - `a + b%` / `a - b%` mean `a ± a·b/100`; anywhere else `b%` is `b/100`.
 //! - `%` (modulo) is Euclidean: `-7 % 3` = 2.
+//!
+//! `EvalSink` computes values while parsing, so `eval_str` builds no tree.
+
+use smallvec::SmallVec;
 
 use crate::Error;
-use crate::parser::{Expr, Op};
+use crate::func::{Func, constant, factorial};
+use crate::parser::{Args, Expr, Op, Sink, parse};
 
 /// Variable bindings, e.g. `&[("x", 2.0)]`. Checked before constants.
-pub type Vars<'a> = &'a [(&'a str, f64)];
+pub type Vars<'v> = &'v [(&'v str, f64)];
 
-pub fn eval(e: &Expr) -> Result<f64, Error> {
-    eval_with(e, &[])
+/// A value plus whether it came straight from a postfix `%`
+/// (needed for `200 + 10%` = 220).
+#[derive(Debug, Clone, Copy)]
+pub struct Val {
+    pub v: f64,
+    pub pct: bool,
 }
 
-pub fn eval_with(e: &Expr, vars: Vars) -> Result<f64, Error> {
-    let v = eval_inner(e, vars)?;
+impl Val {
+    fn plain(v: f64) -> Val {
+        Val { v, pct: false }
+    }
+}
+
+pub struct EvalSink<'v> {
+    pub vars: Vars<'v>,
+}
+
+impl EvalSink<'_> {
+    fn lookup(&self, name: &str) -> Option<f64> {
+        self.vars
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, v)| *v)
+            .or_else(|| constant(name))
+    }
+}
+
+impl<'a> Sink<'a> for EvalSink<'_> {
+    type Out = Val;
+
+    fn num(&mut self, n: f64) -> Result<Val, Error> {
+        Ok(Val::plain(n))
+    }
+
+    fn var(&mut self, name: &'a str) -> Result<Val, Error> {
+        self.lookup(name)
+            .map(Val::plain)
+            .ok_or_else(|| Error::UnknownVariable(name.to_string()))
+    }
+
+    fn neg(&mut self, e: Val) -> Result<Val, Error> {
+        Ok(Val::plain(-e.v))
+    }
+
+    fn percent(&mut self, e: Val) -> Result<Val, Error> {
+        Ok(Val {
+            v: e.v / 100.0,
+            pct: true,
+        })
+    }
+
+    fn factorial(&mut self, e: Val) -> Result<Val, Error> {
+        factorial(e.v).map(Val::plain)
+    }
+
+    fn binary(&mut self, op: Op, l: Val, r: Val) -> Result<Val, Error> {
+        Ok(Val::plain(match (op, r.pct) {
+            (Op::Add, true) => l.v + l.v * r.v,
+            (Op::Sub, true) => l.v - l.v * r.v,
+            _ => apply_op(op, l.v, r.v),
+        }))
+    }
+
+    fn call(&mut self, name: &'a str, args: Args<Val>) -> Result<Val, Error> {
+        if let Some(f) = Func::from_name(name) {
+            let a: SmallVec<[f64; 4]> = args.iter().map(|v| v.v).collect();
+            return f.apply(&a).map(Val::plain);
+        }
+        // `pi(2)` / `x(2)` is implicit multiplication
+        match (self.lookup(name), args.as_slice()) {
+            (Some(c), [x]) => Ok(Val::plain(c * x.v)),
+            _ => Err(Error::UnknownFunction(name.to_string())),
+        }
+    }
+}
+
+pub(crate) fn apply_op(op: Op, a: f64, b: f64) -> f64 {
+    match op {
+        Op::Add => a + b,
+        Op::Sub => a - b,
+        Op::Mul => a * b,
+        Op::Div => a / b,
+        Op::Mod => a.rem_euclid(b),
+        Op::Pow => a.powf(b),
+    }
+}
+
+fn finite(v: f64) -> Result<f64, Error> {
     if v.is_finite() {
         Ok(v)
     } else {
@@ -23,152 +111,14 @@ pub fn eval_with(e: &Expr, vars: Vars) -> Result<f64, Error> {
     }
 }
 
-fn eval_inner(e: &Expr, vars: Vars) -> Result<f64, Error> {
-    Ok(match e {
-        Expr::Num(n) => *n,
-        Expr::Var(name) => vars
-            .iter()
-            .find(|(n, _)| n == name)
-            .map(|(_, v)| *v)
-            .or_else(|| constant(name))
-            .ok_or_else(|| Error::UnknownVariable(name.clone()))?,
-        Expr::Neg(e) => -eval_inner(e, vars)?,
-        Expr::Percent(e) => eval_inner(e, vars)? / 100.0,
-        Expr::Factorial(e) => factorial(eval_inner(e, vars)?)?,
-        Expr::Binary(op, l, r) => {
-            let a = eval_inner(l, vars)?;
-            // calculator-style percent: `200 + 10%` = 220
-            if let (Op::Add | Op::Sub, Expr::Percent(p)) = (op, r.as_ref()) {
-                let delta = a * eval_inner(p, vars)? / 100.0;
-                return Ok(if *op == Op::Add { a + delta } else { a - delta });
-            }
-            let b = eval_inner(r, vars)?;
-            match op {
-                Op::Add => a + b,
-                Op::Sub => a - b,
-                Op::Mul => a * b,
-                Op::Div => a / b,
-                Op::Mod => a.rem_euclid(b),
-                Op::Pow => a.powf(b),
-            }
-        }
-        // `x(2)` with a bound variable `x` is implicit multiplication
-        Expr::Call(name, args)
-            if args.len() == 1
-                && !is_function(name)
-                && (vars.iter().any(|(n, _)| n == name) || constant(name).is_some()) =>
-        {
-            eval_inner(&Expr::Var(name.clone()), vars)? * eval_inner(&args[0], vars)?
-        }
-        Expr::Call(name, args) => {
-            let args = args
-                .iter()
-                .map(|a| eval_inner(a, vars))
-                .collect::<Result<Vec<_>, _>>()?;
-            call(name, &args)?
-        }
-    })
+/// Parse and evaluate in one pass.
+pub fn eval_str(src: &str) -> Result<f64, Error> {
+    finite(parse(src, &mut EvalSink { vars: &[] })?.v)
 }
 
-const FUNCTIONS: &[&str] = &[
-    "sqrt", "cbrt", "abs", "exp", "ln", "log2", "log", "sin", "cos", "tan", "asin", "acos", "atan",
-    "sinh", "cosh", "tanh", "floor", "ceil", "round", "min", "max",
-];
-
-pub(crate) fn is_function(name: &str) -> bool {
-    FUNCTIONS.contains(&name)
-}
-
-pub(crate) fn constant(name: &str) -> Option<f64> {
-    use std::f64::consts;
-    Some(match name {
-        "pi" | "π" => consts::PI,
-        "tau" | "τ" => consts::TAU,
-        "e" => consts::E,
-        "phi" | "φ" => 1.618_033_988_749_895,
-        _ => return None,
-    })
-}
-
-fn call(name: &str, a: &[f64]) -> Result<f64, Error> {
-    let arity = |expected: &'static str, ok: bool| {
-        if ok {
-            Ok(())
-        } else {
-            Err(Error::WrongArgCount {
-                name: name.to_string(),
-                expected,
-                got: a.len(),
-            })
-        }
-    };
-    let one = |f: fn(f64) -> f64| -> Result<f64, Error> {
-        arity("1", a.len() == 1)?;
-        Ok(f(a[0]))
-    };
-
-    match name {
-        "sqrt" => one(f64::sqrt),
-        "cbrt" => one(f64::cbrt),
-        "abs" => one(f64::abs),
-        "exp" => one(f64::exp),
-        "ln" => one(f64::ln),
-        "log2" => one(f64::log2),
-        "log" => {
-            arity("1 or 2", matches!(a.len(), 1 | 2))?;
-            Ok(if a.len() == 1 {
-                a[0].log10()
-            } else {
-                a[0].log(a[1])
-            })
-        }
-        "sin" => one(sin_deg),
-        "cos" => one(|x| sin_deg(x + 90.0)),
-        "tan" => {
-            arity("1", a.len() == 1)?;
-            let c = sin_deg(a[0] + 90.0);
-            if c == 0.0 {
-                return Err(Error::Domain("tan is undefined here"));
-            }
-            Ok(sin_deg(a[0]) / c)
-        }
-        "asin" => one(|x| x.asin().to_degrees()),
-        "acos" => one(|x| x.acos().to_degrees()),
-        "atan" => one(|x| x.atan().to_degrees()),
-        "sinh" => one(f64::sinh),
-        "cosh" => one(f64::cosh),
-        "tanh" => one(f64::tanh),
-        "floor" => one(f64::floor),
-        "ceil" => one(f64::ceil),
-        "round" => one(f64::round),
-        "min" | "max" => {
-            arity("at least 1", !a.is_empty())?;
-            let pick = if name == "min" { f64::min } else { f64::max };
-            Ok(a.iter().copied().reduce(pick).unwrap())
-        }
-        _ => Err(Error::UnknownFunction(name.to_string())),
-    }
-}
-
-/// Sine in degrees, exact at multiples of 90° (so `sin(180)` is 0, not 1.2e-16).
-fn sin_deg(x: f64) -> f64 {
-    let r = x.rem_euclid(360.0);
-    match r {
-        0.0 | 180.0 => 0.0,
-        90.0 => 1.0,
-        270.0 => -1.0,
-        _ => r.to_radians().sin(),
-    }
-}
-
-fn factorial(n: f64) -> Result<f64, Error> {
-    if n < 0.0 || n.fract() != 0.0 {
-        return Err(Error::Domain("factorial needs a non-negative integer"));
-    }
-    if n > 170.0 {
-        return Err(Error::NotFinite); // 171! overflows f64
-    }
-    Ok((2..=n as u64).fold(1.0, |acc, k| acc * k as f64))
+/// Evaluate a parsed tree with variable bindings.
+pub fn eval_with(e: &Expr, vars: Vars) -> Result<f64, Error> {
+    finite(e.replay(&mut EvalSink { vars })?.v)
 }
 
 #[cfg(test)]
