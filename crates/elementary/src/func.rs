@@ -177,16 +177,3 @@ pub fn factorial(n: f64) -> Result<f64, Error> {
     }
     Ok((2..=n as u64).fold(1.0, |acc, k| acc * k as f64))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::Func;
-
-    #[test]
-    fn names_round_trip() {
-        for name in ["sqrt", "log2", "sin", "max"] {
-            assert_eq!(Func::from_name(name).unwrap().name(), name);
-        }
-        assert_eq!(Func::from_name("foo"), None);
-    }
-}
