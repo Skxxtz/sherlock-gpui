@@ -456,6 +456,7 @@ impl LauncherView {
                 };
                 self.text_input.update(cx, |this, _| this.reset());
                 self.navigation.push(view);
+                self.context_menu.invalidate();
                 self.filter_and_sort(cx);
                 return Ok(false);
             }
