@@ -28,12 +28,26 @@ pub struct BookEntry {
 }
 
 impl BookEntry {
-    pub fn render(&self, dir: &Path) -> std::io::Result<()> {
+    #[cfg(all(test, feature = "docs"))]
+    pub fn render(self) -> Vec<String> {
+        let mut out = Vec::new();
+
+        if let Some(render) = self.render_fn {
+            out.push((render)());
+        }
+
+        for child in self.children {
+            out.extend(child.render());
+        }
+
+        out
+    }
+    pub fn write(&self, dir: &Path) -> std::io::Result<()> {
         if let (Some(render), Some(file)) = (self.render_fn, self.file) {
             std::fs::write(dir.join(file), render())?;
         }
         for child in &self.children {
-            child.render(dir)?;
+            child.write(dir)?;
         }
         Ok(())
     }
@@ -77,7 +91,7 @@ impl Book {
         }
         Ok(())
     }
-    pub fn generate<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
+    pub fn write<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
         let dir = dir.as_ref();
         // Build summary
         let summary = self.summary();
@@ -86,8 +100,17 @@ impl Book {
 
         // Build files
         for entry in &self.0 {
-            entry.render(dir)?;
+            entry.write(dir)?;
         }
         Ok(())
+    }
+
+    #[cfg(all(test, feature = "docs"))]
+    pub fn render(self) -> Vec<String> {
+        let mut out = Vec::from([self.summary()]);
+        for entry in self.0 {
+            out.extend(entry.render());
+        }
+        out
     }
 }

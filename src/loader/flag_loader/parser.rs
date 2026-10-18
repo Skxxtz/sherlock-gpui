@@ -48,7 +48,11 @@ impl ParsedArgs {
             DebugAction::Init { path, extension } => init_config(&path, &extension),
             DebugAction::PluginInit => plugin_init(),
             #[cfg(feature = "docs")]
-            DebugAction::GenerateDocs => SherlockDocumentation::generate(),
+            DebugAction::GenerateDocs => {
+                if let Err(e) = SherlockDocumentation::write() {
+                    eprintln!("{:?}", e);
+                }
+            }
         }
 
         true

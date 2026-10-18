@@ -102,7 +102,7 @@ impl Documentation for ReplacementVariables {
                         code(r#"{terminal} sh -c "<command>; exec $SHELL""#),
                     )),
                 ),
-                syntax_example: codeblock().lang("json").line(
+                syntax_example: codeblock().lang("sh").line(
                     r#"{terminal} sh -c \"ssh {variable:user}@{variable:host}; exec $SHELL\""#,
                 ),
             },
@@ -216,40 +216,5 @@ impl Documentation for ReplacementVariables {
                 )
                 .child(example),
         )
-    }
-}
-
-#[cfg(all(test, feature = "docs"))]
-mod test {
-    use crate::{
-        docs::Documentation,
-        ui::runtime_arguments::{
-            RuntimeArgument, choice::ChoiceVar, command::CommandVar, number::NumberVar,
-            password::PasswordVar, path::PathVar, string::StringVar,
-        },
-    };
-
-    /// Every documented example must parse as the argument it documents.
-    #[test]
-    fn test_all_docs_valid() {
-        let docs = [
-            StringVar::docs(),
-            PasswordVar::docs(),
-            NumberVar::docs(),
-            PathVar::docs(),
-            CommandVar::docs(),
-            ChoiceVar::docs(),
-        ];
-
-        for doc in docs {
-            let parsed: Result<RuntimeArgument, _> = serde_json::from_str(doc.example);
-            assert!(
-                parsed.is_ok(),
-                "example for `{}` doesn't parse: {}\n{}",
-                doc.name,
-                parsed.unwrap_err(),
-                doc.example,
-            );
-        }
     }
 }
