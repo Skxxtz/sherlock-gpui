@@ -288,6 +288,17 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         Ok(e)
     }
 
+    /// Strongest level: the smallest complete pieces of an expression.
+    /// Every value starts here and is passed up through the weaker levels.
+    ///
+    /// - number: `42` → `sink.num`
+    /// - name: `pi` → `sink.var`
+    /// - call: `sin(…)` → name directly followed by `(` → `sink.call`
+    /// - group: `( … )` → restarts at [`additive`](Self::additive), so
+    ///   anything goes inside the brackets
+    ///
+    /// Anything else (an operator, `)`, end of input) is an error:
+    /// a value was expected here.
     fn primary(&mut self) -> Result<S::Out, Error> {
         match self.peek() {
             Some(Token::Num(n)) => {
