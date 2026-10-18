@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 md-rs-derive = { path = "md-rs-derive" }
+serde_json = { version = "1.0.149", optional = true }
 
 [features]
 github = []
+validate-examples = ["dep:serde_json"]
