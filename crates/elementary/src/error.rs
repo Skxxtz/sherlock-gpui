@@ -5,6 +5,9 @@ pub enum Error {
     Empty,
     UnexpectedChar(char, usize),
     InvalidNumber(String, usize),
+    UnexpectedToken(usize),
+    UnexpectedEnd,
+    MissingParen,
     Unimplemented,
 }
 
@@ -14,6 +17,9 @@ impl fmt::Display for Error {
             Error::Empty => write!(f, "empty expression"),
             Error::UnexpectedChar(c, p) => write!(f, "unexpected '{c}' at {p}"),
             Error::InvalidNumber(s, p) => write!(f, "invalid number '{s}' at {p}"),
+            Error::UnexpectedToken(p) => write!(f, "unexpected token at {p}"),
+            Error::UnexpectedEnd => write!(f, "unexpected end of expression"),
+            Error::MissingParen => write!(f, "missing closing parenthesis"),
             Error::Unimplemented => write!(f, "not implemented yet"),
         }
     }
