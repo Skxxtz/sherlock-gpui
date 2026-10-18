@@ -11,5 +11,5 @@ criterion = "0.5"
 meval = "0.2.0"
 
 [[bench]]
-name = "eval"
+name = "elementary"
 harness = false
