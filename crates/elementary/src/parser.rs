@@ -280,6 +280,14 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         Ok(base)
     }
 
+    /// Postfix `!`, one level above [`primary`](Self::primary).
+    /// Takes a value and applies every `!` directly after it.
+    ///
+    /// - `5!` → `sink.factorial(5)`
+    /// - `3!!` → loops: `(3!)!`
+    /// - binds tighter than `^`: `2^3!` = `2^(3!)`, `3!^2` = `(3!)^2`
+    ///
+    /// No `!` next → the value is passed up unchanged.
     fn factorial(&mut self) -> Result<S::Out, Error> {
         let mut e = self.primary()?;
         while self.eat(Token::Bang)? {
