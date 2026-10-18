@@ -39,27 +39,48 @@ functions! {
     /// A built-in function. Trig works in degrees.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum Func {
-        #[name = "sqrt"] Sqrt,
-        #[name = "cbrt"] Cbrt,
-        #[name = "abs"] Abs,
-        #[name = "exp"] Exp,
-        #[name = "ln"] Ln,
-        #[name = "log2"] Log2,
-        #[name = "log"] Log,
-        #[name = "sin"] Sin,
-        #[name = "cos"] Cos,
-        #[name = "tan"] Tan,
-        #[name = "asin"] Asin,
-        #[name = "acos"] Acos,
-        #[name = "atan"] Atan,
-        #[name = "sinh"] Sinh,
-        #[name = "cosh"] Cosh,
-        #[name = "tanh"] Tanh,
-        #[name = "floor"] Floor,
-        #[name = "ceil"] Ceil,
-        #[name = "round"] Round,
-        #[name = "min"] Min,
-        #[name = "max"] Max,
+        #[name = "sqrt"]
+        Sqrt,
+        #[name = "cbrt"]
+        Cbrt,
+        #[name = "abs"]
+        Abs,
+        #[name = "exp"]
+        Exp,
+        #[name = "ln"]
+        Ln,
+        #[name = "log2"]
+        Log2,
+        #[name = "log"]
+        Log,
+        #[name = "sin"]
+        Sin,
+        #[name = "cos"]
+        Cos,
+        #[name = "tan"]
+        Tan,
+        #[name = "asin"]
+        Asin,
+        #[name = "acos"]
+        Acos,
+        #[name = "atan"]
+        Atan,
+        #[name = "sinh"]
+        Sinh,
+        #[name = "cosh"]
+        Cosh,
+        #[name = "tanh"]
+        Tanh,
+        #[name = "floor"]
+        Floor,
+        #[name = "ceil"]
+        Ceil,
+        #[name = "round"]
+        Round,
+        #[name = "min"]
+        Min,
+        #[name = "max"]
+        Max,
     }
 }
 
