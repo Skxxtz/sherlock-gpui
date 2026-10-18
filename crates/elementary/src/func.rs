@@ -2,6 +2,7 @@
 
 use crate::Error;
 
+/// A built-in function. Trig works in degrees.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Func {
     Sqrt,
@@ -28,6 +29,7 @@ pub enum Func {
 }
 
 impl Func {
+    /// `"sin"` → `Func::Sin`; `None` if unknown.
     pub fn from_name(name: &str) -> Option<Func> {
         use Func::*;
         Some(match name {
@@ -56,6 +58,7 @@ impl Func {
         })
     }
 
+    /// `Func::Sin` → `"sin"` (for error messages).
     pub fn name(self) -> &'static str {
         use Func::*;
         match self {
@@ -83,6 +86,7 @@ impl Func {
         }
     }
 
+    /// Run with arguments `a`; checks the argument count.
     pub fn apply(self, a: &[f64]) -> Result<f64, Error> {
         use Func::*;
         let arity = |expected: &'static str, ok: bool| {
@@ -141,6 +145,7 @@ impl Func {
     }
 }
 
+/// Value of a named constant (`pi`, `e`, …); `None` if unknown.
 pub fn constant(name: &str) -> Option<f64> {
     use std::f64::consts;
     Some(match name {
@@ -163,6 +168,7 @@ fn sin_deg(x: f64) -> f64 {
     }
 }
 
+/// `n!` for whole numbers 0 to 170.
 pub fn factorial(n: f64) -> Result<f64, Error> {
     if n < 0.0 || n.fract() != 0.0 {
         return Err(Error::Domain("factorial needs a non-negative integer"));
