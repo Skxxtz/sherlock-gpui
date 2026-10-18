@@ -2,20 +2,34 @@
 
 use crate::Error;
 
+/// One piece of input. Aliases (`×`, `÷`, `**`, `−`) map to the same token.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token<'a> {
+    /// `42`, `3.5`, `1e3`
     Num(f64),
+    /// `sin`, `pi`, `x` (borrowed from the input)
     Ident(&'a str),
+    /// `+`
     Plus,
+    /// `-` `−`
     Minus,
+    /// `*` `×` `·`
     Star,
+    /// `/` `÷`
     Slash,
+    /// `^` `**` (and superscripts)
     Caret,
+    /// `%`
     Percent,
+    /// `!`
     Bang,
+    /// `(`
     LParen,
+    /// `)`
     RParen,
+    /// `,`
     Comma,
+    /// `=`
     Eq,
     /// `⌊` … `⌋`
     LFloor,
@@ -34,18 +48,24 @@ pub enum Token<'a> {
 /// A token plus its byte offset in the input.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spanned<'a> {
+    /// The token.
     pub tok: Token<'a>,
+    /// Byte offset where it starts.
     pub pos: usize,
 }
 
+/// Produces tokens one at a time from `src`.
 pub struct Lexer<'a> {
+    /// The input.
     src: &'a str,
+    /// Byte offset of the next unread char.
     pos: usize,
     /// Second token of a superscript (`²` → `^`, `2`).
     pending: Option<Spanned<'a>>,
 }
 
 impl<'a> Lexer<'a> {
+    /// Start at the beginning of `src`.
     pub fn new(src: &'a str) -> Self {
         Lexer {
             src,
@@ -54,10 +74,12 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Next char without consuming it.
     fn peek_char(&self) -> Option<char> {
         self.src[self.pos..].chars().next()
     }
 
+    /// Next token, or `None` at the end; skips whitespace.
     pub fn next_token(&mut self) -> Result<Option<Spanned<'a>>, Error> {
         if let Some(t) = self.pending.take() {
             return Ok(Some(t));
@@ -148,6 +170,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Spanned<'_>>, Error> {
     Ok(out)
 }
 
+/// `²` → 2; `None` for anything else.
 fn superscript_digit(c: char) -> Option<u32> {
     match c {
         '⁰' => Some(0),
