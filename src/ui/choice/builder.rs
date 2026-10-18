@@ -11,6 +11,7 @@ pub struct ChoiceInputBuilder {
     scope: Option<&'static str>,
     placeholder: CachedPango,
     options: Option<Vec<ChoiceOption>>,
+    selected: Option<usize>,
 }
 
 #[allow(dead_code)]
@@ -20,6 +21,7 @@ impl ChoiceInputBuilder {
             scope: None,
             placeholder: CachedPango::default(),
             options: None,
+            selected: None,
         }
     }
     pub fn scope(mut self, scope: &'static str) -> Self {
@@ -37,6 +39,11 @@ impl ChoiceInputBuilder {
         self
     }
 
+    pub fn selected(mut self, idx: Option<usize>) -> Self {
+        self.selected = idx;
+        self
+    }
+
     pub fn build(self, cx: &mut Context<Choice>) -> Choice {
         let mut cursor_timer = TimeoutCaller::new(false, cx);
         cursor_timer.repeat();
@@ -50,7 +57,7 @@ impl ChoiceInputBuilder {
             _sub: None,
             options: self.options.unwrap_or_default(),
             placeholder: self.placeholder,
-            selected: None,
+            selected: self.selected,
             is_opened: false,
             max_width: None,
         }

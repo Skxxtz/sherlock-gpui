@@ -725,18 +725,27 @@ impl LauncherView {
             self.variable_input = vars_to_create
                 .into_iter()
                 .map(|var| -> VariableInput {
+                    let default = var.default_value();
                     match var {
-                        RuntimeArgument::Choice(c) => VariableInput::Choice(cx.new(|cx| {
-                            Choice::builder()
-                                .scope("variable")
-                                .placeholder(c.choice.name)
-                                .options(c.choice.choices.to_vec())
-                                .build(cx)
-                        })),
-                        _ => VariableInput::Text(cx.new(|cx| {
+                        RuntimeArgument::Choice(c) => {
+                            let body = c.choice;
+                            let selected = default
+                                .as_ref()
+                                .and_then(|d| body.choices.iter().position(|o| &o.value == d));
+                            VariableInput::Choice(cx.new(|cx| {
+                                Choice::builder()
+                                    .scope("variable")
+                                    .placeholder(body.name)
+                                    .options(body.choices.to_vec())
+                                    .selected(selected)
+                                    .build(cx)
+                            }))
+                        }
+                        var => VariableInput::Text(cx.new(|cx| {
                             TextInput::builder()
                                 .scope("variable")
                                 .placeholder(var.placeholder())
+                                .content(default.unwrap_or_default())
                                 .variable(var)
                                 .build(cx)
                         })),
