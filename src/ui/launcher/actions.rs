@@ -1,8 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::{borrow::Cow, sync::Arc, time::Duration};
 
 use gpui::{
     App, AppContext, ClipboardItem, Context, Focusable, KeyDownEvent, KeyUpEvent, SharedString,
@@ -38,7 +34,6 @@ use crate::{
         command_launch::spawn_detached,
         config::{ConfigFileChange, ConfigGuard, SherlockAlias, SherlockIgnore, reload},
         errors::{SherlockMessage, types::SherlockErrorType},
-        files::expand_path,
         websearch::websearch,
     },
 };
@@ -593,68 +588,27 @@ impl LauncherView {
     }
 
     fn get_variables(&self, cx: &mut App) -> SmallVec<[(SharedString, SharedString); 4]> {
-        let mut variables: SmallVec<[(SharedString, SharedString); 4]> = SmallVec::new();
-        for input in &self.variable_input {
-            match input {
+        self.variable_input
+            .iter()
+            .filter_map(|input| match input {
                 VariableInput::Choice(ent) => {
-                    let guard = ent.read(cx);
-                    if let Some(choice) = guard.selected.and_then(|idx| guard.options.get(idx)) {
-                        variables.push((guard.placeholder.text.clone(), choice.value.clone()));
-                    }
+                    let c = ent.read(cx);
+                    let value = c.selected.and_then(|i| c.options.get(i))?.value.clone();
+                    Some((c.placeholder.text.clone(), value))
                 }
                 VariableInput::Text(ent) => {
-                    let guard = ent.read(cx);
-                    let mut content = guard.content.to_string();
-
-                    // Only transform if it's a PathInput
-                    let needs_expansion = matches!(&guard.variable, Some(RuntimeArgument::Path(_)))
-                        || matches!(&guard.variable, Some(RuntimeArgument::Command(inner)) if inner.is_scoped);
-
-                    if needs_expansion {
-                        let home = std::env::var_os("HOME").map(PathBuf::from);
-                        let home = home.as_deref().unwrap_or(Path::new("."));
-
-                        let should_expand = || match &guard.variable {
-                            Some(RuntimeArgument::Path(_)) => true,
-                            Some(RuntimeArgument::Command(inner)) => inner.is_scoped,
-                            _ => false,
-                        };
-
-                        let mut out = String::with_capacity(content.len());
-
-                        for (i, part) in content.split(' ').enumerate() {
-                            if i > 0 {
-                                out.push(' ');
-                            }
-
-                            if !should_expand() {
-                                out.push_str(part);
-                                continue;
-                            }
-
-                            match part.chars().next() {
-                                Some('~') => {
-                                    out.push_str(&expand_path(part, home).to_string_lossy());
-                                }
-                                Some('/') => {
-                                    out.push_str(part);
-                                }
-                                _ => {
-                                    out.push_str(home.to_string_lossy().as_ref());
-                                    out.push('/');
-                                    out.push_str(part);
-                                }
-                            }
-                        }
-
-                        content = out;
-                    }
-
-                    variables.push((guard.placeholder.clone(), SharedString::from(content)));
+                    let t = ent.read(cx);
+                    let value = match &t.variable {
+                        Some(var) => var.finalize(&t.content),
+                        None => Cow::Borrowed(t.content.as_ref()),
+                    };
+                    Some((
+                        t.placeholder.clone(),
+                        SharedString::from(value.into_owned()),
+                    ))
                 }
-            }
-        }
-        variables
+            })
+            .collect()
     }
 
     #[inline(always)]

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use gpui::SharedString;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
@@ -7,7 +9,7 @@ use serde::{
 use crate::ui::{
     runtime_arguments::{
         choice::ChoiceVar, command::CommandVar, number::NumberVar, password::PasswordVar,
-        path::PathVar, string::StringVar,
+        path::PathVar, string::StringVar, utils::Finalize,
     },
     utils::input_rule::CharSet,
 };
@@ -18,6 +20,7 @@ pub mod number;
 pub mod password;
 pub mod path;
 pub mod string;
+mod utils;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(remote = "Self")]
@@ -52,10 +55,20 @@ impl RuntimeArgument {
         }
     }
     pub fn validation(&self) -> Option<&CharSet> {
-        if let Self::String(v) = self {
-            v.validation.as_ref()
-        } else {
-            None
+        match self {
+            Self::String(v) => v.validation.as_ref(),
+            Self::Number(v) => v.validation.as_ref(),
+            _ => None,
+        }
+    }
+    pub fn finalize<'a>(&self, raw: &'a str) -> Cow<'a, str> {
+        match self {
+            Self::String(v) => v.finalize(raw),
+            Self::Password(v) => v.finalize(raw),
+            Self::Number(v) => v.finalize(raw),
+            Self::Path(v) => v.finalize(raw),
+            Self::Command(v) => v.finalize(raw),
+            Self::Choice(v) => v.finalize(raw),
         }
     }
 }
