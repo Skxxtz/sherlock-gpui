@@ -214,6 +214,17 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         }
     }
 
+    /// `+` and `-`, the weakest level and the entry point.
+    ///
+    /// - `2 + 3` → `sink.binary(Add, 2, 3)`
+    /// - left to right (loop): `10 - 4 - 3` = `(10 - 4) - 3` = 3
+    /// - each side comes from `multiplicative`, so `1 + 2 * 3` gets
+    ///   the finished `6` as its right side
+    /// - percent rule lives in the sink: `200 + 10%` = 220
+    ///
+    /// Called for the whole input, inside `( … )`, for each function
+    /// argument and for each side of an equation. Stops at anything that
+    /// isn't `+` or `-` (`)`, `,`, `=`, end of input) and returns the value.
     fn additive(&mut self) -> Result<S::Out, Error> {
         let mut lhs = self.multiplicative()?;
         loop {
