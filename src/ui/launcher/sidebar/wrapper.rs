@@ -125,8 +125,10 @@ impl Sidebar {
                 )
                 .child(
                     div()
+                        .flex()
                         .flex_col()
-                        .gap_1()
+                        .justify_between()
+                        .h(px(48.))
                         .min_w_0()
                         .child(
                             div()
