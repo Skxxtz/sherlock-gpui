@@ -6,7 +6,8 @@
 //! 3. unary `- +`
 //! 4. postfix `%` (percent)
 //! 5. `^` (right-assoc, exponent may be unary: `2^-1`)
-//! 6. numbers, names, calls, `( … )`
+//! 6. postfix `!` (factorial: `3!^2` = 36, `2^3!` = 64)
+//! 7. numbers, names, calls, `( … )`
 //!
 //! `%` is modulo when an operand follows it (`10 % 3`), otherwise percent
 //! (`10%`, `10%)`, `10% * 2`). So `-3^2` = `-9`.
@@ -20,6 +21,7 @@ pub enum Expr {
     Var(String),
     Neg(Box<Expr>),
     Percent(Box<Expr>),
+    Factorial(Box<Expr>),
     Binary(Op, Box<Expr>, Box<Expr>),
     Call(String, Vec<Expr>),
 }
@@ -130,12 +132,20 @@ impl Parser<'_> {
     }
 
     fn power(&mut self) -> Result<Expr, Error> {
-        let base = self.primary()?;
+        let base = self.factorial()?;
         if self.eat(&Token::Caret) {
             let exp = self.unary()?; // right-assoc, allows `2^-1`
             return Ok(bin(Op::Pow, base, exp));
         }
         Ok(base)
+    }
+
+    fn factorial(&mut self) -> Result<Expr, Error> {
+        let mut e = self.primary()?;
+        while self.eat(&Token::Bang) {
+            e = Expr::Factorial(Box::new(e));
+        }
+        Ok(e)
     }
 
     fn primary(&mut self) -> Result<Expr, Error> {
@@ -214,6 +224,7 @@ mod tests {
             Expr::Var(v) => v.clone(),
             Expr::Neg(e) => format!("(neg {})", sx(e)),
             Expr::Percent(e) => format!("(% {})", sx(e)),
+            Expr::Factorial(e) => format!("(! {})", sx(e)),
             Expr::Binary(op, l, r) => {
                 let o = match op {
                     Op::Add => "+",
@@ -275,6 +286,15 @@ mod tests {
         assert_eq!(p("(10%)"), "(% 10)");
         assert_eq!(p("50% * 8"), "(* (% 50) 8)");
         assert_eq!(p("10 % (1+2)"), "(mod 10 (+ 1 2))");
+    }
+
+    #[test]
+    fn factorial() {
+        assert_eq!(p("5!"), "(! 5)");
+        assert_eq!(p("-3!"), "(neg (! 3))");
+        assert_eq!(p("3!^2"), "(^ (! 3) 2)");
+        assert_eq!(p("2^3!"), "(^ 2 (! 3))");
+        assert_eq!(p("(1+2)!"), "(! (+ 1 2))");
     }
 
     #[test]

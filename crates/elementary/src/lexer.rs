@@ -12,6 +12,7 @@ pub enum Token {
     Slash,
     Caret,
     Percent,
+    Bang,
     LParen,
     RParen,
     Comma,
@@ -106,6 +107,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Spanned>, Error> {
             '/' | '÷' => Token::Slash,
             '^' => Token::Caret,
             '%' => Token::Percent,
+            '!' => Token::Bang,
             '(' => Token::LParen,
             ')' => Token::RParen,
             ',' => Token::Comma,
@@ -222,6 +224,11 @@ mod tests {
             vec![Ident("x".into()), Caret, Num(10.0), Plus, Num(1.0)]
         );
         assert_eq!(toks("2⁴⁹"), vec![Num(2.0), Caret, Num(49.0)]);
+    }
+
+    #[test]
+    fn bang() {
+        assert_eq!(toks("5!"), vec![Num(5.0), Bang]);
     }
 
     #[test]

@@ -8,7 +8,17 @@ pub enum Error {
     UnexpectedToken(usize),
     UnexpectedEnd,
     MissingParen,
-    Unimplemented,
+    UnknownVariable(String),
+    UnknownFunction(String),
+    WrongArgCount {
+        name: String,
+        expected: &'static str,
+        got: usize,
+    },
+    /// Input outside a function's domain, e.g. `(-1)!` or `tan(90)`.
+    Domain(&'static str),
+    /// Result is NaN or infinite, e.g. `1/0`, `sqrt(-1)`.
+    NotFinite,
 }
 
 impl fmt::Display for Error {
@@ -20,7 +30,17 @@ impl fmt::Display for Error {
             Error::UnexpectedToken(p) => write!(f, "unexpected token at {p}"),
             Error::UnexpectedEnd => write!(f, "unexpected end of expression"),
             Error::MissingParen => write!(f, "missing closing parenthesis"),
-            Error::Unimplemented => write!(f, "not implemented yet"),
+            Error::UnknownVariable(v) => write!(f, "unknown variable '{v}'"),
+            Error::UnknownFunction(n) => write!(f, "unknown function '{n}'"),
+            Error::WrongArgCount {
+                name,
+                expected,
+                got,
+            } => {
+                write!(f, "'{name}' takes {expected} argument(s), got {got}")
+            }
+            Error::Domain(what) => write!(f, "{what}"),
+            Error::NotFinite => write!(f, "result is not a finite number"),
         }
     }
 }
