@@ -1,15 +1,25 @@
 use std::fmt;
 
+/// Everything that can go wrong. Positions are byte offsets in the input.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
+    /// Input is empty or only whitespace.
     Empty,
+    /// A character the lexer doesn't know, e.g. `$`.
     UnexpectedChar(char, usize),
+    /// Looks like a number but isn't, e.g. `.`.
     InvalidNumber(String, usize),
+    /// A token in the wrong place, e.g. the `)` in `1 + )`.
     UnexpectedToken(usize),
+    /// Input ended where a value was expected, e.g. `1 +`.
     UnexpectedEnd,
+    /// `(`, `⌊`, `⌈` or `|` never closed.
     MissingParen,
+    /// A name that is neither a variable nor a constant.
     UnknownVariable(String),
+    /// `name(…)` where `name` isn't a known function.
     UnknownFunction(String),
+    /// Function called with the wrong number of arguments.
     WrongArgCount {
         name: String,
         expected: &'static str,
@@ -25,6 +35,7 @@ pub enum Error {
     NoUnknown,
     /// More than one unknown, e.g. `x + y = 3`.
     TooManyUnknowns(Vec<String>),
+    /// No value satisfies the equation, e.g. `x + 1 = x`.
     NoSolution,
     /// Holds for every value, e.g. `x + 1 = 1 + x`.
     InfiniteSolutions,
