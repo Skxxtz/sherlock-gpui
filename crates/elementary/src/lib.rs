@@ -1,6 +1,7 @@
 //! `elementary` – a small math expression evaluator (meval replacement).
 
 mod error;
+pub mod lexer;
 
 pub use error::Error;
 
