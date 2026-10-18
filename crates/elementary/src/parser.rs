@@ -260,7 +260,15 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
                 // so a `%` reaching here has an operand after it
                 Some(Token::Percent) => Op::Mod,
                 // implicit multiplication; `2 3` is rejected as a likely typo
-                Some(Token::Ident(_) | Token::LParen) => {
+                // (`|` is excluded: it could be a closing bar)
+                Some(
+                    Token::Ident(_)
+                    | Token::LParen
+                    | Token::LFloor
+                    | Token::LCeil
+                    | Token::Root
+                    | Token::CubeRoot,
+                ) => {
                     let rhs = self.unary()?;
                     lhs = self.sink.binary(Op::Mul, lhs, rhs)?;
                     continue;
@@ -353,6 +361,8 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
     /// - call: `sin(…)` → name directly followed by `(` → `sink.call`
     /// - group: `( … )` → restarts at `additive`, so
     ///   anything goes inside the brackets
+    /// - bracket functions: `⌊x⌋` floor, `⌈x⌉` ceil, `|x|` abs
+    /// - prefix roots: `√x`, `∛x` take the next primary, so `√2²` = `(√2)²`
     ///
     /// Anything else (an operator, `)`, end of input) is an error:
     /// a value was expected here.
@@ -377,7 +387,37 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
                 self.expect_rparen()?;
                 Ok(e)
             }
+            Some(Token::LFloor) => self.enclosed(Token::RFloor, "floor"),
+            Some(Token::LCeil) => self.enclosed(Token::RCeil, "ceil"),
+            Some(Token::Bar) => self.enclosed(Token::Bar, "abs"),
+            Some(Token::Root) => self.prefix("sqrt"),
+            Some(Token::CubeRoot) => self.prefix("cbrt"),
             _ => Err(self.err_here()),
+        }
+    }
+
+    /// `⌊ … ⌋`-style: opening token, an expression, `close`, then `func` on it.
+    fn enclosed(&mut self, close: Token, func: &'static str) -> Result<S::Out, Error> {
+        self.bump()?;
+        let e = self.additive()?;
+        if !self.eat(close)? {
+            return Err(self.err_here_or(Error::MissingParen));
+        }
+        self.sink.call(func, one(e))
+    }
+
+    /// `√x`-style: the symbol, then `func` on the next primary.
+    fn prefix(&mut self, func: &'static str) -> Result<S::Out, Error> {
+        self.bump()?;
+        let e = self.primary()?;
+        self.sink.call(func, one(e))
+    }
+
+    /// Unexpected token here, or `at_end` if the input ran out.
+    fn err_here_or(&self, at_end: Error) -> Error {
+        match self.cur {
+            Some(s) => Error::UnexpectedToken(s.pos),
+            None => at_end,
         }
     }
 
@@ -401,16 +441,32 @@ impl<'a, 's, S: Sink<'a>> Parser<'a, 's, S> {
         if self.eat(Token::RParen)? {
             Ok(())
         } else {
-            Err(match self.cur {
-                Some(s) => Error::UnexpectedToken(s.pos),
-                None => Error::MissingParen,
-            })
+            Err(self.err_here_or(Error::MissingParen))
         }
     }
 }
 
+/// A one-element argument list.
+fn one<T>(e: T) -> Args<T> {
+    let mut a = Args::new();
+    a.push(e);
+    a
+}
+
 fn starts_operand(t: Option<Token>) -> bool {
-    matches!(t, Some(Token::Num(_) | Token::Ident(_) | Token::LParen))
+    // `|` is excluded: in `|10%|` it closes, it doesn't start an operand
+    matches!(
+        t,
+        Some(
+            Token::Num(_)
+                | Token::Ident(_)
+                | Token::LParen
+                | Token::LFloor
+                | Token::LCeil
+                | Token::Root
+                | Token::CubeRoot
+        )
+    )
 }
 
 #[cfg(test)]

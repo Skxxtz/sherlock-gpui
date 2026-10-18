@@ -74,6 +74,27 @@ mod tests {
     }
 
     #[test]
+    fn math_symbols() {
+        assert_eq!(ev("⌊2.7⌋"), 2.0);
+        assert_eq!(ev("⌈2.1⌉"), 3.0);
+        assert_eq!(ev("⌊-2.5⌋"), -3.0);
+        assert_eq!(ev("|-3|"), 3.0);
+        assert_eq!(ev("|2 - 5| * 2"), 6.0);
+        assert_eq!(ev("||-2| - 5|"), 3.0);
+        assert_eq!(ev("√16"), 4.0);
+        assert_eq!(ev("√(9 + 16)"), 5.0);
+        assert_eq!(ev("∛27"), 3.0);
+        assert!((ev("√2²") - 2.0).abs() < 1e-12);
+        assert_eq!(ev("2√9"), 6.0);
+        assert_eq!(ev("3⌊1.5⌋"), 3.0);
+        assert_eq!(ev("|10%|"), 0.1);
+        assert_eq!(ev("-√4"), -2.0);
+        assert_eq!(eval_str("⌊2.5"), Err(Error::MissingParen));
+        assert_eq!(eval_str("|2"), Err(Error::MissingParen));
+        assert_eq!(eval_str("⌊2.5⌉"), Err(Error::UnexpectedToken(6)));
+    }
+
+    #[test]
     fn mixed_expressions() {
         assert_eq!(ev("2sin(90) + 3!"), 8.0);
         assert_eq!(ev("sqrt(3² + 4²)"), 5.0);

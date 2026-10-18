@@ -38,7 +38,7 @@ impl fmt::Display for Error {
             Error::InvalidNumber(s, p) => write!(f, "invalid number '{s}' at {p}"),
             Error::UnexpectedToken(p) => write!(f, "unexpected token at {p}"),
             Error::UnexpectedEnd => write!(f, "unexpected end of expression"),
-            Error::MissingParen => write!(f, "missing closing parenthesis"),
+            Error::MissingParen => write!(f, "missing closing bracket"),
             Error::UnknownVariable(v) => write!(f, "unknown variable '{v}'"),
             Error::UnknownFunction(n) => write!(f, "unknown function '{n}'"),
             Error::WrongArgCount {

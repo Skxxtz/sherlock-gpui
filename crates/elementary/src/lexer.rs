@@ -17,6 +17,18 @@ pub enum Token<'a> {
     RParen,
     Comma,
     Eq,
+    /// `⌊` … `⌋`
+    LFloor,
+    RFloor,
+    /// `⌈` … `⌉`
+    LCeil,
+    RCeil,
+    /// `|` (opens and closes abs)
+    Bar,
+    /// `√`
+    Root,
+    /// `∛`
+    CubeRoot,
 }
 
 /// A token plus its byte offset in the input.
@@ -112,6 +124,13 @@ impl<'a> Lexer<'a> {
             ')' => Token::RParen,
             ',' => Token::Comma,
             '=' => Token::Eq,
+            '⌊' => Token::LFloor,
+            '⌋' => Token::RFloor,
+            '⌈' => Token::LCeil,
+            '⌉' => Token::RCeil,
+            '|' => Token::Bar,
+            '√' => Token::Root,
+            '∛' => Token::CubeRoot,
             other => return Err(Error::UnexpectedChar(other, start)),
         };
         self.pos += c.len_utf8();
