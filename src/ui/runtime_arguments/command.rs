@@ -50,3 +50,40 @@ impl Finalize for CommandVar {
         }
     }
 }
+
+// DOCS
+#[cfg(feature = "docs")]
+mod docs {
+    use super::CommandVar;
+    use crate::docs::{Documentation, launcher::FieldDoc, runtime_args::RuntimeArgumentDoc};
+    use md_rs::{components::span::code, p};
+    impl Documentation for CommandVar {
+        type Docs = RuntimeArgumentDoc;
+        fn docs() -> Self::Docs {
+            RuntimeArgumentDoc {
+                title: "Command Input",
+                name: "command_input",
+                description: || {
+                    p!(
+                        "A text input featuring path completion. Unlike",
+                        code("path_input"),
+                        ", this will only look at executeable files. \
+                            First, it will look at the",
+                        code("$PATH"),
+                        ", then it will try to complete like",
+                        code("path_input"),
+                        "."
+                    )
+                },
+                args: &[FieldDoc {
+                    name: "default",
+                    ty: "String",
+                    required: false,
+                    default: None,
+                    description: "The default value this field should show",
+                }],
+                example: r#"{ "command_input": "command" }"#,
+            }
+        }
+    }
+}

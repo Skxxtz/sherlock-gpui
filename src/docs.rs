@@ -1,4 +1,4 @@
-use md_rs::components::Component;
+use md_rs::components::{Component, IntoComponent};
 use std::path::Path;
 
 use crate::{
@@ -22,18 +22,18 @@ use crate::{
 pub mod book;
 mod configuration;
 mod contributing;
-mod exec_variable;
 mod installation;
 pub mod launcher;
 pub mod plugins;
 mod readme;
+pub mod runtime_args;
 
 pub trait Documentation {
-    type Docs: Component;
+    type Docs: IntoComponent;
     fn docs() -> Self::Docs;
     fn docs_md() -> String {
         let mut out = String::new();
-        let _ = Self::docs().render(&mut out);
+        let _ = Self::docs().into_component().render(&mut out);
         out.trim_in_place();
         out
     }

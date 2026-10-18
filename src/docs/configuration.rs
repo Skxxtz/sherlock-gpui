@@ -39,8 +39,8 @@ impl TopLevelEntry for Configuration {
                 .with_title("Launchers")
                 .with_file("launchers.md"),
             BookEntry::of::<RuntimeArgument>()
-                .with_title("Exec Variables")
-                .with_file("exec-variables.md"),
+                .with_title("Runtime Arguments")
+                .with_file("runtime_arguments.md"),
         ]
         .into_iter()
     }

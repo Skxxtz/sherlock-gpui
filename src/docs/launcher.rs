@@ -133,7 +133,7 @@ pub const BASE_FIELDS: &[FieldDoc] = &[
     },
     FieldDoc {
         name: "variables",
-        ty: "ExecVariable[]",
+        ty: "RunetimeArgument[]",
         required: false,
         default: None,
         description: "Runtime variable substitutions available to this launcher's commands.",
@@ -236,7 +236,7 @@ impl From<&LauncherDocEntry> for Container {
     }
 }
 
-fn field_table(fields: &[FieldDoc]) -> Table {
+pub(super) fn field_table(fields: &[FieldDoc]) -> Table {
     table()
         .headers(["Field", "Type", "Required", "Default", "Description"])
         .rows(fields.iter().map(|f| {

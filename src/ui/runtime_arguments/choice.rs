@@ -60,3 +60,58 @@ impl<'de> Deserialize<'de> for ChoiceOption {
         })
     }
 }
+
+// DOCS
+#[cfg(feature = "docs")]
+mod docs {
+    use super::ChoiceVar;
+    use crate::docs::{Documentation, launcher::FieldDoc, runtime_args::RuntimeArgumentDoc};
+    use md_rs::{components::span::code, p};
+
+    impl Documentation for ChoiceVar {
+        type Docs = RuntimeArgumentDoc;
+        fn docs() -> Self::Docs {
+            RuntimeArgumentDoc {
+                title: "Choice Input",
+                name: "choice",
+                description: || {
+                    p!(
+                        "Presents the user with a predefined list of \
+                            options to select from. Each choice has a",
+                        code("label"),
+                        "shown in the UI and a",
+                        code("value"),
+                        "passed to the command."
+                    )
+                },
+                args: &[
+                    FieldDoc {
+                        name: "default",
+                        ty: "String",
+                        required: false,
+                        default: None,
+                        description: "The default value this field should show",
+                    },
+                    FieldDoc {
+                        name: "default",
+                        ty: "Choice",
+                        required: false,
+                        default: None,
+                        description: "The choices that should be displayed in the dropdown menu.",
+                    },
+                ],
+                example: indoc::indoc! {r#"{
+                    "choice": {
+                        "name": "temperature",
+                        "choices": [
+                            {"label": "5000", "value": "5000"},
+                            {"label": "6000 <span color='#555555'><i>default</i></span>", "value": "6000"},
+                            {"label": "7000", "value": "7000"},
+                            {"label": "8000", "value": "8000"}
+                        ]
+                    }
+                }"#},
+            }
+        }
+    }
+}

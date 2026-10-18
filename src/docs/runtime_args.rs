@@ -1,7 +1,7 @@
 use indoc::indoc;
 use md_rs::{
     components::{
-        ParentComponentExt,
+        IntoComponent, ParentComponentExt,
         code_block::{CodeBlock, codeblock},
         container::Container,
         details::details,
@@ -13,110 +13,61 @@ use md_rs::{
     list, list_iter, md, p,
 };
 
-use crate::{docs::Documentation, ui::runtime_arguments::RuntimeArgument};
+use crate::{
+    docs::{
+        Documentation,
+        launcher::{FieldDoc, field_table},
+    },
+    ui::runtime_arguments::{
+        RuntimeArgument, choice::ChoiceVar, command::CommandVar, number::NumberVar,
+        password::PasswordVar, path::PathVar, string::StringVar,
+    },
+};
 
-struct ExecVariableDoc {
-    title: &'static str,
-    name: &'static str,
-    description: fn() -> Paragraph,
-    example: &'static str,
+pub struct RuntimeArgumentDoc {
+    pub title: &'static str,
+    pub name: &'static str,
+    pub description: fn() -> Paragraph,
+    pub args: &'static [FieldDoc],
+    pub example: &'static str,
 }
 
-const EXEC_VARIABLE_DOCS: &[ExecVariableDoc] = &[
-    ExecVariableDoc {
-        title: "String Input",
-        name: "string_input",
-        description: || "A plain text input field.".into(),
-        example: r#"{ "type": "string_input", "value": "hello world" }"#,
-    },
-    ExecVariableDoc {
-        title: "Password Input",
-        name: "password_input",
-        description: || "Like string_input but the value is masked in the UI.".into(),
-        example: r#"{ "password_input": "sudo" }"#,
-    },
-    ExecVariableDoc {
-        title: "Path Input",
-        name: "path_input",
-        description: || {
-            p!(
-                "A text input featuring path completion. \
-                By default, completion paths are resolved relative to the",
-                code("$HOME"),
-                "directory. Starting the input with a",
-                code("/"),
-                "prefix will search from the system root instead.",
-            )
-        },
-        example: r#"{ "path_input": "path" }"#,
-    },
-    ExecVariableDoc {
-        title: "Command Input",
-        name: "command_input",
-        description: || {
-            p!(
-                "A text input featuring path completion. Unlike",
-                code("path_input"),
-                ", this will only look at executeable files. \
-                First, it will look at the",
-                code("$PATH"),
-                ", then it will try to complete like",
-                code("path_input"),
-                "."
-            )
-        },
-        example: r#"{ "command_input": "command" }"#,
-    },
-    ExecVariableDoc {
-        title: "Choice Input",
-        name: "choice",
-        description: || {
-            p!(
-                "Presents the user with a predefined list of \
-                options to select from. Each choice has a",
-                code("label"),
-                "shown in the UI and a",
-                code("value"),
-                "passed to the command."
-            )
-        },
-        example: indoc! {r#"{
-            "choice": {
-                "name": "temperature",
-                "choices": [
-                    {"label": "5000", "value": "5000"},
-                    {"label": "6000 <span color='#555555'><i>default</i></span>", "value": "6000"},
-                    {"label": "7000", "value": "7000"},
-                    {"label": "8000", "value": "8000"}
-                ]
-            }
-        }"#},
-    },
-];
+impl IntoComponent for RuntimeArgumentDoc {
+    type Comp = Container;
+    fn into_component(self) -> Self::Comp {
+        md!(
+            h2(self.title),
+            code(self.name),
+            (self.description)(),
+            codeblock().lang("json").content(self.example),
+            field_table(self.args)
+        )
+    }
+}
 
 impl Documentation for RuntimeArgument {
     type Docs = Container;
     fn docs() -> Self::Docs {
-        md().child(h1("Exec Variables"))
+        md().child(h1("Runtime Arguments"))
             .child(ReplacementVariables::docs())
             .child(p!(
                 "In Sherlock",
-                bold("Exec Variables"),
+                bold("Runtime Arguments"),
                 "are dynamic placeholders that allow you \
                 to inject real-time arguments into your applications, scripts, \
                 and commands right at the moment you launch them. Instead of \
                 relying on hardcoded shortcuts,",
-                italic("Exec Variables"),
+                italic("Runtime Arguments"),
                 "turn your launcher into an interactive CLI shell."
             ))
-            .children(EXEC_VARIABLE_DOCS.iter().map(|doc| {
-                md!(
-                    h2(doc.title),
-                    code(doc.name),
-                    (doc.description)(),
-                    codeblock().lang("json").content(doc.example)
-                )
-            }))
+            .children([
+                StringVar::docs(),
+                NumberVar::docs(),
+                PathVar::docs(),
+                CommandVar::docs(),
+                ChoiceVar::docs(),
+                PasswordVar::docs(),
+            ])
     }
 }
 
@@ -246,7 +197,7 @@ impl Documentation for ReplacementVariables {
             "The replacement variable notation allows you to \
                 dynamically replace tokens in commands with contextual data–\
                 such as the user's active search query, system environment settings \
-                or runtime Exec Variables.",
+                or Runtime Arguments.",
             h3("Available Tokens"),
             list_iter!(
                 Ordered,
@@ -265,5 +216,40 @@ impl Documentation for ReplacementVariables {
                 )
                 .child(example),
         )
+    }
+}
+
+#[cfg(all(test, feature = "docs"))]
+mod test {
+    use crate::{
+        docs::Documentation,
+        ui::runtime_arguments::{
+            RuntimeArgument, choice::ChoiceVar, command::CommandVar, number::NumberVar,
+            password::PasswordVar, path::PathVar, string::StringVar,
+        },
+    };
+
+    /// Every documented example must parse as the argument it documents.
+    #[test]
+    fn test_all_docs_valid() {
+        let docs = [
+            StringVar::docs(),
+            PasswordVar::docs(),
+            NumberVar::docs(),
+            PathVar::docs(),
+            CommandVar::docs(),
+            ChoiceVar::docs(),
+        ];
+
+        for doc in docs {
+            let parsed: Result<RuntimeArgument, _> = serde_json::from_str(doc.example);
+            assert!(
+                parsed.is_ok(),
+                "example for `{}` doesn't parse: {}\n{}",
+                doc.name,
+                parsed.unwrap_err(),
+                doc.example,
+            );
+        }
     }
 }
