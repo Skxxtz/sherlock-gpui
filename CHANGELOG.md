@@ -60,7 +60,8 @@ run `git log main..dev` for all changes
     configure whether the sidebar should always show or only on the `Info` quick
     action (`481699d2`)
     * added shortcut keys (`fa91129f`)
-* **Runtime Arguments**: Added validation chars and default values (`ca414c98`, `dfaadb9f`, `95430689`)
+* **Runtime Arguments**: Added validation chars and default values (`ca414c98`,
+  `dfaadb9f`, `95430689`, `cf6005b5`)
 
 ### Improved
 
