@@ -1,7 +1,8 @@
 [workspace]
 members = [
     ".",
-    "crates/md-rs"
+    "crates/md-rs",
+    "crates/elementary"
 ]
 
 [package]
@@ -11,6 +12,7 @@ edition = "2024"
 
 [dependencies]
 md-rs = { path = "./crates/md-rs", features = ["github"], optional = true }
+elementary = { path = "./crates/elementary" }
 arrayvec = "0.7.6"
 bincode = {version = "2.0.1", features = ["serde"]}
 bytes = "1.11.0"
