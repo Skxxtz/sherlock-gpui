@@ -53,7 +53,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Spanned>, Error> {
             c if c.is_alphabetic() || c == '_' => {
                 let mut end = pos;
                 while let Some(&(i, ch)) = chars.peek() {
-                    if ch.is_alphanumeric() || ch == '_' {
+                    if (ch.is_alphanumeric() || ch == '_') && superscript_digit(ch).is_none() {
                         end = i + ch.len_utf8();
                         chars.next();
                     } else {
