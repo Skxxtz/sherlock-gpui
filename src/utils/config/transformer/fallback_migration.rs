@@ -7,16 +7,13 @@ use serde_json::{Value, json};
 use crate::{
     launcher::{utils::binds::BindSerde, variant_type::LauncherVariant},
     loader::utils::{ApplicationActionSerde, RawLauncher},
-    ui::{
-        choice::ChoiceOption,
-        runtime_arguments::{
-            RuntimeArgument,
-            choice::{ChoiceVar, ChoiceVarBody},
-            command::CommandVar,
-            password::PasswordVar,
-            path::PathVar,
-            string::StringVar,
-        },
+    ui::runtime_arguments::{
+        RuntimeArgument,
+        choice::{ChoiceOption, ChoiceVar, ChoiceVarBody},
+        command::CommandVar,
+        password::PasswordVar,
+        path::PathVar,
+        string::StringVar,
     },
     utils::config::HomeType,
 };

@@ -1,22 +1,18 @@
 use gpui::{
     Context, Element, FocusHandle, InteractiveElement, IntoElement, ParentElement, Pixels, Render,
-    SharedString, Styled, Subscription, TextRun, div, prelude::FluentBuilder, px,
+    Styled, Subscription, TextRun, div, prelude::FluentBuilder, px,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{
     app::theme::ActiveTheme,
-    ui::{choice::builder::ChoiceInputBuilder, utils::pango::CachedPango},
+    ui::{
+        choice::builder::ChoiceInputBuilder, runtime_arguments::choice::ChoiceOption,
+        utils::pango::CachedPango,
+    },
 };
 
 mod actions;
 pub mod builder;
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ChoiceOption {
-    pub value: SharedString,
-    pub label: CachedPango,
-}
 
 pub struct Choice {
     // Events

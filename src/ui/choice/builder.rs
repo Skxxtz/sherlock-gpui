@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use crate::ui::{
-    choice::{Choice, ChoiceOption},
+    choice::Choice,
+    runtime_arguments::choice::ChoiceOption,
     utils::{pango::CachedPango, timeout::TimeoutCaller},
 };
 use gpui::Context;
