@@ -93,14 +93,23 @@ impl Model {
         let scores = self.intent_scores(&f);
         let (best, confidence) = softmax_best(&scores, self.temperature);
         let intent = intent_of(best);
-
-        let mut tags = self.viterbi(&q, intent);
-        trim_connectors(words, &mut tags);
         Prediction {
             intent,
             confidence,
-            tags,
+            tags: self.extract_query(&q, words, intent),
         }
+    }
+
+    /// Slot tags for a given intent (skips intent classification).
+    /// Used to measure extraction on its own, with the correct intent.
+    pub fn extract(&self, words: &[String], lex: &Lexicon, intent: Option<Intent>) -> Vec<Tag> {
+        self.extract_query(&Query::new(words, lex), words, intent)
+    }
+
+    fn extract_query(&self, q: &Query, words: &[String], intent: Option<Intent>) -> Vec<Tag> {
+        let mut tags = self.viterbi(q, intent);
+        trim_connectors(words, &mut tags);
+        tags
     }
 
     /// Highest-scoring tag sequence for `words` (Viterbi), instead of

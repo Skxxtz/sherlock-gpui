@@ -6,7 +6,7 @@
 use std::time::Instant;
 
 use parley::features::Lexicon;
-use parley::model::Model;
+use parley::model::{self, Model, class_of, intent_of};
 use parley::training::Rng;
 use parley::training::calibrate;
 use parley::training::corpus::{Dataset, Example, Split};
@@ -37,15 +37,24 @@ fn spans(tags: &[Tag]) -> Vec<(usize, usize, SlotKind)> {
 }
 
 /// F1 per slot kind.
-fn slot_f1(model: &Model, data: &[Example], lex: &Lexicon) -> Vec<(SlotKind, f64, usize)> {
+fn slot_f1(
+    model: &Model,
+    data: &[Example],
+    lex: &Lexicon,
+    oracle: bool,
+) -> Vec<(SlotKind, f64, usize)> {
     SlotKind::ALL
         .iter()
         .map(|&k| {
             let (mut tp, mut fp, mut fn_, mut n) = (0, 0, 0, 0);
             for ex in data {
-                let p = model.predict(&ex.words, lex);
+                let tags = if oracle {
+                    model.extract(&ex.words, lex, ex.intent)
+                } else {
+                    model.predict(&ex.words, lex).tags
+                };
                 let g: Vec<_> = spans(&ex.tags).into_iter().filter(|s| s.2 == k).collect();
-                let q: Vec<_> = spans(&p.tags).into_iter().filter(|s| s.2 == k).collect();
+                let q: Vec<_> = spans(&tags).into_iter().filter(|s| s.2 == k).collect();
                 n += g.len();
                 tp += q.iter().filter(|s| g.contains(s)).count();
                 fp += q.iter().filter(|s| !g.contains(s)).count();
@@ -54,6 +63,63 @@ fn slot_f1(model: &Model, data: &[Example], lex: &Lexicon) -> Vec<(SlotKind, f64
             (k, 2.0 * tp as f64 / (2 * tp + fp + fn_).max(1) as f64, n)
         })
         .collect()
+}
+
+/// Share of examples whose slots are exactly right when the model is
+/// given the correct intent: extraction quality on its own.
+fn oracle_exact(model: &Model, data: &[Example], lex: &Lexicon) -> f64 {
+    let ok = data
+        .iter()
+        .filter(|ex| model.extract(&ex.words, lex, ex.intent) == ex.tags)
+        .count();
+    ok as f64 / data.len().max(1) as f64
+}
+
+/// Exact-match errors split by cause: wrong intent, or right intent
+/// but wrong slots. Shares of all examples.
+fn error_split(model: &Model, data: &[Example], lex: &Lexicon) -> (f64, f64) {
+    let (mut intent, mut slots) = (0, 0);
+    for ex in data {
+        let p = model.predict(&ex.words, lex);
+        if p.intent != ex.intent {
+            intent += 1;
+        } else if p.tags != ex.tags {
+            slots += 1;
+        }
+    }
+    let n = data.len().max(1) as f64;
+    (intent as f64 / n, slots as f64 / n)
+}
+
+fn class_name(c: usize) -> &'static str {
+    intent_of(c).map_or("none", |i| i.name())
+}
+
+/// Intent confusion matrix (rows = gold, columns = predicted), in %
+/// of the row. Aggregate counts only, no individual examples.
+fn confusion(model: &Model, data: &[Example], lex: &Lexicon) {
+    let mut m = [[0usize; model::CLASSES]; model::CLASSES];
+    for ex in data {
+        let p = model.predict(&ex.words, lex);
+        m[class_of(ex.intent)][class_of(p.intent)] += 1;
+    }
+    print!("  {:<8}", "gold\\pred");
+    for c in 0..model::CLASSES {
+        print!("{:>8}", class_name(c));
+    }
+    println!();
+    for (g, row) in m.iter().enumerate() {
+        let n = row.iter().sum::<usize>().max(1) as f64;
+        print!("  {:<8}", class_name(g));
+        for &v in row {
+            if v == 0 {
+                print!("{:>8}", ".");
+            } else {
+                print!("{:>7.1}%", v as f64 / n * 100.0);
+            }
+        }
+        println!("   ({:.0})", n);
+    }
 }
 
 /// Error categories for wrong examples.
@@ -114,6 +180,8 @@ fn main() {
         "test precision (parse())",
         "test coverage  (parse())",
         "test false positives",
+        "dev  extraction (oracle intent)",
+        "test extraction (oracle intent)",
     ];
     let mut values: Vec<Vec<f64>> = vec![Vec::new(); names.len()];
     let mut last: Option<(Model, Vec<Example>, Vec<Example>)> = None;
@@ -145,6 +213,8 @@ fn main() {
             l.precision,
             l.coverage,
             l.false_positive,
+            oracle_exact(&model, &dev, &lex),
+            oracle_exact(&model, &test, &lex),
         ]
         .into_iter()
         .enumerate()
@@ -169,15 +239,48 @@ fn main() {
 
     let (model, dev, test) = last.unwrap();
     println!("\n== slot F1 per kind (last seed) ==");
-    println!("  {:<10} {:>14} {:>14}", "slot", "dev", "test");
-    let (fd, ft) = (slot_f1(&model, &dev, &lex), slot_f1(&model, &test, &lex));
-    for ((k, a, na), (_, b, nb)) in fd.iter().zip(&ft) {
+    println!(
+        "  {:<10} {:>14} {:>14} {:>14} {:>14}",
+        "", "", "", "oracle intent", ""
+    );
+    println!(
+        "  {:<10} {:>14} {:>14} {:>14} {:>14}",
+        "slot", "dev", "test", "dev", "test"
+    );
+    let (fd, ft) = (
+        slot_f1(&model, &dev, &lex, false),
+        slot_f1(&model, &test, &lex, false),
+    );
+    let (od, ot) = (
+        slot_f1(&model, &dev, &lex, true),
+        slot_f1(&model, &test, &lex, true),
+    );
+    for (((k, a, na), (_, b, nb)), ((_, c, _), (_, d, _))) in
+        fd.iter().zip(&ft).zip(od.iter().zip(&ot))
+    {
         println!(
-            "  {:<10} {:>6.1}% ({na:>4}) {:>6.1}% ({nb:>4})",
+            "  {:<10} {:>6.1}% ({na:>4}) {:>6.1}% ({nb:>4}) {:>13.1}% {:>13.1}%",
             k.name(),
             a * 100.0,
-            b * 100.0
+            b * 100.0,
+            c * 100.0,
+            d * 100.0
         );
+    }
+
+    println!("\n== where exact-match errors come from (last seed, % of all examples) ==");
+    for (name, data) in [("dev", &dev), ("test", &test)] {
+        let (i, s) = error_split(&model, data, &lex);
+        println!(
+            "  {name:<5} wrong intent {:>5.1}%   right intent, wrong slots {:>5.1}%",
+            i * 100.0,
+            s * 100.0
+        );
+    }
+
+    for (name, data) in [("DEV", &dev), ("TEST", &test)] {
+        println!("\n== intent confusion on {name} (row %, last seed) ==");
+        confusion(&model, data, &lex);
     }
 
     println!("\n== error types on DEV (test errors are never inspected) ==");
