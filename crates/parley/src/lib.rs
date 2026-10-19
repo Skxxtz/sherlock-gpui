@@ -6,8 +6,10 @@
 //! (`cargo run -p parley --bin train`) and embedded into the library.
 
 mod schema;
+#[cfg(feature = "train")]
+pub mod train;
 
-pub use schema::{Intent, SlotKind};
+pub use schema::{Intent, SlotKind, Tag};
 
 /// One extracted slot: its kind and the words it covers.
 #[derive(Debug, Clone, PartialEq)]

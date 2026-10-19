@@ -95,3 +95,56 @@ impl SlotKind {
         }
     }
 }
+
+/// Per-word label used by the tagger: outside, begin or inside of a slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Tag {
+    /// Not part of any slot.
+    O,
+    /// First word of a slot.
+    B(SlotKind),
+    /// Following word of the same slot.
+    I(SlotKind),
+}
+
+impl Tag {
+    /// Number of distinct tags (model rows).
+    pub const COUNT: usize = 1 + 2 * SlotKind::ALL.len();
+
+    /// Stable index: `O` = 0, `B(k)` = 1 + 2k, `I(k)` = 2 + 2k.
+    pub fn index(self) -> usize {
+        match self {
+            Tag::O => 0,
+            Tag::B(s) => 1 + 2 * s.index(),
+            Tag::I(s) => 2 + 2 * s.index(),
+        }
+    }
+
+    /// Inverse of `index`.
+    pub fn from_index(i: usize) -> Tag {
+        match i {
+            0 => Tag::O,
+            i if i % 2 == 1 => Tag::B(SlotKind::ALL[(i - 1) / 2]),
+            i => Tag::I(SlotKind::ALL[(i - 2) / 2]),
+        }
+    }
+}
+
+impl SlotKind {
+    /// Position in `ALL`.
+    pub fn index(self) -> usize {
+        SlotKind::ALL.iter().position(|s| *s == self).unwrap()
+    }
+
+    /// Inverse of `name`.
+    pub fn from_name(name: &str) -> Option<SlotKind> {
+        SlotKind::ALL.iter().copied().find(|s| s.name() == name)
+    }
+}
+
+impl Intent {
+    /// Inverse of `name`.
+    pub fn from_name(name: &str) -> Option<Intent> {
+        Intent::ALL.iter().copied().find(|i| i.name() == name)
+    }
+}

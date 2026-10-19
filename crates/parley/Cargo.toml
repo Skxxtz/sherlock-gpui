@@ -6,6 +6,11 @@ description = "Small trained intent + slot parser for launcher commands"
 
 [dependencies]
 
+[features]
+# training-only code (data generator, trainer); never needed at runtime
+train = []
+
 [[bin]]
 name = "train"
 path = "src/bin/train.rs"
+required-features = ["train"]

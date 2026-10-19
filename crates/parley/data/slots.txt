@@ -1,0 +1,29 @@
+# Slot values for parley.
+#
+#   SLOT  = a | b c | …     values used for training
+#   SLOT! = a | …           held-out values, only used for evaluation
+#   #                       a random number (1–90), e.g. `#m` → `25m`
+#
+# Real slot values (installed apps, …) come from the system at runtime;
+# these only need to teach the model what such values look like.
+
+DUR  = #m | # min | # mins | # minutes | #s | # sec | # seconds | #h | # hour | # hours | half an hour | an hour | #h #m | # and a half minutes
+DUR! = # secs | #hrs | #min | a minute | # hrs
+
+TIME  = #pm | # am | #am | #:30 | #:15 | noon | tomorrow | # o'clock | tonight | #pm tomorrow
+TIME! = #:45pm | midnight | #am tomorrow | morning
+
+PCT  = #% | # | # percent
+PCT! = # % | max
+
+TEXT  = call mom | drink water | stretch | check the oven | take the laundry out | push the release | feed the cat | stand up | pay rent | start the dishwasher
+TEXT! = water the plants | email bob | leave for the train
+
+APP  = firefox | kitty | spotify | obsidian | gimp | thunderbird | visual studio code | discord | nautilus | alacritty | signal | inkscape
+APP! = steam | libreoffice writer | blender | krita
+
+QUERY  = rust lifetimes | weather berlin | unzip tar | gpui docs | best pizza near me | nixos flakes | pipewire latency | hyprland config
+QUERY! = wayland layer shell | train times hamburg | borrow checker
+
+ACTION  = notify me | ping me | alert me | send a notification | beep | play a sound
+ACTION! = let me know | ring

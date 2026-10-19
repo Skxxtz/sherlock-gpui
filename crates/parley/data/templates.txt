@@ -1,0 +1,95 @@
+# Training templates for parley.
+#
+# Syntax
+#   @name = a | b c | d      word list; choices may be several words or empty
+#   intent: words …          a template (intent = timer, remind, open, search,
+#                            volume, or none for things that are NOT commands)
+#   {DUR} {TIME} …           a slot, filled from data/slots.txt
+#   @name                    one choice from a list
+#   [x]                      optional: x or nothing (x = word, @list or {SLOT})
+#
+# Everything above `== test ==` is training data. Everything below is held out:
+# phrasings the model never sees, used only to measure generalisation.
+# Keep them genuinely different, and don't copy test lines into training.
+
+@please  = please | for me | quickly
+@can     = can you | could you | pls
+@new     = new | set | start | make | create | begin
+@then    = then | and | and then
+
+# ---- timer ----
+timer: [@can] @new [a] {DUR} timer [@please]
+timer: [@can] @new [a] timer for {DUR} [@please]
+timer: timer {DUR} [@then {ACTION}]
+timer: [@new] [a] {DUR} timer @then {ACTION}
+timer: timer for {DUR} [@then {ACTION}]
+timer: countdown {DUR} [@then {ACTION}]
+timer: {DUR} timer [@please]
+timer: [@new] [a] timer [for] {DUR} @then {ACTION}
+
+# ---- remind ----
+@remind_me = remind me | notify me | tell me
+remind: @remind_me in {DUR} to {TEXT}
+remind: @remind_me at {TIME} to {TEXT}
+remind: @remind_me to {TEXT} in {DUR}
+remind: @remind_me to {TEXT} at {TIME}
+remind: in {DUR} @remind_me to {TEXT}
+remind: reminder {TEXT} at {TIME}
+remind: reminder {TEXT} in {DUR}
+remind: {TEXT} in {DUR}
+remind: at {TIME} {TEXT}
+
+# ---- open ----
+@open = open | launch | start | run | open up
+open: [@can] @open {APP} [@please]
+open: {APP} [@please]
+
+# ---- search ----
+@search = search | google | look up | search for | web
+search: [@can] @search {QUERY} [@please]
+search: what is {QUERY}
+search: how to {QUERY}
+
+# ---- volume ----
+@vol = volume | vol | sound
+@set = set | turn | change
+volume: @vol {PCT}
+volume: [@set] [the] @vol to {PCT}
+volume: @vol up to {PCT}
+
+# ---- not a command ----
+none: firefox
+none: 2 + 3
+none: play some music
+none: set an alarm
+none: hello
+none: screenshot
+none: settings
+none: wifi off
+none: lock screen
+none: battery
+none: clipboard
+none: timer
+none: volume
+none: open
+none: remind me
+
+== test ==
+
+timer: make me a {DUR} timer
+timer: {DUR} countdown please
+timer: timer of {DUR} after that {ACTION}
+timer: i need a {DUR} timer
+remind: ping me in {DUR} to {TEXT}
+remind: at {TIME} remind me to {TEXT}
+remind: don't let me forget to {TEXT} in {DUR}
+open: please open {APP}
+open: fire up {APP}
+open: i want {APP}
+search: find {QUERY} on the web
+search: web search {QUERY}
+volume: bring the volume down to {PCT}
+volume: volume at {PCT}
+volume: make it {PCT} loud
+none: what time is it
+none: shutdown
