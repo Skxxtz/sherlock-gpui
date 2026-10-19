@@ -62,6 +62,15 @@ run `git log main..dev` for all changes
     * added shortcut keys (`fa91129f`)
 * **Runtime Arguments**: Added validation chars and default values (`ca414c98`,
   `dfaadb9f`, `95430689`, `cf6005b5`)
+* **Calculator**: Equation solving and extended syntax (`367590f6`,
+  `1ba678cd`, `71d09827`)
+    * added equation solving: `2x + 1 = 7` → `x = 3`, `x² - 5x + 6 = 0` →
+    `x = 2, 3`, complex roots (`x² + 1 = 0` → `x = 0 ± 1i`) and numeric search
+    for non-polynomials (`2^x = 1024`, `1.08^n = 2`)
+    * added calculator-style percentages: `200 + 19%` → 238, `80 - 25%` → 60
+    * added implicit multiplication (`2pi`, `3(4 + 1)`), factorial `5!` and
+    superscript exponents `x²`
+    * added math symbols `⌊x⌋`, `⌈x⌉`, `|x|`, `√x`, `∛x`, `×`, `÷`, `**`
 
 ### Improved
 
@@ -85,6 +94,19 @@ run `git log main..dev` for all changes
 ### Removed
 
 * **Flags:** Removed `sherlock docs` flag – only ever used in debug. (`c60bd4f1`)
+
+### Changed
+
+* **Calculator**: Replaced `meval` with the new `elementary` crate
+  (`367590f6`, `1ba678cd`, `71d09827`)
+    * trigonometric functions now use degrees (`sin(90)` = 1)
+    * `%` is percent after a number (`50%` = 0.5) and modulo between two
+    numbers (`10 % 3` = 1)
+
+### Performance
+
+* **Calculator**: Expressions evaluate 2.6–10× faster than with `meval`
+  (`367590f6`, `1ba678cd`, `71d09827`)
 
 ### Fixed
 
