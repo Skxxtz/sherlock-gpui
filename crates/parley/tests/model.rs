@@ -177,3 +177,28 @@ fn ordinary_launcher_input_is_left_alone() {
         assert_eq!(parse_with(q, &lex), None, "{q:?} should not be a command");
     }
 }
+
+#[test]
+fn punctuation_is_its_own_token() {
+    use parley::features::tokens;
+    assert_eq!(
+        tokens("stretch, then go"),
+        vec!["stretch", ",", "then", "go"]
+    );
+    assert_eq!(tokens("timer: 5m!"), vec!["timer", ":", "5m", "!"]);
+    assert_eq!(
+        tokens("(soon) ok..."),
+        vec!["(", "soon", ")", "ok", ".", ".", "."]
+    );
+    assert_eq!(
+        tokens("at 7:30, 5.30 don't"),
+        vec!["at", "7:30", ",", "5.30", "don't"]
+    );
+    assert_eq!(tokens(", ?"), vec![",", "?"]);
+}
+
+#[test]
+fn slots_dont_swallow_punctuation() {
+    let p = parse("remind me in 10 minutes to call mom, please").unwrap();
+    assert_eq!(p.slot(SlotKind::Text), Some("call mom"));
+}

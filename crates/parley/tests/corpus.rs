@@ -87,6 +87,28 @@ fn intents_are_balanced() {
 }
 
 #[test]
+fn templates_may_put_punctuation_next_to_slots() {
+    let d = Dataset::parse(
+        "remind: {TEXT}, at {TIME}\nremind: reminder: {TEXT} {TIME}.",
+        "TEXT = call mom\nTEXT? = a\nTEXT! = b\nTIME = 5pm\nTIME? = 6pm\nTIME! = 7pm",
+    )
+    .unwrap();
+    let mut rng = Rng::new(9);
+    let texts: HashSet<String> = d
+        .generate(Split::Train, Split::Train, 100, &mut rng, false)
+        .iter()
+        .map(|e| e.text())
+        .collect();
+    assert_eq!(
+        texts,
+        HashSet::from([
+            "call mom , at 5pm".to_string(),
+            "reminder : call mom 5pm .".to_string()
+        ])
+    );
+}
+
+#[test]
 fn same_seed_same_data() {
     let d = ds();
     let a = d.generate(Split::Train, Split::Train, 100, &mut Rng::new(7), true);

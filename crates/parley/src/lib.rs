@@ -79,7 +79,7 @@ pub fn parse(query: &str) -> Option<Parsed> {
 
 /// Like `parse`, with known words (e.g. installed apps) to help the model.
 pub fn parse_with(query: &str, lex: &Lexicon) -> Option<Parsed> {
-    let raw: Vec<&str> = query.split_whitespace().collect();
+    let raw = features::tokens(query);
     if raw.is_empty() {
         return None;
     }

@@ -132,9 +132,11 @@ impl Model {
                 }
                 let prev = Tag::from_index(p);
                 features::token_prev(q, i, prev, intent, &mut fp);
+                let punct = features::is_punct(&q.words[i]);
                 for (c, &b) in base.iter().enumerate() {
                     let cand = Tag::from_index(c);
-                    if !allowed(prev, cand, intent) {
+                    // punctuation is never part of a slot
+                    if !allowed(prev, cand, intent) || (punct && cand != Tag::O) {
                         continue;
                     }
                     let s = from + b + self.tag_score(cand, &fp);

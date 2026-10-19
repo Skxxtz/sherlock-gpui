@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 use super::Rng;
+use crate::features::tokens;
 use crate::{Intent, SlotKind, Tag};
 
 /// The bundled template file.
@@ -89,8 +90,22 @@ pub struct Dataset {
 
 fn split_choices(s: &str) -> Vec<Vec<String>> {
     s.split('|')
-        .map(|c| c.split_whitespace().map(String::from).collect())
+        .map(|c| tokens(c).into_iter().map(String::from).collect())
         .collect()
+}
+
+/// Template word → pieces, tokenised like runtime input but keeping
+/// `{SLOT}` whole: `{TEXT},` → `{TEXT}` `,`; `timer:` → `timer` `:`.
+fn split_template_word(w: &str) -> Vec<&str> {
+    match (w.find('{'), w.find('}')) {
+        (Some(i), Some(j)) if i < j => {
+            let mut out = tokens(&w[..i]);
+            out.push(&w[i..=j]);
+            out.extend(tokens(&w[j + 1..]));
+            out
+        }
+        _ => tokens(w),
+    }
 }
 
 fn idx(split: Split) -> usize {
@@ -338,10 +353,12 @@ fn parse_body(
             }
             group = Some(Vec::new());
         }
-        let tok = parse_word(word, intent, lists)?;
-        match group.as_mut() {
-            Some(g) => g.push(tok),
-            None => out.push(tok),
+        for piece in split_template_word(word) {
+            let tok = parse_word(piece, intent, lists)?;
+            match group.as_mut() {
+                Some(g) => g.push(tok),
+                None => out.push(tok),
+            }
         }
         if closes {
             let g = group.take().ok_or("`]` without `[`")?;

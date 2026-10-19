@@ -52,9 +52,51 @@ impl Lexicon {
     }
 }
 
-/// Split and lowercase a query.
+/// Punctuation split off the start of a word into its own token.
+const LEADING: &[char] = &['(', '"'];
+/// Punctuation split off the end of a word into its own token.
+const TRAILING: &[char] = &[',', '.', '!', '?', ';', ':', ')', '"'];
+
+/// Split a query into tokens: on whitespace, with punctuation at the edges
+/// of a word as separate tokens. `stretch, then` → `stretch` `,` `then`;
+/// `timer:` → `timer` `:`. Inside a word it stays: `7:30`, `5.30`, `don't`.
+pub fn tokens(query: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    for word in query.split_whitespace() {
+        let mut w = word;
+        while let Some(c) = w.chars().next()
+            && LEADING.contains(&c)
+            && w.len() > c.len_utf8()
+        {
+            out.push(&w[..c.len_utf8()]);
+            w = &w[c.len_utf8()..];
+        }
+        let mut trailing = Vec::new();
+        while let Some(c) = w.chars().last()
+            && TRAILING.contains(&c)
+            && w.len() > c.len_utf8()
+        {
+            let i = w.len() - c.len_utf8();
+            trailing.push(&w[i..]);
+            w = &w[..i];
+        }
+        out.push(w);
+        out.extend(trailing.into_iter().rev());
+    }
+    out
+}
+
+/// A token made only of punctuation (`,`, `?`, `...`).
+pub fn is_punct(token: &str) -> bool {
+    !token.is_empty()
+        && token
+            .chars()
+            .all(|c| LEADING.contains(&c) || TRAILING.contains(&c))
+}
+
+/// Tokenise and lowercase a query.
 pub fn words(query: &str) -> Vec<String> {
-    query.split_whitespace().map(str::to_lowercase).collect()
+    tokens(query).into_iter().map(str::to_lowercase).collect()
 }
 
 /// A query analysed once: words, a class per word, recognised spans.
