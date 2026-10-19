@@ -197,6 +197,31 @@ fn empty_parts_are_reported_not_panicking() {
 }
 
 #[test]
+fn section_markers_are_lenient() {
+    let slots = "DUR = 5m\nDUR? = 6m\nDUR! = 7m";
+    for (dev, test) in [
+        ("== dev ==", "== test =="),
+        ("==dev==", "==TEST=="),
+        ("==  Dev  ==", "== Test =="),
+    ] {
+        let t = format!("timer: {{DUR}}\n{dev}\ntimer: y {{DUR}}\n{test}\ntimer: x {{DUR}}");
+        let d = Dataset::parse(&t, slots).unwrap();
+        assert_eq!(
+            (d.template_count(Split::Dev), d.template_count(Split::Test)),
+            (1, 1),
+            "{dev} / {test}"
+        );
+    }
+    let e = Dataset::parse("timer: {DUR}\n== devv ==", slots)
+        .err()
+        .unwrap();
+    assert!(
+        e.contains("templates.txt:2") && e.contains("unknown section"),
+        "{e}"
+    );
+}
+
+#[test]
 fn errors_name_the_line() {
     let e = Dataset::parse("timer: {APP} please", "APP = a\nAPP? = b\nAPP! = c")
         .err()

@@ -171,16 +171,18 @@ impl Dataset {
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            match line {
-                "== dev ==" => {
-                    split = Split::Dev;
-                    continue;
-                }
-                "== test ==" => {
-                    split = Split::Test;
-                    continue;
-                }
-                _ => {}
+            // section markers: `== dev ==` / `== test ==`, any case and spacing
+            if let Some(name) = line.strip_prefix("==").and_then(|l| l.strip_suffix("==")) {
+                split = match name.trim().to_lowercase().as_str() {
+                    "dev" => Split::Dev,
+                    "test" => Split::Test,
+                    other => {
+                        return Err(at(format!(
+                            "unknown section `{other}` (use `== dev ==` or `== test ==`)"
+                        )));
+                    }
+                };
+                continue;
             }
             if let Some(rest) = line.strip_prefix('@') {
                 let (name, choices) = rest
