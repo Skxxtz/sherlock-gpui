@@ -30,7 +30,6 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg"]
 levenshtein = "1.0.5"
 libc = "0.2.180"
 memchr = "2.7.6"
-meval = "0.2.0"
 nix = { version = "0.31.2", features = ["process", "signal"] }
 rayon = "1.11.0"
 regex = "1.12.2"

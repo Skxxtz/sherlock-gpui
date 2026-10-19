@@ -94,10 +94,19 @@ impl<'a> RenderableChildImpl<'a> for CalcData {
 
         if self.capabilities.allows(Capabilities::MATH) {
             let trimmed_keyword = keyword.trim();
-            if let Ok(r) = meval::eval_str(trimmed_keyword) {
+
+            if let Ok(r) = elementary::eval_str(trimmed_keyword) {
                 let r = r.to_string();
                 if r != trimmed_keyword {
                     result = Some((r.clone(), IntentResult::String(format!("= {}", r).into())));
+                }
+            } else if keyword.contains('=') {
+                if let Ok(mut sol) = elementary::solve_str(keyword) {
+                    sol.sort_nearest();
+                    let more = sol.roots.len() > 4;
+                    sol.roots.truncate(4);
+                    let shown = format!("{sol}{}", if more { ", …" } else { "" });
+                    result = Some((shown.clone(), IntentResult::String(shown.into())));
                 }
             }
         }
