@@ -1,0 +1,8 @@
+[package]
+name = "elementary"
+version = "0.1.0"
+edition = "2024"
+description = "Small math expression parser and evaluator for Sherlock"
+
+[dependencies]
+smallvec = "1.15.1"

@@ -2,6 +2,7 @@
 members = [
     ".",
     "crates/md-rs",
+    "crates/elementary",
     "sherlock-derive"
 ]
 
@@ -12,6 +13,7 @@ edition = "2024"
 
 [dependencies]
 md-rs = { path = "./crates/md-rs", features = ["github"], optional = true }
+elementary = { path = "./crates/elementary"}
 sherlock-derive = { path = "sherlock-derive" }
 arrayvec = "0.7.6"
 bincode = {version = "2.0.1", features = ["serde"]}
