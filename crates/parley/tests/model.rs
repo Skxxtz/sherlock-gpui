@@ -117,3 +117,63 @@ fn recognisers() {
     assert_eq!(r("set a timer"), vec![]);
     assert_eq!(r("open firefox"), vec![]);
 }
+
+#[test]
+fn validation_needs_the_essential_slot() {
+    use parley::validate::plausible;
+    use parley::{Intent::*, SlotKind::*, Tag::*};
+    let w = |s: &str| s.split(' ').map(String::from).collect::<Vec<_>>();
+    let lex = Lexicon::default();
+
+    // timer needs a real duration
+    assert!(plausible(Timer, &w("timer 20m"), &[O, B(Duration)], &lex));
+    assert!(!plausible(Timer, &w("timer app"), &[O, B(Duration)], &lex));
+    assert!(!plausible(Timer, &w("timer"), &[O], &lex));
+    // remind needs text and a duration or time
+    assert!(plausible(
+        Remind,
+        &w("stretch in 5m"),
+        &[B(Text), O, B(Duration)],
+        &lex
+    ));
+    assert!(!plausible(
+        Remind,
+        &w("remind me stretch"),
+        &[O, O, B(Text)],
+        &lex
+    ));
+    // volume needs a level
+    assert!(plausible(Volume, &w("volume 30"), &[O, B(Percent)], &lex));
+    assert!(plausible(Volume, &w("volume max"), &[O, B(Percent)], &lex));
+    assert!(!plausible(
+        Volume,
+        &w("volume mixer"),
+        &[O, B(Percent)],
+        &lex
+    ));
+    assert!(!plausible(Volume, &w("volume 300"), &[O, B(Percent)], &lex));
+    // open checks the app against the lexicon, if there is one
+    let apps = Lexicon::with_apps(["Firefox"]);
+    assert!(plausible(Open, &w("open firefox"), &[O, B(App)], &apps));
+    assert!(!plausible(Open, &w("open nonsense"), &[O, B(App)], &apps));
+    assert!(plausible(Open, &w("open nonsense"), &[O, B(App)], &lex));
+}
+
+#[test]
+fn ordinary_launcher_input_is_left_alone() {
+    let lex = Lexicon::with_apps(["Firefox", "Kitty", "Spotify"]);
+    for q in [
+        "firefox",
+        "terminal",
+        "sleep",
+        "dark mode",
+        "timer",
+        "volume",
+        "2 + 3",
+        "reminders",
+        "volume mixer",
+        "timer app",
+    ] {
+        assert_eq!(parse_with(q, &lex), None, "{q:?} should not be a command");
+    }
+}

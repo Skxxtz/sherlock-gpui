@@ -13,6 +13,7 @@ pub mod model;
 mod schema;
 #[cfg(feature = "training")]
 pub mod training;
+pub mod validate;
 
 pub use features::Lexicon;
 pub use schema::{Intent, SlotKind, Tag};
@@ -20,7 +21,9 @@ pub use schema::{Intent, SlotKind, Tag};
 use model::Model;
 
 /// Below this confidence, `parse` returns `None` (treat as normal search).
-pub const MIN_CONFIDENCE: f32 = 0.6;
+/// Low on purpose: slot validation (`validate`) does most of the filtering;
+/// on dev, higher thresholds only cost coverage.
+pub const MIN_CONFIDENCE: f32 = 0.5;
 
 /// One extracted slot: its kind and the words it covers.
 #[derive(Debug, Clone, PartialEq)]
@@ -80,11 +83,12 @@ pub fn parse_with(query: &str, lex: &Lexicon) -> Option<Parsed> {
     if raw.is_empty() {
         return None;
     }
-    let p = model()?.predict(&features::words(query), lex);
-    let intent = p.intent?;
-    if p.confidence < MIN_CONFIDENCE {
+    let words = features::words(query);
+    let p = model()?.predict(&words, lex);
+    if !validate::accept(&p, &words, lex) {
         return None;
     }
+    let intent = p.intent?;
 
     let mut slots: Vec<Slot> = Vec::new();
     for (word, tag) in raw.iter().zip(&p.tags) {

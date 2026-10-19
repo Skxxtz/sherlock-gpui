@@ -41,6 +41,11 @@ impl Lexicon {
         Lexicon { apps }
     }
 
+    /// No words at all (then app names can't be checked).
+    pub fn is_empty(&self) -> bool {
+        self.apps.is_empty()
+    }
+
     /// Is `word` (lowercase) part of a known app name?
     pub fn is_app(&self, word: &str) -> bool {
         self.apps.contains(word)

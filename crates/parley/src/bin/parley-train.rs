@@ -9,12 +9,15 @@ use parley::model::Model;
 use parley::training::Rng;
 use parley::training::calibrate;
 use parley::training::corpus::{Dataset, Split};
-use parley::training::evaluate::{by_intent, errors, evaluate, render};
+use parley::training::evaluate::{by_intent, errors, evaluate, launcher};
 use parley::training::trainer::{Settings, train};
 
 const TRAIN_EXAMPLES: usize = 20_000;
 const TEST_EXAMPLES: usize = 2_000;
 const SEED: u64 = 42;
+
+/// Decides whether a prediction is shown as a command.
+type Gate<'a> = dyn Fn(&parley::model::Prediction, &[String]) -> bool + 'a;
 
 fn main() {
     // `--errors [N]`: print up to N (default 12) wrong predictions per dev set
@@ -124,6 +127,15 @@ fn main() {
             "  … same, without app lexicon",
             evaluate(&model, &data, &Lexicon::default()),
         );
+        let l = launcher(&model, &data, &lex, |p, w| {
+            parley::validate::accept(p, w, &lex)
+        });
+        println!(
+            "  launcher view (parse()): precision {:.1}%, coverage {:.1}%, false positives {:.1}%",
+            l.precision * 100.0,
+            l.coverage * 100.0,
+            l.false_positive * 100.0
+        );
         println!("  per intent (TEST phrasings, TEST values):");
         for (intent, n, r) in by_intent(&model, &data, &lex) {
             match intent {
@@ -140,34 +152,52 @@ fn main() {
         }
     }
 
-    // what each confidence threshold buys on the hardest set
-    println!("\nconfidence threshold (DEV phrasings + DEV values):");
+    // what a launcher user would see: precision of shown commands, coverage,
+    // and how often ordinary input gets a command
+    let gates: [(&str, Box<Gate>); 3] = [
+        ("any predicted command", Box::new(|p, _| p.intent.is_some())),
+        (
+            "+ confidence ≥ MIN_CONFIDENCE",
+            Box::new(|p, _| p.intent.is_some() && p.confidence >= parley::MIN_CONFIDENCE),
+        ),
+        (
+            "+ slot validation (= parse())",
+            Box::new(|p, w| parley::validate::accept(p, w, &lex)),
+        ),
+    ];
+    println!("\nlauncher view (DEV phrasings + DEV values):");
+    println!(
+        "  {:<32} {:>10} {:>10} {:>10}",
+        "shown when", "precision", "coverage", "false pos"
+    );
+    for (name, gate) in &gates {
+        let l = launcher(&model, &hardest, &lex, gate);
+        println!(
+            "  {name:<32} {:>9.1}% {:>9.1}% {:>9.1}%",
+            l.precision * 100.0,
+            l.coverage * 100.0,
+            l.false_positive * 100.0
+        );
+    }
+
+    // what each confidence threshold buys, with slot validation (as parse() does)
+    println!("\nconfidence threshold + slot validation (DEV phrasings + DEV values):");
     println!(
         "  {:>9} {:>10} {:>10} {:>10}",
-        "threshold", "acts on", "precision", "coverage"
+        "threshold", "precision", "coverage", "false pos"
     );
-    let preds: Vec<_> = hardest
-        .iter()
-        .map(|e| (e, model.predict(&e.words, &lex)))
-        .collect();
-    let commands = hardest.iter().filter(|e| e.intent.is_some()).count();
-    for th in [0.0, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95] {
-        let acted: Vec<_> = preds
-            .iter()
-            .filter(|(_, p)| p.intent.is_some() && p.confidence >= th)
-            .collect();
-        let right = acted
-            .iter()
-            .filter(|(e, p)| {
-                render(&e.words, &e.tags, e.intent) == render(&e.words, &p.tags, p.intent)
+    for th in [0.0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9] {
+        let l = launcher(&model, &hardest, &lex, |p, w| {
+            p.intent.is_some_and(|i| {
+                p.confidence >= th && parley::validate::plausible(i, w, &p.tags, &lex)
             })
-            .count();
+        });
         println!(
-            "  {:>9.2} {:>10} {:>9.1}% {:>9.1}%",
+            "  {:>9.2} {:>9.1}% {:>9.1}% {:>9.1}%",
             th,
-            acted.len(),
-            right as f64 / acted.len().max(1) as f64 * 100.0,
-            right as f64 / commands.max(1) as f64 * 100.0
+            l.precision * 100.0,
+            l.coverage * 100.0,
+            l.false_positive * 100.0
         );
     }
 

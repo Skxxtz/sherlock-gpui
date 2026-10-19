@@ -95,6 +95,18 @@ none: volume
 none: open
 none: remind me
 
+# more non-commands: things people type into a launcher that are NOT commands
+@bare_app = firefox | kitty | spotify | obsidian | gimp | thunderbird | visual studio code | discord | nautilus | alacritty | signal | inkscape | chromium | vlc | telegram | zed | neovim | evince | keepassxc | slack | zoom | element | pavucontrol | files | software | system monitor | text editor | image viewer
+@setting  = wlan | network | display | monitor | keyboard | mouse | touchpad | printer | power | sound | microphone | camera | language | date and time | users | updates | privacy | wallpaper | appearance | fonts | displays | sound output
+@calc     = 2 + 3 | 12 * 7 | 100 / 4 | 3^2 | sqrt(16) | 15% of 80 | 2 + 3 * 4 | pi * 2 | cos(0) | 7 - 9 | 1e3 | 0.5 + 0.25 | 20% of 150 | 5!
+@word     = thanks | weather | music | photos | downloads | documents | trash | power off | reboot | lock | suspend | hibernate | clipboard history | color picker | help | test | asdf | sherlock | ok | good morning | who am i | i am bored
+@cmdword  = timer app | volume mixer | search history | reminders | stopwatch | countdown app | volume control | app launcher | alarm clock app | open recent
+none: @bare_app
+none: @setting
+none: @calc
+none: @word
+none: @cmdword
+
 
 
 == dev ==
