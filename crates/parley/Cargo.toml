@@ -1,0 +1,11 @@
+[package]
+name = "parley"
+version = "0.1.0"
+edition = "2024"
+description = "Small trained intent + slot parser for launcher commands"
+
+[dependencies]
+
+[[bin]]
+name = "train"
+path = "src/bin/train.rs"
