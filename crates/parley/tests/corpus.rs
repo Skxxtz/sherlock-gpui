@@ -14,14 +14,15 @@ fn ds() -> Dataset {
 fn bundled_files_parse() {
     let d = ds();
     assert!(d.template_count(Split::Train) > 0);
+    assert!(d.template_count(Split::Dev) > 0);
     assert!(d.template_count(Split::Test) > 0);
 }
 
 #[test]
-fn every_intent_has_train_and_test_examples() {
+fn every_intent_is_in_every_split() {
     let d = ds();
     let mut rng = Rng::new(1);
-    for split in [Split::Train, Split::Test] {
+    for split in Split::ALL {
         let seen: HashSet<_> = d
             .generate(split, split, 5000, &mut rng, false)
             .iter()
@@ -59,7 +60,7 @@ fn tags_are_consistent() {
 fn multi_word_optional_groups() {
     let d = Dataset::parse(
         "timer: timer {DUR} [then {ACTION}]",
-        "DUR = 5m\nDUR! = 6m\nACTION = beep\nACTION! = ring",
+        "DUR = 5m\nDUR? = 6m\nDUR! = 7m\nACTION = beep\nACTION? = ring\nACTION! = buzz",
     )
     .unwrap();
     let mut rng = Rng::new(4);
@@ -93,27 +94,43 @@ fn same_seed_same_data() {
     assert_eq!(a, b);
 }
 
-#[test]
-fn test_phrasings_never_appear_in_training() {
-    let d = ds();
-    let mut rng = Rng::new(3);
-    let train: HashSet<String> = d
-        .generate(Split::Train, Split::Train, 50_000, &mut rng, false)
+fn skeletons(d: &Dataset, split: Split, n: usize, seed: u64) -> HashSet<String> {
+    let mut rng = Rng::new(seed);
+    d.generate(split, split, n, &mut rng, false)
         .iter()
         .map(|e| e.skeleton())
-        .collect();
-    for ex in d.generate(Split::Test, Split::Test, 2000, &mut rng, false) {
+        .collect()
+}
+
+#[test]
+fn held_out_phrasings_never_appear_in_training() {
+    let d = ds();
+    let train = skeletons(&d, Split::Train, 80_000, 3);
+    for split in [Split::Dev, Split::Test] {
+        for s in skeletons(&d, split, 4000, 4) {
+            assert!(
+                !train.contains(&s),
+                "leak: {split:?} phrasing `{s}` is also a training phrasing"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_phrasings_never_appear_in_dev() {
+    let d = ds();
+    let dev = skeletons(&d, Split::Dev, 20_000, 5);
+    for s in skeletons(&d, Split::Test, 4000, 6) {
         assert!(
-            !train.contains(&ex.skeleton()),
-            "leak: `{}` is also a training phrasing",
-            ex.skeleton()
+            !dev.contains(&s),
+            "leak: test phrasing `{s}` is also a dev phrasing"
         );
     }
 }
 
 #[test]
 fn errors_name_the_line() {
-    let e = Dataset::parse("timer: {APP} please", "APP = a\nAPP! = b")
+    let e = Dataset::parse("timer: {APP} please", "APP = a\nAPP? = b\nAPP! = c")
         .err()
         .unwrap();
     assert!(
@@ -122,14 +139,14 @@ fn errors_name_the_line() {
     );
     let e = Dataset::parse("timer: @nope {DUR}", "").err().unwrap();
     assert!(e.contains("unknown list"), "{e}");
-    let e = Dataset::parse("timer: [then {DUR}", "DUR = 5m\nDUR! = 6m")
+    let e = Dataset::parse("timer: [then {DUR}", "DUR = 5m\nDUR? = 6m\nDUR! = 7m")
         .err()
         .unwrap();
     assert!(e.contains("without `]`"), "{e}");
-    let e = Dataset::parse("timer: {DUR", "DUR = 5m\nDUR! = 6m")
+    let e = Dataset::parse("timer: {DUR", "DUR = 5m\nDUR? = 6m\nDUR! = 7m")
         .err()
         .unwrap();
     assert!(e.contains("stray"), "{e}");
     let e = Dataset::parse("timer: {DUR}", "DUR = 5m").err().unwrap();
-    assert!(e.contains("no Test values"), "{e}");
+    assert!(e.contains("no Dev values"), "{e}");
 }

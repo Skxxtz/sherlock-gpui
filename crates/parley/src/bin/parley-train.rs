@@ -1,5 +1,5 @@
 //! Trains the model and writes `model/parley.bin`, which the library embeds.
-//! `cargo run -p parley --features training --bin parley-train --release [-- --errors [N]]`
+//! `cargo run -p parley --features training --bin parley-train --release [-- --errors [N]] [--test]`
 
 use std::time::Instant;
 
@@ -17,9 +17,11 @@ const TEST_EXAMPLES: usize = 2_000;
 const SEED: u64 = 42;
 
 fn main() {
-    // `--errors [N]`: print up to N (default 12) wrong predictions per test set
+    // `--errors [N]`: print up to N (default 12) wrong predictions per dev set
+    // `--test`: also print the final test numbers (never with errors)
     let args: Vec<String> = std::env::args().collect();
     let show_errors = args.iter().any(|a| a == "--errors");
+    let show_test = args.iter().any(|a| a == "--test");
     let show_errors_n = args
         .iter()
         .position(|a| a == "--errors")
@@ -56,27 +58,29 @@ fn main() {
         t0.elapsed()
     );
 
-    // honest evaluation: phrasings and values the model never saw
-    let sets = [
-        ("seen phrasings, seen values", Split::Train, Split::Train),
-        ("seen phrasings, NEW values", Split::Train, Split::Test),
-        ("NEW phrasings, seen values", Split::Test, Split::Train),
-        ("NEW phrasings, NEW values", Split::Test, Split::Test),
-    ];
-    println!(
-        "{:<36} {:>8} {:>8} {:>8}",
-        "test set", "intent", "slot F1", "exact"
-    );
-    let mut hardest = Vec::new();
-    for (name, phr, val) in sets {
-        let data = ds.generate(phr, val, TEST_EXAMPLES, &mut rng, false);
-        let r = evaluate(&model, &data, &lex);
+    // dev: held out from training; this is what we look at and tune against
+    let row = |name: &str, r: parley::training::evaluate::Report| {
         println!(
             "{name:<36} {:>7.1}% {:>7.1}% {:>7.1}%",
             r.intent * 100.0,
             r.slot_f1 * 100.0,
             r.exact * 100.0
         );
+    };
+    println!(
+        "{:<36} {:>8} {:>8} {:>8}",
+        "dev set", "intent", "slot F1", "exact"
+    );
+    let sets = [
+        ("seen phrasings, seen values", Split::Train, Split::Train),
+        ("seen phrasings, DEV values", Split::Train, Split::Dev),
+        ("DEV phrasings, seen values", Split::Dev, Split::Train),
+        ("DEV phrasings, DEV values", Split::Dev, Split::Dev),
+    ];
+    let mut hardest = Vec::new();
+    for (name, phr, val) in sets {
+        let data = ds.generate(phr, val, TEST_EXAMPLES, &mut rng, false);
+        row(name, evaluate(&model, &data, &lex));
         if show_errors {
             let mut errs = errors(&model, &data, &lex);
             errs.sort();
@@ -87,17 +91,43 @@ fn main() {
         }
         hardest = data;
     }
-    let r = evaluate(&model, &hardest, &Lexicon::default());
-    println!(
-        "{:<36} {:>7.1}% {:>7.1}% {:>7.1}%",
+    row(
         "  … same, without app lexicon",
-        r.intent * 100.0,
-        r.slot_f1 * 100.0,
-        r.exact * 100.0
+        evaluate(&model, &hardest, &Lexicon::default()),
     );
 
+    // test: held out from everything. Only shown with --test, never with errors:
+    // looking at test mistakes and fixing them would make this number meaningless.
+    if show_test {
+        println!(
+            "\n{:<36} {:>8} {:>8} {:>8}",
+            "TEST (final number)", "intent", "slot F1", "exact"
+        );
+        let mut test_rng = Rng::new(SEED ^ 0x7e57);
+        let data = ds.generate(
+            Split::Test,
+            Split::Train,
+            TEST_EXAMPLES,
+            &mut test_rng,
+            false,
+        );
+        row("TEST phrasings, seen values", evaluate(&model, &data, &lex));
+        let data = ds.generate(
+            Split::Test,
+            Split::Test,
+            TEST_EXAMPLES,
+            &mut test_rng,
+            false,
+        );
+        row("TEST phrasings, TEST values", evaluate(&model, &data, &lex));
+        row(
+            "  … same, without app lexicon",
+            evaluate(&model, &data, &Lexicon::default()),
+        );
+    }
+
     // what each confidence threshold buys on the hardest set
-    println!("\nconfidence threshold (NEW phrasings + NEW values):");
+    println!("\nconfidence threshold (DEV phrasings + DEV values):");
     println!(
         "  {:>9} {:>10} {:>10} {:>10}",
         "threshold", "acts on", "precision", "coverage"

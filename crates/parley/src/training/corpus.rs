@@ -50,8 +50,15 @@ impl Example {
 pub enum Split {
     /// Training phrasings / values.
     Train,
-    /// Held-out phrasings / values, for evaluation only.
+    /// Held out from training; used to look at errors and tune.
+    Dev,
+    /// Held out from everything; only for the final number.
     Test,
+}
+
+impl Split {
+    /// All splits, in file order.
+    pub const ALL: [Split; 3] = [Split::Train, Split::Dev, Split::Test];
 }
 
 /// One template token.
@@ -76,8 +83,8 @@ pub struct Dataset {
     lists: HashMap<String, Vec<Vec<String>>>,
     /// per split: templates grouped by intent, so every intent is sampled
     /// equally often however many templates it has
-    templates: [Vec<Vec<Template>>; 2],
-    values: [HashMap<SlotKind, Vec<Vec<String>>>; 2],
+    templates: [Vec<Vec<Template>>; 3],
+    values: [HashMap<SlotKind, Vec<Vec<String>>>; 3],
 }
 
 fn split_choices(s: &str) -> Vec<Vec<String>> {
@@ -89,7 +96,8 @@ fn split_choices(s: &str) -> Vec<Vec<String>> {
 fn idx(split: Split) -> usize {
     match split {
         Split::Train => 0,
-        Split::Test => 1,
+        Split::Dev => 1,
+        Split::Test => 2,
     }
 }
 
@@ -103,8 +111,8 @@ impl Dataset {
     pub fn parse(templates: &str, slots: &str) -> Result<Dataset, String> {
         let mut ds = Dataset {
             lists: HashMap::new(),
-            templates: [Vec::new(), Vec::new()],
-            values: [HashMap::new(), HashMap::new()],
+            templates: [Vec::new(), Vec::new(), Vec::new()],
+            values: [HashMap::new(), HashMap::new(), HashMap::new()],
         };
 
         // slot values
@@ -117,9 +125,12 @@ impl Dataset {
                 .split_once('=')
                 .ok_or(format!("slots.txt:{}: expected `SLOT = values`", n + 1))?;
             let name = name.trim();
-            let (name, split) = match name.strip_suffix('!') {
-                Some(n) => (n, Split::Test),
-                None => (name, Split::Train),
+            let (name, split) = if let Some(n) = name.strip_suffix('?') {
+                (n, Split::Dev)
+            } else if let Some(n) = name.strip_suffix('!') {
+                (n, Split::Test)
+            } else {
+                (name, Split::Train)
             };
             let kind = SlotKind::from_name(name)
                 .ok_or(format!("slots.txt:{}: unknown slot `{name}`", n + 1))?;
@@ -134,9 +145,16 @@ impl Dataset {
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            if line == "== test ==" {
-                split = Split::Test;
-                continue;
+            match line {
+                "== dev ==" => {
+                    split = Split::Dev;
+                    continue;
+                }
+                "== test ==" => {
+                    split = Split::Test;
+                    continue;
+                }
+                _ => {}
             }
             if let Some(rest) = line.strip_prefix('@') {
                 let (name, choices) = rest
@@ -163,13 +181,13 @@ impl Dataset {
             }
         }
 
-        // every slot used must have values for both splits
+        // every slot used must have values for every split
         let mut used = Vec::new();
         for t in ds.templates.iter().flatten().flatten() {
             collect_slots(&t.toks, &mut used);
         }
         for kind in used {
-            for sp in [Split::Train, Split::Test] {
+            for sp in Split::ALL {
                 if !ds.values[idx(sp)].contains_key(&kind) {
                     return Err(format!(
                         "slots.txt: no {sp:?} values for slot {}",

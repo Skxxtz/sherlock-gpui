@@ -8,9 +8,13 @@
 #   @name                    one choice from a list
 #   [x]                      optional: x or nothing (x = word, @list or {SLOT})
 #
-# Everything above `== test ==` is training data. Everything below is held out:
-# phrasings the model never sees, used only to measure generalisation.
-# Keep them genuinely different, and don't copy test lines into training.
+# Three sections:
+#   (top)        training data
+#   == dev ==    held out from training; look at its errors, tune against it
+#   == test ==   held out from everything; only for the final number.
+#                Don't look at its errors and don't tune against it, or it
+#                stops measuring anything.
+# Keep held-out phrasings genuinely different; the leak tests check this.
 
 @please  = please | for me | quickly
 @can     = can you | could you | pls
@@ -26,9 +30,11 @@ timer: timer for {DUR} [@then {ACTION}]
 timer: countdown {DUR} [@then {ACTION}]
 timer: {DUR} timer [@please]
 timer: [@new] [a] timer [for] {DUR} @then {ACTION}
+timer: timer {DUR} @then {ACTION} @please
 
 # ---- remind ----
-@remind_me = remind me | notify me | tell me
+@remind_me = remind me | notify me | tell me | can you remind me | please remind me
+@lead      = i need to | make sure i | don't forget to | i must | i should
 remind: @remind_me in {DUR} to {TEXT}
 remind: @remind_me at {TIME} to {TEXT}
 remind: @remind_me to {TEXT} in {DUR}
@@ -38,6 +44,9 @@ remind: reminder {TEXT} at {TIME}
 remind: reminder {TEXT} in {DUR}
 remind: {TEXT} in {DUR}
 remind: at {TIME} {TEXT}
+remind: @lead {TEXT} in {DUR}
+remind: @lead {TEXT} at {TIME}
+remind: [@please] @remind_me to {TEXT} in {DUR}
 remind: make sure i {TEXT} in {DUR}
 
 # ---- open ----
@@ -54,6 +63,9 @@ search: how to {QUERY}
 search: @search {QUERY} online
 search: {QUERY} on google
 search: [@can] @search {QUERY} on google
+search: @search {QUERY} on the internet
+search: @search {QUERY} on wikipedia
+search: @search {QUERY} @please
 
 # ---- volume ----
 @vol = volume | vol | sound
@@ -83,7 +95,8 @@ none: volume
 none: open
 none: remind me
 
-== test ==
+
+== dev ==
 
 timer: make me a {DUR} timer
 timer: {DUR} countdown please
@@ -102,3 +115,49 @@ volume: volume at {PCT}
 volume: make it {PCT} loud
 none: what time is it
 none: shutdown
+timer: quick {DUR} timer
+timer: timer please {DUR}
+timer: {DUR} timer then {ACTION} please
+remind: remind me about {TEXT} at {TIME}
+remind: {TEXT} at {TIME} please
+remind: remind me {TEXT} in {DUR}
+open: go open {APP}
+open: open {APP} for me please
+search: search online for {QUERY}
+search: what's {QUERY}
+volume: volume should be {PCT}
+volume: set sound {PCT}
+none: notifications
+none: night light
+
+== test ==
+
+timer: set me a timer of {DUR}
+timer: {DUR} on the clock
+timer: time {DUR} for me
+timer: i want a timer for {DUR} and {ACTION} after
+timer: start counting down {DUR}
+timer: egg timer {DUR}
+remind: {TEXT} reminder in {DUR}
+remind: remember to {TEXT} at {TIME}
+remind: can you make me remember to {TEXT} in {DUR}
+remind: in {DUR} i have to {TEXT}
+remind: set a reminder for {TIME} to {TEXT}
+open: start up {APP}
+open: get me {APP}
+open: open the {APP} app
+open: launch {APP} now
+search: search the web for {QUERY}
+search: duckduckgo {QUERY}
+search: i want to know {QUERY}
+search: query {QUERY}
+volume: volume level {PCT}
+volume: put the volume at {PCT}
+volume: audio {PCT}
+volume: i want the volume at {PCT}
+none: show me the calendar
+none: how are you
+none: brightness
+none: restart
+none: emoji
+none: 10 * 4

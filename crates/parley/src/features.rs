@@ -171,6 +171,10 @@ fn class(w: &str, lex: &Lexicon) -> u8 {
     const TIME_WORDS: &[&str] = &[
         "am", "pm", "noon", "midnight", "tomorrow", "tonight", "morning", "evening", "o'clock",
     ];
+    // words that stand for a level: `volume max`
+    const PCT_WORDS: &[&str] = &[
+        "%", "percent", "max", "min", "mute", "half", "full", "loud", "quiet",
+    ];
     let digits = w.find(|c: char| !c.is_ascii_digit()).unwrap_or(w.len());
     let rest = &w[digits..];
     match () {
@@ -180,7 +184,7 @@ fn class(w: &str, lex: &Lexicon) -> u8 {
         _ if digits > 0 && (rest == "am" || rest == "pm") => 3, // 5pm
         _ if digits > 0 && rest.starts_with(':') => 3, // 7:30
         _ if digits > 0 && rest == "%" => 4,     // 30%
-        _ if w == "%" || w == "percent" => 4,
+        _ if PCT_WORDS.contains(&w) => 4,
         _ if DUR_UNITS.contains(&w) => 5,  // minutes
         _ if TIME_WORDS.contains(&w) => 6, // tomorrow
         _ if lex.is_app(w) => 7,           // firefox

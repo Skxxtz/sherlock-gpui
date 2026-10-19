@@ -93,7 +93,8 @@ impl Model {
         let (best, confidence) = softmax_best(&scores, self.temperature);
         let intent = intent_of(best);
 
-        let tags = self.viterbi(words, intent, lex);
+        let mut tags = self.viterbi(words, intent, lex);
+        trim_connectors(words, &mut tags);
         Prediction {
             intent,
             confidence,
@@ -208,6 +209,39 @@ impl Model {
             }
         }
         Ok(m)
+    }
+}
+
+/// Connector words never start a slot: `and then ring` → `ring`.
+const CONNECTORS: &[&str] = &["then", "and", "to", "so", "also"];
+/// Polite filler never ends a slot: `ring please` → `ring`.
+const FILLERS: &[&str] = &["please", "now", "thanks", "pls"];
+
+/// Cleanup rules the model gets wrong when a slot value is unfamiliar:
+/// no leading connectors, adjacent same-kind slots merge, no trailing fillers.
+pub fn trim_connectors(words: &[String], tags: &mut [Tag]) {
+    for i in 0..tags.len() {
+        if let Tag::B(k) = tags[i]
+            && CONNECTORS.contains(&words[i].as_str())
+            && tags.get(i + 1) == Some(&Tag::I(k))
+        {
+            tags[i] = Tag::O;
+            tags[i + 1] = Tag::B(k);
+        }
+    }
+    // two slots of the same kind side by side are one slot: `30 %`
+    for i in 1..tags.len() {
+        if let (Tag::B(k), Tag::B(p) | Tag::I(p)) = (tags[i], tags[i - 1])
+            && k == p
+        {
+            tags[i] = Tag::I(k);
+        }
+    }
+    for i in (1..tags.len()).rev() {
+        let ends_slot = tags.get(i + 1).is_none_or(|t| !matches!(t, Tag::I(_)));
+        if matches!(tags[i], Tag::I(_)) && ends_slot && FILLERS.contains(&words[i].as_str()) {
+            tags[i] = Tag::O;
+        }
     }
 }
 

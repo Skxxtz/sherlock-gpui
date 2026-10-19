@@ -64,3 +64,25 @@ fn file_round_trip_and_rejects_garbage() {
     b[6] ^= 1; // corrupt the schema length
     assert!(Model::from_bytes(&b).is_err());
 }
+
+#[test]
+fn cleanup_rules() {
+    use parley::model::trim_connectors;
+    use parley::{SlotKind::*, Tag::*};
+    let w = |s: &str| s.split(' ').map(String::from).collect::<Vec<_>>();
+
+    // leading connector leaves the slot
+    let mut t = vec![O, B(Action), I(Action)];
+    trim_connectors(&w("timer then ring"), &mut t);
+    assert_eq!(t, vec![O, O, B(Action)]);
+
+    // adjacent same-kind slots merge
+    let mut t = vec![O, B(Percent), B(Percent)];
+    trim_connectors(&w("volume 30 %"), &mut t);
+    assert_eq!(t, vec![O, B(Percent), I(Percent)]);
+
+    // trailing filler leaves the slot
+    let mut t = vec![B(Action), I(Action)];
+    trim_connectors(&w("ring please"), &mut t);
+    assert_eq!(t, vec![B(Action), O]);
+}
