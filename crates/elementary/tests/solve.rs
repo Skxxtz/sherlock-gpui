@@ -72,3 +72,31 @@ fn errors() {
     assert_eq!(solve_str("x + 1 = x + 2"), Err(Error::NoSolution));
     assert_eq!(solve_str("2x = x + x"), Err(Error::InfiniteSolutions));
 }
+
+#[test]
+fn display() {
+    assert_eq!(solve_str("2x + 1 = 7").unwrap().to_string(), "x = 3");
+    assert_eq!(
+        solve_str("x² - 5x + 6 = 0").unwrap().to_string(),
+        "x = 2, 3"
+    );
+    assert_eq!(solve_str("x² + 1 = 0").unwrap().to_string(), "x = 0 ± 1i");
+    assert_eq!(
+        solve_str("x^2 = 2").unwrap().to_string(),
+        "x = -1.4142135624, 1.4142135624"
+    );
+    assert_eq!(
+        format!("{:.3}", solve_str("x^2 = 2").unwrap()),
+        "x = -1.414, 1.414"
+    );
+    assert_eq!(Real(-0.0).to_string(), "0");
+    assert_eq!(Real(1000.0).to_string(), "1000");
+}
+
+#[test]
+fn sort_nearest() {
+    let mut s = solve_str("tan(x) = 1").unwrap();
+    s.sort_nearest();
+    s.roots.truncate(4);
+    assert_eq!(s.to_string(), "x = 45, -135, 225, -315");
+}

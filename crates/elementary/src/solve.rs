@@ -6,6 +6,8 @@
 //!    changes and bisect.
 //!    Finds real roots where the function crosses zero.
 
+use std::fmt;
+
 use crate::Error;
 use crate::compile::Program;
 use crate::eval::eval_with;
@@ -28,6 +30,67 @@ pub struct Solution {
     pub var: String,
     /// All roots found, sorted (real ones ascending).
     pub roots: Vec<Root>,
+}
+
+impl Root {
+    /// Distance from 0 (for complex roots: of `re + im·i`).
+    pub fn magnitude(&self) -> f64 {
+        match self {
+            Root::Real(x) => x.abs(),
+            Root::Complex { re, im } => re.hypot(*im),
+        }
+    }
+}
+
+/// `2`, `1.4142135624`, `0 ± 1i`. Precision = max decimals (default 10),
+/// trailing zeros removed: `format!("{:.3}", root)`.
+impl fmt::Display for Root {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let p = f.precision().unwrap_or(10);
+        match self {
+            Root::Real(x) => f.write_str(&fmt_num(*x, p)),
+            Root::Complex { re, im } => write!(f, "{} ± {}i", fmt_num(*re, p), fmt_num(*im, p)),
+        }
+    }
+}
+
+impl Solution {
+    /// Sort roots by distance from 0, so the most relevant come first
+    /// (periodic equations like `tan(x) = 1` have many).
+    pub fn sort_nearest(&mut self) {
+        self.roots
+            .sort_by(|a, b| a.magnitude().total_cmp(&b.magnitude()));
+    }
+}
+
+/// `x = 2, 3`. Precision is passed on to each root: `format!("{:.3}", sol)`.
+impl fmt::Display for Solution {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let p = f.precision().unwrap_or(10);
+        write!(f, "{} = ", self.var)?;
+        for (i, r) in self.roots.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            write!(f, "{r:.p$}")?;
+        }
+        Ok(())
+    }
+}
+
+/// At most `decimals` places, trailing zeros removed: 1.50 → 1.5, -0 → 0.
+fn fmt_num(x: f64, decimals: usize) -> String {
+    let s = format!("{x:.decimals$}");
+    let s = if s.contains('.') {
+        s.trim_end_matches('0').trim_end_matches('.')
+    } else {
+        &s
+    };
+    if s == "-0" {
+        "0".to_string()
+    } else {
+        s.to_string()
+    }
 }
 
 /// Scan grid as `(first, last, step)` in units of `step`: fine near 0,
