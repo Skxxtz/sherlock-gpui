@@ -3,6 +3,8 @@
 //! Nothing in here is compiled into Sherlock.
 
 pub mod corpus;
+pub mod evaluate;
 mod rng;
+pub mod trainer;
 
 pub use rng::Rng;

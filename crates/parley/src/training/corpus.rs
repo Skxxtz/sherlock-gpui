@@ -180,6 +180,17 @@ impl Dataset {
         Ok(ds)
     }
 
+    /// All values of a slot (both splits), words joined with spaces.
+    /// E.g. the app names, to build a `Lexicon` for training.
+    pub fn values(&self, kind: SlotKind) -> Vec<String> {
+        self.values
+            .iter()
+            .filter_map(|m| m.get(&kind))
+            .flatten()
+            .map(|v| v.join(" "))
+            .collect()
+    }
+
     /// Number of templates in a split.
     pub fn template_count(&self, split: Split) -> usize {
         self.templates[idx(split)].iter().map(Vec::len).sum()

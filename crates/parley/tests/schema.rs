@@ -1,4 +1,4 @@
-use parley::{Intent, SlotKind, parse};
+use parley::{Intent, SlotKind};
 
 #[test]
 fn every_intent_has_slots_from_all() {
@@ -20,9 +20,4 @@ fn names_are_unique() {
     s.sort();
     s.dedup();
     assert_eq!(s.len(), SlotKind::ALL.len());
-}
-
-#[test]
-fn parse_is_none_until_trained() {
-    assert_eq!(parse("new 20m timer"), None);
 }
