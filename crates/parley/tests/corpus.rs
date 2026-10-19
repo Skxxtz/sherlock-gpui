@@ -59,7 +59,7 @@ fn tags_are_consistent() {
 #[test]
 fn multi_word_optional_groups() {
     let d = Dataset::parse(
-        "timer: timer {DUR} [then {ACTION}]",
+        "timer: timer {DUR} [then {ACTION}]\n== dev ==\ntimer: dev {DUR}\n== test ==\ntimer: test {DUR}",
         "DUR = 5m\nDUR? = 6m\nDUR! = 7m\nACTION = beep\nACTION? = ring\nACTION! = buzz",
     )
     .unwrap();
@@ -89,8 +89,8 @@ fn intents_are_balanced() {
 #[test]
 fn templates_may_put_punctuation_next_to_slots() {
     let d = Dataset::parse(
-        "remind: {TEXT}, at {TIME}\nremind: reminder: {TEXT} {TIME}.",
-        "TEXT = call mom\nTEXT? = a\nTEXT! = b\nTIME = 5pm\nTIME? = 6pm\nTIME! = 7pm",
+        "remind: {TEXT}, at {TIME}\nremind: reminder: {TEXT} {TIME}.\n== dev ==\ntimer: dev {DUR}\n== test ==\ntimer: test {DUR}",
+        "TEXT = call mom\nTEXT? = a\nTEXT! = b\nTIME = 5pm\nTIME? = 6pm\nTIME! = 7pm\nDUR = 5m\nDUR? = 6m\nDUR! = 7m",
     )
     .unwrap();
     let mut rng = Rng::new(9);
@@ -177,6 +177,26 @@ fn test_phrasings_never_appear_in_dev() {
 }
 
 #[test]
+fn empty_parts_are_reported_not_panicking() {
+    let slots = "DUR = 5m\nDUR? = 6m\nDUR! = 7m";
+    let e = Dataset::parse("timer: {DUR}\n== test ==\ntimer: x {DUR}", slots)
+        .err()
+        .unwrap();
+    assert!(e.contains("no Dev templates"), "{e}");
+    let e = Dataset::parse("timer: {DUR}\n== dev ==\ntimer: y {DUR}", slots)
+        .err()
+        .unwrap();
+    assert!(e.contains("no Test templates"), "{e}");
+    let e = Dataset::parse(
+        "timer: {DUR}\n== dev ==\ntimer: y {DUR}\n== test ==\ntimer: x {DUR}",
+        "DUR = 5m\nDUR? =\nDUR! = 7m",
+    )
+    .err()
+    .unwrap();
+    assert!(e.contains("Dev values for DUR are empty"), "{e}");
+}
+
+#[test]
 fn errors_name_the_line() {
     let e = Dataset::parse("timer: {APP} please", "APP = a\nAPP? = b\nAPP! = c")
         .err()
@@ -195,6 +215,11 @@ fn errors_name_the_line() {
         .err()
         .unwrap();
     assert!(e.contains("stray"), "{e}");
-    let e = Dataset::parse("timer: {DUR}", "DUR = 5m").err().unwrap();
+    let e = Dataset::parse(
+        "timer: {DUR}\n== dev ==\ntimer: dev {DUR}\n== test ==\ntimer: test {DUR}",
+        "DUR = 5m",
+    )
+    .err()
+    .unwrap();
     assert!(e.contains("no Dev values"), "{e}");
 }

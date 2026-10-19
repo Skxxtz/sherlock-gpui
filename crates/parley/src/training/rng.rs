@@ -19,6 +19,7 @@ impl Rng {
 
     /// Uniform in `0..n`.
     pub fn below(&mut self, n: usize) -> usize {
+        assert!(n > 0, "Rng::below(0): tried to pick from an empty list");
         (self.next_u64() % n as u64) as usize
     }
 

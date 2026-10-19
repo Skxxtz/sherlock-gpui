@@ -149,7 +149,18 @@ impl Dataset {
             };
             let kind = SlotKind::from_name(name)
                 .ok_or(format!("slots.txt:{}: unknown slot `{name}`", n + 1))?;
-            ds.values[idx(split)].insert(kind, split_choices(vals));
+            let choices: Vec<Vec<String>> = split_choices(vals)
+                .into_iter()
+                .filter(|c| !c.is_empty())
+                .collect();
+            ds.values[idx(split)].insert(
+                kind,
+                if choices.is_empty() {
+                    vec![vec![]]
+                } else {
+                    choices
+                },
+            );
         }
 
         // lists and templates
@@ -193,6 +204,34 @@ impl Dataset {
             match groups.iter_mut().find(|g| g[0].intent == intent) {
                 Some(g) => g.push(Template { intent, toks }),
                 None => groups.push(vec![Template { intent, toks }]),
+            }
+        }
+
+        // nothing may be empty: an empty split, list or value line would
+        // otherwise only show up later as a panic while sampling
+        for sp in Split::ALL {
+            if ds.templates[idx(sp)].is_empty() {
+                let hint = match sp {
+                    Split::Train => "add templates at the top of the file",
+                    Split::Dev => "add a `== dev ==` section with templates",
+                    Split::Test => "add a `== test ==` section with templates",
+                };
+                return Err(format!("templates.txt: no {sp:?} templates ({hint})"));
+            }
+        }
+        for (name, choices) in &ds.lists {
+            if choices.is_empty() || choices.iter().all(|c| c.is_empty()) {
+                return Err(format!("templates.txt: list `@{name}` has no words"));
+            }
+        }
+        for (sp, values) in Split::ALL.iter().zip(&ds.values) {
+            for (kind, v) in values {
+                if v.iter().all(|c| c.is_empty()) {
+                    return Err(format!(
+                        "slots.txt: {sp:?} values for {} are empty",
+                        kind.name()
+                    ));
+                }
             }
         }
 
