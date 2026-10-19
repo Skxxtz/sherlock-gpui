@@ -58,10 +58,32 @@ pub fn plausible(intent: Intent, words: &[String], tags: &[Tag], lex: &Lexicon) 
     }
 }
 
+/// Words that start a question. A question about a command
+/// (`how do i set volume to 50 percent`) is not that command; only search
+/// takes questions. `when` is not here: `when 5m is over, beep` is a timer.
+const QUESTION_WORDS: &[&str] = &[
+    "how", "why", "what", "what's", "where", "who", "which", "does", "do", "is", "are", "explain",
+];
+
+/// Is this a question rather than an instruction?
+pub fn is_question(words: &[String]) -> bool {
+    words
+        .first()
+        .is_some_and(|w| QUESTION_WORDS.contains(&w.as_str()))
+        || words.last().is_some_and(|w| w == "?")
+}
+
 /// Should this prediction be shown as a command?
 pub fn accept(p: &Prediction, words: &[String], lex: &Lexicon) -> bool {
     match p.intent {
-        Some(i) => p.confidence >= MIN_CONFIDENCE && plausible(i, words, &p.tags, lex),
+        Some(Intent::Search) => {
+            p.confidence >= MIN_CONFIDENCE && plausible(Intent::Search, words, &p.tags, lex)
+        }
+        Some(i) => {
+            p.confidence >= MIN_CONFIDENCE
+                && !is_question(words)
+                && plausible(i, words, &p.tags, lex)
+        }
         None => false,
     }
 }

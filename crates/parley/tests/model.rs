@@ -202,3 +202,20 @@ fn slots_dont_swallow_punctuation() {
     let p = parse("remind me in 10 minutes to call mom, please").unwrap();
     assert_eq!(p.slot(SlotKind::Text), Some("call mom"));
 }
+
+#[test]
+fn questions_about_commands_are_not_commands() {
+    let lex = Lexicon::default();
+    for q in [
+        "how do i set volume to 50 percent",
+        "why does my 5 minute timer not ring",
+        "is volume 30 too loud?",
+    ] {
+        assert_eq!(parse_with(q, &lex).map(|p| p.intent), None, "{q:?}");
+    }
+    // but search takes questions, and `when` starts real timers
+    assert_eq!(
+        parse("what is rust ownership").map(|p| p.intent),
+        Some(Intent::Search)
+    );
+}
