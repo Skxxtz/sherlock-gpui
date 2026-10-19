@@ -38,6 +38,9 @@ pub struct Model {
     pub intent: Vec<f32>,
     /// Tag weights, `Tag::COUNT` rows.
     pub tags: Vec<f32>,
+    /// Softmax temperature for `confidence`, fitted during training so
+    /// that e.g. 0.8 means "right about 80% of the time".
+    pub temperature: f32,
 }
 
 impl Default for Model {
@@ -52,6 +55,7 @@ impl Model {
         Model {
             intent: vec![0.0; CLASSES * BUCKETS],
             tags: vec![0.0; Tag::COUNT * BUCKETS],
+            temperature: 1.0,
         }
     }
 
@@ -81,22 +85,15 @@ impl Model {
             .map_or(Tag::O, |(_, t)| t)
     }
 
-    /// Intent first, then tags left to right under the intent's constraints.
+    /// Intent first, then the best tag sequence under the intent's constraints.
     pub fn predict(&self, words: &[String], lex: &Lexicon) -> Prediction {
         let mut f = Vec::with_capacity(32);
         features::sentence(words, lex, &mut f);
         let scores = self.intent_scores(&f);
-        let (best, confidence) = softmax_best(&scores);
+        let (best, confidence) = softmax_best(&scores, self.temperature);
         let intent = intent_of(best);
 
-        let mut tags = Vec::with_capacity(words.len());
-        let mut prev = Tag::O;
-        for i in 0..words.len() {
-            features::token(words, i, prev, intent, lex, &mut f);
-            let t = self.best_tag(prev, intent, &f);
-            tags.push(t);
-            prev = t;
-        }
+        let tags = self.viterbi(words, intent, lex);
         Prediction {
             intent,
             confidence,
@@ -104,7 +101,57 @@ impl Model {
         }
     }
 
-    /// Serialise: header (magic, sizes, schema names), then the non-zero
+    /// Highest-scoring tag sequence for `words` (Viterbi), instead of
+    /// deciding each word greedily: a later word can change an earlier
+    /// choice, e.g. where a slot ends.
+    pub fn viterbi(&self, words: &[String], intent: Option<Intent>, lex: &Lexicon) -> Vec<Tag> {
+        let n = words.len();
+        if n == 0 {
+            return Vec::new();
+        }
+        const T: usize = Tag::COUNT;
+        let mut best = vec![[f32::NEG_INFINITY; T]; n]; // best score ending in tag t at word i
+        let mut back = vec![[0u8; T]; n]; // predecessor on that best path
+        let (mut fs, mut fp) = (Vec::with_capacity(24), Vec::with_capacity(5));
+
+        for i in 0..n {
+            features::token_static(words, i, intent, lex, &mut fs);
+            let base: [f32; T] = std::array::from_fn(|t| self.tag_score(Tag::from_index(t), &fs));
+            let prevs = if i == 0 { 0..1 } else { 0..T };
+            for p in prevs {
+                let from = if i == 0 { 0.0 } else { best[i - 1][p] };
+                if from == f32::NEG_INFINITY {
+                    continue;
+                }
+                let prev = Tag::from_index(p);
+                features::token_prev(words, i, prev, intent, lex, &mut fp);
+                for (c, &b) in base.iter().enumerate() {
+                    let cand = Tag::from_index(c);
+                    if !allowed(prev, cand, intent) {
+                        continue;
+                    }
+                    let s = from + b + self.tag_score(cand, &fp);
+                    if s > best[i][c] {
+                        best[i][c] = s;
+                        back[i][c] = p as u8;
+                    }
+                }
+            }
+        }
+
+        // follow the back-pointers from the best final tag
+        let mut t = (0..T)
+            .max_by(|a, b| best[n - 1][*a].total_cmp(&best[n - 1][*b]))
+            .unwrap();
+        let mut tags = vec![Tag::O; n];
+        for i in (0..n).rev() {
+            tags[i] = Tag::from_index(t);
+            t = back[i][t] as usize;
+        }
+        tags
+    }
+
+    /// Serialise: header (magic, sizes, schema names, temperature), then the non-zero
     /// weights of each table as `(index: u32, value: f32)` pairs.
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
@@ -114,6 +161,7 @@ impl Model {
         let schema = schema_string();
         out.extend_from_slice(&(schema.len() as u16).to_le_bytes());
         out.extend_from_slice(schema.as_bytes());
+        out.extend_from_slice(&self.temperature.to_le_bytes());
         for table in [&self.intent, &self.tags] {
             let nz: Vec<(u32, f32)> = table
                 .iter()
@@ -133,12 +181,15 @@ impl Model {
     /// Inverse of `to_bytes`. Fails if the file was trained for a
     /// different schema or feature size (then: retrain).
     pub fn from_bytes(b: &[u8]) -> Result<Model, String> {
+        if b.is_empty() {
+            return Err("model file is empty; run parley-train".into());
+        }
         let mut r = Reader { b, at: 0 };
         if r.take(4)? != MAGIC {
             return Err("not a parley model".into());
         }
         if r.u8()? != VERSION {
-            return Err("unsupported model version".into());
+            return Err("model file is from another parley version; retrain".into());
         }
         if r.u8()? as u32 != BITS {
             return Err("model was trained with a different feature size; retrain".into());
@@ -148,6 +199,7 @@ impl Model {
             return Err("model was trained for different intents/slots; retrain".into());
         }
         let mut m = Model::new();
+        m.temperature = f32::from_le_bytes(r.take(4)?.try_into().unwrap());
         for table in [&mut m.intent, &mut m.tags] {
             for _ in 0..r.u32()? {
                 let i = r.u32()? as usize;
@@ -170,20 +222,20 @@ pub fn allowed(prev: Tag, cand: Tag, intent: Option<Intent>) -> bool {
     }
 }
 
-/// Index and softmax probability of the best score.
-fn softmax_best(s: &[f32; CLASSES]) -> (usize, f32) {
+/// Index and softmax probability (at temperature `t`) of the best score.
+pub fn softmax_best(s: &[f32; CLASSES], t: f32) -> (usize, f32) {
     let (best, max) = s
         .iter()
         .enumerate()
         .max_by(|a, b| a.1.total_cmp(b.1))
         .map(|(i, v)| (i, *v))
         .unwrap();
-    let sum: f32 = s.iter().map(|v| (v - max).exp()).sum();
+    let sum: f32 = s.iter().map(|v| ((v - max) / t).exp()).sum();
     (best, 1.0 / sum)
 }
 
 const MAGIC: &[u8] = b"PRLY";
-const VERSION: u8 = 1;
+const VERSION: u8 = 2;
 
 /// Intent and slot names in model row order; must match to load a file.
 fn schema_string() -> String {

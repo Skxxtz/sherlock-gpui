@@ -1,5 +1,12 @@
 use parley::model::Model;
-use parley::{Intent, Lexicon, SlotKind, parse, parse_with};
+use parley::{Intent, Lexicon, SlotKind, check_model, parse, parse_with};
+
+#[test]
+fn embedded_model_is_valid() {
+    if let Err(e) = check_model() {
+        panic!("embedded model unusable: {e}");
+    }
+}
 
 #[test]
 fn embedded_model_loads_and_parses() {
@@ -51,7 +58,7 @@ fn slots_respect_the_intent() {
 fn file_round_trip_and_rejects_garbage() {
     let m = Model::new();
     assert_eq!(Model::from_bytes(&m.to_bytes()), Ok(m));
-    assert!(Model::from_bytes(b"").is_err());
+    assert!(Model::from_bytes(b"").unwrap_err().contains("parley-train"));
     assert!(Model::from_bytes(b"NOPE").is_err());
     let mut b = Model::new().to_bytes();
     b[6] ^= 1; // corrupt the schema length

@@ -2,6 +2,7 @@
 //! corpus generation from templates, later the trainer itself.
 //! Nothing in here is compiled into Sherlock.
 
+pub mod calibrate;
 pub mod corpus;
 pub mod evaluate;
 mod rng;

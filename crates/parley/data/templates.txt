@@ -38,17 +38,22 @@ remind: reminder {TEXT} at {TIME}
 remind: reminder {TEXT} in {DUR}
 remind: {TEXT} in {DUR}
 remind: at {TIME} {TEXT}
+remind: make sure i {TEXT} in {DUR}
 
 # ---- open ----
 @open = open | launch | start | run | open up
 open: [@can] @open {APP} [@please]
-open: {APP} [@please]
+# a bare app name is NOT a command (see `none: firefox`), only with a polite word
+open: {APP} @please
 
 # ---- search ----
 @search = search | google | look up | search for | web
 search: [@can] @search {QUERY} [@please]
 search: what is {QUERY}
 search: how to {QUERY}
+search: @search {QUERY} online
+search: {QUERY} on google
+search: [@can] @search {QUERY} on google
 
 # ---- volume ----
 @vol = volume | vol | sound
@@ -56,6 +61,10 @@ search: how to {QUERY}
 volume: @vol {PCT}
 volume: [@set] [the] @vol to {PCT}
 volume: @vol up to {PCT}
+volume: @vol down to {PCT}
+volume: @vol {PCT} @please
+volume: [@set] [the] @vol to {PCT} now
+volume: lower [the] @vol to {PCT}
 
 # ---- not a command ----
 none: firefox

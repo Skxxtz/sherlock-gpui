@@ -79,8 +79,58 @@ pub fn sentence(words: &[String], lex: &Lexicon, out: &mut Vec<usize>) {
 }
 
 /// Word features for the tagger: word `i`, its neighbours, the previous tag
-/// and the (predicted) intent.
+/// and the (predicted) intent. = `token_static` + `token_prev`.
 pub fn token(
+    words: &[String],
+    i: usize,
+    prev: Tag,
+    intent: Option<Intent>,
+    lex: &Lexicon,
+    out: &mut Vec<usize>,
+) {
+    token_static(words, i, intent, lex, out);
+    let mut p = Vec::with_capacity(5);
+    token_prev(words, i, prev, intent, lex, &mut p);
+    out.extend_from_slice(&p);
+}
+
+/// The part of `token` that doesn't depend on the previous tag
+/// (computed once per word during Viterbi decoding).
+pub fn token_static(
+    words: &[String],
+    i: usize,
+    intent: Option<Intent>,
+    lex: &Lexicon,
+    out: &mut Vec<usize>,
+) {
+    out.clear();
+    let w = words[i].as_str();
+    let at = |d: isize| at(words, i, d);
+    let it = intent_id(intent);
+    let c = class(w, lex) as u64;
+    let pre: String = w.chars().take(3).collect();
+    let suf: String = w.chars().rev().take(3).collect();
+
+    out.push(H::new(b'b').done());
+    out.push(H::new(b'w').s(w).done());
+    out.push(H::new(b'p').s(&pre).done());
+    out.push(H::new(b'x').s(&suf).done());
+    out.push(H::new(b's').s(&shape(w)).done());
+    out.push(H::new(b'c').num(c).done());
+    for (k, d) in [(b'1', -1), (b'2', 1), (b'3', -2), (b'4', 2)] {
+        out.push(H::new(k).s(at(d)).done());
+    }
+    out.push(H::new(b'5').s(at(-1)).s(w).done());
+    out.push(H::new(b'6').s(w).s(at(1)).done());
+    out.push(H::new(b'7').num(class(at(-1), lex) as u64).done());
+    out.push(H::new(b'8').num(class(at(1), lex) as u64).done());
+    out.push(H::new(b'i').num(it).done());
+    out.push(H::new(b'I').num(it).s(w).done());
+    out.push(H::new(b'J').num(it).num(c).done());
+}
+
+/// The part of `token` that depends on the previous tag.
+pub fn token_prev(
     words: &[String],
     i: usize,
     prev: Tag,
@@ -90,44 +140,26 @@ pub fn token(
 ) {
     out.clear();
     let w = words[i].as_str();
-    let at = |d: isize| -> &str {
-        let j = i as isize + d;
-        if j < 0 || j as usize >= words.len() {
-            "<pad>"
-        } else {
-            &words[j as usize]
-        }
-    };
     let pt = prev.index() as u64;
-    let it = intent.map_or(99, |x| Intent::ALL.iter().position(|y| *y == x).unwrap()) as u64;
-    let c = class(w, lex) as u64;
-    let shape = shape(w);
-    let pre: String = w.chars().take(3).collect();
-    let suf: String = w.chars().rev().take(3).collect();
-
-    out.push(H::new(b'b').done());
-    out.push(H::new(b'w').s(w).done());
-    out.push(H::new(b'p').s(&pre).done());
-    out.push(H::new(b'x').s(&suf).done());
-    out.push(H::new(b's').s(&shape).done());
-    out.push(H::new(b'c').num(c).done());
-    for (k, d) in [(b'1', -1), (b'2', 1), (b'3', -2), (b'4', 2)] {
-        out.push(H::new(k).s(at(d)).done());
-    }
-    out.push(H::new(b'5').s(at(-1)).s(w).done());
-    out.push(H::new(b'6').s(w).s(at(1)).done());
-    out.push(H::new(b'7').num(class(at(-1), lex) as u64).done());
-    out.push(H::new(b'8').num(class(at(1), lex) as u64).done());
-    // previous tag
     out.push(H::new(b't').num(pt).done());
     out.push(H::new(b'T').num(pt).s(w).done());
-    out.push(H::new(b'S').num(pt).s(&shape).done());
-    out.push(H::new(b'K').num(pt).num(c).done());
-    // intent
-    out.push(H::new(b'i').num(it).done());
-    out.push(H::new(b'I').num(it).s(w).done());
-    out.push(H::new(b'J').num(it).num(c).done());
-    out.push(H::new(b'Q').num(it).num(pt).done());
+    out.push(H::new(b'S').num(pt).s(&shape(w)).done());
+    out.push(H::new(b'K').num(pt).num(class(w, lex) as u64).done());
+    out.push(H::new(b'Q').num(intent_id(intent)).num(pt).done());
+}
+
+/// Word at offset `d` from `i`, or `<pad>` outside the query.
+fn at(words: &[String], i: usize, d: isize) -> &str {
+    let j = i as isize + d;
+    if j < 0 || j as usize >= words.len() {
+        "<pad>"
+    } else {
+        &words[j as usize]
+    }
+}
+
+fn intent_id(intent: Option<Intent>) -> u64 {
+    intent.map_or(99, |x| Intent::ALL.iter().position(|y| *y == x).unwrap()) as u64
 }
 
 /// Coarse word class from fixed word lists and the lexicon.

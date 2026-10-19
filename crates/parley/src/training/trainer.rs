@@ -1,4 +1,5 @@
-//! Averaged-perceptron training for both the intent rows and the tag rows.
+//! Averaged-perceptron training: plain for the intent rows, structured
+//! (whole-sentence Viterbi) for the tag rows.
 //!
 //! For each example: predict, and if wrong, add the example's features to
 //! the correct row and subtract them from the predicted one. The final
@@ -101,23 +102,30 @@ pub fn train(examples: &[Example], lex: &Lexicon, s: &Settings, rng: &mut Rng) -
                 sync(&mut live.intent, &intent.w, &[gold, guess], &f);
             }
 
-            // tags, with the gold intent and gold previous tag
-            let mut prev = Tag::O;
-            for (i, &gold) in ex.tags.iter().enumerate() {
-                features::token(&ex.words, i, prev, ex.intent, lex, &mut f);
-                let guess = live.best_tag(prev, ex.intent, &f);
-                if guess != gold {
-                    tags.add(gold.index(), &f, 1.0, t);
-                    tags.add(guess.index(), &f, -1.0, t);
-                    sync(&mut live.tags, &tags.w, &[gold.index(), guess.index()], &f);
+            // tags: decode the whole sentence (as at runtime, with the gold
+            // intent), then reward the gold path and penalise the predicted one
+            let pred = live.viterbi(&ex.words, ex.intent, lex);
+            if pred != ex.tags {
+                let (mut gold_prev, mut pred_prev) = (Tag::O, Tag::O);
+                for (i, (&g, &p)) in ex.tags.iter().zip(&pred).enumerate() {
+                    if g != p || gold_prev != pred_prev {
+                        features::token(&ex.words, i, gold_prev, ex.intent, lex, &mut f);
+                        tags.add(g.index(), &f, 1.0, t);
+                        sync(&mut live.tags, &tags.w, &[g.index()], &f);
+                        features::token(&ex.words, i, pred_prev, ex.intent, lex, &mut f);
+                        tags.add(p.index(), &f, -1.0, t);
+                        sync(&mut live.tags, &tags.w, &[p.index()], &f);
+                    }
+                    gold_prev = g;
+                    pred_prev = p;
                 }
-                prev = gold;
             }
         }
     }
     Model {
         intent: intent.finish(t),
         tags: tags.finish(t),
+        temperature: 1.0,
     }
 }
 

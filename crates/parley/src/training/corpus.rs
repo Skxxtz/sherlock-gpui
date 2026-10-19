@@ -71,6 +71,7 @@ struct Template {
 }
 
 /// Parsed templates, word lists and slot values.
+#[derive(Clone)]
 pub struct Dataset {
     lists: HashMap<String, Vec<Vec<String>>>,
     /// per split: templates grouped by intent, so every intent is sampled
@@ -180,6 +181,26 @@ impl Dataset {
         Ok(ds)
     }
 
+    /// Split the training templates into `k` folds for cross-validation:
+    /// returns `(rest, fold)` datasets, where `fold`'s training templates are
+    /// every `k`-th template of each intent and `rest` has the others.
+    pub fn fold(&self, k: usize, i: usize) -> (Dataset, Dataset) {
+        let (mut rest, mut fold) = (self.clone(), self.clone());
+        for (r, f) in rest.templates[0]
+            .iter_mut()
+            .zip(fold.templates[0].iter_mut())
+        {
+            let all = std::mem::take(r);
+            f.clear();
+            for (j, t) in all.into_iter().enumerate() {
+                if j % k == i { f.push(t) } else { r.push(t) }
+            }
+        }
+        rest.templates[0].retain(|g| !g.is_empty());
+        fold.templates[0].retain(|g| !g.is_empty());
+        (rest, fold)
+    }
+
     /// All values of a slot (both splits), words joined with spaces.
     /// E.g. the app names, to build a `Lexicon` for training.
     pub fn values(&self, kind: SlotKind) -> Vec<String> {
@@ -234,8 +255,25 @@ impl Dataset {
             }
             Tok::Slot(kind) => {
                 let value = rng.pick(&self.values[idx(values)][kind]).clone();
+                // `[a] {DUR}` + `a minute` would give `a a minute`: drop the template's article
+                let article = |w: &str| w == "a" || w == "an";
+                if value.first().is_some_and(|w| article(w))
+                    && ex.words.last().is_some_and(|w| article(w))
+                    && ex.tags.last() == Some(&Tag::O)
+                {
+                    ex.words.pop();
+                    ex.tags.pop();
+                }
                 for (i, w) in value.iter().enumerate() {
-                    ex.words.push(fill_number(w, rng));
+                    // word dropout: in training, sometimes swap a free-text word for a
+                    // made-up one, so the model learns the structure, not the vocabulary
+                    let free = matches!(kind, SlotKind::Text | SlotKind::Query | SlotKind::App);
+                    let w = if noise && free && rng.chance(0.05) {
+                        pseudo_word(rng)
+                    } else {
+                        w.clone()
+                    };
+                    ex.words.push(fill_number(&w, rng));
                     ex.tags
                         .push(if i == 0 { Tag::B(*kind) } else { Tag::I(*kind) });
                 }
@@ -338,6 +376,14 @@ fn push_word(w: &str, noise: bool, rng: &mut Rng, ex: &mut Example) {
     }
     ex.words.push(word);
     ex.tags.push(Tag::O);
+}
+
+/// A random lowercase pseudo-word of 3–8 letters.
+fn pseudo_word(rng: &mut Rng) -> String {
+    let len = 3 + rng.below(6);
+    (0..len)
+        .map(|_| (b'a' + rng.below(26) as u8) as char)
+        .collect()
 }
 
 /// Replace `#` with a random number 1–90: `#m` → `25m`.

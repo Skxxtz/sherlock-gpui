@@ -7,7 +7,7 @@
 # Real slot values (installed apps, …) come from the system at runtime;
 # these only need to teach the model what such values look like.
 
-DUR  = #m | # min | # mins | # minutes | #s | # sec | # seconds | #h | # hour | # hours | half an hour | an hour | #h #m | # and a half minutes
+DUR  = #m | # min | # mins | # minutes | #s | # sec | # seconds | #h | # hour | # hours | half an hour | an hour | #h #m | # and a half minutes | a second | a few minutes | a couple of minutes
 DUR! = # secs | #hrs | #min | a minute | # hrs
 
 TIME  = #pm | # am | #am | #:30 | #:15 | noon | tomorrow | # o'clock | tonight | #pm tomorrow
@@ -16,14 +16,14 @@ TIME! = #:45pm | midnight | #am tomorrow | morning
 PCT  = #% | # | # percent
 PCT! = # % | max
 
-TEXT  = call mom | drink water | stretch | check the oven | take the laundry out | push the release | feed the cat | stand up | pay rent | start the dishwasher
+TEXT  = call mom | drink water | stretch | check the oven | take the laundry out | push the release | feed the cat | stand up | pay rent | start the dishwasher | buy milk | answer the mail from anna | take my pills | go to bed | pick up the kids | book the flight | renew the passport | back up the laptop | update nixos | cancel the subscription | text jonas | prepare the slides | take a break | check on the build | turn off the heater | order pizza | lock the door | charge the phone | review the pr | call the dentist
 TEXT! = water the plants | email bob | leave for the train
 
-APP  = firefox | kitty | spotify | obsidian | gimp | thunderbird | visual studio code | discord | nautilus | alacritty | signal | inkscape
+APP  = firefox | kitty | spotify | obsidian | gimp | thunderbird | visual studio code | discord | nautilus | alacritty | signal | inkscape | chromium | vlc | telegram | zed | neovim | evince | keepassxc | slack | zoom | element | pavucontrol | wireshark | audacity | kdenlive
 APP! = steam | libreoffice writer | blender | krita
 
-QUERY  = rust lifetimes | weather berlin | unzip tar | gpui docs | best pizza near me | nixos flakes | pipewire latency | hyprland config
+QUERY  = rust lifetimes | weather berlin | unzip tar | gpui docs | best pizza near me | nixos flakes | pipewire latency | hyprland config | cheap flights to rome | serde enum tagging | how tall is mount everest | linux kernel 6.18 | bundesliga table | git rebase interactive | nvidia wayland flicker | tokio select | best mechanical keyboard | python virtualenv | dark mode css | euro to dollar | sourdough recipe | rust async traits
 QUERY! = wayland layer shell | train times hamburg | borrow checker
 
-ACTION  = notify me | ping me | alert me | send a notification | beep | play a sound
+ACTION  = notify me | ping me | alert me | send a notification | beep | play a sound | tell me | show a popup | make a noise | wake me | send me a message | flash the screen
 ACTION! = let me know | ring

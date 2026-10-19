@@ -1,9 +1,9 @@
 //! Accuracy of a model on labelled examples.
 
 use super::corpus::Example;
-use crate::Tag;
 use crate::features::Lexicon;
 use crate::model::Model;
+use crate::{Intent, Tag};
 
 /// Accuracy figures, all 0..1.
 #[derive(Debug, Clone, Copy)]
@@ -55,4 +55,27 @@ pub fn evaluate(model: &Model, examples: &[Example], lex: &Lexicon) -> Report {
         slot_f1: 2.0 * tp as f64 / denom,
         exact: exact as f64 / n,
     }
+}
+
+/// `timer DUR="20m" ACTION="notify me"` – for printing predictions.
+pub fn render(words: &[String], tags: &[Tag], intent: Option<Intent>) -> String {
+    let mut out = intent.map_or("none", |i| i.name()).to_string();
+    for (s, e, _) in spans(tags) {
+        let Tag::B(k) = tags[s] else { unreachable!() };
+        out.push_str(&format!(" {}=\"{}\"", k.name(), words[s..e].join(" ")));
+    }
+    out
+}
+
+/// Examples the model gets wrong, as `(query, expected, predicted)`.
+pub fn errors(model: &Model, examples: &[Example], lex: &Lexicon) -> Vec<(String, String, String)> {
+    examples
+        .iter()
+        .filter_map(|ex| {
+            let p = model.predict(&ex.words, lex);
+            let gold = render(&ex.words, &ex.tags, ex.intent);
+            let pred = render(&ex.words, &p.tags, p.intent);
+            (gold != pred).then(|| (ex.words.join(" "), gold, pred))
+        })
+        .collect()
 }

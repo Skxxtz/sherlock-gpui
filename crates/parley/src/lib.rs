@@ -52,12 +52,21 @@ impl Parsed {
     }
 }
 
-/// The embedded model; `None` if the file is missing or stale.
+/// The embedded model, loaded once.
+fn loaded() -> &'static Result<Model, String> {
+    static MODEL: OnceLock<Result<Model, String>> = OnceLock::new();
+    MODEL.get_or_init(|| Model::from_bytes(include_bytes!("../model/parley.bin")))
+}
+
 fn model() -> Option<&'static Model> {
-    static MODEL: OnceLock<Option<Model>> = OnceLock::new();
-    MODEL
-        .get_or_init(|| Model::from_bytes(include_bytes!("../model/parley.bin")).ok())
-        .as_ref()
+    loaded().as_ref().ok()
+}
+
+/// `Err` with the reason if the embedded model can't be used (empty file,
+/// trained for other intents, …). `parse` then always returns `None`, so
+/// call this once at startup and log the error.
+pub fn check_model() -> Result<(), String> {
+    loaded().as_ref().map(|_| ()).map_err(Clone::clone)
 }
 
 /// Parse a query. `None` if it isn't a command or the model is unsure.
