@@ -1,10 +1,10 @@
 //! Trains the model and writes the weights file embedded by the library.
-//! `cargo run -p parley --features train --bin train --release`
+//! `cargo run -p parley --features training --bin parley-train --release`
 //!
 //! For now: loads the data files and prints statistics and samples.
 
-use parley::train::Rng;
-use parley::train::data::{Dataset, Split};
+use parley::training::Rng;
+use parley::training::corpus::{Dataset, Split};
 
 fn main() {
     let ds = match Dataset::bundled() {

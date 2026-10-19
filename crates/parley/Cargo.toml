@@ -8,9 +8,9 @@ description = "Small trained intent + slot parser for launcher commands"
 
 [features]
 # training-only code (data generator, trainer); never needed at runtime
-train = []
+training = []
 
 [[bin]]
-name = "train"
-path = "src/bin/train.rs"
-required-features = ["train"]
+name = "parley-train"
+path = "src/bin/parley-train.rs"
+required-features = ["training"]

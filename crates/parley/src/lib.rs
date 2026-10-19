@@ -3,11 +3,11 @@
 //! `"new 20m timer then notify me"` → `Timer { duration: "20m", action: "notify me" }`
 //!
 //! A small averaged-perceptron model, trained offline on synthetic data
-//! (`cargo run -p parley --bin train`) and embedded into the library.
+//! (`cargo run -p parley --features training --bin parley-train`) and embedded into the library.
 
 mod schema;
-#[cfg(feature = "train")]
-pub mod train;
+#[cfg(feature = "training")]
+pub mod training;
 
 pub use schema::{Intent, SlotKind, Tag};
 

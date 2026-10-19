@@ -1,6 +1,4 @@
-//! Training-only code (feature `train`): data generation, later the trainer.
-
-pub mod data;
+//! Deterministic RNG, so generated data is reproducible.
 
 /// Small deterministic RNG (xorshift64), so generated data is reproducible.
 pub struct Rng(u64);

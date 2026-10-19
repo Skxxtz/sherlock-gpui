@@ -1,9 +1,9 @@
-#![cfg(feature = "train")]
+#![cfg(feature = "training")]
 
 use std::collections::HashSet;
 
-use parley::train::Rng;
-use parley::train::data::{Dataset, Split};
+use parley::training::Rng;
+use parley::training::corpus::{Dataset, Split};
 use parley::{Intent, Tag};
 
 fn ds() -> Dataset {
