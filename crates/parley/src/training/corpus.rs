@@ -219,7 +219,15 @@ impl Dataset {
         (rest, fold)
     }
 
-    /// All values of a slot (both splits), words joined with spaces.
+    /// Values of a slot in one split, as written in `slots.txt`.
+    pub fn values_in(&self, split: Split, kind: SlotKind) -> Vec<String> {
+        self.values[idx(split)]
+            .get(&kind)
+            .map(|v| v.iter().map(|w| w.join(" ")).collect())
+            .unwrap_or_default()
+    }
+
+    /// All values of a slot (all splits), words joined with spaces.
     /// E.g. the app names, to build a `Lexicon` for training.
     pub fn values(&self, kind: SlotKind) -> Vec<String> {
         self.values

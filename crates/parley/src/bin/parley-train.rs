@@ -9,7 +9,7 @@ use parley::model::Model;
 use parley::training::Rng;
 use parley::training::calibrate;
 use parley::training::corpus::{Dataset, Split};
-use parley::training::evaluate::{errors, evaluate, render};
+use parley::training::evaluate::{by_intent, errors, evaluate, render};
 use parley::training::trainer::{Settings, train};
 
 const TRAIN_EXAMPLES: usize = 20_000;
@@ -124,6 +124,20 @@ fn main() {
             "  … same, without app lexicon",
             evaluate(&model, &data, &Lexicon::default()),
         );
+        println!("  per intent (TEST phrasings, TEST values):");
+        for (intent, n, r) in by_intent(&model, &data, &lex) {
+            match intent {
+                Some(i) => row(&format!("    {} ({n})", i.name()), r),
+                // non-commands have no slots; "intent" = correctly left alone
+                None => println!(
+                    "{:<36} {:>7.1}% {:>8} {:>7.1}%",
+                    format!("    none ({n})"),
+                    r.intent * 100.0,
+                    "–",
+                    r.exact * 100.0
+                ),
+            }
+        }
     }
 
     // what each confidence threshold buys on the hardest set

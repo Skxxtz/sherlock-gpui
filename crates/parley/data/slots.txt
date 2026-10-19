@@ -9,29 +9,29 @@
 # these only need to teach the model what such values look like.
 
 DUR  = #m | # min | # mins | # minutes | #s | # sec | # seconds | #h | # hour | # hours | half an hour | an hour | #h #m | # and a half minutes | a second | a few minutes | a couple of minutes
-DUR? = # secs | #hrs | #min | a minute | # hrs
-DUR!   = #sec | # hr | quarter of an hour | #mins | ten minutes
+DUR? = # secs | #hrs | #min | a minute | # hrs | #sec | # hr | quarter of an hour | #mins | ten minutes
+DUR! = five mins | 1.5 hours | twenty seconds | # minute | an hour and a half | three hours | #hours
 
 TIME  = #pm | # am | #am | #:30 | #:15 | noon | tomorrow | # o'clock | tonight | #pm tomorrow
-TIME? = #:45pm | midnight | #am tomorrow | morning
-TIME!  = half past # | #:05 | # pm tomorrow | evening
+TIME? = #:45pm | midnight | #am tomorrow | morning | half past # | #:05 | # pm tomorrow | evening
+TIME! = #.30 | quarter to # | #am sharp | tomorrow at # | # in the morning | this afternoon
 
 PCT  = #% | # | # percent | min | mute | half | quiet
-PCT? = # % | max
-PCT!   = #percent | a hundred | # per cent
+PCT? = # % | max | #percent | a hundred | # per cent
+PCT! = #pc | full | zero | seventy percent | # out of 100
 
 TEXT  = call mom | drink water | stretch | check the oven | take the laundry out | push the release | feed the cat | stand up | pay rent | start the dishwasher | buy milk | answer the mail from anna | take my pills | go to bed | pick up the kids | book the flight | renew the passport | back up the laptop | update nixos | cancel the subscription | text jonas | prepare the slides | take a break | check on the build | turn off the heater | order pizza | lock the door | charge the phone | review the pr | call the dentist
-TEXT? = water the plants | email bob | leave for the train
-TEXT!  = water the garden | ask lisa about the keys | stop the oven | move the car
+TEXT? = water the plants | email bob | leave for the train | water the garden | ask lisa about the keys | stop the oven | move the car
+TEXT! = call the landlord about the heating | submit the tax return | walk the dog | take out the trash | defrost the chicken | join the standup
 
 APP  = firefox | kitty | spotify | obsidian | gimp | thunderbird | visual studio code | discord | nautilus | alacritty | signal | inkscape | chromium | vlc | telegram | zed | neovim | evince | keepassxc | slack | zoom | element | pavucontrol | wireshark | audacity | kdenlive
-APP? = steam | libreoffice writer | blender | krita
-APP!   = gnome calculator | thunar | qbittorrent | darktable
+APP? = steam | libreoffice writer | blender | krita | gnome calculator | thunar | qbittorrent | darktable
+APP! = android studio | obs studio | heroic | protonvpn | gnome disks | foliate
 
 QUERY  = rust lifetimes | weather berlin | unzip tar | gpui docs | best pizza near me | nixos flakes | pipewire latency | hyprland config | cheap flights to rome | serde enum tagging | how tall is mount everest | linux kernel 6.18 | bundesliga table | git rebase interactive | nvidia wayland flicker | tokio select | best mechanical keyboard | python virtualenv | dark mode css | euro to dollar | sourdough recipe | rust async traits
-QUERY? = wayland layer shell | train times hamburg | borrow checker
-QUERY! = wasm bindgen tutorial | opening hours ikea | gtk layer shell rust
+QUERY? = wayland layer shell | train times hamburg | borrow checker | wasm bindgen tutorial | opening hours ikea | gtk layer shell rust
+QUERY! = how many calories in an apple | rust vs zig | weather in munich tomorrow | cheapest gpu 2026 | flatpak vs nix
 
 ACTION  = notify me | ping me | alert me | send a notification | beep | play a sound | tell me | show a popup | make a noise | wake me | send me a message | flash the screen
-ACTION? = let me know | ring
-ACTION! = make a beep | shout | let me hear it
+ACTION? = let me know | ring | make a beep | shout | let me hear it
+ACTION! = blink | send me a ping | ring a bell | pop up a message | flash a notification | buzz

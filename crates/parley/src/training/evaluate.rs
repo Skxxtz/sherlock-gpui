@@ -79,3 +79,20 @@ pub fn errors(model: &Model, examples: &[Example], lex: &Lexicon) -> Vec<(String
         })
         .collect()
 }
+
+/// `evaluate` per gold intent (`None` = not a command), in schema order.
+pub fn by_intent(
+    model: &Model,
+    examples: &[Example],
+    lex: &Lexicon,
+) -> Vec<(Option<Intent>, usize, Report)> {
+    Intent::ALL
+        .iter()
+        .map(|i| Some(*i))
+        .chain([None])
+        .map(|i| {
+            let subset: Vec<Example> = examples.iter().filter(|e| e.intent == i).cloned().collect();
+            (i, subset.len(), evaluate(model, &subset, lex))
+        })
+        .collect()
+}

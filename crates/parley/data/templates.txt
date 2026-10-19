@@ -96,6 +96,7 @@ none: open
 none: remind me
 
 
+
 == dev ==
 
 timer: make me a {DUR} timer
@@ -129,9 +130,6 @@ volume: volume should be {PCT}
 volume: set sound {PCT}
 none: notifications
 none: night light
-
-== test ==
-
 timer: set me a timer of {DUR}
 timer: {DUR} on the clock
 timer: time {DUR} for me
@@ -161,3 +159,86 @@ none: brightness
 none: restart
 none: emoji
 none: 10 * 4
+
+== test ==
+
+# ---- timer ----
+timer: {DUR} timer pls
+timer: set timer: {DUR}
+timer: wake me up in {DUR}
+timer: need a {DUR} countdown
+timer: countdown of {DUR} and {ACTION} when done
+timer: start a {DUR} pomodoro
+timer: tea timer {DUR}
+timer: {DUR} timer and {ACTION} at the end
+timer: alarm in {DUR}
+timer: could you time {DUR}
+timer: timer {DUR} after which {ACTION}
+timer: give me {DUR} on a timer
+
+# ---- remind ----
+remind: remind me {TIME} to {TEXT}
+remind: {TEXT} at {TIME} remind me
+remind: reminder: {TEXT} in {DUR}
+remind: don't let me forget {TEXT} at {TIME}
+remind: ping me about {TEXT} in {DUR}
+remind: remind me at {TIME} that i need to {TEXT}
+remind: nudge me in {DUR} to {TEXT}
+remind: set reminder {TEXT} {TIME}
+remind: remember {TEXT} in {DUR}
+remind: {TEXT} reminder at {TIME}
+remind: after {DUR} remind me to {TEXT}
+remind: i gotta {TEXT} at {TIME} so remind me
+
+# ---- open ----
+open: pull up {APP}
+open: bring up {APP}
+open: show {APP}
+open: switch to {APP}
+open: {APP} open
+open: i need {APP}
+open: start {APP} up
+open: can i get {APP}
+open: launch the {APP} application
+open: boot {APP}
+open: open up the {APP} window
+
+# ---- search ----
+search: lookup {QUERY}
+search: search: {QUERY}
+search: {QUERY} search
+search: find me {QUERY}
+search: web: {QUERY}
+search: googel {QUERY}
+search: search for info on {QUERY}
+search: show me results for {QUERY}
+search: look {QUERY} up
+search: ddg {QUERY}
+search: where can i find {QUERY}
+
+# ---- volume ----
+volume: turn it up to {PCT}
+volume: turn it down to {PCT}
+volume: sound level {PCT}
+volume: speaker volume {PCT}
+volume: set audio to {PCT}
+volume: {PCT} volume
+volume: volume = {PCT}
+volume: adjust volume to {PCT}
+volume: can you set the volume to {PCT}
+volume: volume {PCT} please thanks
+volume: lower it to {PCT}
+
+# ---- not a command ----
+none: calculator
+none: what's up
+none: wifi settings
+none: bluetooth
+none: 1 + 1
+none: sin(30)
+none: dark mode
+none: screenshot area
+none: log out
+none: sleep
+none: terminal
+none: github

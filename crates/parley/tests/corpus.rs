@@ -117,6 +117,32 @@ fn held_out_phrasings_never_appear_in_training() {
 }
 
 #[test]
+fn held_out_values_are_new() {
+    use parley::SlotKind;
+    let d = ds();
+    for kind in SlotKind::ALL {
+        let train = d.values_in(Split::Train, *kind);
+        let dev = d.values_in(Split::Dev, *kind);
+        for v in d.values_in(Split::Dev, *kind) {
+            assert!(
+                !train.contains(&v),
+                "{kind:?} dev value `{v}` is also a training value"
+            );
+        }
+        for v in d.values_in(Split::Test, *kind) {
+            assert!(
+                !train.contains(&v),
+                "{kind:?} test value `{v}` is also a training value"
+            );
+            assert!(
+                !dev.contains(&v),
+                "{kind:?} test value `{v}` is also a dev value"
+            );
+        }
+    }
+}
+
+#[test]
 fn test_phrasings_never_appear_in_dev() {
     let d = ds();
     let dev = skeletons(&d, Split::Dev, 20_000, 5);
