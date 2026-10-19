@@ -8,7 +8,7 @@
 
 use super::Rng;
 use super::corpus::Example;
-use crate::features::{self, BUCKETS, Lexicon};
+use crate::features::{self, BUCKETS, Lexicon, Query};
 use crate::model::{Model, class_of};
 use crate::{Tag, model};
 
@@ -90,7 +90,8 @@ pub fn train(examples: &[Example], lex: &Lexicon, s: &Settings, rng: &mut Rng) -
             t += 1;
 
             // intent
-            features::sentence(&ex.words, lex, &mut f);
+            let q = Query::new(&ex.words, lex);
+            features::sentence(&q, &mut f);
             let scores = live.intent_scores(&f);
             let guess = (0..model::CLASSES)
                 .max_by(|a, b| scores[*a].total_cmp(&scores[*b]))
@@ -104,15 +105,15 @@ pub fn train(examples: &[Example], lex: &Lexicon, s: &Settings, rng: &mut Rng) -
 
             // tags: decode the whole sentence (as at runtime, with the gold
             // intent), then reward the gold path and penalise the predicted one
-            let pred = live.viterbi(&ex.words, ex.intent, lex);
+            let pred = live.viterbi(&q, ex.intent);
             if pred != ex.tags {
                 let (mut gold_prev, mut pred_prev) = (Tag::O, Tag::O);
                 for (i, (&g, &p)) in ex.tags.iter().zip(&pred).enumerate() {
                     if g != p || gold_prev != pred_prev {
-                        features::token(&ex.words, i, gold_prev, ex.intent, lex, &mut f);
+                        features::token(&q, i, gold_prev, ex.intent, &mut f);
                         tags.add(g.index(), &f, 1.0, t);
                         sync(&mut live.tags, &tags.w, &[g.index()], &f);
-                        features::token(&ex.words, i, pred_prev, ex.intent, lex, &mut f);
+                        features::token(&q, i, pred_prev, ex.intent, &mut f);
                         tags.add(p.index(), &f, -1.0, t);
                         sync(&mut live.tags, &tags.w, &[p.index()], &f);
                     }

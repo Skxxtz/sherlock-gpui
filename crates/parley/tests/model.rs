@@ -86,3 +86,34 @@ fn cleanup_rules() {
     trim_connectors(&w("ring please"), &mut t);
     assert_eq!(t, vec![B(Action), O]);
 }
+
+#[test]
+fn recognisers() {
+    use parley::SlotKind::*;
+    use parley::features::recognised;
+    let r = |q: &str| recognised(q);
+    assert_eq!(r("timer 20m"), vec![(Duration, "20m".into())]);
+    assert_eq!(r("in 1h 30m"), vec![(Duration, "1h 30m".into())]);
+    assert_eq!(
+        r("in half an hour"),
+        vec![(Duration, "half an hour".into())]
+    );
+    assert_eq!(
+        r("a couple of minutes"),
+        vec![(Duration, "a couple of minutes".into())]
+    );
+    assert_eq!(
+        r("2 and a half hours"),
+        vec![(Duration, "2 and a half hours".into())]
+    );
+    assert_eq!(
+        r("twenty minutes"),
+        vec![(Duration, "twenty minutes".into())]
+    );
+    assert_eq!(r("at 5 pm tomorrow"), vec![(Time, "5 pm tomorrow".into())]);
+    assert_eq!(r("quarter to 7"), vec![(Time, "quarter to 7".into())]);
+    assert_eq!(r("volume 30 %"), vec![(Percent, "30 %".into())]);
+    assert_eq!(r("volume max"), vec![(Percent, "max".into())]);
+    assert_eq!(r("set a timer"), vec![]);
+    assert_eq!(r("open firefox"), vec![]);
+}

@@ -9,7 +9,7 @@
 use super::Rng;
 use super::corpus::{Dataset, Split};
 use super::trainer::{Settings, train};
-use crate::features::{self, Lexicon};
+use crate::features::{self, Lexicon, Query};
 use crate::model::{CLASSES, class_of};
 
 /// Folds for cross-validation.
@@ -35,7 +35,7 @@ pub fn temperature(
             rng,
         );
         for ex in fold.generate(Split::Train, Split::Train, n / 4, rng, false) {
-            features::sentence(&ex.words, lex, &mut f);
+            features::sentence(&Query::new(&ex.words, lex), &mut f);
             held_out.push((model.intent_scores(&f), class_of(ex.intent)));
         }
     }

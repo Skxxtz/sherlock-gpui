@@ -1,7 +1,7 @@
 //! The model: one weight row per intent class and per tag, scoring,
 //! constrained tagging, and the weights file format.
 
-use crate::features::{self, BITS, BUCKETS, Lexicon};
+use crate::features::{self, BITS, BUCKETS, Lexicon, Query};
 use crate::{Intent, SlotKind, Tag};
 
 /// Intent classes: every `Intent`, plus "not a command" as the last class.
@@ -87,13 +87,14 @@ impl Model {
 
     /// Intent first, then the best tag sequence under the intent's constraints.
     pub fn predict(&self, words: &[String], lex: &Lexicon) -> Prediction {
+        let q = Query::new(words, lex);
         let mut f = Vec::with_capacity(32);
-        features::sentence(words, lex, &mut f);
+        features::sentence(&q, &mut f);
         let scores = self.intent_scores(&f);
         let (best, confidence) = softmax_best(&scores, self.temperature);
         let intent = intent_of(best);
 
-        let mut tags = self.viterbi(words, intent, lex);
+        let mut tags = self.viterbi(&q, intent);
         trim_connectors(words, &mut tags);
         Prediction {
             intent,
@@ -105,10 +106,15 @@ impl Model {
     /// Highest-scoring tag sequence for `words` (Viterbi), instead of
     /// deciding each word greedily: a later word can change an earlier
     /// choice, e.g. where a slot ends.
-    pub fn viterbi(&self, words: &[String], intent: Option<Intent>, lex: &Lexicon) -> Vec<Tag> {
-        let n = words.len();
+    pub fn viterbi(&self, q: &Query, intent: Option<Intent>) -> Vec<Tag> {
+        self.viterbi_scored(q, intent).0
+    }
+
+    /// `viterbi` plus the score of the returned sequence.
+    pub fn viterbi_scored(&self, q: &Query, intent: Option<Intent>) -> (Vec<Tag>, f32) {
+        let n = q.len();
         if n == 0 {
-            return Vec::new();
+            return (Vec::new(), 0.0);
         }
         const T: usize = Tag::COUNT;
         let mut best = vec![[f32::NEG_INFINITY; T]; n]; // best score ending in tag t at word i
@@ -116,7 +122,7 @@ impl Model {
         let (mut fs, mut fp) = (Vec::with_capacity(24), Vec::with_capacity(5));
 
         for i in 0..n {
-            features::token_static(words, i, intent, lex, &mut fs);
+            features::token_static(q, i, intent, &mut fs);
             let base: [f32; T] = std::array::from_fn(|t| self.tag_score(Tag::from_index(t), &fs));
             let prevs = if i == 0 { 0..1 } else { 0..T };
             for p in prevs {
@@ -125,7 +131,7 @@ impl Model {
                     continue;
                 }
                 let prev = Tag::from_index(p);
-                features::token_prev(words, i, prev, intent, lex, &mut fp);
+                features::token_prev(q, i, prev, intent, &mut fp);
                 for (c, &b) in base.iter().enumerate() {
                     let cand = Tag::from_index(c);
                     if !allowed(prev, cand, intent) {
@@ -144,12 +150,13 @@ impl Model {
         let mut t = (0..T)
             .max_by(|a, b| best[n - 1][*a].total_cmp(&best[n - 1][*b]))
             .unwrap();
+        let score = best[n - 1][t];
         let mut tags = vec![Tag::O; n];
         for i in (0..n).rev() {
             tags[i] = Tag::from_index(t);
             t = back[i][t] as usize;
         }
-        tags
+        (tags, score)
     }
 
     /// Serialise: header (magic, sizes, schema names, temperature), then the non-zero
