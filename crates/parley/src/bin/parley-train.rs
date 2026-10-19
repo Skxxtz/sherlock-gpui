@@ -1,5 +1,5 @@
 //! Trains the model and writes `model/parley.bin`, which the library embeds.
-//! `cargo run -p parley --features training --bin parley-train --release [-- --errors [N]] [--test]`
+//! `cargo run -p parley --features training --bin parley-train --release [-- --errors [N]] [--test] [--leaks]`
 
 use std::time::Instant;
 
@@ -22,6 +22,7 @@ type Gate<'a> = dyn Fn(&parley::model::Prediction, &[String]) -> bool + 'a;
 fn main() {
     // `--errors [N]`: print up to N (default 12) wrong predictions per dev set
     // `--test`: also print the final test numbers (never with errors)
+    // `--leaks`: list every dev/test phrasing that training can also produce, then exit
     let args: Vec<String> = std::env::args().collect();
     let show_errors = args.iter().any(|a| a == "--errors");
     let show_test = args.iter().any(|a| a == "--test");
@@ -35,6 +36,10 @@ fn main() {
         eprintln!("error: {e}");
         std::process::exit(1);
     });
+    if args.iter().any(|a| a == "--leaks") {
+        list_leaks(&ds);
+        return;
+    }
     let mut rng = Rng::new(SEED);
     // at runtime Sherlock knows the installed apps; simulate that here
     let lex = Lexicon::with_apps(ds.values(SlotKind::App));
@@ -261,5 +266,39 @@ fn main() {
             p.confidence * 100.0,
             slots.join(" ")
         );
+    }
+}
+
+/// Every held-out phrasing that training can also produce (or test ∩ dev).
+fn list_leaks(ds: &Dataset) {
+    use std::collections::HashSet;
+    let mut rng = Rng::new(1);
+    let mut skel = |phr: Split, n: usize| -> HashSet<String> {
+        ds.generate(phr, phr, n, &mut rng, false)
+            .iter()
+            .map(|e| e.skeleton())
+            .collect()
+    };
+    let (train, dev, test) = (
+        skel(Split::Train, 300_000),
+        skel(Split::Dev, 50_000),
+        skel(Split::Test, 50_000),
+    );
+    let mut total = 0;
+    for (name, held, against) in [
+        ("dev ∩ train", &dev, &train),
+        ("test ∩ train", &test, &train),
+        ("test ∩ dev", &test, &dev),
+    ] {
+        let mut v: Vec<&String> = held.iter().filter(|s| against.contains(*s)).collect();
+        v.sort();
+        total += v.len();
+        println!("{name}: {}", v.len());
+        for s in v {
+            println!("  {s}");
+        }
+    }
+    if total == 0 {
+        println!("no leaks");
     }
 }
