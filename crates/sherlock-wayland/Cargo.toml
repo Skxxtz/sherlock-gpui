@@ -1,0 +1,19 @@
+[package]
+name = "sherlock-wayland"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[features]
+default = ["clipboard", "keyboard"]
+clipboard = ["dep:wayland-protocols-wlr"]
+keyboard = ["dep:xkbcommon"]
+outputs = ["dep:wayland-protocols"]
+
+[dependencies]
+wayland-client = "0.31"
+wayland-protocols-wlr = { version = "0.3", features = ["client"], optional = true }
+wayland-protocols = { version = "0.32", features = ["client", "unstable"], optional = true }
+xkbcommon = { version = "0.8", default-features = false, features = ["wayland"], optional = true }
+enum_dispatch = "0.3"
+smallvec = "1"
