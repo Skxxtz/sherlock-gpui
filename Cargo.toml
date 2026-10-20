@@ -3,6 +3,7 @@ members = [
     ".",
     "crates/md-rs",
     "crates/elementary",
+    "crates/sherlock-wayland",
     "sherlock-derive"
 ]
 
@@ -14,6 +15,7 @@ edition = "2024"
 [dependencies]
 md-rs = { path = "./crates/md-rs", features = ["github"], optional = true }
 elementary = { path = "./crates/elementary"}
+sherlock-wayland = { path = "./crates/sherlock-wayland", default-features = false, features = ["clipboard", "outputs"]}
 sherlock-derive = { path = "sherlock-derive" }
 arrayvec = "0.7.6"
 bincode = {version = "2.0.1", features = ["serde"]}
@@ -46,9 +48,6 @@ tiny-skia = "0.11.4"
 tokio = {version = "1.49.0", features=["rt", "sync", "time"]}
 toml = "0.9.11"
 unicode-segmentation = "1.12.0"
-wayland-client = "0.31.13"
-wayland-protocols = "0.32.12"
-wayland-protocols-wlr = {version = "0.3.11", features=["client"]}
 xdg = "3.0.0"
 zbus = "5.13.2"
 walkdir = "2.5.0"

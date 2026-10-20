@@ -8,7 +8,6 @@ use crate::{
     loader::{CustomIconTheme, Loader, assets::Assets, pipe::read_stdin_piped},
     tokio_utils::{AsyncSizedMessage, SizedMessageObj},
     utils::{
-        clipboard::spawn_clipboard_watcher,
         config::SherlockConfig,
         networking::{ClientMessage, ServerResponse},
     },
@@ -23,7 +22,6 @@ mod prelude;
 mod tokio_utils;
 mod ui;
 mod utils;
-mod wayland;
 
 /// Holds the icon cache, containing all known icon names and their file locations.
 static ICONS: OnceLock<RwLock<CustomIconTheme>> = OnceLock::new();
@@ -35,6 +33,10 @@ static CONTEXT_MENU_BIND: OnceLock<String> = OnceLock::new();
 static SHORTCUT_MOD: OnceLock<ShortcutKeyMod> = OnceLock::new();
 /// Holds the socket location for the sherlock socket
 static SOCKET_PATH: &str = "/tmp/sherlock.sock";
+/// Clipboard access + change subscriptions (set once at startup; `None` without Wayland).
+static CLIPBOARD: OnceLock<sherlock_wayland::ClipboardHandle> = OnceLock::new();
+/// Outputs access
+static OUTPUTS: OnceLock<sherlock_wayland::OutputsHandle> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -99,7 +101,14 @@ async fn main() {
         std::fs::remove_file(SOCKET_PATH).ok();
     }
 
-    spawn_clipboard_watcher();
+    // Wayland watcher: one connection and one thread for all features
+    let Some(mut wayland) = sherlock_wayland::WaylandWatcher::new() else {
+        eprintln!("Failed to connect to Wayland.");
+        return;
+    };
+    let _ = CLIPBOARD.set(wayland.add(sherlock_wayland::Clipboard::default()));
+    let _ = OUTPUTS.set(wayland.add(sherlock_wayland::Outputs::default()));
+    wayland.spawn();
 
     // This top part
     let plat = gpui_platform::current_platform(false);

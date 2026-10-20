@@ -1,7 +1,7 @@
 use crate::{
+    CLIPBOARD,
     launcher::plugin_launcher::api::{ApiContext, SherlockPluginFn, protocol::PluginDeferFunction},
     lua_fn,
-    utils::clipboard::get_clipboard,
 };
 use mlua::prelude::{Lua, LuaResult, LuaTable};
 
@@ -12,9 +12,11 @@ impl SherlockPluginFn for Get {
     const RETURNS: &'static str = "string";
     const DOC: &'static str = "Fetches the current clipboard entry.";
     fn register(lua: &Lua, table: &LuaTable, _ctx: &ApiContext) -> LuaResult<()> {
-        lua_fn!(table, lua, |_lua, ()| Ok(
-            get_clipboard().unwrap_or_default()
-        ))
+        lua_fn!(table, lua, |_lua, ()| Ok(CLIPBOARD
+            .get()
+            .and_then(|h| h.read())
+            .map(|c| c.to_string())
+            .unwrap_or_default()))
     }
 }
 

@@ -1,5 +1,4 @@
 pub mod cache;
-pub mod clipboard;
 pub mod command_launch;
 pub mod config;
 pub mod errors;

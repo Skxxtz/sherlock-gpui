@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use gpui::{
-    Animation, AnimationExt, IntoElement, Render, Styled, WindowBounds, WindowKind, WindowOptions,
-    black, div,
+    Animation, AnimationExt, Bounds, IntoElement, Pixels, Render, Styled, WindowBounds, WindowKind,
+    WindowOptions, black, div,
     layer_shell::{Layer, LayerShellOptions},
-    px,
+    point, px, size,
 };
 
-use crate::wayland::display::get_max_display_bounds;
+use crate::OUTPUTS;
 
 pub struct Backdrop {
     alpha: f32,
@@ -61,4 +61,17 @@ impl Render for Backdrop {
                 .into_any_element()
         }
     }
+}
+
+/// Largest monitor by area, in logical pixels
+fn get_max_display_bounds() -> Option<Bounds<Pixels>> {
+    OUTPUTS
+        .get()?
+        .load()
+        .iter()
+        .max_by_key(|o| o.width * o.height)
+        .map(|o| Bounds {
+            origin: point(px(o.x as f32), px(o.y as f32)),
+            size: size(px(o.width as f32), px(o.height as f32)),
+        })
 }

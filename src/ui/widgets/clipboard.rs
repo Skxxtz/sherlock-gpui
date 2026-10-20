@@ -1,12 +1,14 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
+use futures::{StreamExt, channel::mpsc};
 use gpui::{
-    App, AppContext, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div,
-    img, prelude::FluentBuilder, px, rgb, svg,
+    App, AppContext, Entity, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled,
+    div, img, prelude::FluentBuilder, px, rgb, svg,
 };
 use sherlock_derive::Hideable;
 
 use crate::{
+    CLIPBOARD,
     app::theme::ThemeData,
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     loader::{
@@ -14,88 +16,104 @@ use crate::{
         utils::{ApplicationAction, Priority},
     },
     ui::{
-        launcher::context_menu::ContextMenuAction,
-        traits::RenderableChildImpl,
-        utils::{
-            async_update::{AsyncUpdate, AsyncUpdateEntity, Fetchable},
-            selection::Selection,
-        },
+        launcher::context_menu::ContextMenuAction, traits::RenderableChildImpl,
+        utils::selection::Selection,
     },
-    utils::{
-        clipboard::get_clipboard,
-        errors::SherlockMessage,
-        intent::{Intent, IntentResult},
-    },
+    utils::intent::{Intent, IntentResult},
 };
 
-#[derive(Clone)]
-pub struct ClipData {
-    pub actions: Option<Arc<[Arc<ContextMenuAction>]>>,
-    result: Option<(Intent, IntentResult)>,
+#[derive(Clone, Hideable)]
+pub struct ClipWidget {
+    entity: Entity<ClipboardContent>,
 }
 
-impl Fetchable for ClipData {
-    type Error = SherlockMessage;
-    async fn fetch(
-        launcher: &Arc<LauncherConfig>,
-        old: Option<Rc<Self>>,
-    ) -> Result<Option<Rc<Self>>, Self::Error> {
+#[derive(Default, Debug)]
+struct ClipboardContent {
+    /// Subscription to wayland clipboard events. Provides text, starting with current one.
+    _sub: Option<sherlock_wayland::Subscription>,
+    /// Last copied text – used to debounce intent parsing.
+    content: Option<Arc<str>>,
+    /// Intent parsed for the copied text.
+    result: Option<(Intent, IntentResult)>,
+    /// Context menu actions connected to an intent.
+    actions: Option<Arc<[Arc<ContextMenuAction>]>>,
+}
+
+impl ClipboardContent {
+    /// Called on every new copied text. Parses new intent for the given string.
+    fn with_content(&mut self, launcher: &Arc<LauncherConfig>, text: Option<Arc<str>>) {
         let LauncherType::Clipboard(clp) = &launcher.launcher_type else {
             unreachable!()
         };
 
-        let content = match get_clipboard() {
-            Some(c) if c.len() < 2048 => c,
-            _ => return Ok(None),
+        // early return if None or blank
+        let Some(text) = text.filter(|t| !t.trim().is_empty()) else {
+            self.content = None;
+            self.actions = None;
+            self.result = None;
+            return;
         };
 
-        let intent = Intent::parse(&content, &clp.capabilities);
-
-        // early return if intents are the same
-        if let Some(old_intent) = old.as_ref().and_then(|o| o.result.as_ref()).map(|(i, _)| i)
-            && old_intent == &intent
-        {
-            return Ok(old);
+        // skip if unchanged
+        if self.content.as_ref() == Some(&text) {
+            return;
         }
 
-        let mut actions: Option<Arc<[Arc<ContextMenuAction>]>> = None;
-        let r = match &intent {
-            Intent::ColorConvert { .. } => intent.execute(),
-            Intent::Conversion { .. } => intent.execute(),
-            Intent::ColorDisplay { .. } => intent.execute(),
-            Intent::Url { url } => {
-                actions = Some(Arc::new([Arc::from(
+        let intent = Intent::parse(&text, &clp.capabilities);
+        self.content = Some(text);
+
+        let (actions, result) = match &intent {
+            Intent::ColorConvert { .. }
+            | Intent::Conversion { .. }
+            | Intent::ColorDisplay { .. } => (None, intent.execute()),
+            Intent::Url { url } => (
+                Some(Arc::new([Arc::from(
                     ApplicationAction::new("create_bookmark", "Create Bookmark")
                         .icon_name("sherlock-bookmark"),
-                )]));
-                Some(IntentResult::String(url.into()))
-            }
-            _ => None,
+                )]) as Arc<[_]>),
+                Some(IntentResult::String(url.into())),
+            ),
+            _ => (None, None),
         };
 
-        let Some(r) = r else {
-            return Ok(None);
-        };
-
-        let new = Self {
-            result: Some((intent, r)),
-            actions,
-        };
-
-        Ok(Some(Rc::new(new)))
+        self.actions = actions;
+        self.result = result.map(|r| (intent, r));
     }
 }
 
-#[derive(Clone, Hideable)]
-pub struct ClipWidget {
-    entity: AsyncUpdateEntity<ClipData>,
-}
-
 impl ClipWidget {
-    pub fn new(cx: &mut impl AppContext) -> Self {
-        Self {
-            entity: AsyncUpdateEntity::<ClipData>::new(cx),
-        }
+    pub fn new(launcher: Arc<LauncherConfig>, cx: &mut App) -> Self {
+        let entity = cx.new(|cx| {
+            let (tx, mut rx) = mpsc::unbounded::<Option<Arc<str>>>();
+
+            cx.spawn(async move |weak, cx| {
+                while let Some(text) = rx.next().await {
+                    let alive = weak.update(cx, |this: &mut ClipboardContent, cx| {
+                        this.with_content(&launcher, text);
+                        cx.notify();
+                    });
+
+                    if alive.is_err() {
+                        break;
+                    }
+                }
+            })
+            // safe here since it drops onece tx drops, which drops when subscription drops.
+            .detach();
+
+            let _sub = CLIPBOARD.get().map(|clip| {
+                clip.subscribe_text(move |text| {
+                    let _ = tx.unbounded_send(text);
+                })
+            });
+
+            ClipboardContent {
+                _sub,
+                ..Default::default()
+            }
+        });
+
+        Self { entity }
     }
 }
 
@@ -108,14 +126,7 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
         theme: Arc<ThemeData>,
         cx: &mut App,
     ) -> gpui::AnyElement {
-        let Some((intent, result)) = self
-            .entity
-            .read(cx)
-            .as_ref()
-            .ok()
-            .and_then(|data| data.as_ref())
-            .and_then(|d| d.result.as_ref())
-        else {
+        let Some((ref intent, ref result)) = self.entity.read(cx).result else {
             return div().into_any_element();
         };
 
@@ -139,39 +150,22 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
     }
     #[inline(always)]
     fn build_exec(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
-        if let Some((intent, res)) = self
-            .entity
-            .read(cx)
-            .as_ref()
-            .ok()
-            .and_then(|data| data.as_ref())
-            .and_then(|d| d.result.as_ref())
-        {
-            return match intent {
-                Intent::Url { url } => Some(ExecMode::Web {
-                    engine: None,
-                    browser: None,
-                    exec: Some(url.to_string()),
-                }),
-                _ => Some(ExecMode::Copy {
-                    content: res.to_string(),
-                }),
-            };
+        let (intent, result) = self.entity.read(cx).result.as_ref()?;
+        match intent {
+            Intent::Url { url } => Some(ExecMode::Web {
+                engine: None,
+                browser: None,
+                exec: Some(url.to_string()),
+            }),
+            _ => Some(ExecMode::Copy {
+                content: result.to_string(),
+            }),
         }
-
-        None
     }
 
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String> {
-        let (intent, result) = self
-            .entity
-            .read(cx)
-            .as_ref()
-            .ok()
-            .and_then(|data| data.as_ref())
-            .and_then(|d| d.result.as_ref())?;
-
+        let (intent, result) = self.entity.read(cx).result.as_ref()?;
         match (intent, result) {
             (Intent::Url { url }, _) => Some(url.to_string()),
             (Intent::Conversion { .. }, IntentResult::String(s)) => Some(s.to_string()),
@@ -191,51 +185,34 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
         launcher: &Arc<LauncherConfig>,
         cx: &mut App,
     ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
-        if let Some(own_actions) = self
+        let own = self
             .entity
             .read(cx)
+            .actions
             .as_ref()
-            .ok()
-            .and_then(|e| e.as_ref())
-            .and_then(|d| d.actions.clone())
-        {
-            if let Some(extra_actions) = launcher.add_actions.as_ref() {
-                if extra_actions.is_empty() {
-                    return Some(own_actions);
-                }
+            .filter(|a| !a.is_empty());
+        let extra = launcher.add_actions.as_ref().filter(|a| !a.is_empty());
 
-                let mut combined = Vec::with_capacity(own_actions.len() + extra_actions.len());
-
-                combined.extend(own_actions.iter().cloned());
-                combined.extend(extra_actions.iter().cloned());
-
-                return Some(combined.into());
-            }
-            return Some(own_actions);
+        match (own, extra) {
+            (Some(own), Some(extra)) => Some(own.iter().chain(extra.iter()).cloned().collect()),
+            (Some(a), None) | (None, Some(a)) => Some(a.clone()),
+            (None, None) => None,
         }
-        None
     }
     #[inline(always)]
     fn has_actions(&self, cx: &mut App) -> bool {
-        self.entity.read(cx).as_ref().is_ok_and(|e| {
-            e.as_ref()
-                .and_then(|d| d.actions.as_ref())
-                .is_some_and(|a| !a.is_empty())
-        })
+        self.entity
+            .read(cx)
+            .actions
+            .as_ref()
+            .is_some_and(|a| !a.is_empty())
     }
     #[inline(always)]
     fn based_show<C: AppContext>(&self, _keyword: &str, cx: &mut C) -> Option<bool> {
-        Some(self.entity.read_with(cx, |this, _| {
-            if let Ok(Some(clip)) = this.as_ref() {
-                clip.result.is_some()
-            } else {
-                false
-            }
-        }))
-    }
-    #[inline(always)]
-    fn update_async<C: AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
-        self.entity.update_async(launcher, cx);
+        Some(
+            self.entity
+                .read_with(cx, |e, _| e.result.as_ref().is_some()),
+        )
     }
 }
 
