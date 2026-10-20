@@ -107,6 +107,8 @@ run `git log main..dev` for all changes
 
 * **Calculator**: Expressions evaluate 2.6–10× faster than with `meval`
   (`367590f6`, `1ba678cd`, `71d09827`)
+* **Clipboard Launcher**: New event-based approach without polling.
+  (`c52be2c0`, `ee1eae4a`)
 
 ### Fixed
 
@@ -133,6 +135,8 @@ run `git log main..dev` for all changes
 * **Emoji Picker**: fixed multi-color emojis shown wrong on "simpsons" combinations (`777aff85`)
 * **Currency Calculator**: fixed invalid usd factor (`caa1814d`)
 * **Context Menu**: fixed list item clicking with context menu open (`9e4499d2`)
+* **Clipboard Launcher**: Fixed issue where empty clipboard tile would show
+  (`c52be2c0`, `ee1eae4a`)
 
 ## [0.2.3-dev] - 03.06.26
 
