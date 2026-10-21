@@ -40,12 +40,14 @@ bitflags::bitflags! {
     pub struct QuickActionCapabilities: u8 {
         const HIDE = 1 << 0;
         const INFO = 1 << 1;
+        const PICK = 1 << 2;
     }
 }
 
 macro_rules! create_variants {
     (@flag hideable) => { QuickActionCapabilities::HIDE };
     (@flag hasinfo) => { QuickActionCapabilities::INFO };
+    (@flag pickable) => { QuickActionCapabilities::PICK };
     (
         enum $name:ident {
             $( $variant:ident( $inner:ty $(, $extra:ty)* )
@@ -129,6 +131,7 @@ macro_rules! create_variants {
                 }
             }
             pub const fn is_hideable(&self) -> bool { self.capabilities().contains(QuickActionCapabilities::HIDE) }
+            pub const fn is_pick(&self) -> bool { self.capabilities().contains(QuickActionCapabilities::PICK) }
 
             pub fn variant(&self) -> LauncherVariant {
                 LauncherVariant::from(self)
@@ -299,15 +302,15 @@ macro_rules! create_variants {
 
 create_variants! {
     enum LauncherType {
-        Apps(AppLauncher): hideable + hasinfo,
-        Bookmarks(BookmarkLauncher),
+        Apps(AppLauncher): hideable + hasinfo + pickable,
+        Bookmarks(BookmarkLauncher): pickable,
         Calculator(CalculatorLauncher),
-        Categories(CategoryLauncher),
+        Categories(CategoryLauncher): pickable,
         Clipboard(ClipboardLauncher),
-        Commands(CommandLauncher),
+        Commands(CommandLauncher): pickable,
         Debug(DebugLauncher, DebugFunctions),
         Dmenu(DmenuLauncher),
-        Emoji(EmojiPicker),
+        Emoji(EmojiPicker): pickable,
         Event(EventLauncher, EventLauncherFunctions),
         Files(FileLauncher): hasinfo,
         Message(MessageLauncher),
@@ -315,11 +318,11 @@ create_variants! {
         Plugin(PluginLauncher, PluginFunctions),
         Process(ProcessLauncher, ProcessLauncherFunctions),
         Script(ScriptLauncher, ScriptFunctions),
-        Theme(ThemePicker, ThemePickerFunctions),
+        Theme(ThemePicker, ThemePickerFunctions): pickable,
         Timer(TimerLauncher, TimerLauncherFunctions),
         Translator(Translator),
         Weather(WeatherLauncher),
-        Web(WebLauncher),
+        Web(WebLauncher): pickable,
     }
 }
 
