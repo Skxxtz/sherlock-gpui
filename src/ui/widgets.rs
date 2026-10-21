@@ -39,7 +39,7 @@ use crate::{
             timer::TimerChild, translator::TranslationData, weather::WeatherWidget,
         },
     },
-    utils::{config::HomeType, errors::SherlockMessage},
+    utils::{config::HomeType, errors::SherlockMessage, item_key::ItemKey},
 };
 
 use calculator::CalcData;
@@ -302,6 +302,11 @@ macro_rules! renderable_enum {
                 match self {
                     $(Self::$variant { launcher, .. } => f(launcher)),*
                 }
+            }
+
+            #[inline(always)]
+            pub fn item_key(&self) -> Option<ItemKey> {
+                ItemKey::of(self)
             }
         }
 

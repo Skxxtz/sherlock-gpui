@@ -3,7 +3,7 @@ use std::mem;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use strum::Display;
+use strum::{Display, IntoStaticStr};
 
 use crate::{
     launcher::{
@@ -60,7 +60,7 @@ macro_rules! create_variants {
             Empty,
         }
 
-        #[derive(Deserialize, Debug, Serialize, Clone, Copy, Default, Display, PartialEq, Eq, Hash)]
+        #[derive(Deserialize, Debug, Serialize, Clone, Copy, Default, Display, PartialEq, Eq, Hash, IntoStaticStr)]
         #[serde(rename_all = "snake_case")]
         #[strum(serialize_all = "snake_case")]
         pub enum LauncherVariant {
@@ -193,6 +193,9 @@ macro_rules! create_variants {
                     )*
                     Self::Empty => Ok($name::Empty)
                 }
+            }
+            pub fn as_str(&self) -> &'static str {
+                self.into()
             }
         }
 

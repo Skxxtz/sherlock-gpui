@@ -7,6 +7,7 @@ pub mod files;
 pub mod format;
 pub mod image_buf;
 pub mod intent;
+pub mod item_key;
 pub mod logging;
 pub mod networking;
 pub mod paths;
