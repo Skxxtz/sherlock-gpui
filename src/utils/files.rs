@@ -31,6 +31,14 @@ pub fn expand_path<T: AsRef<Path>>(path: T, home: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
+/// Desktop file ID per the XDG spec: path relative to the `applications/` dir, `/` → `-`. Uses the
+/// *unresolved* path, so symlinks into `/nix/store` dont leak into the ID.
+pub fn desktop_id(path: &Path) -> Option<String> {
+    let s = path.to_str()?;
+    let (_, rel) = s.rsplit_once("/applications/")?;
+    Some(rel.replace('/', "-"))
+}
+
 pub fn home_dir() -> Result<&'static Path, SherlockMessage> {
     if let Some(home) = HOME.get() {
         return Ok(home);
