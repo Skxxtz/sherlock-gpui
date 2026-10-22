@@ -75,7 +75,7 @@ impl LauncherView {
             let key = child
                 .launcher_type()
                 .is_pickable()
-                .then(|| ItemKey::of(child))
+                .then(|| child.item_key())
                 .flatten();
             Some((mode, key))
         };

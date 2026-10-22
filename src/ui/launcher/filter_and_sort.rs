@@ -247,12 +247,7 @@ impl LauncherView {
                 child.search().fuzzy_match(query)
             })
             .map(|(launcher_idx, launcher_config, child_idx, child)| {
-                // TODO: use item_key_ref()
-                let boost = child
-                    .item_key()
-                    .as_ref()
-                    .map(|id| boosts.get(id))
-                    .unwrap_or(0.);
+                let boost = child.item_key_ref().map(|id| boosts.get(id)).unwrap_or(0.);
                 FilterResult {
                     index: (*launcher_idx, child_idx),
                     prio: child.priority().sort_key(query, child.search(), boost),

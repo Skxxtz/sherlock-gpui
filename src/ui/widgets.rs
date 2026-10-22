@@ -99,16 +99,16 @@ child_kinds! { $
 /// A launcher config paired with its rendered payload.
 #[derive(Clone)]
 pub struct RenderableChild {
+    pub id: Option<ItemKey>,
     pub launcher: Arc<LauncherConfig>,
     pub kind: ChildKind,
 }
 
 impl RenderableChild {
     pub fn new(launcher: Arc<LauncherConfig>, inner: impl Into<ChildKind>) -> Self {
-        Self {
-            launcher,
-            kind: inner.into(),
-        }
+        let kind: ChildKind = inner.into();
+        let id = ItemKey::of(&kind, &launcher);
+        Self { id, launcher, kind }
     }
 
     pub fn get_exec(&self) -> Option<String> {
@@ -119,7 +119,11 @@ impl RenderableChild {
     }
 
     pub fn item_key(&self) -> Option<ItemKey> {
-        ItemKey::of(self)
+        self.id.clone()
+    }
+
+    pub fn item_key_ref(&self) -> Option<&ItemKey> {
+        self.id.as_ref()
     }
 }
 
