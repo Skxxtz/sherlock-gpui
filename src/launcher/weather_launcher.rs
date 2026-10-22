@@ -64,10 +64,10 @@ impl LauncherProvider for WeatherLauncher {
         _messages: &mut Vec<SherlockMessage>,
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
-        Ok(vec![RenderableChild::Weather {
-            launcher: Arc::clone(&launcher),
-            inner: WeatherWidget::new(cx),
-        }])
+        Ok(vec![RenderableChild::new(
+            Arc::clone(&launcher),
+            WeatherWidget::new(cx),
+        )])
     }
 }
 

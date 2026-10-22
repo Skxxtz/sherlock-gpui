@@ -8,7 +8,7 @@ use crate::{
     app::LauncherEntity,
     launcher::variant_type::{LauncherType, LauncherVariant},
     loader::Loader,
-    ui::{launcher::LauncherMode, widgets::RenderableChild},
+    ui::{launcher::LauncherMode, widgets::ChildKind},
     utils::{
         config::{ConfigGuard, SherlockAlias},
         errors::SherlockMessage,
@@ -85,10 +85,10 @@ fn reload_aliases<C: AppContext>(data: &LauncherEntity, cx: &mut C) -> Result<()
             .filter(|l| matches!(l.config.launcher_type.variant(), LauncherVariant::Apps))
         {
             for child in launcher.children.iter_mut() {
-                if let RenderableChild::App { inner, launcher } = child
+                if let ChildKind::App(inner) = &mut child.kind
                     && let Some(alias) =
                         inner.original_name.as_ref().and_then(|n| aliases.remove(n))
-                    && let LauncherType::Apps(launcher) = &launcher.launcher_type
+                    && let LauncherType::Apps(launcher) = &launcher.config.launcher_type
                 {
                     inner.apply_alias_raw(alias, launcher.use_keywords);
                 }

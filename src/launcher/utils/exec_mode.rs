@@ -239,13 +239,12 @@ impl ExecMode {
         }
     }
     pub fn from_child(data: &RenderableChild, cx: &mut App) -> Option<Self> {
-        let launcher = data.with_launcher(|l| l.clone());
-        if let Some(on_return) = &launcher.on_return
+        if let Some(on_return) = &data.launcher.on_return
             && let Some(result) = Self::from_method(
                 on_return,
                 data.get_exec(),
                 data.launcher_type(),
-                launcher.exit,
+                data.launcher.exit,
                 || data.get_content(cx),
             )
         {

@@ -11,8 +11,8 @@ use zbus::blocking::{Connection, Proxy};
 
 use crate::launcher::utils::binds::Bind;
 use crate::launcher::variant_type::InnerFunction;
-use crate::ui::widgets::RenderableChild;
 use crate::ui::widgets::audio::MusicPlayerWidget;
+use crate::ui::widgets::{ChildKind, RenderableChild};
 use crate::utils::config::ConfigGuard;
 use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::{
@@ -60,10 +60,10 @@ impl LauncherProvider for MusicPlayerLauncher {
         _messages: &mut Vec<SherlockMessage>,
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
-        Ok(vec![RenderableChild::Music {
+        Ok(vec![RenderableChild::new(
             launcher,
-            inner: MusicPlayerWidget::new(cx),
-        }])
+            MusicPlayerWidget::new(cx),
+        )])
     }
     fn binds(&self) -> Option<Arc<Vec<Bind>>> {
         self.binds.clone()
@@ -78,7 +78,7 @@ impl LauncherProvider for MusicPlayerLauncher {
         skip_func_if_nav!(func);
         let func = ensure_func!(func, InnerFunction::MusicPlayer);
 
-        let RenderableChild::Music { inner, .. } = child else {
+        let ChildKind::Music(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
                 SherlockErrorType::Unreachable,

@@ -48,7 +48,7 @@ impl LauncherProvider for WebLauncher {
             ..AppData::new()
         };
 
-        Ok(vec![RenderableChild::App { launcher, inner }])
+        Ok(vec![RenderableChild::new(launcher, inner)])
     }
 }
 

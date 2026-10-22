@@ -33,10 +33,7 @@ impl LauncherProvider for MessageLauncher {
             priority: PriorityGuard::new_with_launcher(&launcher, 0),
             ..AppData::new()
         };
-        Ok(vec![RenderableChild::App {
-            launcher: Arc::clone(&launcher),
-            inner,
-        }])
+        Ok(vec![RenderableChild::new(Arc::clone(&launcher), inner)])
     }
 }
 

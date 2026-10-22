@@ -19,6 +19,8 @@ use crate::app::LauncherEntity;
 use crate::launcher::Launcher;
 use crate::launcher::variant_type::LauncherType;
 use crate::ui::launcher::navigator::views::NavView;
+use crate::ui::widgets::ChildKind;
+use crate::ui::widgets::dmenu::DmenuData;
 use crate::utils::intent::Intent;
 use crate::utils::intent::cursor::Cursor;
 use crate::utils::intent::parsers::timer::TimerParser;
@@ -123,8 +125,8 @@ pub(super) async fn run_event_loop(
                             .values()
                             .find(|l| matches!(l.config.launcher_type, LauncherType::Timer(_)));
 
-                        if let Some(RenderableChild::Timer { inner, .. }) =
-                            timer.and_then(|t| t.children.first())
+                        if let Some(ChildKind::Timer(inner)) =
+                            timer.and_then(|t| t.children.first()).map(|f| &f.kind)
                         {
                             inner.new_timer(duration, command.clone(), cx);
                         }
@@ -170,10 +172,7 @@ pub(super) async fn run_event_loop(
                     let launcher_config = Arc::new(LauncherConfig::default_dmenu());
                     let children = items
                         .iter()
-                        .map(|s| RenderableChild::Dmenu {
-                            launcher: launcher_config.clone(),
-                            inner: s.into(),
-                        })
+                        .map(|s| RenderableChild::new(launcher_config.clone(), DmenuData::from(s)))
                         .collect();
 
                     Rc::new(HashMap::from([(

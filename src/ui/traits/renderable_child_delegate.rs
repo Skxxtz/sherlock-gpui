@@ -16,7 +16,7 @@ use crate::{
     utils::errors::SherlockMessage,
 };
 
-pub trait RenderableChildDelegate<'a> {
+pub trait RenderableChildDelegate {
     /// Whether the child internally applies style for borders
     fn handles_borders(&self) -> bool;
 
@@ -30,13 +30,13 @@ pub trait RenderableChildDelegate<'a> {
     ) -> AnyElement;
 
     /// Generates an execution path based on the child and the context menu action
-    fn build_action_exec(&'a self, action: Arc<ContextMenuAction>, cx: &mut App) -> ExecMode;
+    fn build_action_exec(&self, action: Arc<ContextMenuAction>, cx: &mut App) -> ExecMode;
 
     /// Generates an execution path when pressing return on this widget
     fn build_exec(&self, cx: &mut App) -> Option<ExecMode>;
 
     /// The string that contains or otherwise matces the user-provided search query
-    fn search(&'a self) -> &'a str;
+    fn search(&self) -> &str;
 
     /// The variable fields that should be shown next to the search input
     fn vars(&self, cx: &mut App) -> Option<&[RuntimeArgument]>;

@@ -17,7 +17,7 @@ pub struct DmenuData {
     name: SharedString,
 }
 
-impl<'a> RenderableChildImpl<'a> for DmenuData {
+impl RenderableChildImpl for DmenuData {
     fn render(
         &self,
         _launcher: &Arc<LauncherConfig>,
@@ -62,7 +62,7 @@ impl<'a> RenderableChildImpl<'a> for DmenuData {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.name
     }
 }

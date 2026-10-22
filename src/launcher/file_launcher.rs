@@ -99,9 +99,7 @@ impl LauncherProvider for FileLauncher {
             ..AppData::new()
         };
 
-        let child = RenderableChild::App { launcher, inner };
-
-        Ok(vec![child])
+        Ok(vec![RenderableChild::new(launcher, inner)])
     }
 }
 

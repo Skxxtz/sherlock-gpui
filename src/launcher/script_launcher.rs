@@ -12,7 +12,7 @@ use crate::{
     ui::{
         traits::RenderableChildImpl,
         widgets::{
-            RenderableChild,
+            ChildKind, RenderableChild,
             script::{ScriptData, ScriptDataUpdateEntity},
         },
     },
@@ -79,14 +79,14 @@ impl LauncherProvider for ScriptLauncher {
             .map(|s| SharedString::from(s.to_owned()))
             .unwrap_or_default();
 
-        Ok(vec![RenderableChild::Script {
+        Ok(vec![RenderableChild::new(
             launcher,
-            inner: ScriptData {
+            ScriptData {
                 command,
                 args,
                 update_entity: cx.new(|_| ScriptDataUpdateEntity::default()),
             },
-        }])
+        )])
     }
     fn execute_function(
         &self,
@@ -99,8 +99,8 @@ impl LauncherProvider for ScriptLauncher {
         let func = ensure_func!(func, InnerFunction::Script);
         match func {
             ScriptFunctions::Run => {
-                if let RenderableChild::Script { inner, launcher } = child {
-                    inner.update_async(launcher.clone(), cx);
+                if let ChildKind::Script(inner) = &child.kind {
+                    inner.update_async(child.launcher.clone(), cx);
                 }
             }
         }

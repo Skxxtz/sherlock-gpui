@@ -135,9 +135,11 @@ impl FileSearchModel {
                     let count = snapshot.len();
                     let children = snapshot
                         .into_iter()
-                        .map(|r| RenderableChild::File {
-                            launcher: Arc::clone(&launcher),
-                            inner: FileData::new(r.path.clone()).with_icon_name(r.get_icon_name()),
+                        .map(|r| {
+                            RenderableChild::new(
+                                launcher.clone(),
+                                FileData::new(r.path.clone()).with_icon_name(r.get_icon_name()),
+                            )
                         })
                         .collect::<Vec<_>>();
 

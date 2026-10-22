@@ -46,7 +46,7 @@ impl FileData {
         self
     }
 }
-impl<'a> RenderableChildImpl<'a> for FileData {
+impl RenderableChildImpl for FileData {
     fn render(
         &self,
         _launcher: &Arc<LauncherConfig>,
@@ -150,7 +150,7 @@ impl<'a> RenderableChildImpl<'a> for FileData {
     }
 
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.loc
     }
 }

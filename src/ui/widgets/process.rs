@@ -44,7 +44,7 @@ impl ProcessData {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for ProcessData {
+impl RenderableChildImpl for ProcessData {
     fn render(
         &self,
         _launcher: &Arc<LauncherConfig>,
@@ -144,7 +144,7 @@ impl<'a> RenderableChildImpl<'a> for ProcessData {
     }
 
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.name
     }
 }

@@ -94,7 +94,7 @@ pub fn apply_skin_tones(template: &str, tones: &[SkinTone]) -> ArrayString<64> {
     result
 }
 
-impl<'a> RenderableChildImpl<'a> for EmojiData {
+impl RenderableChildImpl for EmojiData {
     fn render(
         &self,
         _launcher: &Arc<LauncherConfig>,
@@ -160,7 +160,7 @@ impl<'a> RenderableChildImpl<'a> for EmojiData {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         self.entry.keywords
     }
     #[inline(always)]

@@ -67,10 +67,7 @@ impl LauncherProvider for CommandLauncher {
 
                 inner.priority.set_launcher(&launcher, count);
 
-                RenderableChild::App {
-                    launcher: Arc::clone(&launcher),
-                    inner,
-                }
+                RenderableChild::new(launcher.clone(), inner)
             })
             .collect();
 

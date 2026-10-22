@@ -12,7 +12,7 @@ use crate::{
     },
     loader::utils::RawLauncher,
     sherlock_msg, skip_func_if_nav,
-    ui::widgets::{RenderableChild, timer::TimerChild},
+    ui::widgets::{ChildKind, RenderableChild, timer::TimerChild},
     utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
@@ -46,10 +46,7 @@ impl LauncherProvider for TimerLauncher {
         _messages: &mut Vec<SherlockMessage>,
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
-        Ok(vec![RenderableChild::Timer {
-            launcher,
-            inner: TimerChild::new(cx),
-        }])
+        Ok(vec![RenderableChild::new(launcher, TimerChild::new(cx))])
     }
     fn execute_function(
         &self,
@@ -61,7 +58,7 @@ impl LauncherProvider for TimerLauncher {
         skip_func_if_nav!(func);
         let func = ensure_func!(func, InnerFunction::Timer);
 
-        let RenderableChild::Timer { inner, .. } = child else {
+        let ChildKind::Timer(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
                 SherlockErrorType::Unreachable,

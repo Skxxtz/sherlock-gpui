@@ -17,9 +17,12 @@ use crate::{
     },
 };
 
-pub trait RenderableChildImpl<'a> {
+pub trait RenderableChildImpl {
     /// If set to true, disables the inheritage of the border and background fill of the list item
     const HANDLES_BORDERS: bool = false;
+    fn handles_borders(&self) -> bool {
+        Self::HANDLES_BORDERS
+    }
     fn render(
         &self,
         launcher: &Arc<LauncherConfig>,
@@ -30,7 +33,7 @@ pub trait RenderableChildImpl<'a> {
     ) -> AnyElement;
     fn build_exec(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode>;
     fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority;
-    fn search(&'a self, launcher: &Arc<LauncherConfig>) -> &'a str;
+    fn search(&self, launcher: &Arc<LauncherConfig>) -> &str;
     /// Will only get called once the context menu gets opened
     fn actions(
         &self,
@@ -79,17 +82,4 @@ pub trait RenderableChildImpl<'a> {
     }
     fn increment_count(&self) {}
     fn get_content(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String>;
-}
-
-// To make compatible with Boxed data
-#[allow(dead_code)]
-pub trait HandlesBorders {
-    const HANDLES_BORDERS: bool;
-}
-
-impl<T> HandlesBorders for Box<T>
-where
-    for<'a> T: RenderableChildImpl<'a>,
-{
-    const HANDLES_BORDERS: bool = <T as RenderableChildImpl<'_>>::HANDLES_BORDERS;
 }

@@ -39,9 +39,9 @@ impl CalcData {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for CalcData {
+impl RenderableChildImpl for CalcData {
     #[inline(always)]
-    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &str {
         ""
     }
     #[inline(always)]

@@ -77,10 +77,12 @@ impl ProcessModel {
             let count = results.len();
             let children = results
                 .into_iter()
-                .map(|r| RenderableChild::Process {
-                    launcher: Arc::clone(&launcher),
-                    inner: ProcessData::new(r.name.clone(), r.pid, r.ppid)
-                        .with_icon_name("sherlock-process"),
+                .map(|r| {
+                    RenderableChild::new(
+                        launcher.clone(),
+                        ProcessData::new(r.name.clone(), r.pid, r.ppid)
+                            .with_icon_name("sherlock-process"),
+                    )
                 })
                 .collect::<Vec<_>>();
             let indices: Arc<[(LauncherId, usize)]> =

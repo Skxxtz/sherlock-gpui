@@ -4,7 +4,9 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    launcher::variant_type::LauncherVariant, ui::widgets::RenderableChild, utils::files::desktop_id,
+    launcher::variant_type::LauncherVariant,
+    ui::widgets::{ChildKind, RenderableChild},
+    utils::files::desktop_id,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -26,8 +28,8 @@ impl From<ItemKey> for String {
 impl ItemKey {
     /// Single entry point: the launcher type decides how its items are identified.
     pub fn of(child: &RenderableChild) -> Option<Self> {
-        if let RenderableChild::App { launcher, inner } = child {
-            match launcher.launcher_type.variant() {
+        if let ChildKind::App(inner) = &child.kind {
+            match child.launcher.launcher_type.variant() {
                 LauncherVariant::Apps => return inner.desktop_file.as_deref().and_then(Self::app),
                 LauncherVariant::Categories | LauncherVariant::Commands => {
                     return inner.name.as_deref().map(Self::command);
@@ -36,8 +38,8 @@ impl ItemKey {
             }
         }
 
-        let id = child
-            .with_launcher(|l| launcher_id(l.launcher_type.variant().as_str(), l.name.as_deref()));
+        let l = &child.launcher;
+        let id = launcher_id(l.launcher_type.variant().as_str(), l.name.as_deref());
         Some(Self::launcher(&id))
     }
 

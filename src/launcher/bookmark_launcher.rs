@@ -68,10 +68,7 @@ impl LauncherProvider for BookmarkLauncher {
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
         BookmarkLauncher::find_bookmarks(&self.target_browser, Arc::clone(&launcher)).map(|ad| {
             ad.into_iter()
-                .map(|inner| RenderableChild::App {
-                    launcher: Arc::clone(&launcher),
-                    inner,
-                })
+                .map(|inner| RenderableChild::new(Arc::clone(&launcher), inner))
                 .collect()
         })
     }

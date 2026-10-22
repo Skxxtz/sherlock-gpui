@@ -11,7 +11,7 @@ use crate::{
     },
     loader::utils::RawLauncher,
     sherlock_msg, skip_func_if_nav,
-    ui::widgets::{RenderableChild, event::EventWidget},
+    ui::widgets::{ChildKind, RenderableChild, event::EventWidget},
     utils::{
         command_launch::{mime_lookup, spawn_detached},
         errors::{SherlockMessage, types::SherlockErrorType},
@@ -70,10 +70,7 @@ impl LauncherProvider for EventLauncher {
         _messages: &mut Vec<SherlockMessage>,
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
-        Ok(vec![RenderableChild::Event {
-            launcher,
-            inner: EventWidget::new(cx),
-        }])
+        Ok(vec![RenderableChild::new(launcher, EventWidget::new(cx))])
     }
     fn execute_function(
         &self,
@@ -85,7 +82,7 @@ impl LauncherProvider for EventLauncher {
         skip_func_if_nav!(func);
         let func = ensure_func!(func, InnerFunction::Event);
 
-        let RenderableChild::Event { inner, .. } = child else {
+        let ChildKind::Event(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
                 SherlockErrorType::Unreachable,

@@ -62,8 +62,9 @@ impl LauncherProvider for ProcessLauncher {
             .get("show_tile")
             .is_some_and(|s| s.as_bool().unwrap_or_default())
         {
-            Ok(vec![RenderableChild::App {
-                inner: AppData {
+            Ok(vec![RenderableChild::new(
+                launcher.clone(),
+                AppData {
                     name: launcher.name.clone(),
                     icon: launcher
                         .icon
@@ -72,8 +73,7 @@ impl LauncherProvider for ProcessLauncher {
                     priority: PriorityGuard::new_with_launcher(&launcher, 0),
                     ..AppData::new()
                 },
-                launcher,
-            }])
+            )])
         } else {
             Ok(vec![])
         }

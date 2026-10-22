@@ -55,7 +55,7 @@ impl ThemeWidget {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for ThemeWidget {
+impl RenderableChildImpl for ThemeWidget {
     const HANDLES_BORDERS: bool = true;
     fn render(
         &self,
@@ -159,7 +159,7 @@ impl<'a> RenderableChildImpl<'a> for ThemeWidget {
     }
 
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.name
     }
 }

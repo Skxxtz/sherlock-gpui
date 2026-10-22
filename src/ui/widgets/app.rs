@@ -20,7 +20,7 @@ use crate::{
 
 mod sidebar;
 
-impl<'a> RenderableChildImpl<'a> for AppData {
+impl RenderableChildImpl for AppData {
     fn render(
         &self,
         launcher: &Arc<LauncherConfig>,
@@ -99,7 +99,7 @@ impl<'a> RenderableChildImpl<'a> for AppData {
         self.priority.get()
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.search_string
     }
     #[inline(always)]

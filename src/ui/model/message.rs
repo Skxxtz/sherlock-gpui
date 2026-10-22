@@ -9,7 +9,7 @@ use crate::{
     },
     ui::{
         model::Model,
-        widgets::{RenderableChild, message::MessageChild},
+        widgets::{ChildKind, RenderableChild, message::MessageChild},
     },
     utils::{config::HomeType, errors::SherlockMessage},
 };
@@ -41,10 +41,7 @@ impl MessageView {
                         });
                     }
                 });
-                RenderableChild::Message {
-                    launcher: Arc::clone(&config),
-                    inner,
-                }
+                RenderableChild::new(config.clone(), inner)
             })
             .collect();
 
@@ -79,7 +76,7 @@ impl MessageView {
 
             // increment existing error
             for item in message_launcher.children.iter_mut() {
-                if let RenderableChild::Message { inner, .. } = item
+                if let ChildKind::Message(inner) = &mut item.kind
                     && inner.message == message
                 {
                     inner.count += 1;
@@ -88,16 +85,16 @@ impl MessageView {
             }
 
             // no duplicates
-            message_launcher.children.push(RenderableChild::Message {
-                launcher: self.launcher_config.clone(),
-                inner: MessageChild::new(message).on_dismiss(move |cx, idx| {
+            message_launcher.children.push(RenderableChild::new(
+                self.launcher_config.clone(),
+                MessageChild::new(message).on_dismiss(move |cx, idx| {
                     if let Some(entity) = weak.upgrade() {
                         entity.update(cx, |message_view, cx| {
                             message_view.remove_message(idx, cx);
                         });
                     }
                 }),
-            });
+            ));
         });
         self.count.update(|i| i + 1);
     }
@@ -114,7 +111,7 @@ impl MessageView {
             }
         });
 
-        if let Some(RenderableChild::Message { inner, .. }) = removed {
+        if let Some(ChildKind::Message(inner)) = removed.as_ref().map(|r| &r.kind) {
             let mut vec = self.model.filtered.to_vec();
             if let Some(pos) = vec.iter().position(|&x| x == idx) {
                 vec.remove(pos);

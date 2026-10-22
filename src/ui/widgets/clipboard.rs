@@ -117,7 +117,7 @@ impl ClipWidget {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for ClipWidget {
+impl RenderableChildImpl for ClipWidget {
     fn render(
         &self,
         _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
@@ -145,7 +145,7 @@ impl<'a> RenderableChildImpl<'a> for ClipWidget {
         }
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &str {
         ""
     }
     #[inline(always)]

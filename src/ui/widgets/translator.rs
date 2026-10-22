@@ -47,9 +47,9 @@ impl TranslationData {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for TranslationData {
+impl RenderableChildImpl for TranslationData {
     #[inline(always)]
-    fn search(&'a self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> &str {
         ""
     }
     #[inline(always)]

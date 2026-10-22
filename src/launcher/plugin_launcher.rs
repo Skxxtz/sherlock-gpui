@@ -17,7 +17,7 @@ use crate::{
     sherlock_msg, skip_func_if_nav,
     ui::{
         launcher::navigator::MessageViewGlobal,
-        widgets::{RenderableChild, plugin::PluginWidget},
+        widgets::{ChildKind, RenderableChild, plugin::PluginWidget},
     },
     utils::{
         errors::{
@@ -161,7 +161,7 @@ impl LauncherProvider for PluginLauncher {
         skip_func_if_nav!(func);
         let func = ensure_func!(func, InnerFunction::Plugin);
 
-        let RenderableChild::Plugin { launcher, inner } = child else {
+        let ChildKind::Plugin(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
                 SherlockErrorType::Unreachable,
@@ -174,7 +174,7 @@ impl LauncherProvider for PluginLauncher {
             PluginFunctions::Reload => {
                 let path = self.path.clone();
                 let caps = self.capabilities;
-                let id = launcher.id();
+                let id = child.launcher.id();
                 cx.spawn(move |cx: &mut AsyncApp| {
                     let cx = cx.clone();
                     async move { reload_plugin(id, path, caps, cx).await }
@@ -246,9 +246,9 @@ impl PluginLauncher {
             .detach();
         }
 
-        RenderableChild::Plugin {
+        RenderableChild::new(
             launcher,
-            inner: PluginWidget {
+            PluginWidget {
                 state: placeholder,
                 plugin_id: self.path.clone(),
                 tile_id: String::new(),
@@ -256,7 +256,7 @@ impl PluginLauncher {
                 search: SharedString::default(),
                 has_on_query: false,
             },
-        }
+        )
     }
 }
 
@@ -301,9 +301,9 @@ fn build_tiles(
                 .detach();
             }
 
-            RenderableChild::Plugin {
-                launcher: Arc::clone(launcher),
-                inner: PluginWidget {
+            RenderableChild::new(
+                Arc::clone(launcher),
+                PluginWidget {
                     state: entity,
                     plugin_id: path.clone(),
                     tile_id: tile.id,
@@ -315,7 +315,7 @@ fn build_tiles(
                         .unwrap_or_default(),
                     has_on_query: handle.has_on_query,
                 },
-            }
+            )
         })
         .collect()
 }

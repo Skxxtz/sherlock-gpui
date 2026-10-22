@@ -33,10 +33,10 @@ impl LauncherProvider for ClipboardLauncher {
         _messages: &mut Vec<SherlockMessage>,
         cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
-        Ok(vec![RenderableChild::Clip {
-            launcher: launcher.clone(),
-            inner: ClipWidget::new(launcher, cx),
-        }])
+        Ok(vec![RenderableChild::new(
+            launcher.clone(),
+            ClipWidget::new(launcher, cx),
+        )])
     }
 }
 

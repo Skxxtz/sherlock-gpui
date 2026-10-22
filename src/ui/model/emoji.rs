@@ -18,10 +18,7 @@ impl EmojiView {
     pub fn new(config: Arc<LauncherConfig>, cx: &mut App) -> Self {
         let data: Vec<RenderableChild> = EMOJIS
             .iter()
-            .map(|entry| RenderableChild::Emoji {
-                launcher: config.clone(),
-                inner: EmojiData { entry },
-            })
+            .map(|entry| RenderableChild::new(config.clone(), EmojiData { entry }))
             .collect();
 
         let launchers = HashMap::from([(

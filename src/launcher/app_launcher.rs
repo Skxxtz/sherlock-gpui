@@ -45,10 +45,7 @@ impl LauncherProvider for AppLauncher {
         .map(|apps| {
             Arc::unwrap_or_clone(apps)
                 .into_iter()
-                .map(|inner| RenderableChild::App {
-                    launcher: Arc::clone(&launcher),
-                    inner,
-                })
+                .map(|inner| RenderableChild::new(Arc::clone(&launcher), inner))
                 .collect()
         })
     }

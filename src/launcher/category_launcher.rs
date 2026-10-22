@@ -68,10 +68,7 @@ impl LauncherProvider for CategoryLauncher {
                     })
                     .collect();
 
-                RenderableChild::App {
-                    launcher: Arc::clone(&launcher),
-                    inner,
-                }
+                RenderableChild::new(Arc::clone(&launcher), inner)
             })
             .collect();
 

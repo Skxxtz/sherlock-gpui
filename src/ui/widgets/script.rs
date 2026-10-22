@@ -80,7 +80,7 @@ impl From<AsyncCommandResponseSerde> for AsyncCommandResponse {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for ScriptData {
+impl RenderableChildImpl for ScriptData {
     fn render(
         &self,
         _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
@@ -161,7 +161,7 @@ impl<'a> RenderableChildImpl<'a> for ScriptData {
     fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
         Priority::new_with_launcher(launcher, 0)
     }
-    fn search(&'a self, _launcher: &std::sync::Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &std::sync::Arc<LauncherConfig>) -> &str {
         ""
     }
     fn build_exec(

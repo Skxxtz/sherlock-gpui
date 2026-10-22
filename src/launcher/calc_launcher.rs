@@ -51,7 +51,7 @@ impl LauncherProvider for CalculatorLauncher {
         let caps = Capabilities::from_strings(&capabilities);
         let inner = CalcData::new(caps);
 
-        Ok(vec![RenderableChild::Calc { launcher, inner }])
+        Ok(vec![RenderableChild::new(launcher, inner)])
     }
 }
 

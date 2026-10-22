@@ -41,9 +41,9 @@ impl LauncherProvider for DebugLauncher {
         _messages: &mut Vec<SherlockMessage>,
         _cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
-        Ok(vec![RenderableChild::App {
-            launcher: launcher.clone(),
-            inner: AppData {
+        Ok(vec![RenderableChild::new(
+            launcher.clone(),
+            AppData {
                 name: Some("Debug".into()),
                 search_string: "clear cache;debug;app count".into(),
                 icon: resolve_icon_path("sherlock-devtools"),
@@ -80,7 +80,7 @@ impl LauncherProvider for DebugLauncher {
                 ]),
                 ..AppData::new()
             },
-        }])
+        )])
     }
     fn execute_function(
         &self,

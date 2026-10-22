@@ -1,5 +1,5 @@
 use gpui::{AnyElement, App, AppContext, SharedString};
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 pub mod app;
 pub mod audio;
@@ -29,7 +29,10 @@ use crate::{
     },
     loader::utils::Priority,
     ui::{
-        launcher::context_menu::{ContextMenuAction, quick_actions::Hideable},
+        launcher::{
+            context_menu::{ContextMenuAction, quick_actions::Hideable},
+            navigator::views::MoveDirection,
+        },
         runtime_arguments::RuntimeArgument,
         traits::{RenderableChildDelegate, RenderableChildImpl},
         utils::selection::Selection,
@@ -46,299 +49,247 @@ use calculator::CalcData;
 use file::FileData;
 use theme::ThemeWidget;
 
-/// Creates enum RenderableChild,
-/// ## Example:
-/// ```
-/// renderable_enum! {
-///     enum RenderableChild {
-///         App(AppData),
-///         Weather(WeatherData),
-///     }
-/// }
-/// ```
-macro_rules! renderable_enum {
-    (
-        enum $name:ident {
-            $($variant:ident($inner:ty)),* $(,)?
-        }
-    ) => {
+/// Single source of truth for child variants. Generates:
+/// - `enum ChildKind` (the per-variant payload; the launcher lives in `RenderableChild`)
+/// - `From<Inner> for ChildKind` for every variant
+/// - `dispatch!(kind, inner => expr)`, an exhaustive match binding the payload
+///
+/// `$d` is a literal `$`, passed in so the nested macro can declare its own metavariables.
+macro_rules! child_kinds {
+    ($d:tt $($variant:ident($inner:ty)),* $(,)?) => {
         #[derive(Clone)]
-        pub enum $name {
-            $(
-                $variant {
-                    launcher: Arc<LauncherConfig>,
-                    inner: $inner,
-                }
-            ),*
+        pub enum ChildKind {
+            $($variant($inner)),*
         }
 
-        impl std::fmt::Debug for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(
-                        Self::$variant { .. } => write!(f, "{}", stringify!($variant)),
-                    )*
+        $(impl From<$inner> for ChildKind {
+            #[inline]
+            fn from(v: $inner) -> Self { Self::$variant(v) }
+        })*
+
+        macro_rules! dispatch {
+            ($d kind:expr, $d i:ident => $d body:expr) => {
+                match $d kind {
+                    $(ChildKind::$variant($d i) => $d body),*
                 }
-            }
+            };
         }
-
-        impl<'a> RenderableChildDelegate<'a> for $name {
-            fn handles_borders(&self) -> bool {
-                match self {
-                    $(Self::$variant { .. } => <$inner>::HANDLES_BORDERS),*
-                }
-            }
-
-            fn render(&self, selection: Selection, query: &str, theme: Arc<ThemeData>, cx: &mut App) -> AnyElement {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.render(launcher, selection, query, theme, cx)),*
-                }
-            }
-
-            fn build_action_exec(&self, action: Arc<ContextMenuAction>, cx: &mut App) -> ExecMode {
-                ExecMode::from_app_action(action, &self, cx)
-            }
-
-            fn build_exec(&self, cx: &mut App) -> Option<ExecMode> {
-                match self {
-                    $(Self::$variant {launcher, inner} => {
-                        inner.build_exec(launcher, cx)
-                    }),*
-                }
-            }
-
-            fn search(&'a self) -> &'a str {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.search(launcher)),*
-                }
-            }
-
-            fn get_content(&self, cx: &mut App) -> Option<String> {
-                match self {
-                    $(Self::$variant {launcher, inner} => {
-                        inner.get_content(launcher, cx)
-                    }),*
-                }
-            }
-
-            fn vars(&self, cx: &mut App) -> Option<&[RuntimeArgument]> {
-                match self {
-                    $(Self::$variant {inner, ..} => inner.vars(cx)),*
-                }
-            }
-
-            fn actions(&self, cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {
-                match self {
-                    $(Self::$variant {inner, launcher} => {
-                        inner.actions(launcher, cx)
-                    }),*
-                }
-            }
-
-            fn has_actions(&self, cx: &mut App) -> bool {
-                match self {
-                    $(Self::$variant {inner, launcher} => {
-                        if launcher.actions.as_ref().map_or(false, |actions| !actions.is_empty()) {
-                            return true
-                        }
-                        if launcher.add_actions.as_ref().map_or(false, |actions| !actions.is_empty()) {
-                            return true
-                        }
-                        inner.has_actions(cx)
-                    }),*
-                }
-            }
-
-            fn binds(&self, cx: &mut App) -> Option<Arc<Vec<Bind>>> {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.binds(launcher, cx)),*
-                }
-            }
-
-            fn execute_function(&self, func: InnerFunction, variables: &[(SharedString, SharedString)], cx: &mut App) -> Result<ExecEffect, SherlockMessage> {
-                match self {
-                    $(
-                        Self::$variant {inner, launcher} => {
-                            if let Some(first) = inner.execute_function(&func, launcher, variables, cx) {
-                                return Ok(first)
-                            }
-                            launcher.launcher_type.execute_function(func, self, variables, cx)
-                        }
-                    ),*
-                }
-            }
-
-            fn based_show<C: AppContext>(&self, keyword: &str, cx: &mut C) -> Option<bool> {
-                match self {
-                    $(Self::$variant {inner, ..} => inner.based_show(keyword, cx)),*
-                }
-            }
-
-            fn sidebar(&self, cx: &mut App) -> Option<AnyElement> {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.sidebar(launcher, cx)),*
-                }
-            }
-
-            fn has_sidebar(&self) -> bool {
-                match self {
-                    $(Self::$variant {inner, ..} => inner.has_sidebar()),*
-                }
-            }
-
-            fn update_sync(&self, query: SharedString, cx: &mut App) {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.update_sync(query, launcher, cx)),*
-                }
-            }
-
-            fn update_async<C: AppContext>(&self,  cx: &mut C) {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.update_async(launcher.clone(), cx)),*
-                }
-            }
-
-            fn increment_count(&self) {
-                match self {
-                    $(Self::$variant {inner, ..} => inner.increment_count()),*
-                }
-            }
-
-            fn move_inner(&self, direction: &crate::ui::launcher::navigator::views::MoveDirection, cx: &mut App) -> bool {
-                match self {
-                    $(Self::$variant {inner, ..} => inner.move_inner(direction, cx)),*
-                }
-            }
-
-            fn reset_inner(&self, cx: &mut App) {
-                match self {
-                    $(Self::$variant {inner, ..} => inner.reset_inner(cx)),*
-                }
-            }
-        }
-
-        impl<'a> LauncherValues<'a> for $name {
-            fn name(&'a self) -> Option<&'a str> {
-                self.launcher_config().name.as_ref().map(|s| s.as_str())
-            }
-
-            fn home(&self) -> HomeType {
-                self.launcher_config().home
-            }
-
-            fn is_async(&self) -> bool {
-                if matches!(
-                    self.launcher_variant(),
-                    LauncherVariant::Weather
-                        | LauncherVariant::MusicPlayer
-                        | LauncherVariant::Clipboard
-                        | LauncherVariant::Event
-                ) {
-                    return true;
-                }
-
-                match self.launcher_type() {
-                    LauncherType::Script(scr) => scr.r#async,
-                    _ => false,
-                }
-            }
-
-            fn alias(&'a self) -> Option<&'a str> {
-                self.launcher_config().alias.as_deref()
-            }
-
-            fn priority(&self) -> Priority {
-                match self {
-                    $(Self::$variant {inner, launcher} => inner.priority(launcher)),*
-                }
-            }
-
-            fn spawn_focus(&self) -> bool {
-                self.launcher_config().spawn_focus
-            }
-
-            fn sidebar_default_on(&self) -> bool {
-                self.launcher_config().sidebar_default_on
-            }
-
-            fn launcher_type(&self) -> &LauncherType {
-                &self.launcher_config().launcher_type
-            }
-
-            fn launcher_variant(&self) -> LauncherVariant {
-                self.launcher_config().launcher_type.as_ref().into()
-            }
-
-            fn shortcut(&self) -> bool {
-                self.launcher_config().shortcut
-            }
-        }
-
-        impl Hideable for $name {
-            fn hide_id(&self) -> Option<String> {
-                match self {
-                    $(Self::$variant { inner, .. } => Hideable::hide_id(inner), )*
-                }
-            }
-            fn is_hideable(&self) -> bool {
-                match self {
-                    $(Self::$variant { inner, .. } => Hideable::is_hideable(inner), )*
-                }
-            }
-        }
-
-        impl <'a> $name {
-            #[inline(always)]
-            fn launcher_config(&'a self) -> &'a LauncherConfig {
-                match self {
-                    $(Self::$variant {launcher, ..} => &launcher),*
-                }
-            }
-
-            pub fn with_launcher<F, R>(&self, f: F) -> R
-            where
-                F: FnOnce(&Arc<LauncherConfig>) -> R
-            {
-                match self {
-                    $(Self::$variant { launcher, .. } => f(launcher)),*
-                }
-            }
-
-            #[inline(always)]
-            pub fn item_key(&self) -> Option<ItemKey> {
-                ItemKey::of(self)
-            }
-        }
-
     };
 }
 
-renderable_enum! {
-    enum RenderableChild {
-        App(AppData),
-        Calc(CalcData),
-        Clip(ClipWidget),
-        Emoji(EmojiData),
-        Event(EventWidget),
-        File(FileData),
-        Message(MessageChild),
-        Music(MusicPlayerWidget),
-        Plugin(PluginWidget),
-        Process(ProcessData),
-        Script(ScriptData),
-        Theme(ThemeWidget),
-        Timer(TimerChild),
-        Translator(TranslationData),
-        Weather(WeatherWidget),
-        Dmenu(DmenuData),
-    }
+child_kinds! { $
+    App(AppData),
+    Calc(CalcData),
+    Clip(ClipWidget),
+    Emoji(EmojiData),
+    Event(EventWidget),
+    File(FileData),
+    Message(MessageChild),
+    Music(MusicPlayerWidget),
+    Plugin(PluginWidget),
+    Process(ProcessData),
+    Script(ScriptData),
+    Theme(ThemeWidget),
+    Timer(TimerChild),
+    Translator(TranslationData),
+    Weather(WeatherWidget),
+    Dmenu(DmenuData),
+}
+
+/// A launcher config paired with its rendered payload.
+#[derive(Clone)]
+pub struct RenderableChild {
+    pub launcher: Arc<LauncherConfig>,
+    pub kind: ChildKind,
 }
 
 impl RenderableChild {
+    pub fn new(launcher: Arc<LauncherConfig>, inner: impl Into<ChildKind>) -> Self {
+        Self {
+            launcher,
+            kind: inner.into(),
+        }
+    }
+
     pub fn get_exec(&self) -> Option<String> {
-        match self {
-            Self::App { inner, launcher } => inner.get_exec(launcher),
+        match &self.kind {
+            ChildKind::App(app) => app.get_exec(&self.launcher),
             _ => None,
         }
+    }
+
+    pub fn item_key(&self) -> Option<ItemKey> {
+        ItemKey::of(self)
+    }
+}
+
+impl fmt::Debug for RenderableChild {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kind = dispatch!(&self.kind, i => std::any::type_name_of_val(i));
+        f.debug_struct("RenderableChild")
+            .field("kind", &kind.rsplit("::").next().unwrap_or(kind))
+            .field("name", &self.launcher.name)
+            .finish()
+    }
+}
+
+impl RenderableChildDelegate for RenderableChild {
+    fn handles_borders(&self) -> bool {
+        dispatch!(&self.kind, i => i.handles_borders())
+    }
+
+    fn render(
+        &self,
+        selection: Selection,
+        query: &str,
+        theme: Arc<ThemeData>,
+        cx: &mut App,
+    ) -> AnyElement {
+        dispatch!(&self.kind, i => i.render(&self.launcher, selection, query, theme, cx))
+    }
+
+    fn build_action_exec(&self, action: Arc<ContextMenuAction>, cx: &mut App) -> ExecMode {
+        ExecMode::from_app_action(action, self, cx)
+    }
+
+    fn build_exec(&self, cx: &mut App) -> Option<ExecMode> {
+        dispatch!(&self.kind, i => i.build_exec(&self.launcher, cx))
+    }
+
+    fn search(&self) -> &str {
+        dispatch!(&self.kind, i => i.search(&self.launcher))
+    }
+
+    fn get_content(&self, cx: &mut App) -> Option<String> {
+        dispatch!(&self.kind, i => i.get_content(&self.launcher, cx))
+    }
+
+    fn vars(&self, cx: &mut App) -> Option<&[RuntimeArgument]> {
+        dispatch!(&self.kind, i => i.vars(cx))
+    }
+
+    fn actions(&self, cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {
+        dispatch!(&self.kind, i => i.actions(&self.launcher, cx))
+    }
+
+    fn has_actions(&self, cx: &mut App) -> bool {
+        let l = &self.launcher;
+        l.actions.as_ref().is_some_and(|a| !a.is_empty())
+            || l.add_actions.as_ref().is_some_and(|a| !a.is_empty())
+            || dispatch!(&self.kind, i => i.has_actions(cx))
+    }
+
+    fn binds(&self, cx: &mut App) -> Option<Arc<Vec<Bind>>> {
+        dispatch!(&self.kind, i => i.binds(&self.launcher, cx))
+    }
+
+    fn execute_function(
+        &self,
+        func: InnerFunction,
+        variables: &[(SharedString, SharedString)],
+        cx: &mut App,
+    ) -> Result<ExecEffect, SherlockMessage> {
+        let first =
+            dispatch!(&self.kind, i => i.execute_function(&func, &self.launcher, variables, cx));
+        match first {
+            Some(effect) => Ok(effect),
+            None => self
+                .launcher
+                .launcher_type
+                .execute_function(func, self, variables, cx),
+        }
+    }
+
+    fn based_show<C: AppContext>(&self, keyword: &str, cx: &mut C) -> Option<bool> {
+        dispatch!(&self.kind, i => i.based_show(keyword, cx))
+    }
+
+    fn sidebar(&self, cx: &mut App) -> Option<AnyElement> {
+        dispatch!(&self.kind, i => i.sidebar(&self.launcher, cx))
+    }
+
+    fn has_sidebar(&self) -> bool {
+        dispatch!(&self.kind, i => i.has_sidebar())
+    }
+
+    fn update_sync(&self, query: SharedString, cx: &mut App) {
+        dispatch!(&self.kind, i => i.update_sync(query, &self.launcher, cx))
+    }
+
+    fn update_async<C: AppContext>(&self, cx: &mut C) {
+        dispatch!(&self.kind, i => i.update_async(self.launcher.clone(), cx))
+    }
+
+    fn increment_count(&self) {
+        dispatch!(&self.kind, i => i.increment_count())
+    }
+
+    fn move_inner(&self, direction: &MoveDirection, cx: &mut App) -> bool {
+        dispatch!(&self.kind, i => i.move_inner(direction, cx))
+    }
+
+    fn reset_inner(&self, cx: &mut App) {
+        dispatch!(&self.kind, i => i.reset_inner(cx))
+    }
+}
+
+impl<'a> LauncherValues<'a> for RenderableChild {
+    fn name(&'a self) -> Option<&'a str> {
+        self.launcher.name.as_deref()
+    }
+
+    fn home(&self) -> HomeType {
+        self.launcher.home
+    }
+
+    fn is_async(&self) -> bool {
+        match &self.kind {
+            ChildKind::Weather(_)
+            | ChildKind::Music(_)
+            | ChildKind::Clip(_)
+            | ChildKind::Event(_) => true,
+            ChildKind::Script(_) => {
+                matches!(&self.launcher.launcher_type, LauncherType::Script(s) if s.r#async)
+            }
+            _ => false,
+        }
+    }
+
+    fn alias(&'a self) -> Option<&'a str> {
+        self.launcher.alias.as_deref()
+    }
+
+    fn priority(&self) -> Priority {
+        dispatch!(&self.kind, i => i.priority(&self.launcher))
+    }
+
+    fn spawn_focus(&self) -> bool {
+        self.launcher.spawn_focus
+    }
+
+    fn sidebar_default_on(&self) -> bool {
+        self.launcher.sidebar_default_on
+    }
+
+    fn launcher_type(&self) -> &LauncherType {
+        &self.launcher.launcher_type
+    }
+
+    fn launcher_variant(&self) -> LauncherVariant {
+        self.launcher.launcher_type.as_ref().into()
+    }
+
+    fn shortcut(&self) -> bool {
+        self.launcher.shortcut
+    }
+}
+
+impl Hideable for RenderableChild {
+    fn hide_id(&self) -> Option<String> {
+        dispatch!(&self.kind, i => Hideable::hide_id(i))
+    }
+
+    fn is_hideable(&self) -> bool {
+        dispatch!(&self.kind, i => Hideable::is_hideable(i))
     }
 }

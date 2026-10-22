@@ -76,7 +76,7 @@ impl TimerChild {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for TimerChild {
+impl RenderableChildImpl for TimerChild {
     fn render(
         &self,
         _launcher: &Arc<LauncherConfig>,
@@ -157,7 +157,7 @@ impl<'a> RenderableChildImpl<'a> for TimerChild {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         ""
     }
     #[inline(always)]

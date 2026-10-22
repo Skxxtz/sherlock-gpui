@@ -68,7 +68,7 @@ impl Fetchable for MprisState {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for MusicPlayerWidget {
+impl RenderableChildImpl for MusicPlayerWidget {
     fn render(
         &self,
         _launcher: &Arc<LauncherConfig>,
@@ -154,7 +154,7 @@ impl<'a> RenderableChildImpl<'a> for MusicPlayerWidget {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         ""
     }
     #[inline(always)]

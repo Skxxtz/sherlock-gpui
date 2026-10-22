@@ -40,7 +40,7 @@ impl MessageChild {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for MessageChild {
+impl RenderableChildImpl for MessageChild {
     const HANDLES_BORDERS: bool = true;
     fn render(
         &self,
@@ -167,7 +167,7 @@ impl<'a> RenderableChildImpl<'a> for MessageChild {
         Priority::new(1, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.message.traceback
     }
     #[inline(always)]

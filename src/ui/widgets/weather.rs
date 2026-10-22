@@ -64,7 +64,7 @@ impl WeatherWidget {
     }
 }
 
-impl<'a> RenderableChildImpl<'a> for WeatherWidget {
+impl RenderableChildImpl for WeatherWidget {
     const HANDLES_BORDERS: bool = true;
     fn render(
         &self,
@@ -262,7 +262,7 @@ impl<'a> RenderableChildImpl<'a> for WeatherWidget {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         ""
     }
     #[inline(always)]

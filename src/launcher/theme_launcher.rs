@@ -55,9 +55,11 @@ impl LauncherProvider for ThemePicker {
             ("Catppuccin Mocha", ThemeData::catppuccin_mocha()),
         ]
         .into_iter()
-        .map(|(name, data)| RenderableChild::Theme {
-            launcher: launcher.clone(),
-            inner: ThemeWidget::new(name, Arc::new(data), true),
+        .map(|(name, data)| {
+            RenderableChild::new(
+                launcher.clone(),
+                ThemeWidget::new(name, Arc::new(data), true),
+            )
         });
 
         let custom = if path.is_dir() {
@@ -96,10 +98,10 @@ impl LauncherProvider for ThemePicker {
                     let mut name = file.path().file_stem()?.to_string_lossy().to_string();
                     make_title_case(&mut name);
 
-                    Some(RenderableChild::Theme {
-                        launcher: launcher.clone(),
-                        inner: ThemeWidget::new(name, Arc::new(data), false),
-                    })
+                    Some(RenderableChild::new(
+                        launcher.clone(),
+                        ThemeWidget::new(name, Arc::new(data), false),
+                    ))
                 })
                 .collect::<Vec<_>>()
         } else {

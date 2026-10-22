@@ -45,7 +45,7 @@ pub struct PluginWidget {
     pub has_on_query: bool,
 }
 
-impl<'a> RenderableChildImpl<'a> for PluginWidget {
+impl RenderableChildImpl for PluginWidget {
     fn render(
         &self,
         launcher: &Arc<LauncherConfig>,
@@ -116,7 +116,7 @@ impl<'a> RenderableChildImpl<'a> for PluginWidget {
         Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
-    fn search(&'a self, _launcher: &Arc<LauncherConfig>) -> &'a str {
+    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.search
     }
     #[inline(always)]
