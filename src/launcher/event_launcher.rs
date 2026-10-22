@@ -4,7 +4,7 @@ use gpui::{App, SharedString};
 use serde::Deserialize;
 
 use crate::{
-    ensure_func,
+    define_inner_functions, ensure_func,
     launcher::{
         ExecEffect, LauncherProvider,
         variant_type::{InnerFunction, LauncherType},
@@ -19,12 +19,12 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, strum::VariantNames, strum::EnumString)]
-#[strum(serialize_all = "snake_case")]
-pub enum EventLauncherFunctions {
-    HardRefresh,
-    JoinMeeting,
-}
+define_inner_functions!(
+    pub enum EventLauncherFunctions {
+        HardRefresh,
+        JoinMeeting,
+    }
+);
 
 /// The following arguments are available to users:
 /// - `look_back`: Time the events should be shown at after already having started

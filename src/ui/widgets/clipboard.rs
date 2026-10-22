@@ -155,7 +155,7 @@ impl RenderableChildImpl for ClipWidget {
             Intent::Url { url } => Some(ExecMode::Web {
                 engine: None,
                 browser: None,
-                exec: Some(url.to_string()),
+                exec: Some(url.clone()),
             }),
             _ => Some(ExecMode::Copy {
                 content: result.to_string(),

@@ -1,8 +1,11 @@
 use crate::{
-    launcher::{LauncherProvider, LauncherType, app_launcher::app_data::AppData},
-    loader::utils::{PriorityGuard, RawLauncher},
+    launcher::{LauncherProvider, LauncherType},
+    loader::utils::RawLauncher,
     sherlock_msg,
-    ui::widgets::RenderableChild,
+    ui::widgets::{
+        RenderableChild,
+        list_item::{ItemMeta, ListItem, web::WebPayload},
+    },
     utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 use gpui::SharedString;
@@ -16,7 +19,7 @@ use serde_json::Value;
 #[derive(Clone, Debug, Deserialize)]
 pub struct WebLauncher {
     #[serde(rename = "search_engine")]
-    pub engine: String,
+    pub engine: SharedString,
     #[serde(default)]
     pub browser: Option<String>,
 }
@@ -35,20 +38,19 @@ impl LauncherProvider for WebLauncher {
         _messages: &mut Vec<SherlockMessage>,
         _cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
-        let name: Option<SharedString> = opts
+        let name = opts
             .get("display_name")
             .and_then(Value::as_str)
             .map(String::from)
-            .map(SharedString::from);
+            .map(SharedString::from)
+            .unwrap_or_default();
 
-        let inner = AppData {
-            name,
-            icon: launcher.icon.clone(),
-            priority: PriorityGuard::new_with_launcher(&launcher, 0),
-            ..AppData::new()
+        let item = ListItem {
+            meta: ItemMeta::new(name, launcher.as_ref()),
+            payload: WebPayload { url: None },
         };
 
-        Ok(vec![RenderableChild::new(launcher, inner)])
+        Ok(vec![RenderableChild::new(launcher, item)])
     }
 }
 

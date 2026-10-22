@@ -1,4 +1,3 @@
-use gpui::SharedString;
 use rusqlite::{Connection, OpenFlags};
 use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hasher};
@@ -6,13 +5,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{fs, hash::Hash};
 
+use crate::ui::widgets::list_item::{ItemMeta, ListItem, web::WebPayload};
 use crate::utils::errors::types::DirAction;
 use crate::{
-    launcher::{LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData},
+    launcher::{LauncherConfig, LauncherProvider, LauncherType},
     loader::{
         application_loader::file_has_changed,
         resolve_icon_path,
-        utils::{PriorityGuard, RawLauncher, construct_search},
+        utils::{RawLauncher, construct_search},
     },
     sher_log, sherlock_msg,
     ui::widgets::RenderableChild,
@@ -74,11 +74,13 @@ impl LauncherProvider for BookmarkLauncher {
     }
 }
 
+type Bookmarks = Vec<ListItem<WebPayload>>;
+
 impl BookmarkLauncher {
     pub fn find_bookmarks(
         browser: &str,
         launcher: Arc<LauncherConfig>,
-    ) -> Result<Vec<AppData>, SherlockMessage> {
+    ) -> Result<Bookmarks, SherlockMessage> {
         match browser.to_lowercase().as_str() {
             "zen" | "zen-browser" | "/opt/zen-browser-bin/zen-bin %u" => {
                 BookmarkParser::zen(launcher)
@@ -110,7 +112,7 @@ impl BookmarkLauncher {
 
 struct BookmarkParser;
 impl BookmarkParser {
-    fn brave(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+    fn brave(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let path = home_dir()?.join(".config/BraveSoftware/Brave-Browser/Default/Bookmarks");
         let data = fs::read_to_string(&path).map_err(|e| {
             sherlock_msg!(
@@ -122,7 +124,7 @@ impl BookmarkParser {
 
         ChromeParser::parse(launcher, data)
     }
-    fn thorium(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+    fn thorium(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let path = home_dir()?.join(".config/thorium/Default/Bookmarks");
         let data = fs::read_to_string(&path).map_err(|e| {
             sherlock_msg!(
@@ -133,7 +135,7 @@ impl BookmarkParser {
         })?;
         ChromeParser::parse(launcher, data)
     }
-    fn chrome(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+    fn chrome(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let path = home_dir()?.join(".config/google-chrome/Default/Bookmarks");
         let data = fs::read_to_string(&path).map_err(|e| {
             sherlock_msg!(
@@ -145,15 +147,15 @@ impl BookmarkParser {
         ChromeParser::parse(launcher, data)
     }
 
-    fn zen(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+    fn zen(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let root = home_dir()?.join(".zen");
         MozillaSqliteParser::run_for_browser(launcher, "zen", || root)
     }
-    fn librewolf(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+    fn librewolf(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let root = home_dir()?.join(".config/librewolf/librewolf");
         MozillaSqliteParser::run_for_browser(launcher, "librewolf", || root)
     }
-    fn firefox(launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+    fn firefox(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let root = home_dir()?.join(".mozilla/firefox/");
         MozillaSqliteParser::run_for_browser(launcher, "firefox", || root)
     }
@@ -189,7 +191,7 @@ impl MozillaSqliteParser {
         launcher: Arc<LauncherConfig>,
         prefix: &'static str,
         root: R,
-    ) -> Result<Vec<AppData>, SherlockMessage>
+    ) -> Result<Bookmarks, SherlockMessage>
     where
         R: FnOnce() -> PathBuf,
     {
@@ -215,11 +217,11 @@ impl MozillaSqliteParser {
         &self,
         launcher: Arc<LauncherConfig>,
         prefix: &'static str,
-    ) -> Result<Vec<AppData>, SherlockMessage> {
+    ) -> Result<Bookmarks, SherlockMessage> {
         let cache = get_cache_dir()?.join(format!("bookmarks/{prefix}-cache.bin"));
 
         let changed = self.paths.iter().any(|p| file_has_changed(&cache, p));
-        if !changed && let Ok(app_data) = BinaryCache::read::<Vec<AppData>, _>(&cache) {
+        if !changed && let Ok(app_data) = BinaryCache::read::<Bookmarks, _>(&cache) {
             return Ok(app_data);
         }
 
@@ -233,7 +235,7 @@ impl MozillaSqliteParser {
         Ok(bookmarks)
     }
 
-    fn read_new(&self, launcher: Arc<LauncherConfig>) -> Result<Vec<AppData>, SherlockMessage> {
+    fn read_new(&self, launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let mut res = Vec::new();
         let mut seen = HashSet::new();
 
@@ -244,13 +246,15 @@ impl MozillaSqliteParser {
                         if !seen.insert(url.clone()) {
                             continue;
                         }
-                        res.push(AppData {
-                            name: Some(SharedString::from(&title)),
-                            icon: resolve_icon_path("sherlock-bookmark"),
-                            search_string: construct_search(Some(&title), &url, true),
-                            exec: Some(url),
-                            priority: PriorityGuard::new_with_launcher(&launcher, 0),
-                            ..AppData::new()
+                        res.push(ListItem {
+                            meta: ItemMeta {
+                                icon: resolve_icon_path("sherlock-bookmark"),
+                                search: construct_search(Some(&title), &url, true).into(),
+                                ..ItemMeta::new(title, &launcher)
+                            },
+                            payload: WebPayload {
+                                url: Some(url.into()),
+                            },
                         });
                     }
                 }
@@ -336,7 +340,7 @@ impl MozillaSqliteParser {
 }
 struct ChromeParser;
 impl ChromeParser {
-    fn parse(launcher: Arc<LauncherConfig>, data: String) -> Result<Vec<AppData>, SherlockMessage> {
+    fn parse(launcher: Arc<LauncherConfig>, data: String) -> Result<Bookmarks, SherlockMessage> {
         mod parser {
             use std::collections::HashMap;
 
@@ -367,7 +371,7 @@ impl ChromeParser {
 
         fn process_bookmark(
             launcher: Arc<LauncherConfig>,
-            bookmarks: &mut Vec<AppData>,
+            bookmarks: &mut Bookmarks,
             bookmark: parser::ChromeBookmark,
         ) {
             match bookmark.r#type.as_ref() {
@@ -380,13 +384,15 @@ impl ChromeParser {
                 }
                 "url" => {
                     if let Some(url) = bookmark.url {
-                        bookmarks.push(AppData {
-                            name: Some(SharedString::from(&bookmark.name)),
-                            icon: resolve_icon_path("sherlock-bookmark"),
-                            exec: Some(url.clone()),
-                            search_string: construct_search(Some(&bookmark.name), &url, true),
-                            priority: PriorityGuard::new_with_launcher(&launcher, 0),
-                            ..AppData::new()
+                        bookmarks.push(ListItem {
+                            meta: ItemMeta {
+                                search: construct_search(Some(&bookmark.name), &url, true).into(),
+                                icon: resolve_icon_path("sherlock-bookmark"),
+                                ..ItemMeta::new(bookmark.name, &launcher)
+                            },
+                            payload: WebPayload {
+                                url: Some(url.into()),
+                            },
                         });
                     }
                 }

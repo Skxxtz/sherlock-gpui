@@ -1,7 +1,6 @@
 use gpui::{AnyElement, App, AppContext, SharedString};
 use std::{fmt, sync::Arc};
 
-pub mod app;
 pub mod audio;
 pub mod calculator;
 pub mod clipboard;
@@ -9,6 +8,7 @@ pub mod dmenu;
 pub mod emoji;
 pub mod event;
 pub mod file;
+pub mod list_item;
 pub mod message;
 pub mod plugin;
 pub mod process;
@@ -22,7 +22,6 @@ use crate::{
     app::theme::ThemeData,
     launcher::{
         ExecEffect, LauncherConfig, LauncherValues,
-        app_launcher::app_data::AppData,
         emoji_launcher::EmojiData,
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::{InnerFunction, LauncherType, LauncherVariant},
@@ -37,9 +36,21 @@ use crate::{
         traits::{RenderableChildDelegate, RenderableChildImpl},
         utils::selection::Selection,
         widgets::{
-            audio::MusicPlayerWidget, clipboard::ClipWidget, dmenu::DmenuData, event::EventWidget,
-            message::MessageChild, plugin::PluginWidget, process::ProcessData, script::ScriptData,
-            timer::TimerChild, translator::TranslationData, weather::WeatherWidget,
+            audio::MusicPlayerWidget,
+            clipboard::ClipWidget,
+            dmenu::DmenuData,
+            event::EventWidget,
+            list_item::{
+                ListItem, Payload, app::AppPayload, category::CategoryPayload,
+                command::CommandPayload, fixed::FixedPayload, web::WebPayload,
+            },
+            message::MessageChild,
+            plugin::PluginWidget,
+            process::ProcessData,
+            script::ScriptData,
+            timer::TimerChild,
+            translator::TranslationData,
+            weather::WeatherWidget,
         },
     },
     utils::{config::HomeType, errors::SherlockMessage, item_key::ItemKey},
@@ -78,12 +89,15 @@ macro_rules! child_kinds {
 }
 
 child_kinds! { $
-    App(AppData),
+    App(ListItem<AppPayload>),
     Calc(CalcData),
+    Category(ListItem<CategoryPayload>),
     Clip(ClipWidget),
+    Command(ListItem<CommandPayload>),
     Emoji(EmojiData),
     Event(EventWidget),
     File(FileData),
+    Fixed(ListItem<FixedPayload>),
     Message(MessageChild),
     Music(MusicPlayerWidget),
     Plugin(PluginWidget),
@@ -93,6 +107,7 @@ child_kinds! { $
     Timer(TimerChild),
     Translator(TranslationData),
     Weather(WeatherWidget),
+    Web(ListItem<WebPayload>),
     Dmenu(DmenuData),
 }
 
@@ -111,9 +126,9 @@ impl RenderableChild {
         Self { id, launcher, kind }
     }
 
-    pub fn get_exec(&self) -> Option<String> {
+    pub fn get_exec(&self) -> Option<ExecMode> {
         match &self.kind {
-            ChildKind::App(app) => app.get_exec(&self.launcher),
+            ChildKind::App(app) => app.payload.exec(&app.meta, &self.launcher),
             _ => None,
         }
     }

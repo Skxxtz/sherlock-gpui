@@ -23,6 +23,7 @@ use crate::{
             SherlockMessage,
             types::{FileAction, SherlockErrorType},
         },
+        item_key::ItemKey,
     },
 };
 
@@ -162,10 +163,10 @@ impl Loader {
         warnings: &mut Vec<SherlockMessage>,
     ) {
         if ctx.counts.is_empty() {
-            let counts: HashMap<String, u16> = renders
+            let counts: HashMap<ItemKey, u16> = renders
                 .flat_map(|l| l.children.iter())
-                .filter_map(|render| render.get_exec())
-                .map(|exec| (exec, 0))
+                .filter_map(|render| render.item_key())
+                .map(|id| (id, 0))
                 .collect();
             if let Err(e) = BinaryCache::write(&ctx.path, &counts) {
                 warnings.push(e)

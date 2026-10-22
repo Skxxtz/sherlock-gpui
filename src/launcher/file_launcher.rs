@@ -5,15 +5,18 @@ use serde::Deserialize;
 
 use crate::{
     launcher::{
-        LauncherConfig, LauncherProvider, app_launcher::app_data::AppData,
-        variant_type::LauncherType,
+        LauncherConfig, LauncherProvider, utils::exec_mode::ExecMode, variant_type::LauncherType,
     },
-    loader::{
-        resolve_icon_path,
-        utils::{PriorityGuard, RawLauncher},
-    },
+    loader::{resolve_icon_path, utils::RawLauncher},
     sherlock_msg,
-    ui::{model::file::FileSearchBackend, widgets::RenderableChild},
+    ui::{
+        launcher::navigator::handle::ViewKind,
+        model::file::FileSearchBackend,
+        widgets::{
+            RenderableChild,
+            list_item::{ItemMeta, ListItem, fixed::FixedPayload},
+        },
+    },
     utils::{
         errors::{
             SherlockMessage,
@@ -91,15 +94,19 @@ impl LauncherProvider for FileLauncher {
         _messages: &mut Vec<SherlockMessage>,
         _cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
-        let inner = AppData {
-            name: launcher.name.as_ref().map(Into::into),
-            search_string: "file;file search".into(),
-            icon: launcher.icon.clone().or(resolve_icon_path("folder")),
-            priority: PriorityGuard::new_with_launcher(&launcher, 0),
-            ..AppData::new()
+        let item = ListItem {
+            meta: ItemMeta {
+                search: "file;file search".into(),
+                icon: launcher.icon.clone().or(resolve_icon_path("folder")),
+                ..ItemMeta::new(launcher.name.as_deref().unwrap_or("File Search"), &launcher)
+            },
+            payload: FixedPayload(|launcher| ExecMode::CreateView {
+                mode: ViewKind::Files { dir: None },
+                launcher: launcher.clone(),
+            }),
         };
 
-        Ok(vec![RenderableChild::new(launcher, inner)])
+        Ok(vec![RenderableChild::new(launcher, item)])
     }
 }
 

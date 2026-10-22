@@ -7,15 +7,18 @@ use serde_json::Value;
 use crate::{
     define_inner_functions, ensure_func,
     launcher::{
-        ExecEffect, LauncherProvider, LauncherType, LoadContext, app_launcher::app_data::AppData,
+        ExecEffect, LauncherProvider, LauncherType, LoadContext, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
-    loader::{
-        resolve_icon_path,
-        utils::{PriorityGuard, RawLauncher},
-    },
+    loader::{resolve_icon_path, utils::RawLauncher},
     sherlock_msg, skip_func_if_nav,
-    ui::widgets::RenderableChild,
+    ui::{
+        launcher::navigator::handle::ViewKind,
+        widgets::{
+            RenderableChild,
+            list_item::{ItemMeta, ListItem, fixed::FixedPayload},
+        },
+    },
     utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
@@ -62,18 +65,21 @@ impl LauncherProvider for ProcessLauncher {
             .get("show_tile")
             .is_some_and(|s| s.as_bool().unwrap_or_default())
         {
-            Ok(vec![RenderableChild::new(
-                launcher.clone(),
-                AppData {
-                    name: launcher.name.clone(),
+            let name = launcher.name.clone().unwrap_or("Processes".into());
+            let item = ListItem {
+                meta: ItemMeta {
                     icon: launcher
                         .icon
                         .clone()
-                        .or(resolve_icon_path("sherlock-process")),
-                    priority: PriorityGuard::new_with_launcher(&launcher, 0),
-                    ..AppData::new()
+                        .or_else(|| resolve_icon_path("sherlock-process")),
+                    ..ItemMeta::new(name, &launcher)
                 },
-            )])
+                payload: FixedPayload(|launcher| ExecMode::CreateView {
+                    mode: ViewKind::Process,
+                    launcher: launcher.clone(),
+                }),
+            };
+            Ok(vec![RenderableChild::new(launcher.clone(), item)])
         } else {
             Ok(vec![])
         }

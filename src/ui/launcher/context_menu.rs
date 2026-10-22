@@ -316,38 +316,57 @@ impl DynamicFunctionAction {
 
 #[cfg(test)]
 mod tests {
-    use crate::launcher::app_launcher::app_data::AppData;
+    use std::{path::Path, sync::Arc};
 
     use super::*;
-    use serde_json;
+    use crate::{
+        loader::utils::PriorityGuard,
+        ui::widgets::list_item::{ItemMeta, ListItem, app::AppPayload},
+    };
 
     #[test]
     fn test_context_menu_action_round_trip() {
-        // 1. Setup mock actions
         let app_action = ContextMenuAction::App(ApplicationAction::new("test", "test"));
 
-        // 2. Serialize to JSON
         let serialized = serde_json::to_string(&app_action).expect("Failed to serialize");
-
-        // 3. Deserialize back
         let deserialized: ContextMenuAction =
             serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-        assert_eq!(app_action, deserialized)
+        assert_eq!(app_action, deserialized);
     }
 
     #[test]
-    fn test_appdata_round_trip() {
-        let app_action = ContextMenuAction::App(ApplicationAction::new("test", "test"));
-        let mut app_data = AppData::new();
-        app_data.actions = Arc::new([Arc::new(app_action)]);
+    fn test_app_item_round_trip() {
+        let action = Arc::new(ContextMenuAction::App(ApplicationAction::new(
+            "test", "test",
+        )));
+        let item = ListItem {
+            meta: ItemMeta {
+                name: "Firefox".into(),
+                search: "firefox;browser".into(),
+                icon: None,
+                priority: PriorityGuard::default(),
+                actions: Arc::new([action]),
+                vars: Arc::new([]),
+            },
+            payload: AppPayload {
+                exec: "firefox %u".into(),
+                terminal: false,
+                desktop_file: Arc::from(Path::new("/usr/share/applications/firefox.desktop")),
+                original_name: "Firefox".into(),
+            },
+        };
 
-        let serialized = serde_json::to_string(&app_data).expect("Failed to serialize");
-
-        let deserialized: AppData =
+        let serialized = serde_json::to_string(&item).expect("Failed to serialize");
+        let back: ListItem<AppPayload> =
             serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-        assert_eq!(app_data.name, deserialized.name);
-        assert_eq!(app_data.exec, deserialized.exec);
+        assert_eq!(item.meta.name, back.meta.name);
+        assert_eq!(item.meta.search, back.meta.search);
+        assert_eq!(item.meta.actions, back.meta.actions);
+        assert_eq!(item.payload.exec, back.payload.exec);
+        assert_eq!(item.payload.terminal, back.payload.terminal);
+        assert_eq!(item.payload.desktop_file, back.payload.desktop_file);
+        assert_eq!(item.payload.original_name, back.payload.original_name);
     }
 }

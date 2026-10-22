@@ -1,13 +1,10 @@
 use serde::de::IntoDeserializer;
-use std::sync::Arc;
 
 use crate::{
-    launcher::{
-        LauncherProvider, LauncherType, app_launcher::app_serde::deserialize_named_appdata,
-    },
-    loader::utils::RawLauncher,
+    launcher::{LauncherProvider, LauncherType},
+    loader::{named_items::deserialize_named_items, utils::RawLauncher},
     sherlock_msg,
-    ui::{launcher::context_menu::ContextMenuAction, widgets::RenderableChild},
+    ui::widgets::{RenderableChild, list_item::command::CommandPayload},
     utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
@@ -36,38 +33,24 @@ impl LauncherProvider for CommandLauncher {
                 "Command launcher does not contain any commands."
             )
         })?;
-        let app_data =
-            deserialize_named_appdata(cmds.into_deserializer(), &launcher).unwrap_or_default();
-        let children: Vec<RenderableChild> = app_data
+
+        let items = deserialize_named_items(cmds.into_deserializer(), &launcher, |exec| {
+            CommandPayload { exec }
+        })
+        .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))?;
+
+        let children: Vec<RenderableChild> = items
             .into_iter()
-            .map(|mut inner| {
-                let count = inner
-                    .exec
-                    .as_deref()
-                    .and_then(|exec| ctx.counts.get(exec))
+            .map(|mut item| {
+                item.inherit_icons(launcher.icon.as_ref());
+                let count = ctx
+                    .counts
+                    // TODO: use proper itemkey
+                    .get(item.payload.exec.as_str())
                     .copied()
-                    .unwrap_or(0u16);
-
-                let parent_icon = inner.icon.or(launcher.icon.clone());
-
-                inner.icon = parent_icon.clone();
-
-                inner.actions = inner
-                    .actions
-                    .iter()
-                    .map(|action| match action.as_ref() {
-                        ContextMenuAction::App(app_action) => {
-                            let mut resolved = app_action.clone();
-                            resolved.icon = app_action.icon.clone().or_else(|| parent_icon.clone());
-                            Arc::new(ContextMenuAction::App(resolved))
-                        }
-                        _ => action.clone(),
-                    })
-                    .collect();
-
-                inner.priority.set_launcher(&launcher, count);
-
-                RenderableChild::new(launcher.clone(), inner)
+                    .unwrap_or(0);
+                item.meta.priority.set_launcher(&launcher, count);
+                RenderableChild::new(launcher.clone(), item)
             })
             .collect();
 

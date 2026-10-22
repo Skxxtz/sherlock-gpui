@@ -30,9 +30,9 @@ impl ItemKey {
     pub fn of(kind: &ChildKind, launcher: &LauncherConfig) -> Option<Self> {
         if let ChildKind::App(inner) = kind {
             match launcher.launcher_type.variant() {
-                LauncherVariant::Apps => return inner.desktop_file.as_deref().and_then(Self::app),
+                LauncherVariant::Apps => return Self::app(&inner.payload.desktop_file),
                 LauncherVariant::Categories | LauncherVariant::Commands => {
-                    return inner.name.as_deref().map(Self::command);
+                    return Some(Self::command(inner.meta.name.as_str()));
                 }
                 _ => {} // other App entries: fall through to the launcher key
             }

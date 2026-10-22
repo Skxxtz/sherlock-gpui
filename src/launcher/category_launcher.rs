@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use serde::de::IntoDeserializer;
 
-use crate::launcher::app_launcher::app_serde::deserialize_named_appdata;
 use crate::launcher::{LauncherProvider, LauncherType};
-use crate::loader::utils::{ApplicationAction, RawLauncher};
+use crate::loader::named_items::deserialize_named_items;
+use crate::loader::utils::RawLauncher;
 use crate::sherlock_msg;
-use crate::ui::launcher::context_menu::ContextMenuAction;
 use crate::ui::widgets::RenderableChild;
+use crate::ui::widgets::list_item::category::CategoryPayload;
 use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::SherlockErrorType;
 
@@ -36,39 +36,24 @@ impl LauncherProvider for CategoryLauncher {
                 "Category launcher does not contain any categories."
             )
         })?;
-        let app_data = deserialize_named_appdata(cmds.clone().into_deserializer(), &launcher)
-            .unwrap_or_default();
 
-        let children: Vec<RenderableChild> = app_data
+        let items = deserialize_named_items(cmds.into_deserializer(), &launcher, |exec| {
+            CategoryPayload { exec }
+        })
+        .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))?;
+
+        let children: Vec<RenderableChild> = items
             .into_iter()
-            .map(|mut inner| {
-                let count = inner
-                    .exec
-                    .as_deref()
-                    .and_then(|exec| ctx.counts.get(exec))
+            .map(|mut item| {
+                item.inherit_icons(launcher.icon.as_ref());
+                let count = ctx
+                    .counts
+                    // TODO: use proper itemkey
+                    .get(item.payload.exec.as_str())
                     .copied()
-                    .unwrap_or(0u16);
-                inner.icon = inner.icon.clone();
-                inner.priority.set_launcher(&launcher, count);
-                inner.actions = inner
-                    .actions
-                    .iter()
-                    .map(|action_arc| match action_arc.as_ref() {
-                        ContextMenuAction::App(app_action) => {
-                            let resolved_icon = app_action.icon.clone();
-
-                            Arc::new(ContextMenuAction::App(ApplicationAction {
-                                icon: resolved_icon,
-                                ..app_action.clone()
-                            }))
-                        }
-                        ContextMenuAction::Fn(_) => Arc::clone(action_arc),
-                        ContextMenuAction::Emoji(_) => Arc::clone(action_arc),
-                        ContextMenuAction::QuickAction(_) => Arc::clone(action_arc),
-                    })
-                    .collect();
-
-                RenderableChild::new(Arc::clone(&launcher), inner)
+                    .unwrap_or(0);
+                item.meta.priority.set_launcher(&launcher, count);
+                RenderableChild::new(Arc::clone(&launcher), item)
             })
             .collect();
 

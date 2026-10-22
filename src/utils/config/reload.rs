@@ -85,12 +85,11 @@ fn reload_aliases<C: AppContext>(data: &LauncherEntity, cx: &mut C) -> Result<()
             .filter(|l| matches!(l.config.launcher_type.variant(), LauncherVariant::Apps))
         {
             for child in launcher.children.iter_mut() {
-                if let ChildKind::App(inner) = &mut child.kind
-                    && let Some(alias) =
-                        inner.original_name.as_ref().and_then(|n| aliases.remove(n))
+                if let ChildKind::App(item) = &mut child.kind
+                    && let Some(alias) = aliases.remove(item.payload.original_name.as_str())
                     && let LauncherType::Apps(launcher) = &launcher.config.launcher_type
                 {
-                    inner.apply_alias_raw(alias, launcher.use_keywords);
+                    item.apply_alias(Some(alias), None, launcher.use_keywords);
                 }
             }
         }

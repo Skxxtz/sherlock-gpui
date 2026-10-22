@@ -7,9 +7,9 @@ use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use crate::launcher::LauncherConfig;
-use crate::launcher::app_launcher::app_data::AppData;
 use crate::loader::application_loader::parser::DesktopFileParser;
 use crate::prelude::PathHelpers;
+use crate::ui::widgets::list_item::app::AppItem;
 use crate::utils::cache::BinaryCache;
 use crate::utils::config::{ConfigFileChange, SherlockAlias, SherlockIgnore};
 use crate::utils::errors::types::{FileAction, SherlockErrorType};
@@ -23,7 +23,7 @@ pub mod nixos;
 
 pub struct ApplicationLoader;
 impl ApplicationLoader {
-    ////// Loads and synchronizes the application registry from disk and cache.
+    /// Loads and synchronizes the application registry from disk and cache.
     ///
     /// Uses following paths as a reference for the `.desktop` files:
     /// * XDG_DATA_HOME (or `~/.local/share/`)
@@ -31,16 +31,15 @@ impl ApplicationLoader {
     /// * User-specified locations using `SherlockConfig.debug.app_paths`
     ///
     /// Update Strategy:
-    /// 1. **Discovery**: Identifies `.desktop` files modified since the last cache write.
-    /// 2. **Differential Loading**: Only parses new or changed files from disk, while
-    ///    recycling valid entries from the `BinaryCache`.
-    /// 3. **Smart Persistence**: Spawns a background task to update the cache if
+    /// 1. **Cache**: Read the `BinaryCache`. A missing, corrupt or outdated cache is
+    ///    treated as empty, which forces a full parse — the cache is never load-critical.
+    /// 2. **Discovery**: Identifies `.desktop` files modified since the last cache write.
+    /// 3. **Differential Loading**: Only parses new or changed files from disk, while
+    ///    recycling valid entries from the cache.
+    /// 4. **Smart Persistence**: Spawns a background task to update the cache if
     ///    any discrepancies (stale entries or new files) are detected.
     ///
-    /// Returns an `Arc<Vec<AppData>>` to allow for zero-copy sharing across threads.
-    /// Downstream consumers can use `Arc::unwrap_or_clone()` to obtain a mutable
-    /// `Vec` efficiently—performing a deep copy only if the data is currently
-    /// shared with a background write-task.
+    /// Returns an `Arc<Vec<AppItem>>` for zero-copy sharing across threads.
     ///
     /// # Errors
     /// Returns a `SherlockMessage` if configuration is unreachable or disk parsing
@@ -50,130 +49,131 @@ impl ApplicationLoader {
         counts: &HashMap<String, u16>,
         use_keywords: bool,
         changes: Option<ConfigFileChange>,
-    ) -> Result<Arc<Vec<AppData>>, SherlockMessage> {
-        let config = ConfigGuard::read()?;
-        let cache_path: Arc<Path> = config.caching.cache.clone();
+    ) -> Result<Arc<Vec<AppItem>>, SherlockMessage> {
+        // Don't hold the config lock while parsing (the parser reads it too).
+        let cache_path: Arc<Path> = ConfigGuard::read()?.caching.cache.clone();
 
-        // cache invalidation
-        let last_cached = (!changes.is_some_and(|c| c.ignores()))
+        let cached: Option<Vec<AppItem>> = match BinaryCache::read(&cache_path) {
+            Ok(apps) => Some(apps),
+            Err(e) => {
+                if !matches!(
+                    e.error_type,
+                    SherlockErrorType::FileError(FileAction::Find, _)
+                ) {
+                    eprintln!("app cache unusable, rebuilding: {}", e.error_type);
+                }
+                None
+            }
+        };
+
+        // No usable cache, or changed ignore rules → reparse everything.
+        let force_full = cached.is_none() || changes.is_some_and(|c| c.ignores());
+        let last_cached = (!force_full)
             .then(|| cache_path.modtime())
             .flatten()
             .unwrap_or(SystemTime::UNIX_EPOCH);
+
         let need_update = Self::get_new_apps(last_cached);
+        let new_apps =
+            Self::load_applications_from_disk(&need_update, &launcher, counts, use_keywords)?;
+
+        let Some(cached) = cached else {
+            let apps = Arc::new(new_apps);
+            Self::spawn_cache_write(cache_path, apps.clone());
+            return Ok(apps);
+        };
+
+        let cached_len = cached.len();
         let update_lookup = LookupCache::new(&need_update);
 
-        let new_apps = Self::load_applications_from_disk(
-            need_update.clone(),
-            &launcher,
-            counts,
-            use_keywords,
-        )?;
+        let all_apps: Arc<Vec<AppItem>> = Arc::new(
+            cached
+                .into_iter()
+                .filter(|item| {
+                    let path = &*item.payload.desktop_file;
+                    path.exists() && !update_lookup.contains(path)
+                })
+                .inspect(|item| {
+                    // TODO: use proper itemkey
+                    let count = counts.get(item.payload.exec.as_str()).copied().unwrap_or(0);
+                    item.meta.priority.set_count(count);
+                })
+                .chain(new_apps)
+                .collect(),
+        );
 
-        let cached_apps: Vec<AppData> = match BinaryCache::read(&config.caching.cache) {
-            Ok(apps) => apps,
-            Err(e)
-                if matches!(
-                    e.error_type,
-                    SherlockErrorType::FileError(FileAction::Find, _)
-                ) =>
-            {
-                let apps: Arc<Vec<AppData>> = new_apps.into();
-                Self::spawn_cache_write(&cache_path, apps.clone());
-                return Ok(apps);
-            }
-            Err(e) => return Err(e),
-        };
-        let cached_apps_len = cached_apps.len();
-
-        let all_apps: Arc<Vec<AppData>> = cached_apps
-            .into_iter()
-            .filter(|data| {
-                data.desktop_file
-                    .as_ref()
-                    .is_some_and(|d| d.exists() && !update_lookup.contains(d))
-            })
-            .inspect(|ad| {
-                if let Some(exec) = ad.get_exec(&launcher) {
-                    let count = counts.get(&exec).copied().unwrap_or(0u16);
-                    ad.priority.set_count(count);
-                }
-            })
-            .chain(new_apps)
-            .collect::<Vec<_>>()
-            .into();
-
-        let cache_is_stale = !need_update.is_empty() || all_apps.len() != cached_apps_len;
-        if cache_is_stale {
-            Self::spawn_cache_write(&cache_path, all_apps.clone());
+        if !need_update.is_empty() || all_apps.len() != cached_len {
+            Self::spawn_cache_write(cache_path, all_apps.clone());
         }
 
         Ok(all_apps)
     }
 
-    #[inline]
-    pub fn get_new_apps(last_cache: SystemTime) -> Arc<[PathBuf]> {
-        // For NixOS, time stamps wont work as the system will use UNIX_EPOCH to ensure a
-        // deterministic output. Instead we will use the system creation timestamp to check for a
-        // stale cache. This ensures that all changes made by NixOS will be reflected in sherlock.
+    /// `.desktop` files modified after `last_cache`.
+    pub fn get_new_apps(last_cache: SystemTime) -> Vec<PathBuf> {
+        // On NixOS all store timestamps are UNIX_EPOCH (deterministic builds), so compare
+        // against the system generation's creation time instead.
         #[cfg(feature = "nixos")]
         let force_refresh = nixos::system_creation_time().is_some_and(|system| system > last_cache);
-
         #[cfg(not(feature = "nixos"))]
         let force_refresh = false;
 
-        Self::get_applications_dir()
-            .iter()
-            .flat_map(|p| p.read_dir().into_iter().flatten())
-            .filter_map(Result::ok)
-            .filter_map(|e| {
-                let path = e.path();
-                let is_desktop = path
-                    .extension()
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("desktop"));
-                let is_new = force_refresh || path.modtime().is_some_and(|t| t > last_cache);
-                (is_desktop && is_new).then_some(path)
-            })
+        Self::desktop_files()
+            .filter(|path| force_refresh || path.modtime().is_some_and(|t| t > last_cache))
             .collect()
     }
 
+    /// All `.desktop` files in the application directories.
+    pub fn get_desktop_files() -> Arc<[PathBuf]> {
+        Self::desktop_files().collect()
+    }
+
+    fn desktop_files() -> impl Iterator<Item = PathBuf> {
+        Self::get_applications_dir()
+            .into_iter()
+            .flat_map(|dir| dir.read_dir().into_iter().flatten())
+            .filter_map(Result::ok)
+            .map(|e| e.path())
+            .filter(|p| {
+                p.extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("desktop"))
+            })
+    }
+
     fn load_applications_from_disk(
-        files: Arc<[PathBuf]>,
+        files: &[PathBuf],
         launcher: &Arc<LauncherConfig>,
         counts: &HashMap<String, u16>,
         use_keywords: bool,
-    ) -> Result<Vec<AppData>, SherlockMessage> {
+    ) -> Result<Vec<AppItem>, SherlockMessage> {
         if files.is_empty() {
-            return Ok(vec![]);
+            return Ok(Vec::new());
         }
 
-        let ignore;
-        let aliases;
-        {
+        let (ignore, aliases) = {
             let config = ConfigGuard::read()?;
-            ignore = SherlockIgnore::load(&config.files.ignore)?;
-            aliases = RwLock::new(SherlockAlias::load(&config.files.alias)?);
-        }
+            (
+                SherlockIgnore::load(&config.files.ignore)?,
+                RwLock::new(SherlockAlias::load(&config.files.alias)?),
+            )
+        };
         let parser = DesktopFileParser::new(launcher, &ignore, counts, use_keywords);
 
-        let apps: Vec<AppData> = files
-            .into_par_iter()
+        Ok(files
+            .par_iter()
             .filter_map(|path| parser.parse(path, &aliases))
-            .collect();
-
-        Ok(apps)
+            .collect())
     }
 
-    #[inline(always)]
-    fn spawn_cache_write(cache_path: &Path, apps: Arc<Vec<AppData>>) {
-        let path: Arc<Path> = cache_path.into();
+    fn spawn_cache_write(path: Arc<Path>, apps: Arc<Vec<AppItem>>) {
         rayon::spawn_fifo(move || {
-            if let Err(e) = BinaryCache::write(&path, &apps) {
+            if let Err(e) = BinaryCache::write(&path, &*apps) {
                 eprintln!("{}", e.error_type);
             }
         });
     }
 
-    pub fn get_applications_dir() -> Arc<[PathBuf]> {
+    pub fn get_applications_dir() -> Vec<PathBuf> {
         let home = home_dir_owned().unwrap_or_default();
         let xdg_data_home = env::var("XDG_DATA_HOME")
             .map(PathBuf::from)
@@ -182,33 +182,18 @@ impl ApplicationLoader {
         let xdg_data_dirs =
             env::var("XDG_DATA_DIRS").unwrap_or_else(|_| "/usr/local/share:/usr/share".into());
 
-        let xdg_paths = xdg_data_dirs
+        let mut dirs: Vec<PathBuf> = xdg_data_dirs
             .split(':')
             .map(|p| PathBuf::from(p).join("applications"))
-            .chain(std::iter::once(xdg_data_home));
+            .chain(std::iter::once(xdg_data_home))
+            .collect();
 
-        match ConfigGuard::read() {
-            Ok(c) if !c.debug.app_paths.is_empty() => xdg_paths
-                .chain(c.debug.app_paths.iter().map(|p| expand_path(p, &home)))
-                .filter(|p| p.exists())
-                .collect(),
-            _ => xdg_paths.filter(|p| p.exists()).collect(),
+        if let Ok(c) = ConfigGuard::read() {
+            dirs.extend(c.debug.app_paths.iter().map(|p| expand_path(p, &home)));
         }
-    }
 
-    pub fn get_desktop_files() -> Arc<[PathBuf]> {
-        Self::get_applications_dir()
-            .iter()
-            .flat_map(|p| p.read_dir().into_iter().flatten())
-            .filter_map(Result::ok)
-            .filter_map(|e| {
-                let path = e.path();
-                let is_desktop = path
-                    .extension()
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("desktop"));
-                is_desktop.then_some(path)
-            })
-            .collect()
+        dirs.retain(|p| p.exists());
+        dirs
     }
 }
 
@@ -218,10 +203,9 @@ fn should_ignore(ignore_apps: &[Pattern], app: &str) -> bool {
 }
 
 pub fn file_has_changed(file_path: &Path, compare_to: &Path) -> bool {
-    match (&file_path.modtime(), &compare_to.modtime()) {
-        (Some(t1), Some(t2)) if t1 > t2 => true, // t1 is newer than t2
-        (Some(t1), Some(t2)) if t1 < t2 => false, // t1 is older than t2
-        _ => true,                               // if there is a modtime missing
+    match (file_path.modtime(), compare_to.modtime()) {
+        (Some(t1), Some(t2)) => t1 >= t2, // newer (or same) → treat as changed
+        _ => true,                        // a modtime is missing
     }
 }
 
@@ -232,31 +216,27 @@ impl PathHelpers for Path {
     }
 }
 
-/// Adaptive lookup structure that selects the most efficient contains-check
-/// strategy based on the number of elements.
-///
-/// On most systems, only a handful of `.desktop` files change at once, so a
-/// linear slice scan is faster due to cache locality and zero hashing overhead.
-/// For larger sets — such as first install, cache clearing, or after a large
-/// package update — a [`HashSet`] is used instead for O(1) lookups.
+/// Adaptive contains-check. Usually only a handful of `.desktop` files change, where a
+/// linear scan beats hashing; for large sets (first run, big package update) use a
+/// `HashSet` for O(1) lookups.
 pub enum LookupCache<'a> {
-    Set(HashSet<&'a PathBuf>),
+    Set(HashSet<&'a Path>),
     Slice(&'a [PathBuf]),
 }
 
 impl<'a> LookupCache<'a> {
-    pub fn new(input: &'a Arc<[PathBuf]>) -> Self {
+    pub fn new(input: &'a [PathBuf]) -> Self {
         if input.len() > 25 {
-            Self::Set(input.iter().collect())
+            Self::Set(input.iter().map(PathBuf::as_path).collect())
         } else {
             Self::Slice(input)
         }
     }
 
-    pub fn contains(&self, path: &PathBuf) -> bool {
+    pub fn contains(&self, path: &Path) -> bool {
         match self {
             Self::Set(s) => s.contains(path),
-            Self::Slice(v) => v.contains(path),
+            Self::Slice(v) => v.iter().any(|p| p == path),
         }
     }
 }

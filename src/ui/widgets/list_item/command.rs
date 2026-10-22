@@ -1,0 +1,20 @@
+use gpui::SharedString;
+
+use crate::launcher::utils::exec_mode::ExecMode;
+
+#[derive(Clone, Debug)]
+pub struct CommandPayload {
+    pub exec: SharedString,
+}
+
+impl super::Payload for CommandPayload {
+    fn exec(
+        &self,
+        _meta: &super::ItemMeta,
+        _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
+    ) -> Option<ExecMode> {
+        Some(ExecMode::Command {
+            exec: self.exec.to_string(),
+        })
+    }
+}

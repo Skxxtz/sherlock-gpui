@@ -239,14 +239,15 @@ pub enum ExecEffect {
 #[macro_export]
 macro_rules! define_inner_functions {
     (
-        $vis:vis enum $name:ident {
-            $( $variant:ident $( { $($field_name:ident : $field_type:ty),* $(,)? } )? ),* $(,)?
-        }
+        $(#[$meta:meta])*
+        $vis:vis enum $name:ident { $($body:tt)* }
     ) => {
-        #[derive(Debug, Clone, PartialEq, strum::VariantNames, strum::EnumString)]
+        $(#[$meta])*
+        #[derive(
+            Debug, Clone, PartialEq,
+            ::strum::VariantNames, ::strum::EnumString,
+        )]
         #[strum(serialize_all = "snake_case")]
-        $vis enum $name {
-            $( $variant $( { $($field_name : $field_type),* } )? ),*
-        }
+        $vis enum $name { $($body)* }
     };
 }

@@ -6,14 +6,18 @@ use strum::FromRepr;
 
 use crate::{
     launcher::{
-        LauncherConfig, LauncherProvider, LauncherType, app_launcher::app_data::AppData,
-        emoji_launcher::data::EmojiEntry,
+        LauncherConfig, LauncherProvider, LauncherType, emoji_launcher::data::EmojiEntry,
+        utils::exec_mode::ExecMode,
     },
-    loader::{
-        resolve_icon_path,
-        utils::{PriorityGuard, RawLauncher},
+    loader::{resolve_icon_path, utils::RawLauncher},
+    ui::{
+        launcher::navigator::handle::ViewKind,
+        widgets::{
+            RenderableChild,
+            emoji::set_selected_skin_tone,
+            list_item::{ItemMeta, ListItem, fixed::FixedPayload},
+        },
     },
-    ui::widgets::{RenderableChild, emoji::set_selected_skin_tone},
     utils::errors::SherlockMessage,
 };
 
@@ -46,21 +50,31 @@ impl LauncherProvider for EmojiPicker {
         _messages: &mut Vec<SherlockMessage>,
         _cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage> {
-        let inner = AppData {
-            name: launcher.name.as_ref().map(Into::into),
-            search_string: "emoji".into(),
-            icon: resolve_icon_path("sherlock-emoji"),
-            priority: PriorityGuard::new_with_launcher(&launcher, 0),
-            ..AppData::new()
-        };
-
         let default_skin_tone: SkinTone = opts
             .get("default_skin_tone")
             .and_then(|s| serde_json::from_value(s.clone()).ok())
             .unwrap_or(SkinTone::Simpsons);
         set_selected_skin_tone(default_skin_tone, 0);
 
-        let child = RenderableChild::new(launcher, inner);
+        let item = ListItem {
+            meta: ItemMeta {
+                search: "emoji picker".into(),
+                icon: launcher
+                    .icon
+                    .clone()
+                    .or_else(|| resolve_icon_path("sherlock-emoji")),
+                ..ItemMeta::new(
+                    launcher.name.as_deref().unwrap_or("Emoji Picker"),
+                    &launcher,
+                )
+            },
+            payload: FixedPayload(|launcher| ExecMode::CreateView {
+                mode: ViewKind::Emoji,
+                launcher: Arc::clone(launcher),
+            }),
+        };
+
+        let child = RenderableChild::new(launcher, item);
 
         Ok(vec![child])
     }

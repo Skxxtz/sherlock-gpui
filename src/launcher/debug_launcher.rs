@@ -2,13 +2,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::launcher::app_launcher::app_data::AppData;
+use crate::launcher::utils::exec_mode::ExecMode;
 use crate::launcher::variant_type::InnerFunction;
 use crate::launcher::{ExecEffect, LauncherProvider, LauncherType};
 use crate::loader::resolve_icon_path;
 use crate::loader::utils::{ApplicationAction, PriorityGuard, RawLauncher};
 use crate::ui::launcher::context_menu::ContextMenuAction;
 use crate::ui::widgets::RenderableChild;
+use crate::ui::widgets::list_item::fixed::FixedPayload;
+use crate::ui::widgets::list_item::{ItemMeta, ListItem};
 use crate::utils::config::ConfigGuard;
 use crate::utils::errors::SherlockMessage;
 use crate::utils::errors::types::{DirAction, FileAction, SherlockErrorType};
@@ -41,11 +43,10 @@ impl LauncherProvider for DebugLauncher {
         _messages: &mut Vec<SherlockMessage>,
         _cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
-        Ok(vec![RenderableChild::new(
-            launcher.clone(),
-            AppData {
-                name: Some("Debug".into()),
-                search_string: "clear cache;debug;app count".into(),
+        let item = ListItem {
+            meta: ItemMeta {
+                name: "Debug".into(),
+                search: "clear cache;debug;app count".into(),
                 icon: resolve_icon_path("sherlock-devtools"),
                 priority: PriorityGuard::new_with_launcher(&launcher, 0),
                 actions: Arc::from([
@@ -78,9 +79,12 @@ impl LauncherProvider for DebugLauncher {
                         ..Default::default()
                     })),
                 ]),
-                ..AppData::new()
+                vars: Arc::new([]),
             },
-        )])
+            // TODO: check what this should do. Maybe open the context?
+            payload: FixedPayload(|_| ExecMode::None),
+        };
+        Ok(vec![RenderableChild::new(launcher.clone(), item)])
     }
     fn execute_function(
         &self,

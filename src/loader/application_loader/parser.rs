@@ -8,8 +8,11 @@ use glob::Pattern;
 use gpui::SharedString;
 
 use crate::{
-    launcher::{LauncherConfig, app_launcher::app_data::AppData},
-    loader::{application_loader::should_ignore, resolve_icon_path, utils::ApplicationAction},
+    launcher::LauncherConfig,
+    loader::{
+        IconType, application_loader::should_ignore, resolve_icon_path, utils::ApplicationAction,
+    },
+    ui::widgets::list_item::{ItemMeta, ListItem, app::AppPayload},
     utils::{config::SherlockAlias, files::read_lines},
 };
 
@@ -29,6 +32,21 @@ impl Section {
             _ => Self::Other,
         }
     }
+}
+
+/// Raw `[Desktop Entry]` fields, collected before the item is built.
+#[derive(Default)]
+struct Entry {
+    name: Option<SharedString>,
+    icon: Option<IconType>,
+    exec: Option<SharedString>,
+    terminal: bool,
+    keywords: String,
+}
+
+enum Field {
+    Continue,
+    Skip,
 }
 
 pub struct DesktopFileParser<'a> {
@@ -57,13 +75,10 @@ impl<'a> DesktopFileParser<'a> {
         &self,
         path: &Path,
         aliases: &RwLock<HashMap<String, SherlockAlias>>,
-    ) -> Option<AppData> {
+    ) -> Option<ListItem<AppPayload>> {
         let content = read_lines(path.to_str()?).ok()?;
 
-        let mut data = AppData {
-            desktop_file: Some(path.into()),
-            ..AppData::new()
-        };
+        let mut entry = Entry::default();
         let mut actions: Vec<ApplicationAction> = Vec::new();
         let mut current_action = ApplicationAction::new("app_launcher", "");
         let mut section = Section::Other;
@@ -75,7 +90,6 @@ impl<'a> DesktopFileParser<'a> {
                 continue;
             }
 
-            // handle section headers
             if let Some(header) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
                 if section == Section::Action && current_action.is_valid() {
                     actions.push(current_action);
@@ -95,13 +109,12 @@ impl<'a> DesktopFileParser<'a> {
 
             match section {
                 Section::DesktopEntry => {
-                    if !self.handle_entry_field(&key_buf, value, &mut data)? {
-                        // false means skip file
+                    if let Field::Skip = self.entry_field(&key_buf, value, &mut entry) {
                         return None;
                     }
                 }
                 Section::Action => {
-                    self.handle_action_field(&key_buf, value, &data, &mut current_action);
+                    Self::action_field(&key_buf, value, &mut current_action);
                     if current_action.is_full() {
                         actions.push(current_action);
                         current_action = ApplicationAction::new("app_launcher", "");
@@ -112,74 +125,65 @@ impl<'a> DesktopFileParser<'a> {
             }
         }
 
-        // flush
         if section == Section::Action && current_action.is_valid() {
             actions.push(current_action);
         }
 
-        let alias = {
-            aliases
-                .write()
-                .unwrap()
-                .remove(data.name.as_ref()?.as_str())
-        };
-        data.apply_alias(self.launcher, alias, self.use_keywords, actions);
+        // An app without name or exec can't be shown or launched.
+        let name = entry.name?;
+        let exec = entry.exec?;
 
-        let count = data
-            .exec
-            .as_ref()
-            .and_then(|exec| self.counts.get(exec))
+        let mut item = ListItem {
+            meta: ItemMeta {
+                icon: entry.icon,
+                actions: actions.into_iter().map(Into::into).collect(),
+                ..ItemMeta::new(name.clone(), self.launcher)
+            },
+            payload: AppPayload {
+                exec,
+                terminal: entry.terminal,
+                desktop_file: path.into(),
+                original_name: name.clone(),
+            },
+        };
+
+        let alias = aliases.write().ok()?.remove(name.as_ref());
+        item.apply_alias(alias, Some(&entry.keywords), self.use_keywords);
+        // After the alias, so actions inherit an alias-overridden icon.
+        item.inherit_icons(None);
+
+        let count = self
+            .counts
+            .get(item.payload.exec.as_ref())
             .copied()
             .unwrap_or(0);
+        item.meta.priority.set_launcher(self.launcher, count);
 
-        data.priority.set_launcher(self.launcher, count);
-
-        Some(data)
-    }
-
-    /// Returns `Some(true)` to continue, `Some(false)` to skip file, `None` on hard error. Using
-    /// the return value avoids a flag variable.
-    #[inline]
-    fn handle_entry_field(&self, key: &str, value: &str, data: &mut AppData) -> Option<bool> {
-        match key {
-            "name" if should_ignore(self.ignore, value) => {
-                return Some(false);
-            }
-            "name" => {
-                let name = value.to_string();
-                data.name = Some(SharedString::from(name.clone()));
-                data.original_name = Some(name);
-            }
-            "icon" => data.icon = resolve_icon_path(value),
-            "exec" => data.exec = Some(value.to_string()),
-            "terminal" => data.terminal = value.eq_ignore_ascii_case("true"),
-            "keywords" if self.use_keywords => {
-                data.search_string = value.to_lowercase();
-            }
-            "nodisplay" | "hidden" if value.eq_ignore_ascii_case("true") => return Some(false),
-            _ => {}
-        }
-
-        Some(true)
+        Some(item)
     }
 
     #[inline]
-    fn handle_action_field(
-        &self,
-        key: &str,
-        value: &str,
-        data: &AppData,
-        current_action: &mut ApplicationAction,
-    ) {
+    fn entry_field(&self, key: &str, value: &str, entry: &mut Entry) -> Field {
         match key {
-            "name" => current_action.name = SharedString::from(value.to_string()),
-            "exec" => current_action.exec = Some(value.to_string()),
-            "icon" => current_action.icon = resolve_icon_path(value),
+            "name" if should_ignore(self.ignore, value) => return Field::Skip,
+            "name" => entry.name = Some(value.to_owned().into()),
+            "icon" => entry.icon = resolve_icon_path(value),
+            "exec" => entry.exec = Some(value.to_owned().into()),
+            "terminal" => entry.terminal = value.eq_ignore_ascii_case("true"),
+            "keywords" if self.use_keywords => entry.keywords = value.to_lowercase(),
+            "nodisplay" | "hidden" if value.eq_ignore_ascii_case("true") => return Field::Skip,
             _ => {}
         }
+        Field::Continue
+    }
 
-        if current_action.icon.is_none() {
-            current_action.icon = data.icon.clone();
+    #[inline]
+    fn action_field(key: &str, value: &str, action: &mut ApplicationAction) {
+        match key {
+            "name" => action.name = value.to_owned().into(),
+            "exec" => action.exec = Some(value.to_owned()),
+            "icon" => action.icon = resolve_icon_path(value),
+            _ => {}
         }
     }
 }

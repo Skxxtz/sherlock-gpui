@@ -5,7 +5,6 @@ use gpui::{App, SharedString};
 use crate::{
     launcher::{
         LauncherConfig, LauncherValues,
-        app_launcher::app_data::AppData,
         utils::binds::Bind,
         variant_type::{InnerFunction, LauncherType},
     },
@@ -24,10 +23,15 @@ use crate::{
             emoji::{get_emoji, get_selected_skin_tones},
         },
     },
-    utils::config::ConfigGuard,
 };
 
-#[derive(Default)]
+/// Helper enum for providing context to the execution of a launcher widget.
+///
+/// # Cloning
+///
+/// Cloning `ExecMode` is inexpensive, since it should only ever get called on the execution of an
+/// item, therefore not on the hotpath.
+#[derive(Default, Clone)]
 pub enum ExecMode {
     Inner {
         func: InnerFunction,
@@ -56,9 +60,9 @@ pub enum ExecMode {
     Info,
     ShowMessages,
     Web {
-        engine: Option<String>,
-        browser: Option<String>,
-        exec: Option<String>,
+        engine: Option<SharedString>,
+        browser: Option<SharedString>,
+        exec: Option<SharedString>,
     },
     Copy {
         content: String,
@@ -111,7 +115,7 @@ impl ExecMode {
             "web_launcher" | "web" | "web_search" => Some(Self::Web {
                 engine: None,
                 browser: None,
-                exec,
+                exec: exec.map(|s| s.to_string().into()),
             }),
 
             "copy" => content().map(|content| Self::Copy { content }),
@@ -131,9 +135,13 @@ impl ExecMode {
     }
 
     pub fn from_bind(bind: &Bind, child: &RenderableChild, cx: &mut App) -> Option<Self> {
+        if let Some(exec) = child.get_exec() {
+            return Some(exec);
+        }
+
         Self::from_method(
             &bind.callback,
-            child.get_exec(),
+            None::<&str>,
             child.launcher_type(),
             bind.exit,
             || child.get_content(cx),
@@ -178,71 +186,14 @@ impl ExecMode {
         }
     }
 
-    pub fn from_appdata(app_data: &AppData, launcher: &Arc<LauncherConfig>) -> Self {
-        match &launcher.launcher_type {
-            LauncherType::Apps(_) => Self::App {
-                exec: app_data.exec.clone().unwrap_or_default(),
-                terminal: app_data.terminal,
-            },
-            LauncherType::Bookmarks(bkm) => Self::Web {
-                engine: None,
-                browser: Some(bkm.target_browser.clone()),
-                exec: app_data.exec.clone(),
-            },
-            LauncherType::Categories(_) => Self::Category {
-                category: LauncherMode::Alias {
-                    short: app_data
-                        .exec
-                        .as_ref()
-                        .map(SharedString::from)
-                        .unwrap_or_default(),
-                    name: app_data.name.clone().unwrap_or_default(),
-                    launcher: launcher.clone(),
-                },
-            },
-            LauncherType::Commands(_) => Self::Command {
-                exec: app_data.exec.clone().unwrap_or_default(),
-            },
-            LauncherType::Debug(_) => Self::None,
-            LauncherType::Emoji(_) => Self::CreateView {
-                mode: ViewKind::Emoji,
-                launcher: Arc::clone(launcher),
-            },
-            LauncherType::Files(_) => Self::CreateView {
-                mode: ViewKind::Files { dir: None },
-                launcher: Arc::clone(launcher),
-            },
-            LauncherType::Process(_) => Self::CreateView {
-                mode: ViewKind::Process,
-                launcher: Arc::clone(launcher),
-            },
-            LauncherType::Message(_) => Self::ShowMessages,
-            LauncherType::Web(web) => Self::Web {
-                engine: Some(web.engine.clone()),
-                browser: web.browser.clone(),
-                exec: app_data.exec.clone(),
-            },
-            _ => {
-                if let Ok(config) = ConfigGuard::read()
-                    && let Some(field) = match config.runtime.field.as_deref() {
-                        Some("exec") => app_data.exec.as_deref(),
-                        _ => app_data.name.as_ref().map(|n| n.as_str()),
-                    }
-                {
-                    Self::Print {
-                        content: field.to_string(),
-                    }
-                } else {
-                    Self::None
-                }
-            }
-        }
-    }
     pub fn from_child(data: &RenderableChild, cx: &mut App) -> Option<Self> {
+        if let Some(exec) = data.get_exec() {
+            return Some(exec);
+        }
         if let Some(on_return) = &data.launcher.on_return
             && let Some(result) = Self::from_method(
                 on_return,
-                data.get_exec(),
+                None::<&str>,
                 data.launcher_type(),
                 data.launcher.exit,
                 || data.get_content(cx),
