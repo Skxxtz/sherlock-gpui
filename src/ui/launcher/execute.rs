@@ -45,6 +45,7 @@ pub enum Outcome {
     Close,
     Stay,
     Navigated,
+    NoOp,
 }
 
 impl Outcome {
@@ -99,7 +100,7 @@ impl LauncherView {
         let (key, source) = (req.key.clone(), req.source);
         let query = req.keyword.clone();
 
-        let (outcome, ok) = match self.perform(req, cx) {
+        let (outcome, ok) = match self.perform(req, win, cx) {
             Ok(o) => (o, true),
             Err(e) => {
                 self.navigation.push_message(e, cx);
@@ -140,6 +141,7 @@ impl LauncherView {
             Outcome::Stay if matches!(source, ExecSource::Selected) => {
                 self.force_filter_and_sort(cx)
             }
+            Outcome::NoOp => return,
             Outcome::Stay => {}
         }
         self.refresh_context_actions(cx);
@@ -150,6 +152,7 @@ impl LauncherView {
     fn perform(
         &mut self,
         req: ExecRequest,
+        win: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<Outcome, SherlockMessage> {
         let done = Outcome::done(req.exit);
@@ -206,9 +209,10 @@ impl LauncherView {
                 self.navigation.show_messages();
                 Outcome::Navigated
             }
-
-            ExecMode::None => Outcome::Stay,
-
+            ExecMode::OpenContextMenu => {
+                self.open_context(&super::OpenContext, win, cx);
+                Outcome::NoOp
+            }
             ExecMode::Hide { exec } => {
                 let config = ConfigGuard::read()?;
                 let entry = SherlockAlias::find_app_by_name(&config.files.alias, exec)?;
@@ -277,6 +281,7 @@ impl LauncherView {
                     Outcome::Stay
                 }
             }
+            ExecMode::None => Outcome::NoOp,
         })
     }
 

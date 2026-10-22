@@ -81,8 +81,7 @@ impl LauncherProvider for DebugLauncher {
                 ]),
                 vars: Arc::new([]),
             },
-            // TODO: check what this should do. Maybe open the context?
-            payload: FixedPayload(|_| ExecMode::None),
+            payload: FixedPayload(|_| ExecMode::OpenContextMenu),
         };
         Ok(vec![RenderableChild::new(launcher.clone(), item)])
     }

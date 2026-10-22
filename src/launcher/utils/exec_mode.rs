@@ -59,6 +59,7 @@ pub enum ExecMode {
     },
     Info,
     ShowMessages,
+    OpenContextMenu,
     Web {
         engine: Option<SharedString>,
         browser: Option<SharedString>,
@@ -92,6 +93,7 @@ impl ExecMode {
             | Self::Info                       // sidebar
             | Self::Hide { .. }                // config edit
             | Self::DynamicContextMenuFunc { .. }
+            | Self::OpenContextMenu
             | Self::None => false,
         }
     }
