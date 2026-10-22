@@ -209,6 +209,11 @@ impl Navigator {
     /// Returns a shared reference to the currently active widget
     pub fn selected_item_ref<'a>(&self, cx: &'a App) -> Option<&'a RenderableChild> {
         let idx = self.selected_data_idx(cx)?;
+        self.item_ref(idx, cx)
+    }
+
+    /// Returns a shared reference to the widget at the given index
+    fn item_ref<'a>(&self, idx: (LauncherId, usize), cx: &'a App) -> Option<&'a RenderableChild> {
         let data = self.with_model(cx, |mdl| mdl.data());
         data.read(cx)
             .get(&idx.0)
@@ -250,8 +255,20 @@ impl Navigator {
         cx: &mut App,
         f: impl FnOnce(&RenderableChild, &mut App) -> R,
     ) -> Option<R> {
+        let idx = self.idx_for_shortcut(n, cx)?;
+        self.with_item(idx, cx, f)
+    }
+
+    /// Read the nth item that allows shortcuts as a shared reference
+    pub fn nth_shortcut_item_ref<'a>(&self, n: usize, cx: &'a App) -> Option<&'a RenderableChild> {
+        let idx = self.idx_for_shortcut(n, cx)?;
+        self.item_ref(idx, cx)
+    }
+
+    // get the nth shortcut item index if any is valid.
+    fn idx_for_shortcut(&self, n: usize, cx: &App) -> Option<(LauncherId, usize)> {
         let skip = n.checked_sub(1)?;
-        let idx = self.with_model(cx, |mdl| {
+        self.with_model(cx, |mdl| {
             let entity = mdl.data();
             let data = entity.read(cx);
             mdl.filtered_indices()
@@ -259,8 +276,7 @@ impl Navigator {
                 .copied()
                 .filter(|i| data.get(&i.0).is_some_and(|l| l.config.shortcut))
                 .nth(skip)
-        })?;
-        self.with_item(idx, cx, f)
+        })
     }
 
     /// Returns the collection of `ContextMenuAction` for the currently active item.

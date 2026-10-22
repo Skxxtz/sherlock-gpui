@@ -11,6 +11,8 @@ pub mod widgets;
 use gpui::KeyBinding;
 use serde::{Deserialize, Serialize};
 
+pub use utils::search::query_memory;
+
 use crate::ui::{
     launcher::{
         Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft, SelectionUp,

@@ -232,3 +232,16 @@ pub fn get_nth_command_completion(input: &str, n: usize) -> Option<String> {
     let chosen = &matches[n % matches.len()];
     chosen.strip_prefix(input).map(|s| s.to_string())
 }
+
+/// Gives the location for the query memory binary
+pub fn query_memory_path() -> Result<PathBuf, crate::utils::errors::SherlockMessage> {
+    let dir = get_data_dir()?;
+    std::fs::create_dir_all(&dir).map_err(|e| {
+        sherlock_msg!(
+            Warning,
+            SherlockErrorType::DirError(DirAction::Create, dir.clone()),
+            e
+        )
+    })?;
+    Ok(dir.join("queries.bin"))
+}

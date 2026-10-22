@@ -1,3 +1,5 @@
+pub mod query_memory;
+
 pub trait SherlockSearch {
     /// Both self and substring should already be lowercased to increase performance
     fn fuzzy_match<'a>(&'a self, substring: &'a str) -> bool;

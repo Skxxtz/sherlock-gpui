@@ -71,6 +71,27 @@ pub enum ExecMode {
 }
 
 impl ExecMode {
+    /// The user chose a result (as opposed to navigating, toggling or editing).
+    /// Only picks are counted and learned.
+    pub fn is_pick(&self) -> bool {
+        match self {
+            Self::App { .. }
+            | Self::Command { .. }
+            | Self::Web { .. }
+            | Self::Copy { .. }
+            | Self::Print { .. }
+            | Self::Inner { .. } => true,
+
+            Self::Category { .. }              // step into a submenu
+            | Self::CreateView { .. }          // step into a view
+            | Self::ShowMessages               // navigation
+            | Self::Info                       // sidebar
+            | Self::Hide { .. }                // config edit
+            | Self::DynamicContextMenuFunc { .. }
+            | Self::None => false,
+        }
+    }
+
     /// Parse a method string + context into an ExecMode.
     /// This is the single source of truth for string-based dispatch.
     fn from_method(

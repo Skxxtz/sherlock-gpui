@@ -40,7 +40,7 @@ impl BinaryCache {
 
         Ok(())
     }
-    pub fn read<T: DeserializeOwned + Default + Clone + Debug, P: AsRef<Path>>(
+    pub fn read<T: DeserializeOwned + Default + Debug, P: AsRef<Path>>(
         path: P,
     ) -> Result<T, SherlockMessage> {
         let cache = path.as_ref();

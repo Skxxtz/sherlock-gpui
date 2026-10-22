@@ -17,6 +17,7 @@ use crate::ui::search_bar::TextInput;
 
 pub mod actions;
 pub mod context_menu;
+mod execute;
 pub mod filter_and_sort;
 pub mod navigator;
 pub mod render;

@@ -20,6 +20,9 @@ pub enum DebugAction {
         extension: String,
     },
     PluginInit,
+    QueryReport {
+        query: Option<String>,
+    },
     #[cfg(feature = "docs")]
     GenerateDocs,
 }

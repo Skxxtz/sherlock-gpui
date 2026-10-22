@@ -40,14 +40,16 @@ bitflags::bitflags! {
     pub struct QuickActionCapabilities: u8 {
         const HIDE = 1 << 0;
         const INFO = 1 << 1;
-        const PICK = 1 << 2;
     }
 }
 
 macro_rules! create_variants {
-    (@flag hideable) => { QuickActionCapabilities::HIDE };
-    (@flag hasinfo) => { QuickActionCapabilities::INFO };
-    (@flag pickable) => { QuickActionCapabilities::PICK };
+    (@quick hideable) => { QuickActionCapabilities::HIDE };
+    (@quick hasinfo) => { QuickActionCapabilities::INFO };
+    (@quick $_:ident) => { QuickActionCapabilities::empty() };
+
+    (@pickable pickable) => { true };
+    (@pickable $_:ident) => { false };
     (
         enum $name:ident {
             $( $variant:ident( $inner:ty $(, $extra:ty)* )
@@ -123,15 +125,18 @@ macro_rules! create_variants {
                     $(
                         Self::$variant(..) => QuickActionCapabilities::from_bits_retain(
                             0 $(
-                                | create_variants!(@flag $first).bits()
-                                $( | create_variants!(@flag $rest).bits() )*
+                                | create_variants!(@quick $first).bits()
+                                $( | create_variants!(@quick $rest).bits() )*
                             )?
                         ),
                     )*
                 }
             }
             pub const fn is_hideable(&self) -> bool { self.capabilities().contains(QuickActionCapabilities::HIDE) }
-            pub const fn is_pick(&self) -> bool { self.capabilities().contains(QuickActionCapabilities::PICK) }
+
+            pub fn is_pickable(&self) -> bool {
+                self.variant().is_pickable()
+            }
 
             pub fn variant(&self) -> LauncherVariant {
                 LauncherVariant::from(self)
@@ -199,6 +204,14 @@ macro_rules! create_variants {
             }
             pub fn as_str(&self) -> &'static str {
                 self.into()
+            }
+            pub const fn is_pickable(self) -> bool {
+                match self {
+                    $( Self::$variant => false
+                        $( || create_variants!(@pickable $first)
+                           $( || create_variants!(@pickable $rest) )* )?, )*
+                    Self::Empty => false,
+                }
             }
         }
 

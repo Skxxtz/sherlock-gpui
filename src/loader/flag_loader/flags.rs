@@ -111,6 +111,19 @@ pub const FLAGS: &[FlagSpec] = &[
             Ok(())
         },
     },
+    FlagSpec {
+        long: "query-report",
+        short: None,
+        section: FlagSection::Basics,
+        help: "Show a report for ",
+        parse: |_args, iter, _flags, startup| {
+            if startup.is_none() {
+                let query = iter.next().cloned();
+                *startup = Some(DebugAction::QueryReport { query }.into());
+            }
+            Ok(())
+        },
+    },
     #[cfg(feature = "docs")]
     FlagSpec {
         long: "--generate-docs",

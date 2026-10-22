@@ -1,5 +1,6 @@
 use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
+use crate::QUERY_MEMORY;
 use crate::app::{LauncherEntity, LauncherEntityInner};
 use crate::launcher::{LauncherId, LauncherValues};
 use crate::ui::launcher::navigator::handle::ViewKind;
@@ -187,6 +188,11 @@ impl LauncherView {
         cx: &mut C,
     ) -> Arc<[(LauncherId, usize)]> {
         let is_home = query.is_empty() && mode == "all";
+        let boosts = QUERY_MEMORY
+            .get()
+            .and_then(|l| l.read().ok())
+            .map(|m| m.boosts(query))
+            .unwrap_or_default();
 
         // collects Vec<(index, priority)>
         let mut results: Vec<FilterResult> = data_arc
@@ -240,15 +246,21 @@ impl LauncherView {
                 // Check if query matches
                 child.search().fuzzy_match(query)
             })
-            .map(
-                |(launcher_idx, launcher_config, child_idx, child)| FilterResult {
+            .map(|(launcher_idx, launcher_config, child_idx, child)| {
+                // TODO: use item_key_ref()
+                let boost = child
+                    .item_key()
+                    .as_ref()
+                    .map(|id| boosts.get(id))
+                    .unwrap_or(0.);
+                FilterResult {
                     index: (*launcher_idx, child_idx),
-                    prio: child.priority().sort_key(query, child.search()),
+                    prio: child.priority().sort_key(query, child.search(), boost),
                     limiter: launcher_config
                         .limit
                         .map(|limit| (LauncherId::from(launcher_config.as_ref()), limit)),
-                },
-            )
+                }
+            })
             .collect();
 
         // sort based on priority

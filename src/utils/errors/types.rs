@@ -77,6 +77,7 @@ pub enum FileAction {
     Remove,
     Find,
     Create,
+    Rename,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, StrumDisplay, PartialEq)]
 #[strum(serialize_all = "lowercase")]

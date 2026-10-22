@@ -11,7 +11,11 @@ use crate::docs::SherlockDocumentation;
 use crate::{
     launcher::debug_launcher::DebugFunctions,
     loader::flag_loader::actions::plugin_init,
-    utils::config::{SherlockFlags, repair_config},
+    ui::query_memory::PersistentQueryMemory,
+    utils::{
+        config::{SherlockFlags, repair_config},
+        paths::query_memory_path,
+    },
 };
 
 pub struct ParsedArgs {
@@ -47,6 +51,16 @@ impl ParsedArgs {
             }
             DebugAction::Init { path, extension } => init_config(&path, &extension),
             DebugAction::PluginInit => plugin_init(),
+            DebugAction::QueryReport { query } => match query_memory_path() {
+                Ok(p) => {
+                    let mem = PersistentQueryMemory::load(p);
+                    mem.report(query.as_deref());
+                }
+                Err(e) => {
+                    eprintln!("{e}")
+                }
+            },
+
             #[cfg(feature = "docs")]
             DebugAction::GenerateDocs => {
                 if let Err(e) = SherlockDocumentation::write() {

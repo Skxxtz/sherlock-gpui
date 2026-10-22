@@ -9,10 +9,15 @@ pub struct SortKey {
     count: u16,
 }
 impl Priority {
-    pub fn sort_key(self, query: &str, match_in: &str) -> SortKey {
+    pub fn sort_key(self, query: &str, match_in: &str, p: f32) -> SortKey {
+        let text = search_score(query, match_in);
         SortKey {
             base: self.base,
-            score: search_score(query, match_in),
+            score: if text < 10_000 {
+                (text as f32 * (1.0 - p)).round() as u16
+            } else {
+                text
+            },
             count: self.count,
         }
     }
@@ -31,6 +36,48 @@ impl PartialOrd for SortKey {
     }
 }
 
+/// Scores how well `query` matches an item's search text. **Lower is better.**
+///
+/// `match_in` is the item's search string as built by `construct_search`:
+/// the display name and keywords, separated by `;` (e.g. `"visual studio code;code;editor"`).
+/// Every element is scored separately and the best score wins, so a keyword
+/// match is as good as a name match.
+///
+/// # Score bands
+///
+/// Each band sits below the next, so a stronger kind of match always ranks
+/// above a weaker one:
+///
+/// | Score         | Match                                   | `query = "calc"`        |
+/// |---------------|-----------------------------------------|-------------------------|
+/// | `0`           | exact, same case                        | `calc`                  |
+/// | `100`         | exact, ignoring case                    | `CALC`                  |
+/// | `1000..=2000` | element starts with the query           | `calculator` → 1600     |
+/// | `2500..=4500` | query occurs inside the element         | `my_calc_app` → 3409    |
+/// | `3500..=10000`| similar spelling (Levenshtein)          | `clac` → 5000           |
+/// | `8000`        | empty query (home screen)               | —                       |
+/// | `10000`       | no match / empty search text            | `firefox`               |
+///
+/// # How each band is computed
+///
+/// - **Prefix:** `1000 + 1000 · (1 − coverage)`, where `coverage` is the share
+///   of the element the query covers. Typing more, or matching a shorter name,
+///   ranks higher.
+/// - **Substring:** `2500 + 1000 · (1 − coverage) + position penalty`, where the
+///   penalty (`0..=1000`) grows the further into the element the match starts.
+/// - **Fuzzy:** only tried when the lengths differ by less than
+///   `query.len() / 4 + 1` (at most 4). The edit distance is normalized by the
+///   element length, clamped to `0.35..=1.0` and scaled to `0..=10000`.
+///
+/// Exact matches return immediately, since nothing can beat them.
+///
+/// # Notes
+///
+/// - Lengths are measured in bytes, so coverage is approximate for non-ASCII
+///   text (`ä`, `ß`, …).
+/// - This is only the text score. The final ranking also uses the launcher's
+///   `base` priority and the launch `count` (see [`SortKey`]), and learned
+///   picks from the query memory are subtracted from this score.
 fn search_score(query: &str, match_in: &str) -> u16 {
     if match_in.is_empty() {
         return 10_000u16;

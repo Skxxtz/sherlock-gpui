@@ -7,9 +7,11 @@ use crate::{
     app::{bindings::ShortcutKeyMod, run_app},
     loader::{CustomIconTheme, Loader, assets::Assets, pipe::read_stdin_piped},
     tokio_utils::{AsyncSizedMessage, SizedMessageObj},
+    ui::query_memory::PersistentQueryMemory,
     utils::{
         config::SherlockConfig,
         networking::{ClientMessage, ServerResponse},
+        paths::query_memory_path,
     },
 };
 
@@ -33,6 +35,8 @@ static CONTEXT_MENU_BIND: OnceLock<String> = OnceLock::new();
 static SHORTCUT_MOD: OnceLock<ShortcutKeyMod> = OnceLock::new();
 /// Holds the socket location for the sherlock socket
 static SOCKET_PATH: &str = "/tmp/sherlock.sock";
+/// Holds a limited number of executions to provide better predicion for search queries
+static QUERY_MEMORY: OnceLock<RwLock<PersistentQueryMemory>> = OnceLock::new();
 /// Clipboard access + change subscriptions (set once at startup; `None` without Wayland).
 static CLIPBOARD: OnceLock<sherlock_wayland::ClipboardHandle> = OnceLock::new();
 /// Outputs access
@@ -109,6 +113,14 @@ async fn main() {
     let _ = CLIPBOARD.set(wayland.add(sherlock_wayland::Clipboard::default()));
     let _ = OUTPUTS.set(wayland.add(sherlock_wayland::Outputs::default()));
     wayland.spawn();
+
+    // Query memory setup
+    match query_memory_path() {
+        Ok(path) => {
+            let _ = QUERY_MEMORY.set(RwLock::new(PersistentQueryMemory::load(path)));
+        }
+        Err(e) => eprintln!("Query memory disabled: {e:?}"),
+    }
 
     // This top part
     let plat = gpui_platform::current_platform(false);
