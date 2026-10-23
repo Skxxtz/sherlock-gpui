@@ -28,9 +28,14 @@ git diff --quiet && git diff --cached --quiet || die "uncommitted changes, commi
 git fetch --quiet origin main --tags
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || die "local main differs from origin/main (pull/push first)"
 git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && die "tag $TAG already exists"
-grep -q '^## \[Unreleased\]' CHANGELOG.md || die "CHANGELOG.md has no '## [Unreleased]' section"
-UNRELEASED=$(awk '/^## \[Unreleased\]/{f=1; next} f && /^## \[/{exit} f' CHANGELOG.md | grep -cv '^[[:space:]]*$' || true)
-[ "$UNRELEASED" -gt 0 ] || die "[Unreleased] section in CHANGELOG.md is empty"
+if grep -qF "## [$VERSION]" CHANGELOG.md; then
+  HAS_HEADER=1
+else
+  HAS_HEADER=0
+  grep -q '^## \[Unreleased\]' CHANGELOG.md || die "CHANGELOG.md has no '## [Unreleased]' section"
+  UNRELEASED=$(awk '/^## \[Unreleased\]/{f=1; next} f && /^## \[/{exit} f' CHANGELOG.md | grep -cv '^[[:space:]]*$' || true)
+  [ "$UNRELEASED" -gt 0 ] || die "[Unreleased] section in CHANGELOG.md is empty"
+fi
 
 echo "  $OLD_VERSION -> $VERSION"
 
@@ -42,16 +47,15 @@ awk -v v="$VERSION" '
   {print}' Cargo.toml > Cargo.toml.tmp && mv Cargo.toml.tmp Cargo.toml
 # flake.nix reads the version from Cargo.toml, nothing to do there.
 
-step "Updating CHANGELOG.md"
-DATE=$(date +%d.%m.%y)
-awk -v v="$VERSION" -v d="$DATE" '
-  /^## \[Unreleased\]/ {print; print ""; print "## [" v "] - " d; next}
-  {print}' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
-
-step "Updating version references in docs"
-for f in README.md docs/src/debian.md; do
-  [ -f "$f" ] && sed -i -E "s/sherlock-launcher_v[0-9][^_]*_amd64\.deb/sherlock-launcher_${TAG}_amd64.deb/g" "$f"
-done
+if [ "$HAS_HEADER" -eq 1 ]; then
+  step "CHANGELOG.md already has a [$VERSION] section, leaving it"
+else
+  step "Updating CHANGELOG.md"
+  DATE=$(date +%d.%m.%y)
+  awk -v v="$VERSION" -v d="$DATE" '
+    /^## \[Unreleased\]/ {print; print ""; print "## [" v "] - " d; next}
+    {print}' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+fi
 
 # Build, test, docs
 FEATURES="wayland,docs"         # 'docs' is required for --generate-docs
