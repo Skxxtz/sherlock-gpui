@@ -1,7 +1,7 @@
 use crate::{
     app::theme::ThemeData,
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
-    loader::{IconType, resolve_icon_path, utils::Priority},
+    loader::{IconType, resolve_icon_path},
     ui::{
         launcher::navigator::handle::ViewKind,
         traits::RenderableChildImpl,
@@ -142,11 +142,6 @@ impl RenderableChildImpl for FileData {
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         None
-    }
-
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
 
     #[inline(always)]

@@ -9,7 +9,6 @@ use crate::{
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
     },
-    loader::utils::Priority,
     ui::{
         launcher::{context_menu::ContextMenuAction, navigator::views::MoveDirection},
         runtime_arguments::RuntimeArgument,
@@ -32,7 +31,6 @@ pub trait RenderableChildImpl {
         cx: &mut App,
     ) -> AnyElement;
     fn build_exec(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode>;
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority;
     fn search(&self, launcher: &Arc<LauncherConfig>) -> &str;
     /// Will only get called once the context menu gets opened
     fn actions(
@@ -80,6 +78,5 @@ pub trait RenderableChildImpl {
     fn vars(&self, _cx: &mut App) -> Option<&[RuntimeArgument]> {
         None
     }
-    fn increment_count(&self) {}
     fn get_content(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<String>;
 }

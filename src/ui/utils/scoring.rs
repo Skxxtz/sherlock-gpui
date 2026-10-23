@@ -7,6 +7,7 @@ pub struct SortKey {
     base: u16,
     score: u16,
     count: u16,
+    tie: u16,
 }
 impl Priority {
     pub fn sort_key(self, query: &str, match_in: &str, p: f32) -> SortKey {
@@ -18,6 +19,7 @@ impl Priority {
             } else {
                 text
             },
+            tie: self.tie,
             count: self.count,
         }
     }
@@ -28,6 +30,7 @@ impl Ord for SortKey {
             .cmp(&other.base)
             .then(self.score.cmp(&other.score))
             .then(other.count.cmp(&self.count))
+            .then(self.tie.cmp(&other.tie))
     }
 }
 impl PartialOrd for SortKey {

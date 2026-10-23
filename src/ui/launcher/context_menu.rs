@@ -319,10 +319,7 @@ mod tests {
     use std::{path::Path, sync::Arc};
 
     use super::*;
-    use crate::{
-        loader::utils::PriorityGuard,
-        ui::widgets::list_item::{ItemMeta, ListItem, app::AppPayload},
-    };
+    use crate::ui::widgets::list_item::{ItemMeta, ListItem, app::AppPayload};
 
     #[test]
     fn test_context_menu_action_round_trip() {
@@ -345,7 +342,6 @@ mod tests {
                 name: "Firefox".into(),
                 search: "firefox;browser".into(),
                 icon: None,
-                priority: PriorityGuard::default(),
                 actions: Arc::new([action]),
                 vars: Arc::new([]),
             },

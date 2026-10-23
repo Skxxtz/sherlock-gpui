@@ -98,7 +98,7 @@ impl LauncherProvider for FileLauncher {
             meta: ItemMeta {
                 search: "file;file search".into(),
                 icon: launcher.icon.clone().or(resolve_icon_path("folder")),
-                ..ItemMeta::new(launcher.name.as_deref().unwrap_or("File Search"), &launcher)
+                ..ItemMeta::new(launcher.name.as_deref().unwrap_or("File Search"))
             },
             payload: FixedPayload(|launcher| ExecMode::CreateView {
                 mode: ViewKind::Files { dir: None },

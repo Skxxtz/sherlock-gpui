@@ -13,7 +13,6 @@ use crate::{
         LauncherConfig, timer_launcher::TimerLauncherFunctions, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
-    loader::utils::Priority,
     ui::{
         launcher::context_menu::{ContextMenuAction, DynamicFunctionAction},
         runtime_arguments::RuntimeArgument,
@@ -151,10 +150,6 @@ impl RenderableChildImpl for TimerChild {
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         None
-    }
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {

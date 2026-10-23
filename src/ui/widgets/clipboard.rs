@@ -11,10 +11,7 @@ use crate::{
     CLIPBOARD,
     app::theme::ThemeData,
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
-    loader::{
-        resolve_icon_path,
-        utils::{ApplicationAction, Priority},
-    },
+    loader::{resolve_icon_path, utils::ApplicationAction},
     ui::{
         launcher::context_menu::ContextMenuAction, traits::RenderableChildImpl,
         utils::selection::Selection,
@@ -175,10 +172,6 @@ impl RenderableChildImpl for ClipWidget {
         }
     }
 
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
-    }
     #[inline(always)]
     fn actions(
         &self,

@@ -4,7 +4,7 @@ use crate::{
         LauncherConfig, process_launcher::ProcessLauncherFunctions, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
-    loader::{IconType, resolve_icon_path, utils::Priority},
+    loader::{IconType, resolve_icon_path},
     ui::widgets::{
         RenderableChildImpl, Selection,
         process::{metadata::ProcessMeta, sidebar::ProcessSidebar},
@@ -136,11 +136,6 @@ impl RenderableChildImpl for ProcessData {
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(self.name.to_string())
-    }
-
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
 
     #[inline(always)]

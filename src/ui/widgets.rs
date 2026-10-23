@@ -26,12 +26,13 @@ use crate::{
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::{InnerFunction, LauncherType, LauncherVariant},
     },
-    loader::utils::Priority,
+    loader::utils::{Priority, PriorityGuard},
     ui::{
         launcher::{
             context_menu::{ContextMenuAction, quick_actions::Hideable},
             navigator::views::MoveDirection,
         },
+        query_memory::QueryMemoryGuard,
         runtime_arguments::RuntimeArgument,
         traits::{RenderableChildDelegate, RenderableChildImpl},
         utils::selection::Selection,
@@ -115,6 +116,7 @@ child_kinds! { $
 #[derive(Clone)]
 pub struct RenderableChild {
     pub id: Option<ItemKey>,
+    pub prio: PriorityGuard,
     pub launcher: Arc<LauncherConfig>,
     pub kind: ChildKind,
 }
@@ -123,7 +125,14 @@ impl RenderableChild {
     pub fn new(launcher: Arc<LauncherConfig>, inner: impl Into<ChildKind>) -> Self {
         let kind: ChildKind = inner.into();
         let id = ItemKey::of(&kind, &launcher);
-        Self { id, launcher, kind }
+        let count = id.as_ref().map_or(0, QueryMemoryGuard::popularity_count);
+        let prio = PriorityGuard::new_with_launcher(&launcher, count);
+        Self {
+            id,
+            prio,
+            launcher,
+            kind,
+        }
     }
 
     pub fn get_exec(&self) -> Option<ExecMode> {
@@ -239,8 +248,8 @@ impl RenderableChildDelegate for RenderableChild {
         dispatch!(&self.kind, i => i.update_async(self.launcher.clone(), cx))
     }
 
-    fn increment_count(&self) {
-        dispatch!(&self.kind, i => i.increment_count())
+    fn set_count(&self, count: u16) {
+        self.prio.set_count(count);
     }
 
     fn move_inner(&self, direction: &MoveDirection, cx: &mut App) -> bool {
@@ -279,7 +288,7 @@ impl<'a> LauncherValues<'a> for RenderableChild {
     }
 
     fn priority(&self) -> Priority {
-        dispatch!(&self.kind, i => i.priority(&self.launcher))
+        self.prio.get()
     }
 
     fn spawn_focus(&self) -> bool {

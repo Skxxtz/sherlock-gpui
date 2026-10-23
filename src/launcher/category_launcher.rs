@@ -24,7 +24,7 @@ impl LauncherProvider for CategoryLauncher {
     fn objects(
         &self,
         launcher: std::sync::Arc<super::LauncherConfig>,
-        ctx: &crate::loader::LoadContext,
+        _ctx: &crate::loader::LoadContext,
         opts: std::sync::Arc<serde_json::Value>,
         _messages: &mut Vec<SherlockMessage>,
         _cx: &mut gpui::App,
@@ -37,22 +37,14 @@ impl LauncherProvider for CategoryLauncher {
             )
         })?;
 
-        let items = deserialize_named_items(cmds.into_deserializer(), &launcher, |exec| {
-            CategoryPayload { exec }
-        })
-        .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))?;
+        let items =
+            deserialize_named_items(cmds.into_deserializer(), |exec| CategoryPayload { exec })
+                .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))?;
 
         let children: Vec<RenderableChild> = items
             .into_iter()
             .map(|mut item| {
                 item.inherit_icons(launcher.icon.as_ref());
-                let count = ctx
-                    .counts
-                    // TODO: use proper itemkey
-                    .get(item.payload.exec.as_str())
-                    .copied()
-                    .unwrap_or(0);
-                item.meta.priority.set_launcher(&launcher, count);
                 RenderableChild::new(Arc::clone(&launcher), item)
             })
             .collect();

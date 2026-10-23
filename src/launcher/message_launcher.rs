@@ -30,7 +30,7 @@ impl LauncherProvider for MessageLauncher {
             meta: ItemMeta {
                 search: "messages;errors;warnings;show".into(),
                 icon: resolve_icon_path("sherlock-devtools"),
-                ..ItemMeta::new("Show Messages", &launcher)
+                ..ItemMeta::new("Show Messages")
             },
             payload: FixedPayload(|_| ExecMode::ShowMessages),
         };

@@ -4,7 +4,7 @@ mod report;
 #[cfg(test)]
 mod tests;
 
-pub use persistent::PersistentQueryMemory;
+pub use persistent::{PersistentQueryMemory, QueryMemoryGuard};
 
 /// Weight halves after this many days without use.
 const HALF_LIFE_DAYS: f32 = 30.0;

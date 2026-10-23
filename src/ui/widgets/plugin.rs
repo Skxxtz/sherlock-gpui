@@ -22,7 +22,7 @@ use crate::{
         utils::exec_mode::ExecMode,
         variant_type::{InnerFunction, LauncherType},
     },
-    loader::{resolve_icon_path, utils::Priority},
+    loader::resolve_icon_path,
     ui::{
         launcher::{
             context_menu::{ContextMenuAction, DynamicFunctionAction},
@@ -112,10 +112,6 @@ impl RenderableChildImpl for PluginWidget {
         None
     }
     #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
-    }
-    #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.search
     }
@@ -197,9 +193,6 @@ impl RenderableChildImpl for PluginWidget {
     fn vars(&self, _cx: &mut App) -> Option<&[RuntimeArgument]> {
         None
     }
-    #[inline(always)]
-    fn increment_count(&self) {}
-
     fn update_async<C: gpui::AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
         let LauncherType::Plugin(plg) = launcher.launcher_type.as_ref() else {
             return;

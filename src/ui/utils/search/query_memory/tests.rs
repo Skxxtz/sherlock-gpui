@@ -129,19 +129,10 @@ fn negligible_picks_are_dropped() {
 }
 
 #[test]
-fn empty_query_learns_nothing() {
+fn record_creates_root_and_every_prefix() {
     let mut m = QueryMemory::default();
-    assert!(!m.record("   ", &key("firefox"), 0));
-    assert!(!m.record("", &key("firefox"), 0));
-    assert!(m.is_empty());
-    assert_eq!(m.boosts("", 0).get(&key("firefox")), 0.0);
-}
-
-#[test]
-fn record_reports_learning() {
-    let mut m = QueryMemory::default();
-    assert!(m.record("fire", &key("firefox"), 0));
-    assert_eq!(m.len(), 4); // "f", "fi", "fir", "fire"
+    m.record("fire", &key("firefox"), 0);
+    assert_eq!(m.len(), 5); // "", "f", "fi", "fir", "fire"
 }
 
 #[test]
@@ -160,8 +151,9 @@ fn truncated_items_still_count_in_total() {
         m.record("x", &key(&i.to_string()), 0);
     }
     assert_eq!(m.nodes["x"].hits.len(), MAX_HITS);
-    // 10 picks seen, only MAX_HITS kept: each still 1/11, not 1/(MAX_HITS + 1)
-    approx(p(&m, "x", "9"), 1.0 / 11.0);
+    // all 10 picks stay in the total, even though only MAX_HITS items are kept
+    approx(m.nodes["x"].total.at(0), 10.0);
+    assert!(p(&m, "x", "9") > 0.0); // the latest pick is kept
 }
 
 #[test]
@@ -173,10 +165,8 @@ fn new_pick_survives_a_full_node() {
         }
     }
     m.record("x", &key("new"), 0); // weaker than everything already there
-    assert!(
-        p(&m, "x", "new") > 0.0,
-        "a new habit must be able to take hold"
-    );
+    // Space-Saving: replaces the weakest (3.0) and inherits it → 4.0
+    approx(p(&m, "x", "new"), 4.0 / (MAX_HITS as f32 * 3.0 + 1.0 + 1.0));
 }
 
 #[test]

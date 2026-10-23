@@ -14,7 +14,6 @@ use crate::{
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
     },
-    loader::utils::Priority,
     ui::{
         utils::{
             async_update::{AsyncUpdate, AsyncUpdateEntity, Fetchable},
@@ -148,10 +147,6 @@ impl RenderableChildImpl for MusicPlayerWidget {
             return None;
         };
         inner.raw.as_ref().and_then(|m| m.metadata.title.clone())
-    }
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {

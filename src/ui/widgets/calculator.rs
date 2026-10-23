@@ -9,7 +9,6 @@ use sherlock_derive::Hideable;
 use crate::{
     app::theme::ThemeData,
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
-    loader::utils::Priority,
     ui::{traits::RenderableChildImpl, utils::selection::Selection},
     utils::intent::{Capabilities, Intent, IntentResult},
 };
@@ -59,10 +58,6 @@ impl RenderableChildImpl for CalcData {
         } else {
             None
         }
-    }
-    #[inline(always)]
-    fn priority(&self, launcher: &std::sync::Arc<crate::launcher::LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
     fn render(
         &self,

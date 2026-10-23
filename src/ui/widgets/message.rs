@@ -9,7 +9,6 @@ use sherlock_derive::Hideable;
 use crate::{
     app::theme::ThemeData,
     launcher::{LauncherConfig, LauncherId, utils::exec_mode::ExecMode},
-    loader::utils::Priority,
     ui::{traits::RenderableChildImpl, widgets::Selection},
     utils::errors::{SherlockMessage, SherlockMessageLevel},
 };
@@ -161,10 +160,6 @@ impl RenderableChildImpl for MessageChild {
     fn build_exec(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
         self.get_content(launcher, cx)
             .map(|content| ExecMode::Copy { content })
-    }
-    #[inline(always)]
-    fn priority(&self, _launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new(1, 0)
     }
     #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {

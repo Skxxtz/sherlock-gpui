@@ -13,7 +13,6 @@ use crate::{
         LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType,
         weather_launcher::WeatherData,
     },
-    loader::utils::Priority,
     sherlock_msg,
     ui::{
         utils::{
@@ -256,10 +255,6 @@ impl RenderableChildImpl for WeatherWidget {
             "{}, {}, {}",
             entity_inner.location, entity_inner.condition, entity_inner.temperature
         ))
-    }
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {

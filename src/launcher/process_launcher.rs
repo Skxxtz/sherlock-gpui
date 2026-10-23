@@ -72,7 +72,7 @@ impl LauncherProvider for ProcessLauncher {
                         .icon
                         .clone()
                         .or_else(|| resolve_icon_path("sherlock-process")),
-                    ..ItemMeta::new(name, &launcher)
+                    ..ItemMeta::new(name)
                 },
                 payload: FixedPayload(|launcher| ExecMode::CreateView {
                     mode: ViewKind::Process,

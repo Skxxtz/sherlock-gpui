@@ -46,7 +46,7 @@ impl LauncherProvider for WebLauncher {
             .unwrap_or_default();
 
         let item = ListItem {
-            meta: ItemMeta::new(name, launcher.as_ref()),
+            meta: ItemMeta::new(name),
             payload: WebPayload { url: None },
         };
 

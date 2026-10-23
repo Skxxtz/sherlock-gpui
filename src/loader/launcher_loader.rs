@@ -15,7 +15,7 @@ use crate::{
     },
     loader::utils::RawLauncher,
     sherlock_msg,
-    ui::launcher::LauncherMode,
+    ui::{launcher::LauncherMode, traits::RenderableChildDelegate, widgets::RenderableChild},
     utils::{
         cache::BinaryCache,
         config::{ConfigFileChange, ConfigGuard},
@@ -144,6 +144,9 @@ impl Loader {
             })
             .collect();
 
+        // assigns tie-breakers based on search strings
+        assign_ties(&renders);
+
         Self::sync_cache_if_empty(&ctx, renders.values(), &mut messages);
 
         data_handle.update(cx, |items, cx| {
@@ -237,4 +240,15 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
     }
 
     (launchers, warnings)
+}
+
+fn assign_ties(launchers: &HashMap<LauncherId, Launcher>) {
+    let mut all: Vec<&RenderableChild> =
+        launchers.values().flat_map(|l| l.children.iter()).collect();
+
+    all.sort_by_cached_key(|c| (c.search(), c.id.as_ref().map(|k| k.as_str().to_owned())));
+
+    for (rank, child) in all.iter().enumerate() {
+        child.prio.set_tie(u16::try_from(rank).unwrap_or(u16::MAX));
+    }
 }

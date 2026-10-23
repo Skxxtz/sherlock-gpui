@@ -1,12 +1,11 @@
 use glob::Pattern;
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
-use crate::launcher::LauncherConfig;
 use crate::loader::application_loader::parser::DesktopFileParser;
 use crate::prelude::PathHelpers;
 use crate::ui::widgets::list_item::app::AppItem;
@@ -45,8 +44,6 @@ impl ApplicationLoader {
     /// Returns a `SherlockMessage` if configuration is unreachable or disk parsing
     /// fails critically.
     pub fn load_applications(
-        launcher: Arc<LauncherConfig>,
-        counts: &HashMap<String, u16>,
         use_keywords: bool,
         changes: Option<ConfigFileChange>,
     ) -> Result<Arc<Vec<AppItem>>, SherlockMessage> {
@@ -74,8 +71,7 @@ impl ApplicationLoader {
             .unwrap_or(SystemTime::UNIX_EPOCH);
 
         let need_update = Self::get_new_apps(last_cached);
-        let new_apps =
-            Self::load_applications_from_disk(&need_update, &launcher, counts, use_keywords)?;
+        let new_apps = Self::load_applications_from_disk(&need_update, use_keywords)?;
 
         let Some(cached) = cached else {
             let apps = Arc::new(new_apps);
@@ -92,11 +88,6 @@ impl ApplicationLoader {
                 .filter(|item| {
                     let path = &*item.payload.desktop_file;
                     path.exists() && !update_lookup.contains(path)
-                })
-                .inspect(|item| {
-                    // TODO: use proper itemkey
-                    let count = counts.get(item.payload.exec.as_str()).copied().unwrap_or(0);
-                    item.meta.priority.set_count(count);
                 })
                 .chain(new_apps)
                 .collect(),
@@ -142,8 +133,6 @@ impl ApplicationLoader {
 
     fn load_applications_from_disk(
         files: &[PathBuf],
-        launcher: &Arc<LauncherConfig>,
-        counts: &HashMap<String, u16>,
         use_keywords: bool,
     ) -> Result<Vec<AppItem>, SherlockMessage> {
         if files.is_empty() {
@@ -157,7 +146,7 @@ impl ApplicationLoader {
                 RwLock::new(SherlockAlias::load(&config.files.alias)?),
             )
         };
-        let parser = DesktopFileParser::new(launcher, &ignore, counts, use_keywords);
+        let parser = DesktopFileParser::new(&ignore, use_keywords);
 
         Ok(files
             .par_iter()

@@ -82,12 +82,10 @@ impl BookmarkLauncher {
         launcher: Arc<LauncherConfig>,
     ) -> Result<Bookmarks, SherlockMessage> {
         match browser.to_lowercase().as_str() {
-            "zen" | "zen-browser" | "/opt/zen-browser-bin/zen-bin %u" => {
-                BookmarkParser::zen(launcher)
-            }
+            "zen" | "zen-browser" | "/opt/zen-browser-bin/zen-bin %u" => BookmarkParser::zen(),
             "brave" | "brave %u" => BookmarkParser::brave(launcher),
-            "firefox" | "/usr/lib/firefox/firefox %u" => BookmarkParser::firefox(launcher),
-            "librewolf" => BookmarkParser::librewolf(launcher),
+            "firefox" | "/usr/lib/firefox/firefox %u" => BookmarkParser::firefox(),
+            "librewolf" => BookmarkParser::librewolf(),
             "chrome" | "google-chrome" | "/usr/bin/google-chrome-stable %u" => {
                 BookmarkParser::chrome(launcher)
             }
@@ -147,17 +145,17 @@ impl BookmarkParser {
         ChromeParser::parse(launcher, data)
     }
 
-    fn zen(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
+    fn zen() -> Result<Bookmarks, SherlockMessage> {
         let root = home_dir()?.join(".zen");
-        MozillaSqliteParser::run_for_browser(launcher, "zen", || root)
+        MozillaSqliteParser::run_for_browser("zen", || root)
     }
-    fn librewolf(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
+    fn librewolf() -> Result<Bookmarks, SherlockMessage> {
         let root = home_dir()?.join(".config/librewolf/librewolf");
-        MozillaSqliteParser::run_for_browser(launcher, "librewolf", || root)
+        MozillaSqliteParser::run_for_browser("librewolf", || root)
     }
-    fn firefox(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
+    fn firefox() -> Result<Bookmarks, SherlockMessage> {
         let root = home_dir()?.join(".mozilla/firefox/");
-        MozillaSqliteParser::run_for_browser(launcher, "firefox", || root)
+        MozillaSqliteParser::run_for_browser("firefox", || root)
     }
 }
 struct MozillaSqliteParser {
@@ -187,11 +185,7 @@ impl MozillaSqliteParser {
         Self { paths }
     }
 
-    fn run_for_browser<R>(
-        launcher: Arc<LauncherConfig>,
-        prefix: &'static str,
-        root: R,
-    ) -> Result<Bookmarks, SherlockMessage>
+    fn run_for_browser<R>(prefix: &'static str, root: R) -> Result<Bookmarks, SherlockMessage>
     where
         R: FnOnce() -> PathBuf,
     {
@@ -210,14 +204,10 @@ impl MozillaSqliteParser {
         });
 
         let parser = MozillaSqliteParser::new(paths);
-        parser.read(launcher, prefix)
+        parser.read(prefix)
     }
 
-    fn read(
-        &self,
-        launcher: Arc<LauncherConfig>,
-        prefix: &'static str,
-    ) -> Result<Bookmarks, SherlockMessage> {
+    fn read(&self, prefix: &'static str) -> Result<Bookmarks, SherlockMessage> {
         let cache = get_cache_dir()?.join(format!("bookmarks/{prefix}-cache.bin"));
 
         let changed = self.paths.iter().any(|p| file_has_changed(&cache, p));
@@ -225,7 +215,7 @@ impl MozillaSqliteParser {
             return Ok(app_data);
         }
 
-        let bookmarks = self.read_new(launcher)?;
+        let bookmarks = self.read_new()?;
         rayon::spawn_fifo({
             let bookmarks = bookmarks.clone();
             move || {
@@ -235,7 +225,7 @@ impl MozillaSqliteParser {
         Ok(bookmarks)
     }
 
-    fn read_new(&self, launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
+    fn read_new(&self) -> Result<Bookmarks, SherlockMessage> {
         let mut res = Vec::new();
         let mut seen = HashSet::new();
 
@@ -250,7 +240,7 @@ impl MozillaSqliteParser {
                             meta: ItemMeta {
                                 icon: resolve_icon_path("sherlock-bookmark"),
                                 search: construct_search(Some(&title), &url, true).into(),
-                                ..ItemMeta::new(title, &launcher)
+                                ..ItemMeta::new(title)
                             },
                             payload: WebPayload {
                                 url: Some(url.into()),
@@ -388,7 +378,7 @@ impl ChromeParser {
                             meta: ItemMeta {
                                 search: construct_search(Some(&bookmark.name), &url, true).into(),
                                 icon: resolve_icon_path("sherlock-bookmark"),
-                                ..ItemMeta::new(bookmark.name, &launcher)
+                                ..ItemMeta::new(bookmark.name)
                             },
                             payload: WebPayload {
                                 url: Some(url.into()),

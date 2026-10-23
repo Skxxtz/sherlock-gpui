@@ -63,10 +63,7 @@ impl LauncherProvider for EmojiPicker {
                     .icon
                     .clone()
                     .or_else(|| resolve_icon_path("sherlock-emoji")),
-                ..ItemMeta::new(
-                    launcher.name.as_deref().unwrap_or("Emoji Picker"),
-                    &launcher,
-                )
+                ..ItemMeta::new(launcher.name.as_deref().unwrap_or("Emoji Picker"))
             },
             payload: FixedPayload(|launcher| ExecMode::CreateView {
                 mode: ViewKind::Emoji,

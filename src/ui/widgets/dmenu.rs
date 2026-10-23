@@ -8,7 +8,6 @@ use sherlock_derive::Hideable;
 use crate::{
     app::theme::ThemeData,
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
-    loader::utils::Priority,
     ui::widgets::{RenderableChildImpl, Selection},
 };
 
@@ -57,9 +56,6 @@ impl RenderableChildImpl for DmenuData {
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(self.name.to_string())
-    }
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {

@@ -10,7 +10,7 @@ use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::{
         IconType, resolve_icon_path,
-        utils::{ApplicationAction, PriorityGuard, construct_search},
+        utils::{ApplicationAction, construct_search},
     },
     ui::{
         launcher::context_menu::{ContextMenuAction, quick_actions::Hideable},
@@ -33,19 +33,17 @@ pub struct ItemMeta {
     /// Prebuilt (and pre-processed: lowercase) once at loadtime.
     pub search: SharedString,
     pub icon: Option<IconType>,
-    pub priority: PriorityGuard,
     pub actions: Arc<[Arc<ContextMenuAction>]>,
     pub vars: Arc<[RuntimeArgument]>,
 }
 
 impl ItemMeta {
-    pub fn new(name: impl Into<SharedString>, launcher: &LauncherConfig) -> Self {
+    pub fn new(name: impl Into<SharedString>) -> Self {
         let name: SharedString = name.into();
         Self {
             search: name.to_lowercase().into(),
             name,
             icon: None,
-            priority: PriorityGuard::new_with_launcher(launcher, 0),
             actions: Arc::new([]),
             vars: Arc::new([]),
         }
@@ -159,10 +157,6 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
         self.payload.content(&self.meta, field)
     }
 
-    fn priority(&self, _launcher: &Arc<LauncherConfig>) -> crate::loader::utils::Priority {
-        self.meta.priority.get()
-    }
-
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
         &self.meta.search
     }
@@ -181,10 +175,6 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
 
     fn vars(&self, _cx: &mut gpui::App) -> Option<&[RuntimeArgument]> {
         Some(&self.meta.vars)
-    }
-
-    fn increment_count(&self) {
-        self.meta.priority.increment_count();
     }
 
     fn sidebar(&self, launcher: &Arc<LauncherConfig>, _cx: &mut gpui::App) -> Option<AnyElement> {

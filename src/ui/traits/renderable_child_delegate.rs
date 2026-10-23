@@ -77,7 +77,7 @@ pub trait RenderableChildDelegate {
     fn update_async<C: AppContext>(&self, cx: &mut C);
 
     /// Updates the execution count for supported children
-    fn increment_count(&self);
+    fn set_count(&self, count: u16);
 
     /// Lets the selected item handle a navigation key itself (e.g. move
     /// between items inside a tile). Return `true` if handled; otherwise

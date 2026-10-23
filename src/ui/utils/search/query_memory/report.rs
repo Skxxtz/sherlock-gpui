@@ -1,6 +1,6 @@
 use std::fmt::{self, Write as _};
 
-use super::memory::{Node, QueryMemory, normalize};
+use super::memory::{Node, QueryMemory, ROOT, normalize};
 use super::{ALPHA, MIN_P};
 
 const BAR_WIDTH: usize = 20;
@@ -121,10 +121,15 @@ impl QueryMemory {
 
         // BTreeMap order is prefix-tree order: "f", "fi", "fir…", "fl…"
         for (q, node) in shown {
+            let label = if q == ROOT {
+                "(any query)".to_owned()
+            } else {
+                format!("\"{q}\"")
+            };
             let _ = writeln!(
                 out,
                 "{} {}",
-                st.cyan(format!("\"{q}\"")),
+                st.cyan(label),
                 st.dim(format!("{:.1} picks", node.total.at(today)))
             );
             self.write_node(&mut out, node, today, st);

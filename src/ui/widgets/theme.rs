@@ -4,7 +4,6 @@ use crate::{
         LauncherConfig, theme_launcher::ThemePickerFunctions, utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
-    loader::utils::Priority,
     ui::{
         utils::render::ListItemBorder,
         widgets::{RenderableChildImpl, Selection},
@@ -151,11 +150,6 @@ impl RenderableChildImpl for ThemeWidget {
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
         Some(self.name.to_string())
-    }
-
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
 
     #[inline(always)]

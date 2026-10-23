@@ -25,7 +25,7 @@ use suite_223b::{
 use crate::{
     app::{LAUNCH_GENERATION, theme::ThemeData},
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
-    loader::utils::{ApplicationAction, Priority},
+    loader::utils::ApplicationAction,
     sherlock_msg,
     ui::{
         launcher::context_menu::ContextMenuAction,
@@ -424,10 +424,6 @@ impl RenderableChildImpl for EventWidget {
         }
 
         Some(out)
-    }
-    #[inline(always)]
-    fn priority(&self, launcher: &Arc<LauncherConfig>) -> Priority {
-        Priority::new_with_launcher(launcher, 0)
     }
     #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {

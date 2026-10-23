@@ -7,10 +7,9 @@ use serde::{
 };
 
 use crate::{
-    launcher::LauncherConfig,
     loader::{
         resolve_icon_path,
-        utils::{ApplicationAction, PriorityGuard, construct_search},
+        utils::{ApplicationAction, construct_search},
     },
     ui::{
         launcher::context_menu::ContextMenuAction,
@@ -24,8 +23,6 @@ struct EntrySerde {
     exec: SharedString,
     #[serde(default)]
     search_string: String,
-    #[serde(default)]
-    priority: Option<u16>,
     #[serde(default)]
     icon: Option<String>,
     #[serde(default)]
@@ -56,7 +53,6 @@ struct ActionSerde {
 /// ```
 pub fn deserialize_named_items<'de, D, P, F>(
     deserializer: D,
-    launcher: &LauncherConfig,
     make_payload: F,
 ) -> Result<Vec<ListItem<P>>, D::Error>
 where
@@ -64,13 +60,12 @@ where
     P: Payload,
     F: Fn(SharedString) -> P,
 {
-    struct ItemMapVisitor<'a, P, F> {
-        launcher: &'a LauncherConfig,
+    struct ItemMapVisitor<P, F> {
         make_payload: F,
         _p: PhantomData<P>,
     }
 
-    impl<'de, P: Payload, F: Fn(SharedString) -> P> Visitor<'de> for ItemMapVisitor<'_, P, F> {
+    impl<'de, P: Payload, F: Fn(SharedString) -> P> Visitor<'de> for ItemMapVisitor<P, F> {
         type Value = Vec<ListItem<P>>;
 
         fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -108,10 +103,6 @@ where
                     meta: ItemMeta {
                         search: search.into(),
                         icon,
-                        priority: PriorityGuard::new(
-                            entry.priority.unwrap_or(self.launcher.priority),
-                            0,
-                        ),
                         actions,
                         vars: entry.vars.into(),
                         name,
@@ -124,7 +115,6 @@ where
     }
 
     deserializer.deserialize_map(ItemMapVisitor {
-        launcher,
         make_payload,
         _p: PhantomData,
     })

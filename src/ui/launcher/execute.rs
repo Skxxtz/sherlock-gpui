@@ -5,6 +5,7 @@ use crate::{
     sherlock_msg,
     ui::{
         launcher::{LauncherView, context_menu::ContextMenuAction},
+        query_memory::QueryMemoryGuard,
         traits::RenderableChildDelegate,
         widgets::RenderableChild,
     },
@@ -118,15 +119,15 @@ impl LauncherView {
                 self.navigation.push_message(e, cx);
             }
 
-            match source {
-                ExecSource::Shortcut(n) => {
-                    self.navigation
-                        .with_nth_shortcut_item(n, cx, |item, _| item.increment_count());
-                }
-                _ => {
-                    self.navigation
-                        .with_selected_item(cx, |item, _| item.increment_count());
-                }
+            let target_ref = match source {
+                ExecSource::Shortcut(n) => self.navigation.nth_shortcut_item_ref(n, cx),
+                _ => self.navigation.selected_item_ref(cx),
+            };
+
+            if let Some(item) = target_ref
+                && let Some(id) = item.item_key_ref()
+            {
+                item.set_count(QueryMemoryGuard::popularity_count(id));
             }
         }
 

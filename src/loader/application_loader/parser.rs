@@ -1,14 +1,9 @@
-use std::{
-    collections::HashMap,
-    path::Path,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, path::Path, sync::RwLock};
 
 use glob::Pattern;
 use gpui::SharedString;
 
 use crate::{
-    launcher::LauncherConfig,
     loader::{
         IconType, application_loader::should_ignore, resolve_icon_path, utils::ApplicationAction,
     },
@@ -50,23 +45,14 @@ enum Field {
 }
 
 pub struct DesktopFileParser<'a> {
-    launcher: &'a Arc<LauncherConfig>,
     ignore: &'a [Pattern],
-    counts: &'a HashMap<String, u16>,
     use_keywords: bool,
 }
 
 impl<'a> DesktopFileParser<'a> {
-    pub fn new(
-        launcher: &'a Arc<LauncherConfig>,
-        ignore: &'a [Pattern],
-        counts: &'a HashMap<String, u16>,
-        use_keywords: bool,
-    ) -> Self {
+    pub fn new(ignore: &'a [Pattern], use_keywords: bool) -> Self {
         Self {
-            launcher,
             ignore,
-            counts,
             use_keywords,
         }
     }
@@ -137,7 +123,7 @@ impl<'a> DesktopFileParser<'a> {
             meta: ItemMeta {
                 icon: entry.icon,
                 actions: actions.into_iter().map(Into::into).collect(),
-                ..ItemMeta::new(name.clone(), self.launcher)
+                ..ItemMeta::new(name.clone())
             },
             payload: AppPayload {
                 exec,
@@ -151,13 +137,6 @@ impl<'a> DesktopFileParser<'a> {
         item.apply_alias(alias, Some(&entry.keywords), self.use_keywords);
         // After the alias, so actions inherit an alias-overridden icon.
         item.inherit_icons(None);
-
-        let count = self
-            .counts
-            .get(item.payload.exec.as_ref())
-            .copied()
-            .unwrap_or(0);
-        item.meta.priority.set_launcher(self.launcher, count);
 
         Some(item)
     }

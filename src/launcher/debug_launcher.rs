@@ -6,7 +6,7 @@ use crate::launcher::utils::exec_mode::ExecMode;
 use crate::launcher::variant_type::InnerFunction;
 use crate::launcher::{ExecEffect, LauncherProvider, LauncherType};
 use crate::loader::resolve_icon_path;
-use crate::loader::utils::{ApplicationAction, PriorityGuard, RawLauncher};
+use crate::loader::utils::{ApplicationAction, RawLauncher};
 use crate::ui::launcher::context_menu::ContextMenuAction;
 use crate::ui::widgets::RenderableChild;
 use crate::ui::widgets::list_item::fixed::FixedPayload;
@@ -48,7 +48,6 @@ impl LauncherProvider for DebugLauncher {
                 name: "Debug".into(),
                 search: "clear cache;debug;app count".into(),
                 icon: resolve_icon_path("sherlock-devtools"),
-                priority: PriorityGuard::new_with_launcher(&launcher, 0),
                 actions: Arc::from([
                     Arc::new(ContextMenuAction::App(ApplicationAction {
                         name: "Clear Cache".into(),

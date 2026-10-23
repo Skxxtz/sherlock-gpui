@@ -27,15 +27,22 @@ use crate::{
 pub struct Priority {
     pub base: u16,
     pub count: u16,
+    #[serde(skip)]
+    pub tie: u16,
 }
 impl Priority {
     pub fn new(base: u16, count: u16) -> Self {
-        Self { base, count }
+        Self {
+            base,
+            count,
+            tie: 0,
+        }
     }
     pub fn new_with_launcher(launcher: &LauncherConfig, count: u16) -> Self {
         Self {
             base: launcher.priority,
             count,
+            tie: 0,
         }
     }
 }
@@ -61,8 +68,8 @@ impl PriorityGuard {
         self.0.write().unwrap().count = count;
     }
 
-    pub fn increment_count(&self) {
-        self.0.write().unwrap().count += 1;
+    pub fn set_tie(&self, tie: u16) {
+        self.0.write().unwrap().tie = tie;
     }
 
     pub fn set_launcher(&self, launcher: &LauncherConfig, count: u16) {
@@ -74,7 +81,11 @@ impl PriorityGuard {
 
 impl Default for PriorityGuard {
     fn default() -> Self {
-        Self(Arc::new(RwLock::new(Priority { base: 1, count: 0 })))
+        Self(Arc::new(RwLock::new(Priority {
+            base: 1,
+            count: 0,
+            tie: 0,
+        })))
     }
 }
 

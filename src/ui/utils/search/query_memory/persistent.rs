@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    sherlock_msg,
+    QUERY_MEMORY, sherlock_msg,
     utils::{
         cache::BinaryCache,
         errors::{
@@ -13,6 +13,18 @@ use crate::{
 };
 
 use super::memory::{Boosts, QueryMemory, today};
+
+pub struct QueryMemoryGuard;
+impl QueryMemoryGuard {
+    pub fn popularity_count(id: &ItemKey) -> u16 {
+        let Some(mem) = QUERY_MEMORY.get().and_then(|l| l.read().ok()) else {
+            return 0;
+        };
+
+        let picks = mem.mem.popularity_of(id, today());
+        (picks * 100.0).round().min(u16::MAX as f32) as u16
+    }
+}
 
 pub struct PersistentQueryMemory {
     mem: QueryMemory,
