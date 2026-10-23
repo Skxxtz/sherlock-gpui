@@ -40,6 +40,8 @@ run `git log main..dev` for all changes
 
 ## [Unreleased]
 
+## [0.2.4] - 23.10.26
+
 * as of **100f847f**
 
 ## [0.2.4-dev] - 23.10.26

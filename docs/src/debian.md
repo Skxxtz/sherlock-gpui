@@ -35,7 +35,7 @@ Make sure you have the following dependencies installed:
    Once the package is built, you can install it using:
 
    ```bash
-   sudo dpkg -i target/debian/sherlock-launcher_v0.2.3_amd64.deb
+   sudo dpkg -i target/debian/sherlock-launcher_v0.2.4_amd64.deb
    ```
    > You can also use tab-completion to auto complete the file name.
 

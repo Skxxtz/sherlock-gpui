@@ -25,6 +25,7 @@ The Widgets get sorted based by a tiered sort: `Launcher Priority` then `Search 
 | `priority` | `u16` | ✓ | — | Display order weight. Lower values appear first. `0` only appears in alias mode. |
 | `limit` | `u16` |  | — | The number of items to display per launcher. Useful to limit the number of search results to the best `n` items. |
 | `home` | `HomeType` |  | Home | Controls when the launcher is shown: `Home`, `OnlyHome`, `Search`, or `Persist`. |
+| `sidebar_default_on` | `bool` |  | true | Show the sidebar automatically for items that have one. If false, the sidebar only opens through the `Info` action. |
 | `exit` | `bool` |  | true | Whether Sherlock closes after the launcher is executed. |
 | `shortcut` | `bool` |  | true | Whether a UI shortcut key is assigned to this launcher. |
 | `spawn_focus` | `bool` |  | true | Whether this launcher can receive spawned focus. |
@@ -33,7 +34,7 @@ The Widgets get sorted based by a tiered sort: `Launcher Priority` then `Search 
 | `binds` | `Bind[]` |  | — | Key bindings attached to this launcher. |
 | `actions` | `ApplicationAction[]` |  | — | Primary context menu actions. Overwrites any actions defined in desktop files. |
 | `add_actions` | `ApplicationAction[]` |  | — | Supplementary actions appended to the primary action list. |
-| `variables` | `ExecVariable[]` |  | — | Runtime variable substitutions available to this launcher's commands. |
+| `variables` | `RunetimeArgument[]` |  | — | Runtime variable substitutions available to this launcher's commands. |
 
 ---
 
@@ -811,7 +812,7 @@ _Basic event launcher_
 
 `type = files`
 
-A file search. Allows you to search for files and directories from within Sherlock.
+Search for files and directories from within Sherlock. Narrow results with filters: `t:<type>` (e.g. `t:d`, `t:img`, `t:doc`) and `ext:<ext,...>` (e.g. `ext:pdf,png`). Example: `invoice t:doc`.
 
 ### Args
 
@@ -910,6 +911,178 @@ The harness for custom plugins. Allow access to specific user plugins.
 | `capabilities` | `PluginCapability` |  | PluginCapability::None | The allowed scopes, the plugin can access. |
 
 <details>
+<summary><strong>Writing Plugins:</strong></summary>
+
+Plugins are Lua scripts that add their own tiles to Sherlock. A plugin can show live data, react to clicks and keys, add context-menu actions and answer search queries.
+
+#### Quick start
+
+1. Run `sherlock plugin-init` inside your plugin directory. It writes the API stubs `init.lua` and `ui.lua` to Sherlock's cache and a `.luarc.json` pointing at them, so the Lua language server can autocomplete the API.
+2. Create the plugin, e.g. `~/.config/sherlock/plugins/hello/init.lua`:
+
+   ```lua
+   local ui = sherlock.ui
+
+   function tiles()
+     return { { id = "hello", node = ui.text "Hello from Lua" } }
+   end
+   ```
+
+
+3. Register it as a `plugin` launcher (see the example below). The **Reload** action re-runs the plugin after you edit it.
+
+A plugin loaded from `init.lua` is named after its directory, otherwise after its file name.
+
+#### Lifecycle functions
+
+All functions are optional except `tiles`.
+
+| Function | When it runs | Returns |
+|---|---|---|
+| `init(theme)` | Once after loading, before `tiles`. | – |
+| `tiles()` | After `init`. Defines the static tiles. | list of `{ id, node, search? }` |
+| `refresh(tile_id)` | When a tile is shown. | a node, or nothing to keep the current one |
+| `live(tile_id)` | Once per tile as a background loop. Stopped on reload. | – |
+| `on_query(query)` | Every time the search text changes (lowercased). | result rows, or `nil` |
+
+`init`, `tiles` and `refresh` time out after 10 seconds while waiting (e.g. on HTTP). Errors from plugin code are shown in Sherlock's message view. Until `init` and `tiles` finish, a _Loading…_ tile is shown, so a slow plugin never blocks the UI.
+
+#### Building UI
+
+`sherlock.ui` builds nodes. Nodes nest with Lua tables; style keys can be given directly or under `style`:
+
+```lua
+local ui = sherlock.ui
+local node = ui.row {
+  gap = 8, padding = 8,
+  ui.icon "weather-clear",
+  ui.column {
+    ui.text { content = "Sunny", font_size = 16 },
+    ui.text { content = "21°C", color = "text_muted" },
+  },
+}
+```
+
+Every node also has fluent setters like `:padding(8)`, `:bg("accent")` or `:rounded(4)`, and can be called again to merge options: `ui.text("hi") { color = "error" }`.
+
+| Node | Description |
+|---|---|
+| `ui.row {…}`, `ui.column {…}`, `ui.container {…}` | Layout containers. |
+| `ui.text "…"` | Text. |
+| `ui.icon "name"` | Icon from the icon theme. |
+| `ui.image "path"` | Image from a file (`~` expanded). |
+| `ui.button "label"` | Button-styled text, usually combined with `on_click`. |
+| `ui.progress(0.4)` | Progress bar (0–1). `background` styles the track, `color` the fill. |
+| `ui.divider()` | Thin horizontal line. |
+| `ui.spacer()` | Fills the remaining space in a row or column. |
+
+| Style group | Keys |
+|---|---|
+| Layout | `flex` `flex_direction` `flex_grow` `flex_shrink` `align_items` `justify_content` `gap` |
+| Size | `width` `height` `min_width` `min_height` `max_width` `max_height` |
+| Spacing | `padding` `padding_x` `padding_y` `margin` `margin_x` `margin_y` |
+| Visual | `background` `border_color` `border_width` `corner_radii` `opacity` |
+| Text | `color` `font_family` `font_size` `text_align` |
+| States | `hover` `focus` (nested style tables) |
+
+Any flex property makes the node a flex container unless `flex = false`. `hover` applies while the pointer is over the node, `focus` while it is the keyboard-focused item (see _Navigation_).
+
+**Colors** are hex `#rrggbb` / `#rrggbbaa` or a theme token: `text` `text_secondary` `text_muted` `bg` `bg_muted` `bg_selected` `border` `accent` `success` `warning` `error` `info`.
+
+#### Updating tiles
+
+`sherlock.ui.update(tile_id, node)` replaces a tile's content at any time. It needs the `ui` capability.
+
+```lua
+function live(tile_id)
+  local n = 0
+  while true do
+    n = n + 1
+    sherlock.ui.update(tile_id, sherlock.ui.text("Tick " .. n))
+    sherlock.time.sleep_ms(1000)
+  end
+end
+```
+
+#### Interaction
+
+Callbacks receive the tile id.
+
+- **on_click** on any node. Clicking it runs the callback.
+- **on_activate** on a tile's root node. Runs on <kbd>Enter</kbd> when the tile is selected and no inner item is focused.
+- **:action(name, fn, { icon?, exit? })** on a tile's root node. Adds a context-menu entry; `exit = true` closes Sherlock afterwards.
+
+```lua
+local ui = sherlock.ui
+local function view(n)
+  return ui.row { ui.text("Count: " .. n) }
+    :on_activate(function(id) ui.update(id, view(n + 1)) end)
+    :action("Reset", function(id) ui.update(id, view(0)) end, { icon = "view-refresh" })
+end
+```
+
+Callbacks are replaced every time a tile is updated, so creating new closures in a loop does not leak.
+
+#### Navigation
+
+Nodes with `on_click` are the tile's items. When the tile is selected, the arrow keys move between them in document order and <kbd>Enter</kbd> runs the focused item's `on_click`. Moving past the last item continues to the next result; moving back past the first returns focus to the tile.
+
+`nav` on the tile's root node picks the keys: `"horizontal"` (default, ←/→), `"vertical"` (↑/↓) or `"both"`.
+
+```lua
+local ui = sherlock.ui
+local function btn(label, fn)
+  return ui.button(label) { padding_x = 10, focus = { background = "accent" }, on_click = fn }
+end
+
+local function prev_track() sherlock.log.info("prev") end
+local function toggle() sherlock.log.info("toggle") end
+local function next_track() sherlock.log.info("next") end
+
+function tiles()
+  return { { id = "media", node = ui.row {
+    gap = 8, ui.text "Now playing", ui.spacer(),
+    btn("⏮", prev_track), btn("⏯", toggle), btn("⏭", next_track),
+  } } }
+end
+```
+
+#### Search
+
+By default a tile is matched against its `search` text from `tiles()`, falling back to the launcher name. A plugin that defines `on_query(query)` filters itself instead:
+
+- **Hide/show tiles:** set `:hide()` or `hidden = true` on a tile's root node and `ui.update` it.
+- **Return result rows:** rows are shown after the static tiles and replaced on every query. A row is a node, or `{ id?, search?, node }` with ids defaulting to `result:1`, `result:2`, …. Return `{}` to clear them, `nil` to leave them unchanged.
+
+```lua
+local ui = sherlock.ui
+local apps = { "Firefox", "Files", "Terminal" }
+
+function tiles() return {} end
+
+function on_query(q)
+  if q == "" then return {} end
+  local rows = {}
+  for _, name in ipairs(apps) do
+    if name:lower():find(q, 1, true) then
+      rows[#rows + 1] = ui.text(name):on_activate(function() sherlock.clipboard.set(name) end)
+    end
+  end
+  return rows
+end
+```
+
+The example needs the `clipboard` capability. A call for an older query is cancelled when a newer query arrives.
+
+#### Sandbox
+
+Each plugin runs in its own environment with the safe Lua base functions, private copies of `table`, `string`, `math`, `coroutine`, a text-only `load` and the `sherlock` API allowed by its capabilities (see below). Not available: `io` `os` `debug` `package` `dofile` `loadfile` and C modules.
+
+`require("name")` loads `name.lua` or `name/init.lua` from the plugin's own directory only.
+
+</details>
+
+<details>
 <summary><strong>Capabilities:</strong></summary>
 
 Plugin capabilities control what scopes the plugin can access. They are a security feature, preventing malicious plugins from accessing scopes the user doesnt explicitly allow. Otherwise, a plugin could for example create a clipboard tracker, allowing a hacker to log the users clipboard content in a remote database. Therefore, it's **strongly recommented.** to use a proper capability setup, allowing only necessary scopes. 
@@ -917,7 +1090,7 @@ Plugin capabilities control what scopes the plugin can access. They are a securi
 Pass them via the `capabilities` arg:
 
 ```json
-{ "capabilities": ["calc.math", "calc.units"] }
+{ "capabilities": ["ui"] }
 ```
 
 <details>
@@ -982,7 +1155,36 @@ Sleeps for <ms> milliseconds.
 
 #### `ui.update`
 
-Updates the UI tile identified by <tile_id> with the given node.
+Updates the UI tile identified by `<tile_id>` with the given node.
+
+</details>
+
+<details>
+<summary>app</summary>
+
+#### `app.version`
+
+Gives the current Sherlock version.
+
+#### `app.version_major`
+
+Gives the major version component of Sherlock.
+
+#### `app.version_minor`
+
+Gives the minor version component of Sherlock.
+
+#### `app.version_patch`
+
+Gives the patch version component of Sherlock.
+
+#### `app.app_name`
+
+Gives the crate/application name.
+
+#### `app.has_feature`
+
+Checks if Sherlock was compiled with the given feature enabled.
 
 </details>
 
@@ -1001,18 +1203,12 @@ _Basic plugin launcher_
 ```json
 {
     "type": "plugin",
-    "name": "Quote Plugin",
+    "name": "Test Plugin",
     "args": {
-        "path": "~/.config/sherlock/plugins/quote.lua",
-        "capabilities": ["http.get", "json.decode"]
+        "path": "~/.config/sherlock/plugins/test/init.lua",
+        "capabilities": ["ui"]
     },
-    "actions": [
-        {
-            "name": "Reload",
-            "icon": "sherlock-devtools",
-            "method": "inner.reload"
-        }
-    ],
+    "actions": [{ "name": "Reload", "icon": "sherlock-devtools", "method": "inner.reload" }],
     "home": "OnlyHome",
     "shortcut": false,
     "spawn_focus": false,
