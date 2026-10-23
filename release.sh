@@ -69,7 +69,13 @@ SHERLOCK_DEV=true ./target/release/sherlock-gpui --generate-docs
 # Commit & tag
 step "Committing"
 git add Cargo.toml Cargo.lock CHANGELOG.md README.md docs/
-git commit -m "release: $TAG"
+COMMITTED=0
+if git diff --cached --quiet; then
+  echo "  nothing changed, tagging current HEAD"
+else
+  git commit -m "release: $TAG"
+  COMMITTED=1
+fi
 git tag -a "$TAG" -m "Release $TAG"
 
 echo
