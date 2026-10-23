@@ -2,7 +2,7 @@ use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
 use crate::QUERY_MEMORY;
 use crate::app::{LauncherEntity, LauncherEntityInner};
-use crate::launcher::{LauncherId, LauncherValues};
+use crate::launcher::{LauncherConfig, LauncherId, LauncherValues};
 use crate::ui::launcher::navigator::handle::ViewKind;
 use crate::ui::launcher::{LauncherMode, LauncherView, ModeTransition};
 use crate::ui::traits::RenderableChildDelegate;
@@ -16,6 +16,53 @@ struct FilterResult {
     index: (LauncherId, usize),
     prio: SortKey,
     limiter: Option<(LauncherId, u16)>,
+}
+
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub enum FilterPolicy {
+    /// Use all available filter rules
+    #[default]
+    All,
+    /// Only match the search string
+    QueryOnly,
+}
+
+impl FilterPolicy {
+    #[inline(always)]
+    pub fn keep_launchers(self, cfg: &LauncherConfig, mode: &str, is_home: bool) -> bool {
+        if self == Self::QueryOnly {
+            return true;
+        }
+
+        // [Rule 1]
+        // Case 1: Early return if mode applies but item is not assigned to that mode
+        // Case 2: Early return if current mode is not required mode for item
+        if Some(mode) != cfg.alias.as_deref() && (mode != "all" || cfg.priority < 1) {
+            return false;
+        }
+
+        // [Rule 2]
+        // Not home but item is assigned to only show on home
+        // [Rule 3]
+        // Item should only show on search but mode is home
+        match cfg.home {
+            HomeType::Search => !is_home,
+            HomeType::OnlyHome => is_home,
+            _ => true,
+        }
+    }
+
+    #[inline(always)]
+    pub fn persists(self, cfg: &LauncherConfig) -> bool {
+        // [Rule 4]
+        // Early return if item should always show (websearch for example)
+        self == Self::All && cfg.home == HomeType::Persist
+    }
+
+    #[inline(always)]
+    pub fn uses_limit(self) -> bool {
+        self == Self::All
+    }
 }
 
 impl LauncherView {
@@ -140,9 +187,15 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let (data_arc, mode, counter_cache) = self.prepare_filter_inputs(&data, cx);
-        let results_arc =
-            Self::compute_filtered_results(data_arc, mode.as_str(), &query, counter_cache, cx);
+        let (data_arc, mode, policy, counter_cache) = self.prepare_filter_inputs(&data, cx);
+        let results_arc = Self::compute_filtered_results(
+            data_arc,
+            policy,
+            mode.as_str(),
+            &query,
+            counter_cache,
+            cx,
+        );
         self.apply_results(results_arc, query, force, cx);
     }
     fn filter_update_async(
@@ -152,7 +205,7 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let (data_arc, mode, counter_cache) = self.prepare_filter_inputs(&data, cx);
+        let (data_arc, mode, policy, counter_cache) = self.prepare_filter_inputs(&data, cx);
         let render_task = Some(cx.spawn(
             move |this: WeakEntity<LauncherView>, cx: &mut AsyncApp| {
                 let mut cx = cx.clone();
@@ -160,6 +213,7 @@ impl LauncherView {
                     let mode = mode.as_str();
                     let results_arc = Self::compute_filtered_results(
                         data_arc,
+                        policy,
                         mode,
                         &query,
                         counter_cache,
@@ -182,6 +236,7 @@ impl LauncherView {
     }
     fn compute_filtered_results<C: AppContext>(
         data_arc: LauncherEntityInner,
+        policy: FilterPolicy,
         mode: &str,
         query: &SharedString,
         mut limit_cache: HashMap<LauncherId, u16>,
@@ -197,30 +252,7 @@ impl LauncherView {
         // collects Vec<(index, priority)>
         let mut results: Vec<FilterResult> = data_arc
             .iter()
-            .filter(|(_, launcher)| {
-                // [Rule 1]
-                // Case 1: Early return if mode applies but item is not assigned to that mode
-                // Case 2: Early return if current mode is not required mode for item
-                if Some(mode) != launcher.config.alias.as_deref()
-                    && (mode != "all" || launcher.config.priority < 1)
-                {
-                    return false;
-                }
-
-                // [Rule 2]
-                // Early return if not home but item is assigned to only show on home
-                if !is_home && launcher.config.home == HomeType::OnlyHome {
-                    return false;
-                }
-
-                // [Rule 3]
-                // Early return if item should only show on search but mode is home
-                if is_home && launcher.config.home == HomeType::Search {
-                    return false;
-                }
-
-                true
-            })
+            .filter(|(_, launcher)| policy.keep_launchers(&launcher.config, mode, is_home))
             .flat_map(|(launcher_idx, launcher)| {
                 launcher
                     .children
@@ -231,12 +263,9 @@ impl LauncherView {
                     })
             })
             .filter(|(_, launcher, _, child)| {
-                // [Rule 4]
-                // Early return if item should always show (websearch for example)
-                if launcher.home == HomeType::Persist {
+                if policy.persists(launcher) {
                     return true;
                 }
-
                 // [Rule 5]
                 // Early return if based show (calc for example) applies
                 if let Some(based) = child.based_show(query, cx) {
@@ -285,10 +314,15 @@ impl LauncherView {
         &self,
         data: &LauncherEntity,
         cx: &Context<Self>,
-    ) -> (LauncherEntityInner, LauncherMode, HashMap<LauncherId, u16>) {
+    ) -> (
+        LauncherEntityInner,
+        LauncherMode,
+        FilterPolicy,
+        HashMap<LauncherId, u16>,
+    ) {
         let mode = self.navigation.current().mode.clone();
+        let policy = self.navigation.with_model(cx, |m| m.filter_policy);
         let data_rc = data.read(cx).clone();
-        let limit_cache = HashMap::new();
-        (data_rc, mode, limit_cache)
+        (data_rc, mode, policy, HashMap::new())
     }
 }

@@ -5,7 +5,7 @@ use crate::{
     app::{LauncherEntity, LauncherWeakEntity},
     launcher::{Launcher, LauncherConfig, LauncherId, variant_type::LauncherType},
     ui::{
-        launcher::LauncherView,
+        launcher::{LauncherView, filter_and_sort::FilterPolicy},
         model::{
             file::FileSearchModel,
             process::ProcessModel,
@@ -36,17 +36,25 @@ pub struct Model {
     pub pending: Option<Task<Option<()>>>,
     /// Where the items come from: local filtering or an external search.
     pub source: ModelSource,
+    /// Defines which filter rules should apply at runtime.
+    pub filter_policy: FilterPolicy,
 }
 
 // Constructors
 impl Model {
     /// Shared constructor. Starts with no query and no pending task.
-    pub fn new(data: LauncherEntity, filtered: Arc<[ItemIdx]>, source: ModelSource) -> Self {
+    pub fn new(
+        data: LauncherEntity,
+        filtered: Arc<[ItemIdx]>,
+        source: ModelSource,
+        filter_policy: FilterPolicy,
+    ) -> Self {
         Self {
             data,
             filtered,
             last_query: None,
             pending: None,
+            filter_policy,
             source,
         }
     }
@@ -56,11 +64,22 @@ impl Model {
         Self::standard_with_entity(cx.new(|_| Rc::new(data)), cx)
     }
 
+    pub fn sub_view(data: HashMap<LauncherId, Launcher>, cx: &mut App) -> Self {
+        let filtered = all_indices(&data);
+        let entity = cx.new(|_| Rc::new(data));
+        Self::new(
+            entity,
+            filtered,
+            ModelSource::Static,
+            FilterPolicy::QueryOnly,
+        )
+    }
+
     /// Local model over an existing data entity, with every item visible.
     /// Used for home and dmenu, which share their launcher entity.
     pub fn standard_with_entity(data: LauncherEntity, cx: &App) -> Self {
         let filtered = all_indices(data.read(cx));
-        Self::new(data, filtered, ModelSource::Static)
+        Self::new(data, filtered, ModelSource::Static, FilterPolicy::All)
     }
 
     /// Process model. Starts empty; filled by `ProcessModel` searches.
@@ -74,6 +93,7 @@ impl Model {
             data,
             Arc::from([]),
             ModelSource::Process(ProcessModel::new(launcher)),
+            FilterPolicy::All,
         )
     }
 
@@ -93,6 +113,7 @@ impl Model {
             data,
             Arc::from([]),
             ModelSource::Files(FileSearchModel::new(launcher, dir)),
+            FilterPolicy::All,
         )
     }
 }
