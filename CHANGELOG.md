@@ -40,7 +40,7 @@ run `git log main..dev` for all changes
 
 ## [Unreleased]
 
-* as of **fa91129f4dcd96cd3ad456e2ab36f57392a05027**
+* as of **100f847f**
 
 ### Added
 
@@ -71,6 +71,9 @@ run `git log main..dev` for all changes
     * added implicit multiplication (`2pi`, `3(4 + 1)`), factorial `5!` and
     superscript exponents `x²`
     * added math symbols `⌊x⌋`, `⌈x⌉`, `|x|`, `√x`, `∛x`, `×`, `÷`, `**`
+* **Search Ranking**: Items with an equal score are now ordered alphabetically
+  instead of randomly (`ecae4e06`, `faca3aea`, `2325167c`, `a296c8a8`,
+  `88f8f0d6`, `100f847f`)
 
 ### Improved
 
@@ -102,6 +105,18 @@ run `git log main..dev` for all changes
     * trigonometric functions now use degrees (`sin(90)` = 1)
     * `%` is percent after a number (`50%` = 0.5) and modulo between two
     numbers (`10 % 3` = 1)
+* **Search Ranking**: Replaced the launch counter (`counts.bin`) with a learning
+  query memory (`queries.bin`) (`ecae4e06`, `faca3aea`, `2325167c`, `a296c8a8`,
+  `88f8f0d6`, `100f847f`)
+    * learns which item was picked for which query, including typos and
+    abbreviations (`fierfox` → Firefox), and ranks it higher next time
+    * picks fade over time (30-day half-life), so new habits take over
+    * existing app launch counts are migrated automatically on first start;
+    the old file is kept as `counts.bin.migrated`. Counts for commands and web
+    searches are not migrated
+    * items are now identified by their desktop file ID instead of their `Exec`
+    line, so counts survive app updates (notably on NixOS, where `Exec` contains
+    store paths)
 
 ### Performance
 
