@@ -10,11 +10,15 @@ pub struct CategoryPayload {
 impl super::Payload for CategoryPayload {
     fn exec(
         &self,
-        _meta: &super::ItemMeta,
-        _launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
+        meta: &super::ItemMeta,
+        launcher: &std::sync::Arc<crate::launcher::LauncherConfig>,
     ) -> Option<ExecMode> {
-        Some(ExecMode::Command {
-            exec: self.exec.to_string(),
+        Some(ExecMode::Category {
+            category: crate::ui::launcher::LauncherMode::Alias {
+                short: self.exec.clone(),
+                name: meta.name.clone(),
+                launcher: launcher.clone(),
+            },
         })
     }
 }
