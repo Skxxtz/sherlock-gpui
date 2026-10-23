@@ -230,6 +230,28 @@ impl QueryMemory {
         }
     }
 
+    /// Seeds the root with an existing pick count. For example used when migrating from the old
+    /// `counts.bin`. The count starts undecayed today. Importing the same key twice adds up. so
+    /// callers should deduplicate.
+    pub fn import(&mut self, key: &ItemKey, count: f32, today: u32) {
+        if count <= 0.0 {
+            return;
+        }
+
+        let root = self.nodes.entry(ROOT.to_owned()).or_default();
+        root.total.add(count, today);
+        match root.hits.iter().position(|h| &h.key == key) {
+            Some(i) => root.hits[i].count.add(count, today),
+            None => root.hits.push(Hit {
+                key: key.clone(),
+                count: Decayed {
+                    weight: count,
+                    day: today,
+                },
+            }),
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.nodes.len()
     }

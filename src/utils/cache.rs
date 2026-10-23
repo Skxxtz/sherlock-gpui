@@ -18,61 +18,76 @@ use crate::{
 };
 
 pub struct BinaryCache;
+
 impl BinaryCache {
+    const LIMIT: usize = 16 * 1024 * 1024;
+
+    const fn config() -> impl bincode::config::Config {
+        bincode::config::standard()
+            .with_fixed_int_encoding()
+            .with_limit::<{ Self::LIMIT }>()
+    }
+
+    pub fn encode<T: Serialize>(data: &T) -> Result<Vec<u8>, SherlockMessage> {
+        bincode::serde::encode_to_vec(data, Self::config())
+            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::SerializationError, e))
+    }
+
+    pub fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, SherlockMessage> {
+        match bincode::serde::decode_from_slice::<T, _>(bytes, Self::config()) {
+            Ok((value, read)) if read == bytes.len() => Ok(value),
+            Ok((_, read)) => Err(sherlock_msg!(
+                Warning,
+                SherlockErrorType::DeserializationError(format!(
+                    "{} trailing bytes after decoding",
+                    bytes.len() - read
+                )),
+                "type mismatch"
+            )),
+            Err(e) => Err(sherlock_msg!(
+                Warning,
+                SherlockErrorType::DeserializationError("binary cache".into()),
+                e
+            )),
+        }
+    }
+
     pub fn write<T: Serialize + Debug, P: AsRef<Path>>(
         path: P,
         data: &T,
     ) -> Result<(), SherlockMessage> {
         let cache = path.as_ref();
-
-        // Encode to binary
-        let cfg = bincode::config::standard().with_fixed_int_encoding();
-        let encoded = bincode::serde::encode_to_vec(data, cfg)
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::SerializationError, e))?;
-
+        let encoded = Self::encode(data)?;
         std::fs::write(cache, encoded).map_err(|e| {
             sherlock_msg!(
                 Warning,
                 SherlockErrorType::FileError(FileAction::Write, cache.to_path_buf()),
                 e
             )
-        })?;
-
-        Ok(())
+        })
     }
+
     pub fn read<T: DeserializeOwned + Default + Debug, P: AsRef<Path>>(
         path: P,
     ) -> Result<T, SherlockMessage> {
         let cache = path.as_ref();
-
-        let bytes = match std::fs::read(cache) {
-            Ok(b) => b,
-            Err(e) if e.kind() == ErrorKind::NotFound => {
-                return Err(sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::FileError(FileAction::Find, cache.to_path_buf()),
-                    e
-                ));
-            }
-            Err(e) => {
-                return Err(sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::FileError(FileAction::Read, cache.to_path_buf()),
-                    e
-                ));
-            }
-        };
-
-        // Decode binary
-        let cfg = bincode::config::standard().with_fixed_int_encoding();
-        match bincode::serde::decode_from_slice::<T, _>(&bytes, cfg) {
-            Ok(decoded) => Ok(decoded.0),
-            Err(e) => Err(sherlock_msg!(
+        let bytes = std::fs::read(cache).map_err(|e| {
+            let action = if e.kind() == ErrorKind::NotFound {
+                FileAction::Find
+            } else {
+                FileAction::Read
+            };
+            sherlock_msg!(
                 Warning,
-                SherlockErrorType::DeserializationError(cache.to_string_lossy().to_string()),
+                SherlockErrorType::FileError(action, cache.to_path_buf()),
                 e
-            )),
-        }
+            )
+        })?;
+        Self::decode(&bytes).map_err(|mut e| {
+            e.error_type =
+                SherlockErrorType::DeserializationError(cache.to_string_lossy().to_string());
+            e
+        })
     }
 }
 

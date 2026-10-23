@@ -4,6 +4,7 @@ mod report;
 #[cfg(test)]
 mod tests;
 
+pub use memory::today;
 pub use persistent::{PersistentQueryMemory, QueryMemoryGuard};
 
 /// Weight halves after this many days without use.

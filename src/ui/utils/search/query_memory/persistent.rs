@@ -65,6 +65,27 @@ impl PersistentQueryMemory {
         Ok(())
     }
 
+    pub fn import(&mut self, key: &ItemKey, count: f32, today: u32) {
+        self.mem.import(key, count, today);
+    }
+
+    pub fn inner(&mut self) -> &mut QueryMemory {
+        &mut self.mem
+    }
+
+    #[cfg(test)]
+    pub fn inner_mut(&mut self) -> &mut QueryMemory {
+        &mut self.mem
+    }
+
+    #[cfg(test)]
+    pub fn in_memory() -> Self {
+        Self {
+            mem: QueryMemory::default(),
+            path: PathBuf::new(),
+        }
+    }
+
     /// Prints a report to the terminal, showing how the probabilites for each query are
     /// distributed.
     pub fn report(&self, query: Option<&str>) {
