@@ -10,6 +10,7 @@
   outputs =
     { nixpkgs, rust-overlay, ... }:
     let
+      cargoToml = fromTOML (builtins.readFile ./Cargo.toml);
       systems = [
         "x86_64-linux"
         "aarch64-linux"
@@ -30,8 +31,8 @@
       packages = forAllSystems (pkgs: rec {
         default = sherlock-gpui;
         sherlock-gpui = pkgs.rustPlatform.buildRustPackage {
-          pname = "sherlock-gpui";
-          version = "0.2.3";
+          pname = cargoToml.package.name; # "sherlock-gpui"
+          version = cargoToml.package.version; # follows Cargo.toml automatically
           src = ./.;
 
           cargoLock.lockFile = ./Cargo.lock;
@@ -44,7 +45,10 @@
             "zed-scap-0.0.8-zed" = "sha256-BihiQHlal/eRsktyf0GI3aSWsUCW7WcICMsC2Xvb7kw=";
           };
 
-          buildFeatures = [ "wayland" "nixos" ];
+          buildFeatures = [
+            "wayland"
+            "nixos"
+          ];
 
           nativeBuildInputs = with pkgs; [
             pkg-config
