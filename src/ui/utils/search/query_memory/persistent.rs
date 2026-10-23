@@ -69,6 +69,7 @@ impl PersistentQueryMemory {
         self.mem.import(key, count, today);
     }
 
+    #[cfg(test)]
     pub fn inner(&mut self) -> &mut QueryMemory {
         &mut self.mem
     }

@@ -95,14 +95,14 @@ impl RenderableChildImpl for CalcData {
                 if r != trimmed_keyword {
                     result = Some((r.clone(), IntentResult::String(format!("= {}", r).into())));
                 }
-            } else if keyword.contains('=') {
-                if let Ok(mut sol) = elementary::solve_str(keyword) {
-                    sol.sort_nearest();
-                    let more = sol.roots.len() > 4;
-                    sol.roots.truncate(4);
-                    let shown = format!("{sol}{}", if more { ", …" } else { "" });
-                    result = Some((shown.clone(), IntentResult::String(shown.into())));
-                }
+            } else if keyword.contains('=')
+                && let Ok(mut sol) = elementary::solve_str(keyword)
+            {
+                sol.sort_nearest();
+                let more = sol.roots.len() > 4;
+                sol.roots.truncate(4);
+                let shown = format!("{sol}{}", if more { ", …" } else { "" });
+                result = Some((shown.clone(), IntentResult::String(shown.into())));
             }
         }
 
