@@ -10,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-fn get_xdg_dirs() -> xdg::BaseDirectories {
+pub(crate) fn get_xdg_dirs() -> xdg::BaseDirectories {
     xdg::BaseDirectories::with_prefix("sherlock")
 }
 

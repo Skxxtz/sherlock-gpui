@@ -4,44 +4,32 @@ use std::{fs, fs::OpenOptions, sync::Mutex};
 
 use chrono::Local;
 
-use crate::sherlock_msg;
-use crate::utils::errors::types::{DirAction, FileAction, SherlockErrorType};
 use crate::utils::{errors::SherlockMessage, paths};
 
-static LOG_FILE: LazyLock<Result<Mutex<std::fs::File>, SherlockMessage>> = LazyLock::new(|| {
-    let cache_dir = paths::get_cache_dir()?;
-    fs::create_dir_all(&cache_dir).map_err(|e| {
-        sherlock_msg!(
-            Warning,
-            SherlockErrorType::DirError(DirAction::Create, cache_dir.clone()),
-            e
-        )
-    })?;
-
-    let location = cache_dir.join("sherlock.log");
+// Must not log on failure: `sherlock_msg!` calls `write_log`, which would
+// re-enter this LazyLock while it's initializing and deadlock (e.g. in the
+// Nix build sandbox, where the cache dir can't be created).
+static LOG_FILE: LazyLock<Option<Mutex<std::fs::File>>> = LazyLock::new(|| {
+    // Not paths::get_cache_dir(): it logs on error too.
+    let cache_dir = paths::get_xdg_dirs().get_cache_home()?;
+    fs::create_dir_all(&cache_dir).ok()?;
     let file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&location)
-        .map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, location),
-                e
-            )
-        })?;
-
-    Ok(Mutex::new(file))
+        .open(cache_dir.join("sherlock.log"))
+        .ok()?;
+    Some(Mutex::new(file))
 });
 
 pub fn write_log<T: AsRef<str>>(message: T, file: &str, line: u32) -> Result<(), SherlockMessage> {
     let message = message.as_ref();
     let now = Local::now().format("%Y-%m-%d %H:%M:%S");
-    let mut log_file = LOG_FILE
-        .as_ref()
-        .map_err(|e| e.clone())?
-        .lock()
-        .expect("Failed to lock LOG_FILE..");
+    // No log file available: drop the message rather than erroring, since
+    // building an error here would recurse back into write_log.
+    let Some(log_file) = LOG_FILE.as_ref() else {
+        return Ok(());
+    };
+    let mut log_file = log_file.lock().expect("Failed to lock LOG_FILE..");
 
     message
         .split("\n")
