@@ -298,8 +298,9 @@ impl LegacyRawLauncher {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_legacy_to_modern_migration() {

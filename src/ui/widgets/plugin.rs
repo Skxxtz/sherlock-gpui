@@ -9,16 +9,16 @@ use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
+    features::plugin::{
+        PluginFunctions,
+        plugin_tile_state::PluginTileState,
+        runtime::{LuaRuntimeHandle, PluginHandle},
+        subscribers::TileSubscribers,
+        ui::style::{PluginStyle, parse_color},
+        ui_schema::{PluginNav, PluginTileMeta, PluginUiNode},
+    },
     launcher::{
         LauncherConfig,
-        plugin_launcher::{
-            PluginFunctions,
-            plugin_tile_state::PluginTileState,
-            runtime::{LuaRuntimeHandle, PluginHandle},
-            subscribers::TileSubscribers,
-            ui::style::{PluginStyle, parse_color},
-            ui_schema::{PluginNav, PluginTileMeta, PluginUiNode},
-        },
         utils::exec_mode::ExecMode,
         variant_type::{InnerFunction, LauncherType},
     },

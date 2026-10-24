@@ -1,9 +1,9 @@
 use std::fmt::{Result, Write};
 
-use crate::components::span_nodes::Paragraph;
+use md_rs_derive::{ComponentBuilder, ComponentConstructor, ParentComponent};
 
 use super::Component;
-use md_rs_derive::{ComponentBuilder, ComponentConstructor, ParentComponent};
+use crate::components::span_nodes::Paragraph;
 
 #[derive(Default, ComponentConstructor, ParentComponent, ComponentBuilder)]
 pub struct Details {

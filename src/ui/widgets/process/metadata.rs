@@ -1,9 +1,8 @@
 use gpui::SharedString;
 use procfs::ProcResult;
 
-use crate::loader::{IconType, find_desktop_icon, resolve_icon_path};
-
 use super::ProcessData;
+use crate::loader::{IconType, find_desktop_icon, resolve_icon_path};
 
 pub struct ProcessMeta {
     pub icon: Option<IconType>,

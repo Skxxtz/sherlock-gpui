@@ -1,11 +1,8 @@
-use std::fmt::Result;
-use std::fmt::Write;
+use std::fmt::{Result, Write};
 
-use md_rs_derive::ComponentBuilder;
-use md_rs_derive::ComponentConstructor;
+use md_rs_derive::{ComponentBuilder, ComponentConstructor};
 
-use crate::components::Component;
-use crate::components::span_nodes::Paragraph;
+use crate::components::{Component, span_nodes::Paragraph};
 
 #[derive(Default)]
 pub enum AlertKind {

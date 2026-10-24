@@ -3,10 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use gpui::App;
 
 use crate::{
-    launcher::{
-        Launcher, LauncherConfig,
-        emoji_launcher::{EmojiData, data::EMOJIS},
-    },
+    features::emoji::{EMOJIS, EmojiData},
+    launcher::{Launcher, LauncherConfig},
     ui::{model::Model, widgets::RenderableChild},
 };
 

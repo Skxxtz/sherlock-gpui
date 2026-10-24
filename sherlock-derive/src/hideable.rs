@@ -1,7 +1,8 @@
-use crate::utils::is_option;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields};
+
+use crate::utils::is_option;
 
 pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     let name = &input.ident;

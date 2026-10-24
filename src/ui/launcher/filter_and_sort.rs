@@ -1,16 +1,18 @@
+use std::{collections::HashMap, sync::Arc};
+
 use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
-use crate::QUERY_MEMORY;
-use crate::app::{LauncherEntity, LauncherEntityInner};
-use crate::launcher::{LauncherConfig, LauncherId, LauncherValues};
-use crate::ui::launcher::navigator::handle::ViewKind;
-use crate::ui::launcher::{LauncherMode, LauncherView, ModeTransition};
-use crate::ui::traits::RenderableChildDelegate;
-use crate::ui::utils::scoring::SortKey;
-use crate::ui::utils::search::SherlockSearch;
-use crate::utils::config::HomeType;
-use std::collections::HashMap;
-use std::sync::Arc;
+use crate::{
+    QUERY_MEMORY,
+    app::{LauncherEntity, LauncherEntityInner},
+    launcher::{LauncherConfig, LauncherId, LauncherValues},
+    ui::{
+        launcher::{LauncherMode, LauncherView, ModeTransition, navigator::handle::ViewKind},
+        traits::RenderableChildDelegate,
+        utils::{scoring::SortKey, search::SherlockSearch},
+    },
+    utils::config::HomeType,
+};
 
 struct FilterResult {
     index: (LauncherId, usize),
@@ -169,7 +171,7 @@ impl LauncherView {
             return;
         }
 
-        crate::launcher::plugin_launcher::dispatch_query(data.read(cx), &query);
+        crate::features::plugin::dispatch_query(data.read(cx), &query);
 
         // drop active tasks
         self.navigation.with_model_mut(cx, |m, _| m.pending = None);

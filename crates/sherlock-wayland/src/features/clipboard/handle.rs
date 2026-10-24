@@ -1,6 +1,4 @@
-use std::io::Read;
-use std::os::fd::AsFd;
-use std::sync::Arc;
+use std::{io::Read, os::fd::AsFd, sync::Arc};
 
 use wayland_client::Connection;
 

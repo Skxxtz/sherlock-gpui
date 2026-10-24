@@ -1,6 +1,7 @@
+use criterion::{Criterion, black_box};
+
 use super::*;
 use crate::app::theme::ThemeData;
-use criterion::{Criterion, black_box};
 
 #[test]
 fn bench_parse() {

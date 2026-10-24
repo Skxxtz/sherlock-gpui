@@ -1,6 +1,7 @@
+use std::sync::{OnceLock, RwLock};
+
 use ::tokio::net::UnixStream;
 use gpui::{App, Application, QuitMode, SharedString};
-use std::sync::{OnceLock, RwLock};
 use tokio::io::AsyncWriteExt;
 
 use crate::{
@@ -18,6 +19,7 @@ use crate::{
 mod app;
 #[cfg(feature = "docs")]
 mod docs;
+mod features;
 mod launcher;
 mod loader;
 mod prelude;

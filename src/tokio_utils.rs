@@ -1,9 +1,13 @@
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use std::future::Future;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
-use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
+
+use serde::{Serialize, de::DeserializeOwned};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{
+        UnixStream,
+        unix::{OwnedReadHalf, OwnedWriteHalf},
+    },
+};
 
 use crate::{
     sherlock_msg,

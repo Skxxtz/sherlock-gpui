@@ -1,4 +1,9 @@
-use std::{env::home_dir, sync::Arc, time::Duration};
+use std::{
+    env::home_dir,
+    process::{Command, Stdio},
+    sync::Arc,
+    time::Duration,
+};
 
 use gpui::{
     App, AppContext, AsyncApp, Entity, IntoElement, ParentElement, SharedString, Styled, Task,
@@ -6,7 +11,6 @@ use gpui::{
 };
 use serde::{Deserialize, Serialize};
 use sherlock_derive::Hideable;
-use std::process::{Command, Stdio};
 
 use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},

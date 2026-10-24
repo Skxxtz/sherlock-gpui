@@ -4,7 +4,7 @@ use gpui::SharedString;
 use smallvec::SmallVec;
 
 use crate::{
-    launcher::calc_launcher::CURRENCIES,
+    features::calc::CURRENCIES,
     utils::{
         intent::{
             colors::ColorConverter,

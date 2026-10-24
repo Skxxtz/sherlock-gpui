@@ -6,9 +6,8 @@ use std::{
     sync::OnceLock,
 };
 
-use crate::{sherlock_msg, utils::errors::types::SherlockErrorType};
-
 use super::errors::SherlockMessage;
+use crate::{sherlock_msg, utils::errors::types::SherlockErrorType};
 
 static HOME: OnceLock<PathBuf> = OnceLock::new();
 static HOME_STR: OnceLock<String> = OnceLock::new();

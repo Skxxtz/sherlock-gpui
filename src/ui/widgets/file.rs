@@ -1,3 +1,11 @@
+use std::sync::Arc;
+
+use gpui::{
+    AnyElement, App, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div,
+    img, prelude::FluentBuilder, px,
+};
+use sherlock_derive::Hideable;
+
 use crate::{
     app::theme::ThemeData,
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
@@ -9,12 +17,6 @@ use crate::{
         widgets::file::{metadata::FileMeta, sidebar::FileSidebar},
     },
 };
-use gpui::{
-    AnyElement, App, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div,
-    img, prelude::FluentBuilder, px,
-};
-use sherlock_derive::Hideable;
-use std::sync::Arc;
 
 mod metadata;
 pub mod sidebar;

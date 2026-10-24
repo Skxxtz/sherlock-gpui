@@ -2,9 +2,8 @@ use std::fmt::{Result, Write};
 
 use md_rs_derive::{ComponentBuilder, HeadingConstructors};
 
-use crate::components::span_nodes::Paragraph;
-
 use super::Component;
+use crate::components::span_nodes::Paragraph;
 
 #[derive(Default, HeadingConstructors, ComponentBuilder)]
 pub struct Heading {

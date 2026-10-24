@@ -1,18 +1,23 @@
-use gpui::WindowHandle;
-use gpui::{AnyElement, IntoElement};
-use gpui::{App, Entity, FocusHandle, Focusable, SharedString, Subscription};
-use std::os::unix::net::UnixStream;
-use std::sync::Arc;
+use std::{os::unix::net::UnixStream, sync::Arc};
 
-use crate::launcher::{LauncherConfig, LauncherId};
-use crate::tokio_utils::SizedMessageObj;
-use crate::ui::backdrop::Backdrop;
-use crate::ui::components::{choice::Choice, search_bar::TextInput};
-use crate::ui::launcher::context_menu::wrapper::ContextMenu;
-use crate::ui::launcher::navigator::Navigator;
-use crate::ui::launcher::sidebar_controller::SidebarController;
-use crate::utils::networking::ServerResponse;
-use crate::utils::sized_message_sync::SizedMessage;
+use gpui::{
+    AnyElement, App, Entity, FocusHandle, Focusable, IntoElement, SharedString, Subscription,
+    WindowHandle,
+};
+
+use crate::{
+    launcher::{LauncherConfig, LauncherId},
+    tokio_utils::SizedMessageObj,
+    ui::{
+        backdrop::Backdrop,
+        components::{choice::Choice, search_bar::TextInput},
+        launcher::{
+            context_menu::wrapper::ContextMenu, navigator::Navigator,
+            sidebar_controller::SidebarController,
+        },
+    },
+    utils::{networking::ServerResponse, sized_message_sync::SizedMessage},
+};
 
 pub mod actions;
 pub mod context_menu;

@@ -1,5 +1,7 @@
-use elementary::Error;
-use elementary::syntax::lexer::{Token, Token::*, tokenize};
+use elementary::{
+    Error,
+    syntax::lexer::{Token, Token::*, tokenize},
+};
 
 fn toks(s: &str) -> Vec<Token<'_>> {
     tokenize(s).unwrap().into_iter().map(|t| t.tok).collect()

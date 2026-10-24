@@ -1,7 +1,7 @@
+use gpui::{Context, SharedString};
+
 use super::TextInput;
 use crate::ui::{runtime_arguments::RuntimeArgument, utils::timeout::TimeoutCaller};
-
-use gpui::{Context, SharedString};
 
 pub struct TextInputBuilder {
     scope: Option<&'static str>,

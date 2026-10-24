@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::memory::{Boosts, QueryMemory, today};
 use crate::{
     QUERY_MEMORY, sherlock_msg,
     utils::{
@@ -11,8 +12,6 @@ use crate::{
         item_key::ItemKey,
     },
 };
-
-use super::memory::{Boosts, QueryMemory, today};
 
 pub struct QueryMemoryGuard;
 impl QueryMemoryGuard {

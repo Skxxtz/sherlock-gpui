@@ -1,14 +1,21 @@
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+};
+
 use gpui::{ImageSource, Img, Svg, img, svg};
 use serde::{Deserialize, Serialize};
 
-use crate::loader::icon::render::render_svg_to_cache;
-use crate::utils::errors::SherlockMessage;
-use crate::utils::errors::types::SherlockErrorType;
-use crate::utils::files::home_dir;
-use crate::{ICONS, sherlock_msg};
-use std::collections::HashMap;
-use std::path::Path;
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use crate::{
+    ICONS,
+    loader::icon::render::render_svg_to_cache,
+    sherlock_msg,
+    utils::{
+        errors::{SherlockMessage, types::SherlockErrorType},
+        files::home_dir,
+    },
+};
 
 #[derive(Hash, Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum IconType {

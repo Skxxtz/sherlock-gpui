@@ -1,37 +1,28 @@
-use gpui::{AppContext, AsyncApp, Focusable, WindowHandle};
-use serde::de::DeserializeOwned;
-use smallvec::SmallVec;
-use std::collections::HashMap;
-use std::os::unix::net::UnixStream as StdUnixStream;
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     fmt::Debug,
+    os::unix::net::UnixStream as StdUnixStream,
     rc::Rc,
     sync::{Arc, Mutex},
 };
+
+use gpui::{AppContext, AsyncApp, Focusable, WindowHandle};
+use serde::de::DeserializeOwned;
+use smallvec::SmallVec;
 use tokio::{
     io::AsyncWriteExt,
     net::{UnixListener, UnixStream},
     sync::Notify,
 };
 
-use crate::app::LauncherEntity;
-use crate::launcher::Launcher;
-use crate::launcher::variant_type::LauncherType;
-use crate::ui::launcher::navigator::views::NavView;
-use crate::ui::widgets::ChildKind;
-use crate::ui::widgets::dmenu::DmenuData;
-use crate::utils::intent::Intent;
-use crate::utils::intent::cursor::Cursor;
-use crate::utils::intent::parsers::timer::TimerParser;
 use crate::{
-    app::{run_async_updates, spawn_launcher},
-    launcher::LauncherConfig,
+    app::{LauncherEntity, run_async_updates, spawn_launcher},
+    launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     sherlock_msg,
     tokio_utils::AsyncSizedMessage,
     ui::{
-        launcher::{LauncherMode, LauncherView},
-        widgets::RenderableChild,
+        launcher::{LauncherMode, LauncherView, navigator::views::NavView},
+        widgets::{ChildKind, RenderableChild, dmenu::DmenuData},
     },
     utils::{
         config::{ConfigGuard, ConfigWatcher, reload_async},
@@ -39,6 +30,7 @@ use crate::{
             SherlockMessage,
             types::{SherlockErrorType, SocketAction},
         },
+        intent::{Intent, cursor::Cursor, parsers::timer::TimerParser},
         networking::ClientMessage,
     },
 };

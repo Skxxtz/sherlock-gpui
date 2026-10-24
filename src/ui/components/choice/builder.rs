@@ -1,11 +1,12 @@
 use std::time::Duration;
 
+use gpui::Context;
+
 use crate::ui::{
     components::choice::Choice,
     runtime_arguments::choice::ChoiceOption,
     utils::{pango::CachedPango, timeout::TimeoutCaller},
 };
-use gpui::Context;
 
 pub struct ChoiceInputBuilder {
     scope: Option<&'static str>,

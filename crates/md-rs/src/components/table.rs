@@ -1,10 +1,11 @@
-use md_rs_derive::ComponentConstructor;
-
-use super::Component;
 use std::{
     borrow::Cow,
     fmt::{Result, Write},
 };
+
+use md_rs_derive::ComponentConstructor;
+
+use super::Component;
 
 #[derive(Default, ComponentConstructor)]
 pub struct Table {

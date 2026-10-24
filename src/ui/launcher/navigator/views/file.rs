@@ -1,5 +1,6 @@
-use gpui::{App, AppContext, SharedString, px};
 use std::sync::Arc;
+
+use gpui::{App, AppContext, SharedString, px};
 
 use super::{Layout, NavView, ViewHandle, ViewKind};
 use crate::{launcher::LauncherConfig, ui::model::file::view::FileView};

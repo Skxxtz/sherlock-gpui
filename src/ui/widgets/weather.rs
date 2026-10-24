@@ -1,3 +1,5 @@
+use std::{rc::Rc, sync::Arc, time::Duration};
+
 use chrono::{Local, Timelike};
 use gpui::{
     Animation, AnimationExt, AnyElement, App, AppContext, FontWeight, Hsla, Image, ImageSource,
@@ -5,14 +7,11 @@ use gpui::{
     relative,
 };
 use sherlock_derive::Hideable;
-use std::{rc::Rc, sync::Arc, time::Duration};
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{
-        LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType,
-        weather_launcher::WeatherData,
-    },
+    features::weather::WeatherData,
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     sherlock_msg,
     ui::{
         utils::{

@@ -1,16 +1,19 @@
-use crate::app::LauncherWeakEntity;
-use crate::launcher::LauncherId;
-use crate::launcher::process_launcher::ProcessLauncher;
-use crate::launcher::{LauncherConfig, variant_type::LauncherType};
-use crate::ui::launcher::LauncherView;
-use crate::ui::model::process::backends::ProcessBackend;
-use crate::ui::widgets::RenderableChild;
-use crate::ui::widgets::process::ProcessData;
+use std::{rc::Rc, sync::Arc};
+
 use gpui::{App, Task, WeakEntity};
-use std::rc::Rc;
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use utils::{ProcessResult, ResultHeap};
+
+use crate::{
+    app::LauncherWeakEntity,
+    features::process::ProcessLauncher,
+    launcher::{LauncherConfig, LauncherId, variant_type::LauncherType},
+    ui::{
+        launcher::LauncherView,
+        model::process::backends::ProcessBackend,
+        widgets::{RenderableChild, process::ProcessData},
+    },
+};
 
 mod backends;
 mod utils;

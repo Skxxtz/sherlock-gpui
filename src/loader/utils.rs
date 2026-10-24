@@ -1,11 +1,12 @@
-use gpui::SharedString;
-use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
     fmt::Debug,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
+
+use gpui::SharedString;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{
     launcher::{LauncherConfig, utils::binds::BindSerde, variant_type::LauncherVariant},

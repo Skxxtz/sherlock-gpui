@@ -2,11 +2,10 @@ mod handle;
 mod protocol;
 mod watcher;
 
-pub use handle::OutputsHandle;
-pub use watcher::Outputs;
-
 use std::sync::{Arc, RwLock};
 
+pub use handle::OutputsHandle;
+pub use watcher::Outputs;
 use wayland_client::protocol::wl_output::WlOutput;
 use wayland_protocols::xdg::xdg_output::zv1::client::zxdg_output_v1::ZxdgOutputV1;
 

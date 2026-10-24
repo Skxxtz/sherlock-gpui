@@ -1,9 +1,11 @@
-use crate::Error;
-use crate::eval::{
-    eval_with,
-    func::{Func, constant, factorial},
+use crate::{
+    Error,
+    eval::{
+        eval_with,
+        func::{Func, constant, factorial},
+    },
+    syntax::ast::{Expr, Op},
 };
-use crate::syntax::ast::{Expr, Op};
 
 /// One stack-machine step: pops its inputs, pushes one result.
 #[derive(Debug, Clone, Copy)]

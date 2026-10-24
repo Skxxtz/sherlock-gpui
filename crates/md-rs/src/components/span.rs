@@ -1,7 +1,9 @@
 use std::{borrow::Cow, fmt::Write};
 
-use crate::components::{IntoComponent, span_nodes::Paragraph};
-use crate::p;
+use crate::{
+    components::{IntoComponent, span_nodes::Paragraph},
+    p,
+};
 
 pub struct LinkData {
     pub title: Vec<Span>,

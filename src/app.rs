@@ -1,9 +1,3 @@
-use gpui::{
-    App, AppContext, AsyncApp, Bounds, Entity, Global, Size, WeakEntity,
-    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
-    layer_shell::{Layer, LayerShellOptions},
-    point, px,
-};
 use std::{
     collections::HashMap,
     os::unix::net::UnixStream,
@@ -13,12 +7,20 @@ use std::{
         atomic::{AtomicU32, Ordering},
     },
 };
+
+use gpui::{
+    App, AppContext, AsyncApp, Bounds, Entity, Global, Size, WeakEntity,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
+    layer_shell::{Layer, LayerShellOptions},
+    point, px,
+};
 use tokio::net::UnixListener;
 
 use crate::{
     SOCKET_PATH,
     app::theme::ActiveTheme,
-    launcher::{Launcher, LauncherId, plugin_launcher::runtime::LuaRuntimeHandle},
+    features::plugin::runtime::LuaRuntimeHandle,
+    launcher::{Launcher, LauncherId},
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,

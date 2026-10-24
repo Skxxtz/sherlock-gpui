@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, IntoElement, SharedString};
 use serde::{Deserialize, Serialize};
+use sidebar::AppDataSidebar;
 
 use super::{ListItem, Payload};
 use crate::launcher::{LauncherConfig, utils::exec_mode::ExecMode};
-use sidebar::AppDataSidebar;
 
 mod sidebar;
 

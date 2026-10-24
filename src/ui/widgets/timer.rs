@@ -9,10 +9,8 @@ use smallvec::SmallVec;
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{
-        LauncherConfig, timer_launcher::TimerLauncherFunctions, utils::exec_mode::ExecMode,
-        variant_type::InnerFunction,
-    },
+    features::timer::TimerLauncherFunctions,
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::InnerFunction},
     ui::{
         launcher::context_menu::{ContextMenuAction, DynamicFunctionAction},
         runtime_arguments::RuntimeArgument,

@@ -1,7 +1,9 @@
-use crate::Error;
-use crate::syntax::{
-    ast::{Args, Expr, Op, Sink, TreeSink},
-    lexer::{Lexer, Spanned, Token},
+use crate::{
+    Error,
+    syntax::{
+        ast::{Args, Expr, Op, Sink, TreeSink},
+        lexer::{Lexer, Spanned, Token},
+    },
 };
 
 /// Parse a whole expression into `sink`.

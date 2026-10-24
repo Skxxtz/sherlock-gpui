@@ -2,11 +2,10 @@ mod handle;
 mod protocol;
 mod watcher;
 
-pub use handle::ClipboardHandle;
-pub use watcher::Clipboard;
-
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
 
+pub use handle::ClipboardHandle;
+pub use watcher::Clipboard;
 use wayland_protocols_wlr::data_control::v1::client::zwlr_data_control_offer_v1::ZwlrDataControlOfferV1;
 
 use crate::listeners::Listeners;

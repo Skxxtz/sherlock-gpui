@@ -29,8 +29,10 @@
 //!
 //! Counts decay with a half-life, so old habits fade.
 
-use std::collections::BTreeMap;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    collections::BTreeMap,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;

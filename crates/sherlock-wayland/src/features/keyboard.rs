@@ -4,10 +4,9 @@ mod watcher;
 
 use std::sync::{Arc, RwLock};
 
-use xkbcommon::xkb;
-
 pub use handle::LayoutHandle;
 pub use watcher::Keyboard;
+use xkbcommon::xkb;
 
 /// Physical ISO-105 rows: (first evdev keycode, last, x offset of first key).
 /// Units are key widths; row index is y.

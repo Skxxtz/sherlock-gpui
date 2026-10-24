@@ -1,0 +1,73 @@
+use std::sync::Arc;
+
+use serde::Deserialize;
+use serde_json::Value;
+
+use crate::{
+    launcher::{LauncherConfig, LauncherProvider, LauncherType},
+    loader::{LoadContext, utils::RawLauncher},
+    ui::widgets::{RenderableChild, translator::TranslationData},
+    utils::errors::SherlockMessage,
+};
+
+/// No user-side arguments
+#[derive(Clone, Debug, Deserialize)]
+pub struct Translator {}
+
+impl LauncherProvider for Translator {
+    fn try_parse(_raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
+        Ok(LauncherType::Translator(Translator {}))
+    }
+    fn objects(
+        &self,
+        launcher: Arc<LauncherConfig>,
+        _ctx: &LoadContext,
+        _opts: Arc<Value>,
+        _messages: &mut Vec<SherlockMessage>,
+        cx: &mut gpui::App,
+    ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
+        Ok(vec![RenderableChild::new(
+            launcher,
+            TranslationData::new(cx),
+        )])
+    }
+}
+
+// DOCS
+#[cfg(feature = "docs")]
+mod docs {
+    use indoc::indoc;
+
+    use super::Translator;
+    use crate::{
+        display_name,
+        docs::launcher::{Example, LauncherDoc, LauncherDocEntry},
+        variant_name,
+    };
+
+    impl LauncherDoc for Translator {
+        fn doc() -> LauncherDocEntry {
+            LauncherDocEntry {
+                name: display_name!(Translator),
+                variant_name: variant_name!(Translator),
+                description: "Translate your queries into other languages.",
+                examples: &[Example {
+                    description: "Basic translator",
+                    json: indoc! {
+                        r#"{
+                        "name": "Translator",
+                        "alias": "trans",
+                        "type": "translator",
+                        "args": {},
+                        "on_return": "inner.run",
+                        "exit": false,
+                        "priority": 1,
+                        "shortcut": false
+                    }"#
+                    },
+                }],
+                ..LauncherDocEntry::new()
+            }
+        }
+    }
+}

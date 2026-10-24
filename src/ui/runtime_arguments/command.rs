@@ -54,9 +54,10 @@ impl Finalize for CommandVar {
 // DOCS
 #[cfg(feature = "docs")]
 mod docs {
+    use md_rs::{components::span::code, p};
+
     use super::CommandVar;
     use crate::docs::{Documentation, launcher::FieldDoc, runtime_args::RuntimeArgumentDoc};
-    use md_rs::{components::span::code, p};
     impl Documentation for CommandVar {
         type Docs = RuntimeArgumentDoc;
         fn docs() -> Self::Docs {

@@ -1,5 +1,6 @@
-use serde::Deserialize;
 use std::{collections::HashMap, fs::File, io::ErrorKind};
+
+use serde::Deserialize;
 
 use crate::{
     loader::utils::ApplicationAction,

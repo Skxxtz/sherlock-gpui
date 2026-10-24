@@ -1,14 +1,14 @@
+use std::ops::Range;
+
 use gpui::{
     Action, ClipboardItem, Context, EntityInputHandler, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Pixels, Point, SharedString, Window, actions,
 };
 use serde::Deserialize;
-use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::ui::components::search_bar::EmptyBackspace;
-
 use super::TextInput;
+use crate::ui::components::search_bar::EmptyBackspace;
 
 actions!(
     text_input,

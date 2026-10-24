@@ -1,3 +1,5 @@
+use gpui::{App, ClipboardItem, Context, SharedString, Window};
+
 use crate::{
     QUERY_MEMORY,
     launcher::{ExecEffect, LauncherValues, utils::exec_mode::ExecMode},
@@ -17,7 +19,6 @@ use crate::{
         websearch,
     },
 };
-use gpui::{App, ClipboardItem, Context, SharedString, Window};
 
 /// Where the execution came from: decides post-processing and bookkeeping.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -1,6 +1,4 @@
-use elementary::eval::eval_with;
-use elementary::solve::compile::Program;
-use elementary::syntax::parser::parse_tree;
+use elementary::{eval::eval_with, solve::compile::Program, syntax::parser::parse_tree};
 
 fn run(src: &str, x: f64) -> Option<f64> {
     Program::compile(&parse_tree(src).unwrap(), "x")

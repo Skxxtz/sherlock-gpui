@@ -1,9 +1,10 @@
-use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     ffi::{OsStr, OsString},
     path::PathBuf,
 };
+
+use serde::{Deserialize, Serialize};
 
 use crate::ui::model::file::{backends::command::CommandFactory, filter::FileFilter};
 

@@ -1,19 +1,28 @@
+use std::{
+    collections::HashSet,
+    env,
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock},
+    time::SystemTime,
+};
+
 use glob::Pattern;
 use rayon::prelude::*;
-use std::collections::HashSet;
-use std::env;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
-use std::time::SystemTime;
 
-use crate::loader::application_loader::parser::DesktopFileParser;
-use crate::prelude::PathHelpers;
-use crate::ui::widgets::list_item::app::AppItem;
-use crate::utils::cache::BinaryCache;
-use crate::utils::config::{ConfigFileChange, SherlockAlias, SherlockIgnore};
-use crate::utils::errors::types::{FileAction, SherlockErrorType};
-use crate::utils::files::{expand_path, home_dir_owned};
-use crate::utils::{config::ConfigGuard, errors::SherlockMessage};
+use crate::{
+    loader::application_loader::parser::DesktopFileParser,
+    prelude::PathHelpers,
+    ui::widgets::list_item::app::AppItem,
+    utils::{
+        cache::BinaryCache,
+        config::{ConfigFileChange, ConfigGuard, SherlockAlias, SherlockIgnore},
+        errors::{
+            SherlockMessage,
+            types::{FileAction, SherlockErrorType},
+        },
+        files::{expand_path, home_dir_owned},
+    },
+};
 
 mod parser;
 

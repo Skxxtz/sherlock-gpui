@@ -1,10 +1,11 @@
-use gpui::SharedString;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+use gpui::SharedString;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     loader::utils::{deserialize_arc_path, deserialize_path_buf},

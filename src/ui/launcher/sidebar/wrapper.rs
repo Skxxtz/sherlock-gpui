@@ -1,8 +1,9 @@
+use std::sync::Arc;
+
 use gpui::{
     AnyElement, Div, IntoElement, ParentElement, SharedString, StyleRefinement, Styled, div, img,
     px,
 };
-use std::sync::Arc;
 
 use crate::{app::theme::ThemeData, loader::IconType};
 

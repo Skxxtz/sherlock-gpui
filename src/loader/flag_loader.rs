@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use crate::loader::flag_loader::parser::{ArgParser, ParsedArgs};
-
 use super::Loader;
+use crate::loader::flag_loader::parser::{ArgParser, ParsedArgs};
 
 mod actions;
 mod flags;

@@ -1,15 +1,21 @@
 mod counter_file;
 mod fallback_migration;
 
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
 
-use crate::sherlock_msg;
-use crate::utils::config::transformer::fallback_migration::LegacyRawLauncher;
-use crate::utils::config::{SherlockConfig, SherlockFlags};
-use crate::utils::errors::SherlockMessage;
-use crate::utils::errors::types::{FileAction, SherlockErrorType};
-use crate::utils::paths;
+use crate::{
+    sherlock_msg,
+    utils::{
+        config::{
+            SherlockConfig, SherlockFlags, transformer::fallback_migration::LegacyRawLauncher,
+        },
+        errors::{
+            SherlockMessage,
+            types::{FileAction, SherlockErrorType},
+        },
+        paths,
+    },
+};
 
 pub fn repair_config(flags: &mut SherlockFlags) {
     // parse configs

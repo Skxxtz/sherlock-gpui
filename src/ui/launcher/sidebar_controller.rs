@@ -1,10 +1,10 @@
 use gpui::{App, ScrollHandle};
+use scroll::SidebarScroll;
 
 use crate::{
     launcher::LauncherId,
     ui::launcher::navigator::{Navigator, handle::ViewKind},
 };
-use scroll::SidebarScroll;
 
 mod scroll;
 

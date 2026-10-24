@@ -53,10 +53,10 @@ impl UnitParser {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::intent::units::Unit;
+    use smallvec::SmallVec;
 
     use super::*;
-    use smallvec::SmallVec;
+    use crate::utils::intent::units::Unit;
 
     fn tokenize(input: &str) -> SmallVec<[&str; 16]> {
         Intent::tokenize_kill_noise(input).collect()

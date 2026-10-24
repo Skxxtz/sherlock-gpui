@@ -1,20 +1,20 @@
-use crate::{
-    app::theme::ThemeData,
-    launcher::{
-        LauncherConfig, theme_launcher::ThemePickerFunctions, utils::exec_mode::ExecMode,
-        variant_type::InnerFunction,
-    },
-    ui::{
-        utils::render::ListItemBorder,
-        widgets::{RenderableChildImpl, Selection},
-    },
-};
+use std::sync::Arc;
+
 use gpui::{
     AnyElement, App, FontWeight, IntoElement, ParentElement, SharedString, Styled, div,
     prelude::FluentBuilder, px,
 };
 use sherlock_derive::Hideable;
-use std::sync::Arc;
+
+use crate::{
+    app::theme::ThemeData,
+    features::theme::ThemePickerFunctions,
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::InnerFunction},
+    ui::{
+        utils::render::ListItemBorder,
+        widgets::{RenderableChildImpl, Selection},
+    },
+};
 
 #[derive(Copy, Clone, Default, Debug)]
 pub enum ThemeType {

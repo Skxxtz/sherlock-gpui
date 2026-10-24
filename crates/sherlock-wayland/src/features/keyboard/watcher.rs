@@ -1,11 +1,14 @@
 use std::sync::Arc;
 
-use wayland_client::Connection;
-use wayland_client::protocol::wl_keyboard::WlKeyboard;
-use wayland_client::protocol::wl_seat::{Capability, WlSeat};
+use wayland_client::{
+    Connection,
+    protocol::{
+        wl_keyboard::WlKeyboard,
+        wl_seat::{Capability, WlSeat},
+    },
+};
 
-use super::handle::LayoutHandle;
-use super::{Layout, Shared};
+use super::{Layout, Shared, handle::LayoutHandle};
 use crate::features::{Feature, FeatureKind, Hooks, Qh};
 
 #[derive(Default)]

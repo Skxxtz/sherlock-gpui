@@ -1,7 +1,6 @@
 use std::time::Duration;
 
-use gpui::{App, WeakEntity};
-use gpui::{AppContext, AsyncApp, Context, Entity, Task};
+use gpui::{App, AppContext, AsyncApp, Context, Entity, Task, WeakEntity};
 
 #[derive(Clone)]
 pub struct TimeoutCaller<T: 'static> {

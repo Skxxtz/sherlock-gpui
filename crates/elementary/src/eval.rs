@@ -1,8 +1,12 @@
 use smallvec::SmallVec;
 
-use crate::Error;
-use crate::syntax::ast::{Args, Expr, Op, Sink};
-use crate::syntax::parser::parse;
+use crate::{
+    Error,
+    syntax::{
+        ast::{Args, Expr, Op, Sink},
+        parser::parse,
+    },
+};
 
 pub mod func;
 

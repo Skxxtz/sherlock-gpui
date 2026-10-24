@@ -6,6 +6,7 @@ use gpui::{
 use simd_json::prelude::{ArrayTrait, Indexed};
 use smallvec::SmallVec;
 
+use super::execute;
 use crate::{
     app::reset_generation,
     launcher::{
@@ -33,8 +34,6 @@ use crate::{
     },
     utils::errors::types::SherlockErrorType,
 };
-
-use super::execute;
 
 actions!(
     example_input,

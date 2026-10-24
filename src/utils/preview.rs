@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
+use gpui::{App, AppContext, RenderImage, SharedString};
+use image::{Frame, RgbaImage};
+
 use crate::utils::{
     filekinds::{FileCategory, FileKind},
     preview_lru::PreviewCache,
 };
-use gpui::{App, AppContext, RenderImage, SharedString};
-use image::{Frame, RgbaImage};
-use std::sync::Arc;
 
 mod pdf;
 mod raster;

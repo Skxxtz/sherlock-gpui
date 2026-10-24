@@ -1,7 +1,9 @@
 use std::fmt::{self, Write as _};
 
-use super::memory::{Node, QueryMemory, ROOT, normalize};
-use super::{ALPHA, MIN_P};
+use super::{
+    ALPHA, MIN_P,
+    memory::{Node, QueryMemory, ROOT, normalize},
+};
 
 const BAR_WIDTH: usize = 20;
 /// Two totals closer than this count as "the same evidence".

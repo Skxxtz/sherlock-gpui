@@ -1,6 +1,6 @@
-use std::fmt::Write;
 use std::{
     cell::Cell,
+    fmt::Write,
     rc::Rc,
     sync::{Arc, atomic::Ordering},
     time::{Duration, Instant},

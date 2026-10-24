@@ -2,9 +2,8 @@ use std::fmt::{Result, Write};
 
 use md_rs_derive::{ComponentConstructor, ParentComponent};
 
-use crate::components::{ParentComponentExt, list::List};
-
 use super::Component;
+use crate::components::{ParentComponentExt, list::List};
 
 #[derive(Default, ComponentConstructor, ParentComponent)]
 pub struct Container {

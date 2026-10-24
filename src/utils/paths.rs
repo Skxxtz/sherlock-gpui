@@ -1,13 +1,14 @@
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use crate::{
     sherlock_msg,
     utils::{
         errors::types::{DirAction, SherlockErrorType},
         files,
     },
-};
-use std::{
-    fs,
-    path::{Path, PathBuf},
 };
 
 fn get_xdg_dirs() -> xdg::BaseDirectories {

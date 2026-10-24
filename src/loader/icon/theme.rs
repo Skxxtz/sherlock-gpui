@@ -1,9 +1,6 @@
-use std::fs;
-use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::{fs, path::PathBuf, sync::OnceLock};
 
-use crate::loader::icon::ICON_SIZE;
-use crate::utils::paths::get_config_dir_raw;
+use crate::{loader::icon::ICON_SIZE, utils::paths::get_config_dir_raw};
 
 static ICON_THEME: OnceLock<Option<String>> = OnceLock::new();
 

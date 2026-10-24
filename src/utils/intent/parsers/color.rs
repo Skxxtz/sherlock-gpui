@@ -63,9 +63,13 @@ impl ColorParser {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::utils::intent::{Cursor, Intent, Intent::ColorConvert, Intent::ColorDisplay};
     use smallvec::smallvec;
+
+    use super::*;
+    use crate::utils::intent::{
+        Cursor, Intent,
+        Intent::{ColorConvert, ColorDisplay},
+    };
 
     fn create_test_cursor(input: &str) -> Vec<&str> {
         Intent::tokenize_kill_noise(input).collect()

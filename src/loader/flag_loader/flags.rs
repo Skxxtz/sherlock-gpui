@@ -2,12 +2,11 @@ use std::{iter::Peekable, path::PathBuf, slice::Iter};
 
 use gpui::SharedString;
 
+use super::utils::FlagSection;
 use crate::{
     loader::flag_loader::{DebugAction, actions::StartupAction, utils::ParseError},
     utils::{config::SherlockFlags, networking::ClientMessage},
 };
-
-use super::utils::FlagSection;
 
 type FlagParserFn<'a> = fn(
     &[String],

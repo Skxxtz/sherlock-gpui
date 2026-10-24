@@ -8,9 +8,9 @@ use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
+    features::audio::{AudioLauncherFunctions, MprisState, MusicPlayerFunctions},
     launcher::{
         LauncherConfig,
-        audio_launcher::{AudioLauncherFunctions, MusicPlayerFunctions, utils::MprisState},
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
     },

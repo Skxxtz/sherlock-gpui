@@ -1,5 +1,6 @@
-use memmap2::MmapMut;
 use std::ops::{Deref, DerefMut};
+
+use memmap2::MmapMut;
 
 /// Pixel buffer allocated straight from the OS; memory is returned on drop.
 pub struct ImageBuf {

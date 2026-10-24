@@ -1,32 +1,18 @@
-pub mod app_launcher;
-pub mod audio_launcher;
-pub mod bookmark_launcher;
-pub mod calc_launcher;
-pub mod category_launcher;
-pub mod clipboard_launcher;
-pub mod debug_launcher;
-pub mod dmenu_launcher;
-pub mod emoji_launcher;
-pub mod event_launcher;
-pub mod file_launcher;
-pub mod message_launcher;
-pub mod plugin_launcher;
-pub mod process_launcher;
-pub mod script_launcher;
-pub mod system_cmd_launcher;
-pub mod theme_launcher;
-pub mod timer_launcher;
-pub mod translator_launcher;
 pub mod utils;
 pub mod variant_type;
-pub mod weather_launcher;
-pub mod web_launcher;
+
+use std::{
+    fmt::Display,
+    hash::{DefaultHasher, Hash, Hasher},
+    sync::Arc,
+};
+
+use gpui::{App, SharedString};
+pub use variant_type::{LauncherType, LauncherVariant};
 
 use crate::{
-    launcher::{
-        utils::binds::Bind,
-        variant_type::{InnerFunction, LauncherType, LauncherVariant},
-    },
+    features::dmenu::DmenuLauncher,
+    launcher::{utils::binds::Bind, variant_type::InnerFunction},
     loader::{
         IconType, LoadContext, resolve_icon_path,
         utils::{ApplicationAction, ApplicationActionSerde, Priority, RawLauncher},
@@ -37,12 +23,6 @@ use crate::{
         config::HomeType,
         errors::{SherlockMessage, types::SherlockErrorType},
     },
-};
-use gpui::{App, SharedString};
-use std::{
-    fmt::Display,
-    hash::{DefaultHasher, Hash, Hasher},
-    sync::Arc,
 };
 
 pub trait LauncherProvider {
@@ -183,7 +163,8 @@ impl LauncherConfig {
         Self {
             priority: 1,
             home: HomeType::Home,
-            launcher_type: LauncherType::Dmenu(dmenu_launcher::DmenuLauncher::default()),
+            // TODO: into dmenu module?
+            launcher_type: LauncherType::Dmenu(DmenuLauncher::default()),
             ..Default::default()
         }
     }

@@ -1,6 +1,7 @@
+use std::fmt::{Debug, Display};
+
 use gpui::SharedString;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Debug, Display};
 
 use crate::utils::errors::types::SherlockErrorType;
 

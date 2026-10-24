@@ -1,5 +1,6 @@
-use gpui::{Div, IntoElement, Keystroke, ParentElement, SharedString, Styled, div, px};
 use std::fmt;
+
+use gpui::{Div, IntoElement, Keystroke, ParentElement, SharedString, Styled, div, px};
 
 use crate::app::theme::ThemeData;
 

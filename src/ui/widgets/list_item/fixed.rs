@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use crate::launcher::{LauncherConfig, utils::exec_mode::ExecMode};
-
 use super::{ItemMeta, Payload};
+use crate::launcher::{LauncherConfig, utils::exec_mode::ExecMode};
 
 /// Payload for a launcher's own entry. Builds its `ExecMode` on demand.
 #[derive(Clone, Copy)]

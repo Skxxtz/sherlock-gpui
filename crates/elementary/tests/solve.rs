@@ -1,5 +1,4 @@
-use elementary::Root::*;
-use elementary::{Error, solve_str};
+use elementary::{Error, Root::*, solve_str};
 
 fn real(s: &str) -> Vec<f64> {
     solve_str(s)

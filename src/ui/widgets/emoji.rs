@@ -8,14 +8,8 @@ use gpui::{AnyElement, App, IntoElement, ParentElement, Styled, div, px};
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{
-        LauncherConfig,
-        emoji_launcher::{
-            EmojiData, SkinTone,
-            data::{EMOJIS, EmojiEntry},
-        },
-        utils::exec_mode::ExecMode,
-    },
+    features::emoji::{EMOJIS, EmojiData, EmojiEntry, SkinTone},
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     ui::{
         launcher::context_menu::ContextMenuAction,
         widgets::{RenderableChildImpl, Selection},

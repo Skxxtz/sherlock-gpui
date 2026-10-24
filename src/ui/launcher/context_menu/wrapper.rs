@@ -7,11 +7,8 @@ use gpui::{
 
 use crate::{
     app::{bindings::ReservedKeys, theme::ThemeData},
-    launcher::{
-        LauncherId, LauncherValues,
-        emoji_launcher::{ALL_SKIN_TONES, SkinTone},
-        variant_type::QuickActionCapabilities,
-    },
+    features::emoji::{ALL_SKIN_TONES, SkinTone},
+    launcher::{LauncherId, LauncherValues, variant_type::QuickActionCapabilities},
     ui::{
         launcher::{
             context_menu::{

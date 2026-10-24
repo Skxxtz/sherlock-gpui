@@ -3,15 +3,13 @@ mod listeners;
 mod state;
 
 pub use features::FeatureKind;
-pub use listeners::Subscription;
-
 #[cfg(feature = "clipboard")]
 pub use features::clipboard::{Clipboard, ClipboardChange, ClipboardHandle};
 #[cfg(feature = "keyboard")]
 pub use features::keyboard::{Keyboard, Layout, LayoutHandle};
 #[cfg(feature = "outputs")]
 pub use features::outputs::{Output, Outputs, OutputsHandle};
-
+pub use listeners::Subscription;
 use state::WaylandState;
 use wayland_client::{Connection, EventQueue};
 

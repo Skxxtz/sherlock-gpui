@@ -1,5 +1,10 @@
 use std::sync::Arc;
 
+use gpui::{
+    Div, IntoElement, ParentElement, Pixels, RenderOnce, SharedString, Styled, StyledImage, div,
+    img, prelude::FluentBuilder, px,
+};
+
 use super::FileMeta;
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
@@ -9,10 +14,6 @@ use crate::{
         preview::{Preview, PreviewKind, PreviewState, THUMB_PX},
         preview_lru::PreviewCache,
     },
-};
-use gpui::{
-    Div, IntoElement, ParentElement, Pixels, RenderOnce, SharedString, Styled, StyledImage, div,
-    img, prelude::FluentBuilder, px,
 };
 
 #[derive(IntoElement)]

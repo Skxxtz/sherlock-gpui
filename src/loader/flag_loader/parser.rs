@@ -9,7 +9,7 @@ use super::{
 #[cfg(feature = "docs")]
 use crate::docs::SherlockDocumentation;
 use crate::{
-    launcher::debug_launcher::DebugFunctions,
+    features::debug::DebugFunctions,
     loader::flag_loader::actions::plugin_init,
     ui::query_memory::PersistentQueryMemory,
     utils::{

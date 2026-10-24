@@ -1,5 +1,7 @@
-use elementary::Error;
-use elementary::syntax::{ast::*, parser::*};
+use elementary::{
+    Error,
+    syntax::{ast::*, parser::*},
+};
 
 /// Compact S-expression form for readable assertions.
 fn sx(e: &Expr) -> String {

@@ -1,10 +1,11 @@
+use std::{sync::Arc, time::Duration};
+
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, Entity,
     FontWeight, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render,
     SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img, list,
     prelude::FluentBuilder, px, relative,
 };
-use std::{sync::Arc, time::Duration};
 
 use crate::{
     CONTEXT_MENU_BIND,

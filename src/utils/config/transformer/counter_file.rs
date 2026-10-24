@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use crate::{
     loader::application_loader::ApplicationLoader,
@@ -127,8 +126,9 @@ fn import_counts(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::Serialize;
+
+    use super::*;
 
     fn app(id: &str) -> ItemKey {
         ItemKey::app(Path::new(&format!("/usr/share/applications/{id}"))).unwrap()

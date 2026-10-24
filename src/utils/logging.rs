@@ -1,12 +1,22 @@
-use std::io::Write;
-use std::sync::LazyLock;
-use std::{fs, fs::OpenOptions, sync::Mutex};
+use std::{
+    fs,
+    fs::OpenOptions,
+    io::Write,
+    sync::{LazyLock, Mutex},
+};
 
 use chrono::Local;
 
-use crate::sherlock_msg;
-use crate::utils::errors::types::{DirAction, FileAction, SherlockErrorType};
-use crate::utils::{errors::SherlockMessage, paths};
+use crate::{
+    sherlock_msg,
+    utils::{
+        errors::{
+            SherlockMessage,
+            types::{DirAction, FileAction, SherlockErrorType},
+        },
+        paths,
+    },
+};
 
 static LOG_FILE: LazyLock<Result<Mutex<std::fs::File>, SherlockMessage>> = LazyLock::new(|| {
     let cache_dir = paths::get_cache_dir()?;

@@ -3,10 +3,8 @@ use std::{cell::Cell, collections::HashMap, rc::Rc, sync::Arc};
 use gpui::{App, Context, WeakEntity};
 
 use crate::{
-    launcher::{
-        Launcher, LauncherConfig, LauncherId, message_launcher::MessageLauncher,
-        variant_type::LauncherType,
-    },
+    features::message::MessageLauncher,
+    launcher::{Launcher, LauncherConfig, LauncherId, variant_type::LauncherType},
     ui::{
         model::Model,
         widgets::{ChildKind, RenderableChild, message::MessageChild},

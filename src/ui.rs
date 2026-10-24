@@ -9,7 +9,6 @@ pub mod widgets;
 
 use gpui::KeyBinding;
 use serde::{Deserialize, Serialize};
-
 pub use utils::search::query_memory;
 
 use crate::ui::{

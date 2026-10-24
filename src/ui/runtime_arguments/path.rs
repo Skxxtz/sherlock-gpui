@@ -25,9 +25,10 @@ impl Finalize for PathVar {
 // DOCS
 #[cfg(feature = "docs")]
 mod docs {
+    use md_rs::{components::span::code, p};
+
     use super::PathVar;
     use crate::docs::{Documentation, launcher::FieldDoc, runtime_args::RuntimeArgumentDoc};
-    use md_rs::{components::span::code, p};
     impl Documentation for PathVar {
         type Docs = RuntimeArgumentDoc;
         fn docs() -> Self::Docs {

@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, ffi::OsStr, path::PathBuf};
+
+use serde::{Deserialize, Serialize};
 
 use crate::{
     ui::model::file::{

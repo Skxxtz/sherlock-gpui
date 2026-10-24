@@ -1,8 +1,9 @@
-use crate::ui::utils::pango::parse::strip_pango;
+use std::sync::Arc;
+
+use gpui::{FontStyle, FontWeight, TextRun};
 
 use super::*;
-use gpui::{FontStyle, FontWeight, TextRun};
-use std::sync::Arc;
+use crate::ui::utils::pango::parse::strip_pango;
 
 fn dummy_theme() -> Arc<crate::app::theme::ThemeData> {
     Arc::new(crate::app::theme::ThemeData::dark())

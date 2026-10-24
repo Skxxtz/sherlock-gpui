@@ -1,7 +1,7 @@
 use std::{env, fs, path::Path};
 
 use crate::{
-    launcher::plugin_launcher::api::LuaApiDocumentation,
+    features::plugin::api::LuaApiDocumentation,
     loader::flag_loader::{DebugAction, flags::FLAGS, utils::FlagSection},
     sherlock_msg,
     tokio_utils::SizedMessageObj,
@@ -107,7 +107,7 @@ pub(super) fn plugin_init() {
     let ui_path = meta_dir.join("ui.lua");
     let ui_source = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/src/launcher/plugin_launcher/api/assets/ui.lua"
+        "/src/features/plugin/api/assets/ui.lua"
     ));
     if let Err(e) = fs::write(&ui_path, ui_source) {
         eprintln!("error: failed to write {}: {e}", ui_path.display());

@@ -1,5 +1,6 @@
-use gpui::{App, AppContext, SharedString, Task, WeakEntity};
 use std::{collections::HashMap, rc::Rc, sync::Arc};
+
+use gpui::{App, AppContext, SharedString, Task, WeakEntity};
 
 use crate::{
     app::{LauncherEntity, LauncherWeakEntity},

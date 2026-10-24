@@ -1,35 +1,34 @@
-use gpui::{App, SharedString};
-use std::mem;
-use std::sync::Arc;
+use std::{mem, sync::Arc};
 
+use gpui::{App, SharedString};
 use serde::{Deserialize, Serialize};
 use strum::{Display, IntoStaticStr};
 
 use crate::{
-    launcher::{
-        Bind, ExecEffect, LauncherProvider,
-        app_launcher::AppLauncher,
-        audio_launcher::{MusicPlayerFunctions, MusicPlayerLauncher},
-        bookmark_launcher::BookmarkLauncher,
-        calc_launcher::CalculatorLauncher,
-        category_launcher::CategoryLauncher,
-        clipboard_launcher::ClipboardLauncher,
-        debug_launcher::{DebugFunctions, DebugLauncher},
-        dmenu_launcher::DmenuLauncher,
-        emoji_launcher::EmojiPicker,
-        event_launcher::{EventLauncher, EventLauncherFunctions},
-        file_launcher::FileLauncher,
-        message_launcher::MessageLauncher,
-        plugin_launcher::{PluginFunctions, PluginLauncher},
-        process_launcher::{ProcessLauncher, ProcessLauncherFunctions},
-        script_launcher::{ScriptFunctions, ScriptLauncher},
-        system_cmd_launcher::CommandLauncher,
-        theme_launcher::{ThemePicker, ThemePickerFunctions},
-        timer_launcher::{TimerLauncher, TimerLauncherFunctions},
-        translator_launcher::Translator,
-        weather_launcher::WeatherLauncher,
-        web_launcher::WebLauncher,
+    features::{
+        app::AppLauncher,
+        audio::{MusicPlayerFunctions, MusicPlayerLauncher},
+        bookmark::BookmarkLauncher,
+        calc::CalculatorLauncher,
+        category::CategoryLauncher,
+        clipboard::ClipboardLauncher,
+        command::CommandLauncher,
+        debug::{DebugFunctions, DebugLauncher},
+        dmenu::DmenuLauncher,
+        emoji::EmojiPicker,
+        event::{EventLauncher, EventLauncherFunctions},
+        file::FileLauncher,
+        message::MessageLauncher,
+        plugin::{PluginFunctions, PluginLauncher},
+        process::{ProcessLauncher, ProcessLauncherFunctions},
+        script::{ScriptFunctions, ScriptLauncher},
+        theme::{ThemePicker, ThemePickerFunctions},
+        timer::{TimerLauncher, TimerLauncherFunctions},
+        translator::Translator,
+        weather::WeatherLauncher,
+        web::WebLauncher,
     },
+    launcher::{Bind, ExecEffect, LauncherProvider},
     loader::utils::RawLauncher,
     ui::widgets::RenderableChild,
     utils::errors::SherlockMessage,

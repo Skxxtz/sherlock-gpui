@@ -1,3 +1,5 @@
+use std::{fs::read_to_string, path::PathBuf};
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,7 +14,6 @@ use crate::{
         paths,
     },
 };
-use std::{fs::read_to_string, path::PathBuf};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SherlockFlags {

@@ -1,4 +1,4 @@
-use crate::launcher::calc_launcher::{CURRENCIES, Course};
+use crate::features::calc::{CURRENCIES, Course};
 
 macro_rules! define_units {
     ($(

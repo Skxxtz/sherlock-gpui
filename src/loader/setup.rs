@@ -3,6 +3,7 @@ use std::{
     sync::RwLock,
 };
 
+use super::Loader;
 use crate::{
     CONFIG, ICONS,
     loader::{CustomIconTheme, IconThemeGuard},
@@ -16,8 +17,6 @@ use crate::{
         paths::get_config_dir,
     },
 };
-
-use super::Loader;
 
 pub struct SetupResult {
     pub config_dir: Box<Path>,

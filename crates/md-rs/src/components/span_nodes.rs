@@ -1,5 +1,6 @@
-use md_rs_derive::{ComponentConstructor, SpanNode, TextCompomponent};
 use std::borrow::Cow;
+
+use md_rs_derive::{ComponentConstructor, SpanNode, TextCompomponent};
 
 use super::span::Span;
 

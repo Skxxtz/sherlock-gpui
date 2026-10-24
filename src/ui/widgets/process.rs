@@ -1,21 +1,21 @@
+use std::sync::Arc;
+
+use gpui::{
+    AnyElement, App, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div,
+    img, prelude::FluentBuilder, px,
+};
+use sherlock_derive::Hideable;
+
 use crate::{
     app::theme::ThemeData,
-    launcher::{
-        LauncherConfig, process_launcher::ProcessLauncherFunctions, utils::exec_mode::ExecMode,
-        variant_type::InnerFunction,
-    },
+    features::process::ProcessLauncherFunctions,
+    launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::InnerFunction},
     loader::{IconType, resolve_icon_path},
     ui::widgets::{
         RenderableChildImpl, Selection,
         process::{metadata::ProcessMeta, sidebar::ProcessSidebar},
     },
 };
-use gpui::{
-    AnyElement, App, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div,
-    img, prelude::FluentBuilder, px,
-};
-use sherlock_derive::Hideable;
-use std::sync::Arc;
 
 mod metadata;
 mod sidebar;

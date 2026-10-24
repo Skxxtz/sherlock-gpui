@@ -1,5 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
+use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc;
+
 use crate::ui::model::{
     file::{
         FileSearchUtility, MAX_SEARCH_DEPTH,
@@ -9,8 +12,6 @@ use crate::ui::model::{
     },
     utils::CiUtils,
 };
-use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WalkdirBackend;

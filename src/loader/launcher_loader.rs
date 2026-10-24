@@ -1,4 +1,3 @@
-use gpui::App;
 use std::{
     collections::HashMap,
     io::ErrorKind,
@@ -7,12 +6,13 @@ use std::{
     sync::Arc,
 };
 
+use gpui::App;
+
+use super::{Loader, utils::CounterReader};
 use crate::{
     app::LauncherEntity,
-    launcher::{
-        Launcher, LauncherConfig, LauncherId,
-        plugin_launcher::subscribers::{TileSubscribers, TileSubscribersGlobal},
-    },
+    features::plugin::subscribers::{TileSubscribers, TileSubscribersGlobal},
+    launcher::{Launcher, LauncherConfig, LauncherId},
     loader::utils::RawLauncher,
     sherlock_msg,
     ui::{launcher::LauncherMode, traits::RenderableChildDelegate, widgets::RenderableChild},
@@ -26,9 +26,6 @@ use crate::{
         item_key::ItemKey,
     },
 };
-
-use super::Loader;
-use super::utils::CounterReader;
 
 pub struct LoadContext {
     pub counts: HashMap<String, u16>,

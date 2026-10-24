@@ -1,20 +1,20 @@
-use crate::app::LauncherWeakEntity;
-use crate::launcher::LauncherId;
-use crate::launcher::file_launcher::FileLauncher;
-use crate::launcher::{LauncherConfig, variant_type::LauncherType};
-use crate::ui::launcher::LauncherView;
-use crate::ui::model::file::filter::FileFilter;
-use crate::ui::model::utils::CiUtils;
-use crate::ui::widgets::RenderableChild;
-use crate::ui::widgets::file::FileData;
-use crate::utils::files::expand_path;
+use std::{env::home_dir, path::PathBuf, rc::Rc, sync::Arc};
+
 use gpui::{App, SharedString, Task, WeakEntity};
-use std::env::home_dir;
-use std::path::PathBuf;
-use std::rc::Rc;
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use utils::{FileResult, ResultHeap};
+
+use crate::{
+    app::LauncherWeakEntity,
+    features::file::FileLauncher,
+    launcher::{LauncherConfig, LauncherId, variant_type::LauncherType},
+    ui::{
+        launcher::LauncherView,
+        model::{file::filter::FileFilter, utils::CiUtils},
+        widgets::{RenderableChild, file::FileData},
+    },
+    utils::files::expand_path,
+};
 
 mod backends;
 pub mod filter;

@@ -1,9 +1,10 @@
+use std::{sync::Arc, time::Duration};
+
 use gpui::{
     Animation, AnimationExt, App, AppContext, AsyncApp, Entity, FontWeight, IntoElement,
     ParentElement, Styled, div, prelude::FluentBuilder, px,
 };
 use sherlock_derive::Hideable;
-use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
 mod mymemory;

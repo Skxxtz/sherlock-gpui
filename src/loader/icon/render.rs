@@ -1,9 +1,12 @@
-use crate::loader::icon::cache::IconType;
-use crate::utils::paths::get_cache_dir;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+
 use resvg::usvg;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+
+use crate::{loader::icon::cache::IconType, utils::paths::get_cache_dir};
 
 pub fn handle_symblic(name: &str, svg_data: &[u8]) -> Option<IconType> {
     let is_symbolic =

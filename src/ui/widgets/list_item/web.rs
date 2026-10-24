@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use gpui::SharedString;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},

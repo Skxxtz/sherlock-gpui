@@ -1,6 +1,7 @@
+use std::mem::discriminant;
+
 use gpui::SharedString;
 use serde::{Deserialize, Serialize};
-use std::mem::discriminant;
 
 use crate::utils::config::SherlockFlags;
 

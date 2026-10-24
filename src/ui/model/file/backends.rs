@@ -1,3 +1,7 @@
+use std::{path::PathBuf, sync::Arc};
+
+use tokio::sync::mpsc::{Receiver, Sender};
+
 use crate::ui::model::file::{
     backends::{
         command::CommandBackend, fd::FdFactory, ripgrep::RgFactory, walkdir::WalkdirBackend,
@@ -5,8 +9,6 @@ use crate::ui::model::file::{
     filter::FileFilter,
     utils::{FileResult, ResultHeap},
 };
-use std::{path::PathBuf, sync::Arc};
-use tokio::sync::mpsc::{Receiver, Sender};
 
 pub mod command;
 pub mod fd;
@@ -111,8 +113,9 @@ pub trait FileSearchProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json;
+
+    use super::*;
 
     #[test]
     fn test_serialization() {

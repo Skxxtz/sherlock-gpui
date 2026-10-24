@@ -1,8 +1,10 @@
 use std::fmt;
 
-use crate::Error;
-use crate::eval::func::{Func, constant};
-use crate::syntax::ast::{Expr, Op};
+use crate::{
+    Error,
+    eval::func::{Func, constant},
+    syntax::ast::{Expr, Op},
+};
 
 pub mod compile;
 pub mod poly;

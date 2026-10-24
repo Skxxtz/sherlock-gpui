@@ -1,5 +1,6 @@
-use gpui::{AnyElement, App, AppContext, SharedString};
 use std::{fmt, sync::Arc};
+
+use gpui::{AnyElement, App, AppContext, SharedString};
 
 pub mod audio;
 pub mod calculator;
@@ -18,11 +19,15 @@ pub mod timer;
 pub mod translator;
 pub mod weather;
 
+use calculator::CalcData;
+use file::FileData;
+use theme::ThemeWidget;
+
 use crate::{
     app::theme::ThemeData,
+    features::emoji::EmojiData,
     launcher::{
         ExecEffect, LauncherConfig, LauncherValues,
-        emoji_launcher::EmojiData,
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::{InnerFunction, LauncherType, LauncherVariant},
     },
@@ -56,10 +61,6 @@ use crate::{
     },
     utils::{config::HomeType, errors::SherlockMessage, item_key::ItemKey},
 };
-
-use calculator::CalcData;
-use file::FileData;
-use theme::ThemeWidget;
 
 /// Single source of truth for child variants. Generates:
 /// - `enum ChildKind` (the per-variant payload; the launcher lives in `RenderableChild`)

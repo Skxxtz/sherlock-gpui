@@ -1,5 +1,6 @@
-use md_rs::components::{Component, IntoComponent};
 use std::path::Path;
+
+use md_rs::components::{Component, IntoComponent};
 
 use crate::{
     docs::{

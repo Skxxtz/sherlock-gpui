@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
     app::theme::ThemeData,
-    launcher::emoji_launcher::{ALL_SKIN_TONES, SkinTone},
+    features::emoji::{ALL_SKIN_TONES, SkinTone},
     loader::{
         IconType, resolve_icon_path,
         utils::{ApplicationAction, ApplicationActionSerde},

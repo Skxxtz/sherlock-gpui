@@ -1,6 +1,8 @@
-use crate::ui::model::process::{backends::internal::InternalBackend, utils::ResultHeap};
 use std::sync::Arc;
+
 use tokio::sync::mpsc::Receiver;
+
+use crate::ui::model::process::{backends::internal::InternalBackend, utils::ResultHeap};
 
 pub mod internal;
 
