@@ -1,9 +1,8 @@
 pub mod backdrop;
-pub mod choice;
+pub mod components;
 pub mod launcher;
 pub mod model;
 pub mod runtime_arguments;
-pub mod search_bar;
 pub mod traits;
 mod utils;
 pub mod widgets;
@@ -14,10 +13,10 @@ use serde::{Deserialize, Serialize};
 pub use utils::search::query_memory;
 
 use crate::ui::{
+    components::search_bar::actions::Complete,
     launcher::{
         Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft, SelectionUp,
     },
-    search_bar::actions::Complete,
 };
 
 #[derive(Deserialize, Serialize, Hash, Debug, Clone, Copy, Eq, PartialEq)]

@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::ui::search_bar::EmptyBackspace;
+use crate::ui::components::search_bar::EmptyBackspace;
 
 use super::TextInput;
 

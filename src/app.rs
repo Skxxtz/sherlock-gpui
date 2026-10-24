@@ -22,13 +22,13 @@ use crate::{
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,
+        components::search_bar::{EmptyBackspace, TextInput},
         launcher::{
             LauncherMode, LauncherView,
             context_menu::wrapper::ContextMenu,
             navigator::{Navigator, handle::ViewKind},
             sidebar_controller::SidebarController,
         },
-        search_bar::{EmptyBackspace, TextInput},
     },
     utils::{
         config::{ConfigGuard, ConfigWatcher},

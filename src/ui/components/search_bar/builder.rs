@@ -1,6 +1,6 @@
-use crate::ui::{
-    runtime_arguments::RuntimeArgument, search_bar::TextInput, utils::timeout::TimeoutCaller,
-};
+use super::TextInput;
+use crate::ui::{runtime_arguments::RuntimeArgument, utils::timeout::TimeoutCaller};
+
 use gpui::{Context, SharedString};
 
 pub struct TextInputBuilder {

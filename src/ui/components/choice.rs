@@ -6,7 +6,7 @@ use gpui::{
 use crate::{
     app::theme::ActiveTheme,
     ui::{
-        choice::builder::ChoiceInputBuilder, runtime_arguments::choice::ChoiceOption,
+        components::choice::builder::ChoiceInputBuilder, runtime_arguments::choice::ChoiceOption,
         utils::pango::CachedPango,
     },
 };

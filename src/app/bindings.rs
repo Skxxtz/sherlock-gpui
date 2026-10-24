@@ -7,13 +7,13 @@ use crate::{
     SHORTCUT_MOD,
     ui::{
         UIFunction,
+        components::search_bar::actions::{
+            Backspace, Copy, Cut, Delete, DeleteAll, End, Home, Paste, SelectAll, ShortcutAction,
+        },
         launcher::{
             Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft,
             SelectionRight, SelectionUp, actions::ExecuteInplace,
             context_menu::action_keys::ContextActionBinds,
-        },
-        search_bar::actions::{
-            Backspace, Copy, Cut, Delete, DeleteAll, End, Home, Paste, SelectAll, ShortcutAction,
         },
     },
     utils::config::ConfigGuard,

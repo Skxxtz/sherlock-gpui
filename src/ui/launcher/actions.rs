@@ -15,7 +15,10 @@ use crate::{
     },
     sherlock_msg,
     ui::{
-        choice::Choice,
+        components::{
+            choice::Choice,
+            search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
+        },
         launcher::{
             LauncherView, VariableInput,
             context_menu::{
@@ -26,7 +29,6 @@ use crate::{
             navigator::views::MoveDirection,
         },
         runtime_arguments::RuntimeArgument,
-        search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
         traits::RenderableChildDelegate,
     },
     utils::errors::types::SherlockErrorType,

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::ui::{
-    choice::Choice,
+    components::choice::Choice,
     runtime_arguments::choice::ChoiceOption,
     utils::{pango::CachedPango, timeout::TimeoutCaller},
 };

@@ -1,9 +1,11 @@
 use gpui::{Context, Window};
 
 use crate::ui::{
-    choice::Choice,
+    components::{
+        choice::Choice,
+        search_bar::{EmptyBackspace, actions::Backspace},
+    },
     launcher::{SelectionDown, SelectionUp},
-    search_bar::{EmptyBackspace, actions::Backspace},
 };
 
 impl Choice {
