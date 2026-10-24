@@ -238,6 +238,7 @@ impl LauncherView {
                     .size_full()
                     .child({
                         let view_handle = cx.entity().clone();
+                        let data = data.read(cx).clone();
                         list(state, {
                             let theme = theme.clone();
                             move |idx, _win, cx| {
@@ -245,8 +246,7 @@ impl LauncherView {
                                     Some(&i) => i,
                                     None => return div().into_any_element(),
                                 };
-                                let data_snapshot = data.read(cx).clone();
-                                let child = match data_snapshot
+                                let child = match data
                                     .get(&data_idx.0)
                                     .and_then(|l| l.children.get(data_idx.1))
                                 {
@@ -260,9 +260,7 @@ impl LauncherView {
                                         let count = indices[..idx.min(indices.len())]
                                             .iter()
                                             .filter(|&&i| {
-                                                data_snapshot
-                                                    .get(&i.0)
-                                                    .is_some_and(|l| l.config.shortcut)
+                                                data.get(&i.0).is_some_and(|l| l.config.shortcut)
                                             })
                                             .take(max_shortcuts)
                                             .count();
@@ -353,6 +351,7 @@ impl LauncherView {
                             let theme = theme.clone();
                             let handle = cx.entity().clone();
                             move |range, _win, cx| {
+                                let data = data.read(cx).clone();
                                 range
                                     .map(|row_idx| {
                                         div()
@@ -363,29 +362,27 @@ impl LauncherView {
                                             .children((0..grid.columns).map(|col_idx| {
                                                 let item_idx = row_idx * grid.columns + col_idx;
 
-                                                if let Some(&data_idx) = indices.get(item_idx) {
-                                                    let data_snapshot = data.read(cx).clone();
-                                                    if let Some(child) = data_snapshot
+                                                if let Some(&data_idx) = indices.get(item_idx)
+                                                    && let Some(child) = data
                                                         .get(&data_idx.0)
                                                         .and_then(|l| l.children.get(data_idx.1))
-                                                    {
-                                                        return div()
-                                                            .w_0()
-                                                            .flex_1()
-                                                            .child(Self::render_list_item(
-                                                                child,
-                                                                None,
-                                                                Selection::new(
-                                                                    data_idx,
-                                                                    item_idx == selected_idx,
-                                                                ),
-                                                                &query,
-                                                                theme.clone(),
-                                                                handle.clone(),
-                                                                cx,
-                                                            ))
-                                                            .into_any_element();
-                                                    }
+                                                {
+                                                    return div()
+                                                        .w_0()
+                                                        .flex_1()
+                                                        .child(Self::render_list_item(
+                                                            child,
+                                                            None,
+                                                            Selection::new(
+                                                                data_idx,
+                                                                item_idx == selected_idx,
+                                                            ),
+                                                            &query,
+                                                            theme.clone(),
+                                                            handle.clone(),
+                                                            cx,
+                                                        ))
+                                                        .into_any_element();
                                                 }
                                                 // Empty cell for alignment
                                                 div().flex_1().into_any_element()
