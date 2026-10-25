@@ -23,7 +23,7 @@ impl EmojiView {
             config.id(),
             Launcher {
                 config,
-                children: data,
+                children: data.into(),
             },
         )]);
 

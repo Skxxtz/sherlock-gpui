@@ -8,6 +8,7 @@ use crate::{
     launcher::{LauncherConfig, LauncherId, LauncherValues},
     ui::{
         launcher::{LauncherMode, LauncherView, ModeTransition, navigator::handle::ViewKind},
+        model::ItemIdx,
         traits::RenderableChildDelegate,
         utils::{scoring::SortKey, search::SherlockSearch},
     },
@@ -15,7 +16,7 @@ use crate::{
 };
 
 struct FilterResult {
-    index: (LauncherId, usize),
+    index: ItemIdx,
     prio: SortKey,
     limiter: Option<(LauncherId, u16)>,
 }
@@ -70,7 +71,7 @@ impl FilterPolicy {
 impl LauncherView {
     pub fn apply_results(
         &mut self,
-        results: Arc<[(LauncherId, usize)]>,
+        results: Arc<[ItemIdx]>,
         query: impl Into<SharedString>,
         force: bool,
         cx: &mut Context<Self>,
@@ -243,7 +244,7 @@ impl LauncherView {
         query: &SharedString,
         mut limit_cache: HashMap<LauncherId, u16>,
         cx: &mut C,
-    ) -> Arc<[(LauncherId, usize)]> {
+    ) -> Arc<[ItemIdx]> {
         let is_home = query.is_empty() && mode == "all";
         let boosts = QUERY_MEMORY
             .get()
@@ -258,8 +259,7 @@ impl LauncherView {
             .flat_map(|(launcher_idx, launcher)| {
                 launcher
                     .children
-                    .iter()
-                    .enumerate()
+                    .iter_with_ids()
                     .map(move |(child_idx, child)| {
                         (launcher_idx, launcher.config.clone(), child_idx, child)
                     })

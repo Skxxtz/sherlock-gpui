@@ -7,7 +7,7 @@ use utils::{ProcessResult, ResultHeap};
 use crate::{
     app::LauncherWeakEntity,
     features::process::ProcessLauncher,
-    launcher::{LauncherConfig, LauncherId, variant_type::LauncherType},
+    launcher::{Children, LauncherConfig, variant_type::LauncherType},
     ui::{
         launcher::LauncherView,
         model::process::backends::ProcessBackend,
@@ -77,8 +77,7 @@ impl ProcessModel {
                 })
                 .await;
 
-            let count = results.len();
-            let children = results
+            let children: Children = results
                 .into_iter()
                 .map(|r| {
                     RenderableChild::new(
@@ -87,9 +86,8 @@ impl ProcessModel {
                             .with_icon_name("sherlock-process"),
                     )
                 })
-                .collect::<Vec<_>>();
-            let indices: Arc<[(LauncherId, usize)]> =
-                (0..count).map(|c| (id, c)).collect::<Vec<_>>().into(); // MAY-ERR
+                .collect();
+            let indices = children.ids().map(|c| (id, c)).collect();
             if let Some(view) = launcher_weak.upgrade() {
                 cx.update(|cx| {
                     view.update(cx, |this, cx| {

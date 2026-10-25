@@ -366,7 +366,7 @@ fn replace_children(
                 // Rows from an earlier query were dropped: ask again.
                 *plg.last_query.lock().unwrap() = None;
             }
-            entry.children = children;
+            entry.children = children.into();
             cx.notify();
         }
     });
@@ -446,7 +446,7 @@ async fn reload_plugin(
             let plg = plg.clone();
 
             let subs = cx.global::<TileSubscribersGlobal>().0.clone();
-            entry.children = vec![plg.load_tiles_async(entry.config.clone(), subs, cx)];
+            entry.children = vec![plg.load_tiles_async(entry.config.clone(), subs, cx)].into();
             cx.notify();
         });
     });

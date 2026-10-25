@@ -6,7 +6,7 @@ use gpui::{
 };
 
 use crate::{
-    launcher::{LauncherConfig, LauncherId},
+    launcher::LauncherConfig,
     tokio_utils::SizedMessageObj,
     ui::{
         backdrop::Backdrop,
@@ -15,6 +15,7 @@ use crate::{
             context_menu::wrapper::ContextMenu, navigator::Navigator,
             sidebar_controller::SidebarController,
         },
+        model::ItemIdx,
     },
     utils::{networking::ServerResponse, sized_message_sync::SizedMessage},
 };
@@ -85,7 +86,7 @@ pub struct LauncherView {
 
     pub backdrop: Option<WindowHandle<Backdrop>>,
 
-    pub last_selected: Option<(LauncherId, usize)>,
+    pub last_selected: Option<ItemIdx>,
 }
 
 impl Focusable for LauncherView {

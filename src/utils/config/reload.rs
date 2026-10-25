@@ -6,7 +6,7 @@ use super::{SherlockConfig, watcher::ConfigFileChange};
 use crate::{
     CONFIG,
     app::LauncherEntity,
-    launcher::variant_type::{LauncherType, LauncherVariant},
+    launcher::variant_type::LauncherType,
     loader::Loader,
     ui::{launcher::LauncherMode, widgets::ChildKind},
     utils::{
@@ -80,16 +80,17 @@ fn reload_aliases<C: AppContext>(data: &LauncherEntity, cx: &mut C) -> Result<()
     let alias_path = ConfigGuard::read_with(|cfg| cfg.files.alias.clone())?;
     let mut aliases = SherlockAlias::load(&alias_path)?;
     data.update(cx, |this, _cx| {
-        for launcher in Rc::make_mut(this)
-            .values_mut()
-            .filter(|l| matches!(l.config.launcher_type.variant(), LauncherVariant::Apps))
-        {
-            for child in launcher.children.iter_mut() {
+        for launcher in Rc::make_mut(this).values_mut() {
+            let LauncherType::Apps(apps) = &launcher.config.launcher_type else {
+                continue;
+            };
+            let use_keywords = apps.use_keywords;
+
+            for child in launcher.children.values_mut() {
                 if let ChildKind::App(item) = &mut child.kind
                     && let Some(alias) = aliases.remove(item.payload.original_name.as_str())
-                    && let LauncherType::Apps(launcher) = &launcher.config.launcher_type
                 {
-                    item.apply_alias(Some(alias), None, launcher.use_keywords);
+                    item.apply_alias(Some(alias), None, use_keywords);
                 }
             }
         }

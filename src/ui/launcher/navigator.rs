@@ -4,14 +4,13 @@ use gpui::{App, AppContext, Entity, Global, WeakEntity};
 
 use crate::{
     app::LauncherEntity,
-    launcher::LauncherId,
     ui::{
         launcher::{
             LauncherMode,
             context_menu::ContextMenuAction,
             navigator::{handle::ViewKind, views::NavView},
         },
-        model::{Model, message::MessageView},
+        model::{ItemIdx, Model, message::MessageView},
         traits::RenderableChildDelegate,
         widgets::RenderableChild,
     },
@@ -187,7 +186,7 @@ impl Navigator {
     }
 
     /// Returns the currently active data index
-    pub fn selected_data_idx(&self, cx: &App) -> Option<(LauncherId, usize)> {
+    pub fn selected_data_idx(&self, cx: &App) -> Option<ItemIdx> {
         let ui_idx = self.current().layout.selected;
         self.with_model(cx, |mdl| {
             let indices = mdl.filtered_indices();
@@ -197,7 +196,7 @@ impl Navigator {
     }
 
     /// Sets the currently active data index
-    pub fn set_selected_data_idx(&mut self, data_idx: (LauncherId, usize), cx: &App) {
+    pub fn set_selected_data_idx(&mut self, data_idx: ItemIdx, cx: &App) {
         let pos = self.with_model(cx, |mdl| {
             mdl.filtered_indices().iter().position(|i| *i == data_idx)
         });
@@ -213,7 +212,7 @@ impl Navigator {
     }
 
     /// Returns a shared reference to the widget at the given index
-    fn item_ref<'a>(&self, idx: (LauncherId, usize), cx: &'a App) -> Option<&'a RenderableChild> {
+    fn item_ref<'a>(&self, idx: ItemIdx, cx: &'a App) -> Option<&'a RenderableChild> {
         let data = self.with_model(cx, |mdl| mdl.data());
         data.read(cx)
             .get(&idx.0)
@@ -224,7 +223,7 @@ impl Navigator {
     /// Can't update entities inside `f`: return what you need instead.
     pub fn with_item<R>(
         &self,
-        idx: (LauncherId, usize),
+        idx: ItemIdx,
         cx: &mut App,
         f: impl FnOnce(&RenderableChild, &mut App) -> R,
     ) -> Option<R> {
@@ -266,7 +265,7 @@ impl Navigator {
     }
 
     // get the nth shortcut item index if any is valid.
-    fn idx_for_shortcut(&self, n: usize, cx: &App) -> Option<(LauncherId, usize)> {
+    fn idx_for_shortcut(&self, n: usize, cx: &App) -> Option<ItemIdx> {
         let skip = n.checked_sub(1)?;
         self.with_model(cx, |mdl| {
             let entity = mdl.data();

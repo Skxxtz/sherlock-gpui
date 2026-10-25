@@ -8,7 +8,7 @@ use gpui::{
 use crate::{
     app::{bindings::ReservedKeys, theme::ThemeData},
     features::emoji::{ALL_SKIN_TONES, SkinTone},
-    launcher::{LauncherId, LauncherValues, variant_type::QuickActionCapabilities},
+    launcher::{LauncherValues, variant_type::QuickActionCapabilities},
     ui::{
         launcher::{
             context_menu::{
@@ -18,6 +18,7 @@ use crate::{
             },
             navigator::views::MoveDirection,
         },
+        model::ItemIdx,
         traits::RenderableChildDelegate,
         widgets::{
             RenderableChild,
@@ -79,7 +80,7 @@ pub struct ContextMenu {
 
     pub has_actions: bool,
 
-    cached_for: Option<(LauncherId, usize)>,
+    cached_for: Option<ItemIdx>,
 
     is_flashing: Option<usize>,
     scroll_handle: ScrollHandle,
@@ -248,7 +249,7 @@ impl ContextMenu {
 
     pub fn refresh_for(
         &mut self,
-        selected: Option<(LauncherId, usize)>,
+        selected: Option<ItemIdx>,
         compute: impl FnOnce() -> (QuickActionCapabilities, bool),
     ) -> bool {
         if self.cached_for != selected {

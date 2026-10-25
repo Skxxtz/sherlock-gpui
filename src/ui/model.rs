@@ -4,7 +4,7 @@ use gpui::{App, AppContext, SharedString, Task, WeakEntity};
 
 use crate::{
     app::{LauncherEntity, LauncherWeakEntity},
-    launcher::{Launcher, LauncherConfig, LauncherId, variant_type::LauncherType},
+    launcher::{Launcher, LauncherConfig, LauncherId, LocalId, variant_type::LauncherType},
     ui::{
         launcher::{LauncherView, filter_and_sort::FilterPolicy},
         model::{
@@ -22,7 +22,7 @@ pub mod message;
 pub mod process;
 mod utils;
 
-pub type ItemIdx = (LauncherId, usize);
+pub type ItemIdx = (LauncherId, LocalId);
 
 /// Data structure that holds all item indices.
 pub struct Model {

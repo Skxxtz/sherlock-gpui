@@ -4,9 +4,9 @@ use gpui::{App, Context, WeakEntity};
 
 use crate::{
     features::message::MessageLauncher,
-    launcher::{Launcher, LauncherConfig, LauncherId, variant_type::LauncherType},
+    launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     ui::{
-        model::Model,
+        model::{ItemIdx, Model},
         widgets::{ChildKind, RenderableChild, message::MessageChild},
     },
     utils::{config::HomeType, errors::SherlockMessage},
@@ -48,7 +48,7 @@ impl MessageView {
             config.id(),
             Launcher {
                 config: config.clone(),
-                children: messages,
+                children: messages.into(),
             },
         )]);
 
@@ -73,7 +73,7 @@ impl MessageView {
             };
 
             // increment existing error
-            for item in message_launcher.children.iter_mut() {
+            for item in message_launcher.children.values_mut() {
                 if let ChildKind::Message(inner) = &mut item.kind
                     && inner.message == message
                 {
@@ -97,31 +97,30 @@ impl MessageView {
         self.count.update(|i| i + 1);
     }
     /// This removes a message from the Model. It requires a filter and sort afterwards
-    pub fn remove_message(&mut self, idx: (LauncherId, usize), cx: &mut App) {
+    pub fn remove_message(&mut self, idx: ItemIdx, cx: &mut App) {
         let data = self.model.data();
 
         let removed = data.update(cx, |this, _| {
-            if this.get(&idx.0).is_some_and(|l| idx.1 < l.children.len()) {
-                let data = Rc::make_mut(this);
-                data.get_mut(&idx.0).map(|l| l.children.remove(idx.1))
+            if this
+                .get(&idx.0)
+                .is_some_and(|l| l.children.get(idx.1).is_some())
+            {
+                Rc::make_mut(this)
+                    .get_mut(&idx.0)
+                    .and_then(|l| l.children.remove(idx.1))
             } else {
                 None
             }
         });
 
         if let Some(ChildKind::Message(inner)) = removed.as_ref().map(|r| &r.kind) {
-            let mut vec = self.model.filtered.to_vec();
-            if let Some(pos) = vec.iter().position(|&x| x == idx) {
-                vec.remove(pos);
-            }
-
-            for val in vec.iter_mut() {
-                if val.1 > idx.1 {
-                    val.1 -= 1;
-                }
-            }
-
-            self.model.filtered = Arc::from(vec);
+            self.model.filtered = self
+                .model
+                .filtered
+                .iter()
+                .copied()
+                .filter(|&x| x != idx)
+                .collect();
             self.count.update(|i| i.saturating_sub(inner.count));
         }
     }

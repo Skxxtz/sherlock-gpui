@@ -1,6 +1,7 @@
 pub mod utils;
 pub mod variant_type;
 
+use slotmap::{SlotMap, new_key_type};
 use std::{
     fmt::Display,
     hash::{DefaultHasher, Hash, Hasher},
@@ -100,10 +101,97 @@ pub struct LauncherConfig {
     pub add_actions: Option<Arc<[Arc<ContextMenuAction>]>>,
 }
 
+new_key_type! { pub struct LocalId; }
+
+#[derive(Clone, Debug, Default)]
+pub struct Children {
+    slots: SlotMap<LocalId, RenderableChild>,
+    order: Vec<LocalId>,
+}
+
+impl Children {
+    pub fn get(&self, id: LocalId) -> Option<&RenderableChild> {
+        self.slots.get(id)
+    }
+    pub fn first(&self) -> Option<&RenderableChild> {
+        self.slots.get(*self.order.first()?)
+    }
+    pub fn len(&self) -> usize {
+        self.order.len()
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &RenderableChild> + '_ {
+        self.order.iter().filter_map(|&id| self.slots.get(id))
+    }
+    pub fn iter_with_ids(&self) -> impl Iterator<Item = (LocalId, &RenderableChild)> + '_ {
+        self.order
+            .iter()
+            .filter_map(|&id| self.slots.get(id).map(|c| (id, c)))
+    }
+    pub fn ids(&self) -> impl ExactSizeIterator<Item = LocalId> + '_ {
+        self.order.iter().copied()
+    }
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut RenderableChild> + '_ {
+        self.slots.values_mut()
+    }
+    pub fn push(&mut self, c: RenderableChild) -> LocalId {
+        let id = self.slots.insert(c);
+        self.order.push(id);
+        id
+    }
+    pub fn remove(&mut self, id: LocalId) -> Option<RenderableChild> {
+        let c = self.slots.remove(id)?;
+        self.order.retain(|&i| i != id);
+        Some(c)
+    }
+    pub fn with_capacity(cap: usize) -> Self {
+        Self {
+            slots: SlotMap::with_capacity_and_key(cap),
+            order: Vec::with_capacity(cap),
+        }
+    }
+    pub fn truncate(&mut self, len: usize) {
+        for id in self.order.drain(len.min(self.order.len())..) {
+            self.slots.remove(id);
+        }
+    }
+}
+
+impl FromIterator<RenderableChild> for Children {
+    fn from_iter<T: IntoIterator<Item = RenderableChild>>(iter: T) -> Self {
+        let iter = iter.into_iter();
+        let cap = iter.size_hint().0;
+
+        let mut slots = SlotMap::with_capacity_and_key(cap);
+        let mut order = Vec::with_capacity(cap);
+
+        for c in iter {
+            order.push(slots.insert(c))
+        }
+
+        Self { slots, order }
+    }
+}
+impl From<Vec<RenderableChild>> for Children {
+    fn from(value: Vec<RenderableChild>) -> Self {
+        value.into_iter().collect()
+    }
+}
+impl Extend<RenderableChild> for Children {
+    fn extend<T: IntoIterator<Item = RenderableChild>>(&mut self, iter: T) {
+        let iter = iter.into_iter();
+        let additional = iter.size_hint().0;
+        self.slots.reserve(additional);
+        self.order.reserve(additional);
+        for c in iter {
+            self.order.push(self.slots.insert(c));
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Launcher {
     pub config: Arc<LauncherConfig>,
-    pub children: Vec<RenderableChild>,
+    pub children: Children,
 }
 
 #[allow(dead_code)]

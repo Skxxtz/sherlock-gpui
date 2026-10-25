@@ -6,6 +6,7 @@ use gpui::{
     SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img, list,
     prelude::FluentBuilder, px, relative,
 };
+use slotmap::Key;
 
 use crate::{
     CONTEXT_MENU_BIND,
@@ -497,7 +498,7 @@ impl LauncherView {
         cx: &mut App,
     ) -> AnyElement {
         let idx = selection.data_idx;
-        let id = idx.0.0 ^ (idx.1 as u64);
+        let id = idx.0.0 ^ idx.1.data().as_ffi();
         div()
             .relative()
             .id(ElementId::Integer(id))

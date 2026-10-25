@@ -135,7 +135,7 @@ impl Loader {
                     id,
                     Launcher {
                         config: launcher,
-                        children,
+                        children: children.into(),
                     },
                 ))
             })

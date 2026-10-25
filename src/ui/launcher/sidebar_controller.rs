@@ -3,14 +3,17 @@ use scroll::SidebarScroll;
 
 use crate::{
     launcher::LauncherId,
-    ui::launcher::navigator::{Navigator, handle::ViewKind},
+    ui::{
+        launcher::navigator::{Navigator, handle::ViewKind},
+        model::ItemIdx,
+    },
 };
 
 mod scroll;
 
 #[derive(Default)]
 pub struct SidebarController {
-    for_item: Option<(LauncherId, usize)>,
+    for_item: Option<ItemIdx>,
     scroll: SidebarScroll,
     valid: bool,
 }
@@ -40,7 +43,7 @@ impl SidebarController {
         self.valid = true;
     }
 
-    pub fn set_for_item(&mut self, item: (LauncherId, usize)) {
+    pub fn set_for_item(&mut self, item: ItemIdx) {
         self.for_item = Some(item);
     }
 

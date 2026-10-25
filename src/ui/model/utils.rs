@@ -4,7 +4,7 @@ use gpui::{App, AppContext};
 
 use crate::{
     app::LauncherEntity,
-    launcher::{Launcher, LauncherConfig, LauncherId},
+    launcher::{Children, Launcher, LauncherConfig, LauncherId},
     ui::model::ItemIdx,
 };
 
@@ -12,11 +12,11 @@ use crate::{
 /// The order is arbitrary because it follows `HashMap` iteration.
 pub(super) fn all_indices(data: &HashMap<LauncherId, Launcher>) -> Arc<[ItemIdx]> {
     data.iter()
-        .flat_map(|(id, l)| (0..l.children.len()).map(move |c| (*id, c)))
+        .flat_map(|(&id, l)| l.children.ids().map(move |c| (id, c)))
         .collect()
 }
 
-/// Data entity with one empty launcher, for views that fill it at runtime (filesearc, process).
+/// Data entity with one empty launcher, for views that fill it at runtime (file search, process).
 /// `cap` preallocates room for the results.
 pub(super) fn single_launcher(
     cfg: &Arc<LauncherConfig>,
@@ -25,7 +25,7 @@ pub(super) fn single_launcher(
 ) -> LauncherEntity {
     let launcher = Launcher {
         config: cfg.clone(),
-        children: Vec::with_capacity(cap),
+        children: Children::with_capacity(cap),
     };
     cx.new(|_| Rc::new(HashMap::from([(cfg.id(), launcher)])))
 }

@@ -7,10 +7,10 @@ use utils::{FileResult, ResultHeap};
 use crate::{
     app::LauncherWeakEntity,
     features::file::FileLauncher,
-    launcher::{LauncherConfig, LauncherId, variant_type::LauncherType},
+    launcher::{Children, LauncherConfig, variant_type::LauncherType},
     ui::{
         launcher::LauncherView,
-        model::{file::filter::FileFilter, utils::CiUtils},
+        model::{ItemIdx, file::filter::FileFilter, utils::CiUtils},
         widgets::{RenderableChild, file::FileData},
     },
     utils::files::expand_path,
@@ -132,8 +132,7 @@ impl FileSearchModel {
                 }
 
                 if let Some(snapshot) = latest {
-                    let count = snapshot.len();
-                    let children = snapshot
+                    let children: Children = snapshot
                         .into_iter()
                         .map(|r| {
                             RenderableChild::new(
@@ -141,10 +140,9 @@ impl FileSearchModel {
                                 FileData::new(r.path.clone()).with_icon_name(r.get_icon_name()),
                             )
                         })
-                        .collect::<Vec<_>>();
+                        .collect();
 
-                    let indices: Arc<[(LauncherId, usize)]> =
-                        (0..count).map(|c| (id, c)).collect::<Vec<_>>().into();
+                    let indices: Arc<[ItemIdx]> = children.ids().map(|c| (id, c)).collect();
 
                     if let Some(view) = launcher_weak.upgrade() {
                         cx.update({
