@@ -1,18 +1,16 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, Entity,
-    FontWeight, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render,
-    SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img,
-    prelude::FluentBuilder, px, relative,
+    Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, FontWeight,
+    InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, Styled, Window, deferred, div, img, prelude::FluentBuilder, px,
+    relative,
 };
-use slotmap::Key;
 
 use crate::{
     CONTEXT_MENU_BIND,
     app::{
         bindings::ShortcutKeyMod,
-        data::LauncherData,
         theme::{ActiveTheme, ThemeData},
     },
     launcher::LauncherValues,
@@ -20,10 +18,10 @@ use crate::{
     ui::{
         UIFunction,
         launcher::{Execute, LauncherMode, LauncherView},
-        model::item::SelectionKey,
+        model::ItemIdx,
         traits::RenderableChildDelegate,
         utils::{ease::Ease, render::ListItemBorder, selection::Selection},
-        views::{Chrome, ShellCtx},
+        views::{Chrome, ShellCtx, list::RowCtx},
         widgets::RenderableChild,
     },
     utils::config::ConfigGuard,
@@ -375,18 +373,18 @@ impl LauncherView {
 
     pub fn render_list_item(
         ad: &RenderableChild,
-        shortcut_idx: Option<usize>,
-        selection: Selection,
-        query: &str,
-        theme: Arc<ThemeData>,
-        handle: Entity<LauncherView>,
+        row: &RowCtx<ItemIdx>,
         cx: &mut App,
     ) -> AnyElement {
-        let idx = selection.data_idx;
-        let id = idx.0.0 ^ idx.1.data().as_ffi();
+        let shortcut_idx = row.shortcut;
+        let selection = Selection::new(row.id, row.selected);
+        let key = row.key;
+        let query = row.query;
+        let theme = row.theme.clone();
+        let handle = row.shell.clone();
         div()
             .relative()
-            .id(ElementId::Integer(id))
+            .id(ElementId::Integer(key.as_u64()))
             .w_full()
             .on_click(move |evt: &ClickEvent, win, cx: &mut App| {
                 if !evt.standard_click() && !evt.is_keyboard() {
@@ -400,16 +398,14 @@ impl LauncherView {
 
                 if evt.click_count() as u8 >= n_clicks {
                     handle.update(cx, move |this, cx| {
-                        this.navigation
-                            .select_key(SelectionKey::new::<LauncherData>(&idx), cx);
+                        this.navigation.select_key(key, cx);
                         if !this.context_menu.is_open() {
                             this.execute_listener(&Execute {}, win, cx);
                         }
                     })
                 } else {
                     handle.update(cx, move |this, cx| {
-                        this.navigation
-                            .select_key(SelectionKey::new::<LauncherData>(&idx), cx);
+                        this.navigation.select_key(key, cx);
                         if this.context_menu.is_open() {
                             this.context_menu.close();
                         }

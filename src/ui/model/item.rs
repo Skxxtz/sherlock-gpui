@@ -1,3 +1,5 @@
+//! Type-erased access to items, so the shell can work with the selected item of any view.
+
 use std::{
     any::TypeId,
     hash::{DefaultHasher, Hash, Hasher},
@@ -56,6 +58,12 @@ impl ShellItem for RenderableChild {
 pub struct SelectionKey(u64);
 
 impl SelectionKey {
+    /// The raw hash, e.g. for element ids.
+    #[inline]
+    pub fn as_u64(self) -> u64 {
+        self.0
+    }
+
     pub fn new<D: ModelData>(id: &D::Id) -> Self {
         let mut h = DefaultHasher::new();
         TypeId::of::<D>().hash(&mut h);
