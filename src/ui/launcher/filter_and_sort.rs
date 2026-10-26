@@ -4,16 +4,10 @@ use gpui::{AsyncApp, Context, SharedString, WeakEntity};
 
 pub use crate::ui::model::pipeline::FilterPolicy;
 use crate::{
-    QUERY_MEMORY,
     app::{LauncherEntity, LauncherEntityInner},
     ui::{
         launcher::{LauncherView, ModeTransition, navigator::handle::ViewKind},
-        model::{
-            ItemIdx,
-            index::{FilterJob, SearchIndex},
-            pipeline::FilterCtx,
-        },
-        traits::RenderableChildDelegate,
+        model::{ItemIdx, index::FilterJob},
     },
 };
 
@@ -36,17 +30,18 @@ impl LauncherView {
         }
 
         self.active_bar = 0;
-        self.navigation.with_model_mut(cx, |mdl, _| {
-            if mdl.filtered != results {
-                changed = true;
-                mdl.filtered = results;
-            }
-            mdl.last_query = Some(query.clone());
-        });
+        let change = self
+            .navigation
+            .with_model_mut(cx, |mdl, _| mdl.set_results(results, query.clone()));
+        changed |= change.changed;
 
         self.update_sync(query, cx);
 
-        if changed {
+        if changed && change.restored {
+            // same item still visible: keep it selected, just reveal it
+            let n = self.navigation.selected_index(cx);
+            self.focus_nth(n, cx);
+        } else if changed {
             self.focus_first(cx);
         } else if self.variable_input.is_empty() {
             self.update_vars(cx);
@@ -187,7 +182,7 @@ impl LauncherView {
         data: &LauncherEntity,
         query: SharedString,
         cx: &mut Context<Self>,
-    ) -> FilterJob {
+    ) -> FilterJob<ItemIdx> {
         let mode: SharedString = self.navigation.current().mode.as_str().to_owned().into();
         let data: LauncherEntityInner = data.read(cx).clone();
         let (policy, (index, rebuilt)) = self
@@ -201,27 +196,7 @@ impl LauncherView {
         #[cfg(not(debug_assertions))]
         let _ = rebuilt;
 
-        let gates = index.gates(&FilterCtx::new(policy, &mode, &query));
-        let boosts = QUERY_MEMORY
-            .get()
-            .and_then(|l| l.read().ok())
-            .map(|m| m.boosts(&query))
-            .unwrap_or_default();
-
-        let contextual = index.score(&index.contextual, &gates, &query, &boosts, |row| {
-            // [Rule 5]; a removed item is never shown
-            data.child(row.id)
-                .map_or(Some(false), |child| child.based_show(&query, cx))
-        });
-
-        FilterJob {
-            index,
-            gates,
-            boosts,
-            policy,
-            query,
-            contextual,
-        }
+        FilterJob::prepare(index, &data, policy, &mode, query, cx)
     }
 }
 
@@ -229,18 +204,17 @@ impl LauncherView {
 /// their `based_show` would silently never run. The default returns `None`
 /// for any input, so anything else means an override.
 #[cfg(debug_assertions)]
-fn debug_check_contextual(
-    index: &SearchIndex,
-    data: &LauncherEntityInner,
+fn debug_check_contextual<D: crate::ui::model::data::ModelData>(
+    index: &crate::ui::model::index::SearchIndex<D::Id>,
+    data: &D,
     cx: &mut Context<LauncherView>,
 ) {
     for row in index.pure.iter() {
-        if let Some(child) = data.child(row.id) {
-            debug_assert!(
-                child.based_show("", cx).is_none(),
-                "item {:?} overrides `based_show` but `has_based_show` returns false",
-                row.text
-            );
-        }
+        // missing items report `Some(false)`; the index was just built, so all exist
+        debug_assert!(
+            data.based_show(row.id, "", cx).is_none(),
+            "item {:?} overrides `based_show` but `has_based_show` returns false",
+            row.text
+        );
     }
 }

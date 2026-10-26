@@ -1,12 +1,16 @@
 use std::sync::Arc;
 
+use gpui::{AppContext, SharedString};
+
 use crate::{
+    QUERY_MEMORY,
     app::data::LauncherData,
     loader::utils::PriorityGuard,
     ui::{
         model::{
             ItemIdx,
-            pipeline::{self, FilterCtx, GroupGate, GroupRules, Scored},
+            data::ModelData,
+            pipeline::{self, FilterCtx, FilterPolicy, GroupGate, GroupRules, Scored},
         },
         query_memory::Boosts,
         traits::RenderableChildDelegate,
@@ -15,24 +19,92 @@ use crate::{
     utils::item_key::ItemKey,
 };
 
+/// Everything filtering needs to know about one item.
 #[derive(Clone)]
-pub struct SearchRow {
-    pub id: ItemIdx,
+pub struct SearchRow<Id> {
+    pub id: Id,
+    /// Index into the index's groups.
     pub group: u32,
     pub text: Arc<str>,
     pub key: Option<ItemKey>,
     pub prio: PriorityGuard,
 }
 
-/// Snapshot of one `LauncherData` revision.
-pub struct SearchIndex {
+/// Thread-safe snapshot of one data revision.
+pub struct SearchIndex<Id> {
     revision: u64,
     groups: Box<[GroupRules]>,
-    pub pure: Box<[SearchRow]>,
-    pub contextual: Box<[SearchRow]>,
+    /// Filtered off the main thread.
+    pub pure: Box<[SearchRow<Id>]>,
+    /// Need `cx` (`based_show`); filtered on the main thread.
+    pub contextual: Box<[SearchRow<Id>]>,
 }
 
-impl SearchIndex {
+impl<Id: Copy> SearchIndex<Id> {
+    /// For `ModelData` implementations that build their own rows.
+    pub fn new(
+        revision: u64,
+        groups: Vec<GroupRules>,
+        pure: Vec<SearchRow<Id>>,
+        contextual: Vec<SearchRow<Id>>,
+    ) -> Self {
+        Self {
+            revision,
+            groups: groups.into(),
+            pure: pure.into(),
+            contextual: contextual.into(),
+        }
+    }
+
+    /// The data revision this index was built from.
+    #[inline(always)]
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// True if the data changed since this index was built.
+    #[inline(always)]
+    pub fn is_stale<D: ModelData>(&self, data: &D) -> bool {
+        self.revision != data.revision()
+    }
+
+    /// Rules 1-4 for every group. Index with `SearchRow::group`.
+    pub fn gates(&self, fcx: &FilterCtx) -> Arc<[GroupGate]> {
+        self.groups.iter().map(|g| fcx.gate(g)).collect()
+    }
+
+    /// Rules 4-6 + scoring for `rows`.
+    ///
+    /// `based_show` is only called for rows in a `Match` group; `|_| None` for pure rows.
+    pub fn score(
+        &self,
+        rows: &[SearchRow<Id>],
+        gates: &[GroupGate],
+        query: &str,
+        boosts: &Boosts,
+        mut based_show: impl FnMut(&SearchRow<Id>) -> Option<bool>,
+    ) -> Vec<Scored<Id>> {
+        rows.iter()
+            .filter(|row| {
+                pipeline::admit(
+                    gates[row.group as usize],
+                    || based_show(row),
+                    || row.text.fuzzy_match(query),
+                )
+            })
+            .map(|row| {
+                let boost = row.key.as_ref().map_or(0.0, |k| boosts.get(k));
+                Scored {
+                    index: row.id,
+                    prio: row.prio.get().sort_key(query, &row.text, boost),
+                    limit: self.groups[row.group as usize].limit,
+                }
+            })
+            .collect()
+    }
+}
+
+impl SearchIndex<ItemIdx> {
     pub fn build(data: &LauncherData) -> Self {
         let mut groups = Vec::with_capacity(data.len());
         let mut pure = Vec::new();
@@ -58,77 +130,61 @@ impl SearchIndex {
             }
         }
 
+        Self::new(data.revision(), groups, pure, contextual)
+    }
+}
+
+/// One query's worth of filtering, ready to finish on any thread.
+///
+/// Built on the main thread (contextual items already scored); `run` scores the pure items and
+/// sorts/limits everything.
+pub struct FilterJob<Id> {
+    index: Arc<SearchIndex<Id>>,
+    gates: Arc<[GroupGate]>,
+    boosts: Boosts,
+    policy: FilterPolicy,
+    query: SharedString,
+    contextual: Vec<Scored<Id>>,
+}
+
+impl<Id: Copy> FilterJob<Id> {
+    /// Main-thread half: rules 1-4, boosts and the contextual items (needs `cx`).
+    pub fn prepare<D, C>(
+        index: Arc<SearchIndex<Id>>,
+        data: &D,
+        policy: FilterPolicy,
+        mode: &str,
+        query: SharedString,
+        cx: &mut C,
+    ) -> Self
+    where
+        D: ModelData<Id = Id>,
+        C: AppContext,
+    {
+        let gates = index.gates(&FilterCtx::new(policy, mode, &query));
+        let boosts = QUERY_MEMORY
+            .get()
+            .and_then(|l| l.read().ok())
+            .map(|m| m.boosts(&query))
+            .unwrap_or_default();
+
+        // [Rule 5]
+        let contextual = index.score(&index.contextual, &gates, &query, &boosts, |row| {
+            data.based_show(row.id, &query, cx)
+        });
+
         Self {
-            revision: data.revision(),
-            groups: groups.into(),
-            pure: pure.into(),
-            contextual: contextual.into(),
+            index,
+            gates,
+            boosts,
+            policy,
+            query,
+            contextual,
         }
     }
 
-    /// The `LauncherData` revision this index was built from.
-    #[inline(always)]
-    pub fn revision(&self) -> u64 {
-        self.revision
-    }
-
-    /// True if `data` changed since this index was built.
-    #[inline(always)]
-    pub fn is_stale(&self, data: &LauncherData) -> bool {
-        self.revision != data.revision()
-    }
-
-    /// Rules 1-4 for every group. Index with `SearchRow::group`.
-    pub fn gates(&self, fcx: &FilterCtx) -> Arc<[GroupGate]> {
-        self.groups.iter().map(|g| fcx.gate(g)).collect()
-    }
-
-    /// Rules 4-6 + scoring for `rows`.
-    ///
-    /// `based_show` is only called for rows in a `Match` group; `|_| None` for pure rows.
-    pub fn score(
-        &self,
-        rows: &[SearchRow],
-        gates: &[GroupGate],
-        query: &str,
-        boosts: &Boosts,
-        mut based_show: impl FnMut(&SearchRow) -> Option<bool>,
-    ) -> Vec<Scored<ItemIdx>> {
-        rows.iter()
-            .filter(|row| {
-                pipeline::admit(
-                    gates[row.group as usize],
-                    || based_show(row),
-                    || row.text.fuzzy_match(query),
-                )
-            })
-            .map(|row| {
-                let boost = row.key.as_ref().map_or(0.0, |k| boosts.get(k));
-                Scored {
-                    index: row.id,
-                    prio: row.prio.get().sort_key(query, &row.text, boost),
-                    limit: self.groups[row.group as usize].limit,
-                }
-            })
-            .collect()
-    }
-}
-
-/// One query's woth of filtering, ready to finish on any thread.
-///
-/// Build on the main thread (contexttual items already scored); `run` scores the pure items and
-/// sorts/limits everything.
-pub struct FilterJob {
-    pub index: Arc<SearchIndex>,
-    pub gates: Arc<[GroupGate]>,
-    pub boosts: Boosts,
-    pub policy: pipeline::FilterPolicy,
-    pub query: gpui::SharedString,
-    pub contextual: Vec<Scored<ItemIdx>>,
-}
-
-impl FilterJob {
-    pub fn run(self) -> Arc<[ItemIdx]> {
+    /// Thread-safe half: scores the pure items, then sorts and limits everything.
+    pub fn run(self) -> Arc<[Id]> {
         let Self {
             index,
             gates,
@@ -148,13 +204,13 @@ mod tests {
     use super::*;
 
     fn assert_send_sync<T: Send + Sync>() {}
+    fn assert_send<T: Send>() {}
 
     #[test]
     fn index_and_job_are_thread_safe() {
-        assert_send_sync::<SearchIndex>();
-        assert_send_sync::<SearchRow>();
-        fn assert_send<T: Send>() {}
-        assert_send::<FilterJob>();
+        assert_send_sync::<SearchIndex<ItemIdx>>();
+        assert_send_sync::<SearchRow<ItemIdx>>();
+        assert_send::<FilterJob<ItemIdx>>();
     }
 
     #[test]

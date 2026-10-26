@@ -132,11 +132,11 @@ impl Navigator {
 
     /// Pops the currently active view and moves back to the view before. Also moves out of the
     /// message view to the home view
-    pub fn back(&mut self) {
+    pub fn back(&mut self, cx: &mut App) {
         if !std::mem::take(&mut self.showing_messages) {
             self.stack.pop();
         }
-        self.current_mut().layout.reset();
+        self.reset_selection(cx);
     }
 
     /// Sets the message view the active view
@@ -187,22 +187,31 @@ impl Navigator {
 
     /// Returns the currently active data index
     pub fn selected_data_idx(&self, cx: &App) -> Option<ItemIdx> {
-        let ui_idx = self.current().layout.selected;
-        self.with_model(cx, |mdl| {
-            let indices = mdl.filtered_indices();
-            let last = indices.len().checked_sub(1)?;
-            indices.get(ui_idx.min(last)).copied()
-        })
+        self.with_model(cx, |mdl| mdl.selected_id())
+    }
+
+    /// Selected position in the active view's visible items (clamped).
+    pub fn selected_index(&self, cx: &App) -> usize {
+        self.with_model(cx, |mdl| mdl.selected_index())
+    }
+
+    /// Selects position `n` and scrolls it into view. Returns `false` if out of range.
+    pub fn select(&self, n: usize, cx: &mut App) -> bool {
+        let ok = self.with_model_mut(cx, |mdl, _| mdl.select(n));
+        if ok {
+            self.current().layout.reveal(n);
+        }
+        ok
     }
 
     /// Sets the currently active data index
-    pub fn set_selected_data_idx(&mut self, data_idx: ItemIdx, cx: &App) {
-        let pos = self.with_model(cx, |mdl| {
-            mdl.filtered_indices().iter().position(|i| *i == data_idx)
-        });
-        if let Some(pos) = pos {
-            self.current_mut().layout.selected = pos;
-        }
+    pub fn set_selected_data_idx(&self, data_idx: ItemIdx, cx: &mut App) {
+        self.with_model_mut(cx, |mdl, _| mdl.select_id(data_idx));
+    }
+
+    /// Back to the first item of the active view.
+    pub fn reset_selection(&self, cx: &mut App) {
+        self.with_model_mut(cx, |mdl, _| mdl.reset_selection());
     }
 
     /// Returns a shared reference to the currently active widget

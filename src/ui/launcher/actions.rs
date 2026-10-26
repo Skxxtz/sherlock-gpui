@@ -95,7 +95,7 @@ impl LauncherView {
         if !self.valid_selection_idx(n, cx) {
             return;
         }
-        self.navigation.current_mut().layout.focus_nth(n);
+        self.navigation.select(n, cx);
 
         // Handle variable inputs
         self.update_vars(cx);
@@ -125,7 +125,8 @@ impl LauncherView {
             return;
         }
 
-        if let Some((old, target_idx)) = self.navigation.current().layout.next_index(direction)
+        let old = self.navigation.selected_index(cx);
+        if let Some(target_idx) = self.navigation.current().layout.next_index(old, direction)
             && self.valid_selection_idx(target_idx, cx)
         {
             self.focus_nth(target_idx, cx);

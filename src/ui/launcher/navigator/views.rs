@@ -31,13 +31,12 @@ impl NavView {
     }
 }
 
-/// Selection and scroll state. `grid: None` means a plain row list.
+/// Scroll state. `grid: None` means a plain row list.
+/// The selection itself lives in the view's `Model`.
 #[derive(Clone)]
 pub struct Layout {
     /// Scroll state for row lists
     pub list: ListState,
-    /// Selected position in the filtered results (not clamped).
-    pub selected: usize,
     /// Set for grid layouts.
     pub grid: Option<Grid>,
 }
@@ -66,7 +65,6 @@ impl Layout {
     pub fn row(len: usize, item_height: Pixels) -> Self {
         Self {
             list: ListState::new(len, gpui::ListAlignment::Top, item_height),
-            selected: 0,
             grid: None,
         }
     }
@@ -83,32 +81,22 @@ impl Layout {
         }
     }
 
-    /// Resets the selected index.
-    pub fn reset(&mut self) {
-        self.selected = 0;
-    }
-
-    /// Returns `(current, new)`. Left/Right only move in grids.
-    pub fn next_index(&self, dir: MoveDirection) -> Option<(usize, usize)> {
-        let cur = self.selected;
+    /// The position one step from `cur` in `dir`. Left/Right only move in grids.
+    pub fn next_index(&self, cur: usize, dir: MoveDirection) -> Option<usize> {
         let step = self.grid.as_ref().map_or(1, |g| g.columns);
         let is_grid = self.grid.is_some();
 
-        let new = match dir {
+        match dir {
             MoveDirection::Down => cur.checked_add(step),
             MoveDirection::Up => cur.checked_sub(step),
             MoveDirection::Right if is_grid => cur.checked_add(1),
             MoveDirection::Left if is_grid => cur.checked_sub(1),
             _ => None,
-        }?;
-
-        Some((cur, new))
+        }
     }
 
-    /// Selected item `n` and scrolls it into view.
-    /// In a grid, it scrolls to the row containing `n`.
-    pub fn focus_nth(&mut self, n: usize) {
-        self.selected = n;
+    /// Scrolls item `n` into view. In a grid, scrolls to the row containing `n`.
+    pub fn reveal(&self, n: usize) {
         match &self.grid {
             Some(g) => g
                 .scroll

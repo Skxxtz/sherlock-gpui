@@ -221,8 +221,8 @@ impl LauncherView {
             self.sidebar_controller.sync_scroll();
         }
 
-        let layout = &self.navigation.current().layout;
-        let (selected_idx, state) = (layout.selected, layout.list.clone());
+        let selected_idx = self.navigation.selected_index(cx);
+        let state = self.navigation.current().layout.list.clone();
         let query = self.text_input.read(cx).content.clone();
 
         let theme = cx.global::<ActiveTheme>().0.clone();
@@ -333,7 +333,7 @@ impl LauncherView {
             .navigation
             .with_model(cx, |mdl| (mdl.filtered_indices(), mdl.data()));
 
-        let selected_idx = self.navigation.current().layout.selected;
+        let selected_idx = self.navigation.selected_index(cx);
         let query = self.text_input.read(cx).content.clone();
 
         div()

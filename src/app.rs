@@ -152,22 +152,22 @@ fn spawn_launcher(
 
             let sub = cx.observe(&text_input, |this: &mut LauncherView, _, cx| {
                 this.context_menu.close();
-                this.navigation.current_mut().layout.reset();
+                this.navigation.reset_selection(cx);
                 this.filter_and_sort(cx);
             });
 
             let backspace_sub = cx.subscribe(&text_input, |this, _, _: &EmptyBackspace, cx| {
                 if !matches!(this.navigation.current_kind(), ViewKind::Home) {
-        this.navigation.back();
-        if let Some(c) = this.navigation.with_model(cx, |m| m.last_query()) {
-            this.text_input.update(cx, |ipt, _| ipt.set_text(c));
-        }
-        this.force_filter_and_sort(cx);
-    } else if this.navigation.current().mode != LauncherMode::Home {
-        this.navigation.current_mut().mode = LauncherMode::Home;
-        this.navigation.with_model_mut(cx, |m, _| m.last_query = None);
-        this.filter_and_sort(cx);
-    }
+                    this.navigation.back(cx);
+                    if let Some(c) = this.navigation.with_model(cx, |m| m.last_query()) {
+                        this.text_input.update(cx, |ipt, _| ipt.set_text(c));
+                    }
+                    this.force_filter_and_sort(cx);
+                } else if this.navigation.current().mode != LauncherMode::Home {
+                    this.navigation.current_mut().mode = LauncherMode::Home;
+                    this.navigation.with_model_mut(cx, |m, _| m.last_query = None);
+                    this.filter_and_sort(cx);
+                }
             });
 
             text_input.update(cx, |this, _| this._sub = Some(backspace_sub));
