@@ -245,7 +245,7 @@ impl LauncherView {
             cx.notify();
             return;
         };
-        req.keyword = SharedString::default(); // keep `req.query` for learning
+        req.keyword = SharedString::default(); // `req.query` stays for learning
 
         self.run(req, win, cx);
     }

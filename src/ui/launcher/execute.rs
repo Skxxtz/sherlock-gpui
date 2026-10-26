@@ -37,8 +37,10 @@ pub struct ExecRequest {
     pub source: ExecSource,
     /// Identity of the item the request was started from
     pub key: Option<ItemKey>,
-    /// Query at the time of execution
+    /// Passed to the executed command (`{keyword}`); may be cleared, e.g. for context actions.
     pub keyword: SharedString,
+    /// Query at the time of execution; picks are learned under it.
+    pub query: SharedString,
     pub exit: bool,
 }
 
@@ -82,11 +84,13 @@ impl LauncherView {
             _ => self.navigation.with_selected_shell_item(cx, build),
         }??;
 
+        let query = self.text_input.read(cx).content.clone();
         Some(ExecRequest {
             mode,
             source,
             key,
-            keyword: self.text_input.read(cx).content.clone(),
+            keyword: query.clone(),
+            query,
             exit,
         })
     }
@@ -94,7 +98,7 @@ impl LauncherView {
     pub(super) fn run(&mut self, req: ExecRequest, win: &mut Window, cx: &mut Context<Self>) {
         let picked = req.mode.is_pick();
         let (key, source) = (req.key.clone(), req.source);
-        let query = req.keyword.clone();
+        let query = req.query.clone();
 
         let (outcome, ok) = match self.perform(req, win, cx) {
             Ok(o) => (o, true),
