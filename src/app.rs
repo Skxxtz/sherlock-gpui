@@ -1,7 +1,5 @@
 use std::{
-    collections::HashMap,
     os::unix::net::UnixStream,
-    rc::Rc,
     sync::{
         Arc,
         atomic::{AtomicU32, Ordering},
@@ -18,9 +16,8 @@ use tokio::net::UnixListener;
 
 use crate::{
     SOCKET_PATH,
-    app::theme::ActiveTheme,
+    app::{data::LauncherData, theme::ActiveTheme},
     features::plugin::runtime::LuaRuntimeHandle,
-    launcher::{Launcher, LauncherId},
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
         backdrop::Backdrop,
@@ -40,6 +37,7 @@ use crate::{
 };
 
 pub mod bindings;
+pub mod data;
 pub mod theme;
 mod updates;
 mod warmup;
@@ -51,7 +49,7 @@ pub fn reset_generation() {
 
 pub type LauncherEntity = Entity<LauncherEntityInner>;
 pub type LauncherWeakEntity = WeakEntity<LauncherEntityInner>;
-pub type LauncherEntityInner = Rc<HashMap<LauncherId, Launcher>>;
+pub type LauncherEntityInner = LauncherData;
 
 #[derive(Clone)]
 pub struct LauncherEntityGlobal(pub LauncherWeakEntity);
@@ -71,7 +69,7 @@ pub fn run_app(cx: &mut App, result: SetupResult) {
     let theme = ActiveTheme::default();
     cx.set_global(theme);
 
-    let data: LauncherEntity = cx.new(|_| Rc::new(HashMap::new()));
+    let data: LauncherEntity = cx.new(|_| LauncherData::default());
     let modes = load_modes(cx, &data, &mut messages);
     cx.set_global(LauncherEntityGlobal(data.downgrade()));
 

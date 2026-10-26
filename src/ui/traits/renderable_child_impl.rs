@@ -59,6 +59,9 @@ pub trait RenderableChildImpl {
     fn based_show<C: AppContext>(&self, _keyword: &str, _cx: &mut C) -> Option<bool> {
         None
     }
+    fn has_based_show(&self) -> bool {
+        false
+    }
     fn sidebar(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<AnyElement> {
         None
     }

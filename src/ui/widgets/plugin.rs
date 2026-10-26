@@ -130,6 +130,10 @@ impl RenderableChildImpl for PluginWidget {
         }
     }
     #[inline(always)]
+    fn has_based_show(&self) -> bool {
+        true
+    }
+    #[inline(always)]
     fn actions(
         &self,
         launcher: &Arc<LauncherConfig>,

@@ -176,6 +176,10 @@ impl RenderableChildImpl for TimerChild {
         Some(false)
     }
     #[inline(always)]
+    fn has_based_show(&self) -> bool {
+        true
+    }
+    #[inline(always)]
     fn vars(&self, cx: &mut App) -> Option<&[RuntimeArgument]> {
         if let Some(Intent::Timer { .. }) = &self.update_entity.read(cx).intent {
             return Some(&self.variable);

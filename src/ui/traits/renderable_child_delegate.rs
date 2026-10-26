@@ -62,6 +62,7 @@ pub trait RenderableChildDelegate {
 
     /// Boolean logic for conditional display (e.g., calculator)
     fn based_show<C: AppContext>(&self, keyword: &str, cx: &mut C) -> Option<bool>;
+    fn has_based_show(&self) -> bool;
 
     /// Sidebar rendering
     fn sidebar(&self, cx: &mut App) -> Option<AnyElement>;

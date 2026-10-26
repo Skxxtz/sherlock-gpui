@@ -1,20 +1,19 @@
 use std::sync::Arc;
 
-use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
+use gpui::{AsyncApp, Context, SharedString, WeakEntity};
 
 pub use crate::ui::model::pipeline::FilterPolicy;
 use crate::{
     QUERY_MEMORY,
     app::{LauncherEntity, LauncherEntityInner},
-    launcher::LauncherValues,
     ui::{
-        launcher::{LauncherMode, LauncherView, ModeTransition, navigator::handle::ViewKind},
+        launcher::{LauncherView, ModeTransition, navigator::handle::ViewKind},
         model::{
             ItemIdx,
-            pipeline::{self, FilterCtx, GroupGate, Scored},
+            index::{FilterJob, SearchIndex},
+            pipeline::FilterCtx,
         },
         traits::RenderableChildDelegate,
-        utils::search::SherlockSearch,
     },
 };
 
@@ -140,10 +139,8 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let (data_arc, mode, policy) = self.prepare_filter_inputs(&data, cx);
-        let results_arc =
-            Self::compute_filtered_results(data_arc, policy, mode.as_str(), &query, cx);
-        self.apply_results(results_arc, query, force, cx);
+        let job = self.prepare_filter_job(&data, query.clone(), cx);
+        self.apply_results(job.run(), query, force, cx);
     }
     fn filter_update_async(
         &mut self,
@@ -152,21 +149,19 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let (data_arc, mode, policy) = self.prepare_filter_inputs(&data, cx);
+        let job = self.prepare_filter_job(&data, query.clone(), cx);
         let render_task = Some(cx.spawn(
             move |this: WeakEntity<LauncherView>, cx: &mut AsyncApp| {
                 let mut cx = cx.clone();
                 async move {
-                    let results_arc = Self::compute_filtered_results(
-                        data_arc,
-                        policy,
-                        mode.as_str(),
-                        &query,
-                        &mut cx,
-                    );
+                    // Pure items: scored off the main thread.
+                    let results = cx
+                        .background_executor()
+                        .spawn(async move { job.run() })
+                        .await;
 
                     this.update(&mut cx, |this, cx| {
-                        this.apply_results(results_arc, query, force, cx);
+                        this.apply_results(results, query, force, cx);
                     })
                     .ok();
 
@@ -175,72 +170,77 @@ impl LauncherView {
             },
         ));
 
-        // set active render task
+        // set active render task (replacing the old one cancels it)
         self.navigation
             .with_model_mut(cx, |m, _| m.pending = render_task);
     }
-    /// Runs the rule pipeline (see `model::pipeline`) over `data_arc`.
-    /// Only the cx-dependent parts (`based_show`, fuzzy match, boosts) live here.
-    fn compute_filtered_results<C: AppContext>(
-        data_arc: LauncherEntityInner,
-        policy: FilterPolicy,
-        mode: &str,
-        query: &SharedString,
-        cx: &mut C,
-    ) -> Arc<[ItemIdx]> {
-        let fcx = FilterCtx::new(policy, mode, query);
+
+    /// Main-thread half of filtering, shared by the sync and async paths:
+    ///
+    /// 1. get the (cached) search index for `data`
+    /// 2. evaluate rules 1–4 per launcher
+    /// 3. score the contextual items (`based_show` needs `cx`)
+    ///
+    /// The returned job scores the pure items and sorts/limits; it is `Send`.
+    fn prepare_filter_job(
+        &mut self,
+        data: &LauncherEntity,
+        query: SharedString,
+        cx: &mut Context<Self>,
+    ) -> FilterJob {
+        let mode: SharedString = self.navigation.current().mode.as_str().to_owned().into();
+        let data: LauncherEntityInner = data.read(cx).clone();
+        let (policy, (index, rebuilt)) = self
+            .navigation
+            .with_model_mut(cx, |m, _| (m.filter_policy, m.search_index(&data)));
+
+        #[cfg(debug_assertions)]
+        if rebuilt {
+            debug_check_contextual(&index, &data, cx);
+        }
+        #[cfg(not(debug_assertions))]
+        let _ = rebuilt;
+
+        let gates = index.gates(&FilterCtx::new(policy, &mode, &query));
         let boosts = QUERY_MEMORY
             .get()
             .and_then(|l| l.read().ok())
-            .map(|m| m.boosts(query))
+            .map(|m| m.boosts(&query))
             .unwrap_or_default();
 
-        let results: Vec<Scored<ItemIdx>> = data_arc
-            .iter()
-            // [Rules 1–4] once per launcher
-            .filter_map(|(launcher_idx, launcher)| {
-                let gate = fcx.gate(&launcher.config);
-                (gate != GroupGate::Hidden).then_some((*launcher_idx, launcher, gate))
-            })
-            .flat_map(|(launcher_idx, launcher, gate)| {
-                let limit = pipeline::limit_of(&launcher.config);
-                launcher
-                    .children
-                    .iter_with_ids()
-                    .map(move |(child_idx, child)| (launcher_idx, gate, limit, child_idx, child))
-            })
-            // [Rules 4–6] per item
-            .filter(|(_, gate, _, _, child)| {
-                pipeline::admit(
-                    *gate,
-                    || child.based_show(query, cx),
-                    || child.search().fuzzy_match(query),
-                )
-            })
-            .map(|(launcher_idx, _, limit, child_idx, child)| {
-                let boost = child.item_key_ref().map(|id| boosts.get(id)).unwrap_or(0.);
-                Scored {
-                    index: (launcher_idx, child_idx),
-                    prio: child.priority().sort_key(query, child.search(), boost),
-                    limit,
-                }
-            })
-            .collect();
+        let contextual = index.score(&index.contextual, &gates, &query, &boosts, |row| {
+            // [Rule 5]; a removed item is never shown
+            data.child(row.id)
+                .map_or(Some(false), |child| child.based_show(&query, cx))
+        });
 
-        pipeline::sort_and_limit(results, policy)
+        FilterJob {
+            index,
+            gates,
+            boosts,
+            policy,
+            query,
+            contextual,
+        }
     }
+}
 
-    /// Shared setup for both sync and async filtering: snapshot the current
-    /// mode, policy and data handle. Pulled into one place so the two call
-    /// sites can't drift.
-    fn prepare_filter_inputs(
-        &self,
-        data: &LauncherEntity,
-        cx: &Context<Self>,
-    ) -> (LauncherEntityInner, LauncherMode, FilterPolicy) {
-        let mode = self.navigation.current().mode.clone();
-        let policy = self.navigation.with_model(cx, |m| m.filter_policy);
-        let data_rc = data.read(cx).clone();
-        (data_rc, mode, policy)
+/// Catches widgets that override `based_show` but forget `has_based_show`:
+/// their `based_show` would silently never run. The default returns `None`
+/// for any input, so anything else means an override.
+#[cfg(debug_assertions)]
+fn debug_check_contextual(
+    index: &SearchIndex,
+    data: &LauncherEntityInner,
+    cx: &mut Context<LauncherView>,
+) {
+    for row in index.pure.iter() {
+        if let Some(child) = data.child(row.id) {
+            debug_assert!(
+                child.based_show("", cx).is_none(),
+                "item {:?} overrides `based_show` but `has_based_show` returns false",
+                row.text
+            );
+        }
     }
 }

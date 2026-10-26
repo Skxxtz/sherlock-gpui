@@ -478,6 +478,10 @@ impl RenderableChildImpl for EventWidget {
     fn based_show<C: AppContext>(&self, _keyword: &str, cx: &mut C) -> Option<bool> {
         Some(self.entity.is_valid(cx))
     }
+    #[inline(always)]
+    fn has_based_show(&self) -> bool {
+        true
+    }
     fn update_async<C: AppContext>(&self, launcher: Arc<LauncherConfig>, cx: &mut C) {
         // debounce logic
         // causes freezes if not applied!!

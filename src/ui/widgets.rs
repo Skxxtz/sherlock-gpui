@@ -233,6 +233,10 @@ impl RenderableChildDelegate for RenderableChild {
         dispatch!(&self.kind, i => i.based_show(keyword, cx))
     }
 
+    fn has_based_show(&self) -> bool {
+        dispatch!(&self.kind, i => i.has_based_show())
+    }
+
     fn sidebar(&self, cx: &mut App) -> Option<AnyElement> {
         dispatch!(&self.kind, i => i.sidebar(&self.launcher, cx))
     }

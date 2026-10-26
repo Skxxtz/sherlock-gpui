@@ -1,6 +1,5 @@
-use std::{rc::Rc, sync::Arc};
-
 use gpui::{App, Task, WeakEntity};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use utils::{ProcessResult, ResultHeap};
 
@@ -93,7 +92,7 @@ impl ProcessModel {
                     view.update(cx, |this, cx| {
                         if let Some(entity) = result_entity.upgrade() {
                             entity.update(cx, |e, _| {
-                                let data = Rc::make_mut(e);
+                                let data = e.make_mut();
                                 if let Some(launcher) = data.get_mut(&id) {
                                     launcher.children = children;
                                 }

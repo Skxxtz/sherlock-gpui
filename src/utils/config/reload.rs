@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use gpui::{App, AppContext, AsyncApp};
 
@@ -80,7 +80,7 @@ fn reload_aliases<C: AppContext>(data: &LauncherEntity, cx: &mut C) -> Result<()
     let alias_path = ConfigGuard::read_with(|cfg| cfg.files.alias.clone())?;
     let mut aliases = SherlockAlias::load(&alias_path)?;
     data.update(cx, |this, _cx| {
-        for launcher in Rc::make_mut(this).values_mut() {
+        for launcher in this.make_mut().values_mut() {
             let LauncherType::Apps(apps) = &launcher.config.launcher_type else {
                 continue;
             };

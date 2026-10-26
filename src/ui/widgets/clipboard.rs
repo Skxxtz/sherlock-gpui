@@ -201,6 +201,10 @@ impl RenderableChildImpl for ClipWidget {
             .is_some_and(|a| !a.is_empty())
     }
     #[inline(always)]
+    fn has_based_show(&self) -> bool {
+        true
+    }
+    #[inline(always)]
     fn based_show<C: AppContext>(&self, _keyword: &str, cx: &mut C) -> Option<bool> {
         Some(
             self.entity

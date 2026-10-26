@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     io::ErrorKind,
     path::{Path, PathBuf},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -10,7 +9,7 @@ use gpui::App;
 
 use super::{Loader, utils::CounterReader};
 use crate::{
-    app::LauncherEntity,
+    app::{LauncherEntity, data::LauncherData},
     features::plugin::subscribers::{TileSubscribers, TileSubscribersGlobal},
     launcher::{Launcher, LauncherConfig, LauncherId},
     loader::utils::RawLauncher,
@@ -147,7 +146,7 @@ impl Loader {
         Self::sync_cache_if_empty(&ctx, renders.values(), &mut messages);
 
         data_handle.update(cx, |items, cx| {
-            *items = Rc::new(renders);
+            *items = LauncherData::new(renders);
             cx.notify();
         });
 

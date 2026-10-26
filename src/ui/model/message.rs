@@ -1,8 +1,9 @@
-use std::{cell::Cell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{cell::Cell, collections::HashMap, sync::Arc};
 
 use gpui::{App, Context, WeakEntity};
 
 use crate::{
+    app::data::LauncherData,
     features::message::MessageLauncher,
     launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     ui::{
@@ -67,7 +68,7 @@ impl MessageView {
     ) {
         let id = self.launcher_config.id();
         self.model.data().update(cx, |this, _| {
-            let data = Rc::make_mut(this);
+            let data = this.make_mut();
             let Some(message_launcher) = data.get_mut(&id) else {
                 return;
             };
@@ -105,7 +106,7 @@ impl MessageView {
                 .get(&idx.0)
                 .is_some_and(|l| l.children.get(idx.1).is_some())
             {
-                Rc::make_mut(this)
+                this.make_mut()
                     .get_mut(&idx.0)
                     .and_then(|l| l.children.remove(idx.1))
             } else {
@@ -127,7 +128,7 @@ impl MessageView {
     pub fn clear_messages(&mut self, cx: &mut App) {
         self.model
             .data
-            .update(cx, |this, _| *this = Rc::new(HashMap::new()));
+            .update(cx, |this, _| *this = LauncherData::default());
         self.model.filtered = Arc::from([]);
         self.count.set(0);
     }

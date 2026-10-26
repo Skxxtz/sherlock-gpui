@@ -2,7 +2,6 @@ use std::{
     collections::{HashMap, VecDeque},
     fmt::Debug,
     os::unix::net::UnixStream as StdUnixStream,
-    rc::Rc,
     sync::{Arc, Mutex},
 };
 
@@ -16,7 +15,7 @@ use tokio::{
 };
 
 use crate::{
-    app::{LauncherEntity, run_async_updates, spawn_launcher},
+    app::{LauncherEntity, data::LauncherData, run_async_updates, spawn_launcher},
     launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     sherlock_msg,
     tokio_utils::AsyncSizedMessage,
@@ -167,7 +166,7 @@ pub(super) async fn run_event_loop(
                         .map(|s| RenderableChild::new(launcher_config.clone(), DmenuData::from(s)))
                         .collect();
 
-                    Rc::new(HashMap::from([(
+                    LauncherData::new(HashMap::from([(
                         launcher_config.id(),
                         Launcher {
                             config: launcher_config,

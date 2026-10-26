@@ -1,9 +1,9 @@
-use std::{collections::HashMap, rc::Rc, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use gpui::{App, AppContext};
 
 use crate::{
-    app::LauncherEntity,
+    app::{LauncherEntity, data::LauncherData},
     launcher::{Children, Launcher, LauncherConfig, LauncherId},
     ui::model::ItemIdx,
 };
@@ -27,7 +27,7 @@ pub(super) fn single_launcher(
         config: cfg.clone(),
         children: Children::with_capacity(cap),
     };
-    cx.new(|_| Rc::new(HashMap::from([(cfg.id(), launcher)])))
+    cx.new(|_| LauncherData::new(HashMap::from([(cfg.id(), launcher)])))
 }
 
 pub struct CiUtils;

@@ -25,6 +25,28 @@ pub enum GroupGate {
     Match,
 }
 
+/// The launcher-level settings rules 1–4 and the limit need.
+/// Plain data (`Send + Sync`), so it can be used off the main thread.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GroupRules {
+    pub alias: Option<Arc<str>>,
+    pub priority: u16,
+    pub home: HomeType,
+    /// The launcher and its limit, if it has one.
+    pub limit: Option<(LauncherId, u16)>,
+}
+
+impl From<&LauncherConfig> for GroupRules {
+    fn from(cfg: &LauncherConfig) -> Self {
+        Self {
+            alias: cfg.alias.as_deref().map(Arc::from),
+            priority: cfg.priority,
+            home: cfg.home,
+            limit: limit_of(cfg),
+        }
+    }
+}
+
 impl FilterPolicy {
     #[inline(always)]
     pub fn uses_limit(self) -> bool {
@@ -52,7 +74,7 @@ impl<'a> FilterCtx<'a> {
         self.query.is_empty() && self.mode == "all"
     }
 
-    pub fn gate(&self, cfg: &LauncherConfig) -> GroupGate {
+    pub fn gate(&self, cfg: &GroupRules) -> GroupGate {
         if self.policy == FilterPolicy::QueryOnly {
             return GroupGate::Match;
         }
@@ -131,13 +153,13 @@ mod tests {
     use super::*;
     use crate::loader::utils::Priority;
 
-    fn cfg(alias: Option<&str>, priority: u16, home: HomeType) -> LauncherConfig {
-        LauncherConfig {
+    fn cfg(alias: Option<&str>, priority: u16, home: HomeType) -> GroupRules {
+        GroupRules::from(&LauncherConfig {
             alias: alias.map(str::to_owned),
             priority,
             home,
             ..Default::default()
-        }
+        })
     }
 
     fn key(base: u16) -> SortKey {
@@ -335,9 +357,25 @@ mod tests {
 
     #[test]
     fn limit_of_uses_config() {
-        let mut c = cfg(None, 1, HomeType::Home);
+        let mut c = LauncherConfig::default();
         assert_eq!(limit_of(&c), None);
         c.limit = Some(3);
         assert_eq!(limit_of(&c), Some((LauncherId::from(&c), 3)));
+    }
+
+    #[test]
+    fn group_rules_from_config() {
+        let c = LauncherConfig {
+            alias: Some("app".into()),
+            priority: 2,
+            home: HomeType::Persist,
+            limit: Some(5),
+            ..Default::default()
+        };
+        let g = GroupRules::from(&c);
+        assert_eq!(g.alias.as_deref(), Some("app"));
+        assert_eq!(g.priority, 2);
+        assert_eq!(g.home, HomeType::Persist);
+        assert_eq!(g.limit, Some((LauncherId::from(&c), 5)));
     }
 }

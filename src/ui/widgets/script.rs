@@ -183,6 +183,10 @@ impl RenderableChildImpl for ScriptData {
     fn based_show<C: AppContext>(&self, _keyword: &str, _cx: &mut C) -> Option<bool> {
         Some(true)
     }
+    #[inline(always)]
+    fn has_based_show(&self) -> bool {
+        true
+    }
     fn has_actions(&self, cx: &mut App) -> bool {
         self.update_entity
             .read(cx)

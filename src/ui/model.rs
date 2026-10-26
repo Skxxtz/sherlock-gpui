@@ -1,14 +1,15 @@
-use std::{collections::HashMap, rc::Rc, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use gpui::{App, AppContext, SharedString, Task, WeakEntity};
 
 use crate::{
-    app::{LauncherEntity, LauncherWeakEntity},
+    app::{LauncherEntity, LauncherWeakEntity, data::LauncherData},
     launcher::{Launcher, LauncherConfig, LauncherId, LocalId, variant_type::LauncherType},
     ui::{
         launcher::{LauncherView, filter_and_sort::FilterPolicy},
         model::{
             file::FileSearchModel,
+            index::SearchIndex,
             process::ProcessModel,
             utils::{all_indices, single_launcher},
         },
@@ -18,6 +19,7 @@ use crate::{
 pub mod emoji;
 pub mod file;
 pub mod home;
+pub mod index;
 pub mod message;
 pub mod pipeline;
 pub mod process;
@@ -32,6 +34,9 @@ pub struct Model {
     pub data: LauncherEntity,
     /// Indices of the visible items, in display order.
     pub filtered: Arc<[ItemIdx]>,
+
+    index: Option<Arc<SearchIndex>>,
+
     /// The query that produced `filtered` if any.
     pub last_query: Option<SharedString>,
     /// In-flight filter task; dropping it, cancels it.
@@ -55,6 +60,7 @@ impl Model {
             data,
             filtered,
             last_query: None,
+            index: None,
             pending: None,
             filter_policy,
             source,
@@ -63,12 +69,12 @@ impl Model {
 
     /// Local model over owned launcher data, with every item visible.
     pub fn standard(data: HashMap<LauncherId, Launcher>, cx: &mut App) -> Self {
-        Self::standard_with_entity(cx.new(|_| Rc::new(data)), cx)
+        Self::standard_with_entity(cx.new(|_| LauncherData::new(data)), cx)
     }
 
     pub fn sub_view(data: HashMap<LauncherId, Launcher>, cx: &mut App) -> Self {
         let filtered = all_indices(&data);
-        let entity = cx.new(|_| Rc::new(data));
+        let entity = cx.new(|_| LauncherData::new(data));
         Self::new(
             entity,
             filtered,
@@ -146,6 +152,17 @@ impl Model {
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.filtered.len()
+    }
+
+    pub fn search_index(&mut self, data: &LauncherData) -> (Arc<SearchIndex>, bool) {
+        match &self.index {
+            Some(idx) if !idx.is_stale(data) => (idx.clone(), false),
+            _ => {
+                let idx = Arc::new(SearchIndex::build(data));
+                self.index = Some(idx.clone());
+                (idx, true)
+            }
+        }
     }
 }
 

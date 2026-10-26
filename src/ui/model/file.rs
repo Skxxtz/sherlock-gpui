@@ -1,4 +1,4 @@
-use std::{env::home_dir, path::PathBuf, rc::Rc, sync::Arc};
+use std::{env::home_dir, path::PathBuf, sync::Arc};
 
 use gpui::{App, SharedString, Task, WeakEntity};
 use tokio::sync::mpsc;
@@ -152,7 +152,7 @@ impl FileSearchModel {
                                     // Swap the entity data directly
                                     if let Some(entity) = result_entity.upgrade() {
                                         entity.update(cx, |e, _| {
-                                            let data = Rc::make_mut(e);
+                                            let data = e.make_mut();
                                             if let Some(launcher) = data.get_mut(&id) {
                                                 launcher.children = children;
                                             }

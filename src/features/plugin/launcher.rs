@@ -1,6 +1,5 @@
 use std::{
     path::Path,
-    rc::Rc,
     sync::{
         Arc, Mutex,
         atomic::{AtomicU64, AtomicUsize, Ordering},
@@ -360,7 +359,7 @@ fn replace_children(
         if !is_current {
             return;
         }
-        if let Some(entry) = Rc::make_mut(data).get_mut(&id) {
+        if let Some(entry) = data.make_mut().get_mut(&id) {
             if let LauncherType::Plugin(plg) = &entry.config.launcher_type {
                 plg.static_count.store(children.len(), Ordering::SeqCst);
                 // Rows from an earlier query were dropped: ask again.
@@ -387,7 +386,7 @@ pub fn apply_query_results(plugin_id: &Path, rows: Vec<PluginNodeRegistration>, 
         else {
             return;
         };
-        let Some(entry) = Rc::make_mut(data).get_mut(&id) else {
+        let Some(entry) = data.make_mut().get_mut(&id) else {
             return;
         };
         let LauncherType::Plugin(plg) = &entry.config.launcher_type else {
@@ -435,7 +434,7 @@ async fn reload_plugin(
             return;
         };
         data.update(cx, |data, cx| {
-            let Some(entry) = Rc::make_mut(data).get_mut(&launcher_id) else {
+            let Some(entry) = data.make_mut().get_mut(&launcher_id) else {
                 return;
             };
             let config = Arc::make_mut(&mut entry.config);

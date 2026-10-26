@@ -161,6 +161,10 @@ impl RenderableChildImpl for MusicPlayerWidget {
         }
     }
     #[inline(always)]
+    fn has_based_show(&self) -> bool {
+        true
+    }
+    #[inline(always)]
     fn binds(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<Arc<Vec<Bind>>> {
         launcher.launcher_type.binds()
     }

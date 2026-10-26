@@ -278,6 +278,10 @@ impl RenderableChildImpl for TranslationData {
 
         None
     }
+    #[inline(always)]
+    fn has_based_show(&self) -> bool {
+        true
+    }
 }
 
 pub async fn translate(
