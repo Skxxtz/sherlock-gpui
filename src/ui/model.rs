@@ -1,19 +1,18 @@
 use std::{collections::HashMap, sync::Arc};
 
-use gpui::{App, AppContext, Entity, SharedString, Task, WeakEntity};
+use gpui::{App, AppContext, Entity, SharedString, Task};
 
 use crate::{
-    app::{LauncherEntity, LauncherWeakEntity, data::LauncherData},
-    launcher::{Launcher, LauncherConfig, LauncherId, LocalId, variant_type::LauncherType},
+    app::{LauncherEntity, data::LauncherData},
+    launcher::{Launcher, LauncherConfig, LauncherId, LocalId},
     ui::{
-        launcher::{LauncherView, filter_and_sort::FilterPolicy},
+        launcher::filter_and_sort::FilterPolicy,
         model::{
             cursor::Cursor,
             data::ModelData,
             index::SearchIndex,
             utils::{all_indices, single_launcher},
         },
-        views::{file::FileSearchModel, process::ProcessModel},
     },
 };
 
@@ -37,13 +36,10 @@ pub struct Model<D: ModelData = LauncherData> {
     cursor: Cursor,
     /// Cached search index for `data`; rebuilt when the data revision changes.
     index: Option<Arc<SearchIndex<D::Id>>>,
-
     /// The query that produced `filtered` if any.
     pub last_query: Option<SharedString>,
     /// In-flight filter task; dropping it, cancels it.
     pub pending: Option<Task<Option<()>>>,
-    /// Where the items come from: local filtering or an external search.
-    pub source: ModelSource,
     /// Defines which filter rules should apply at runtime.
     pub filter_policy: FilterPolicy,
 }
@@ -60,12 +56,7 @@ pub struct ResultsChange {
 // Constructors
 impl<D: ModelData> Model<D> {
     /// Shared constructor. Starts with no query, no pending task and the first item selected.
-    pub fn new(
-        data: Entity<D>,
-        filtered: Arc<[D::Id]>,
-        source: ModelSource,
-        filter_policy: FilterPolicy,
-    ) -> Self {
+    pub fn new(data: Entity<D>, filtered: Arc<[D::Id]>, filter_policy: FilterPolicy) -> Self {
         Self {
             data,
             filtered,
@@ -74,7 +65,6 @@ impl<D: ModelData> Model<D> {
             index: None,
             pending: None,
             filter_policy,
-            source,
         }
     }
 }
@@ -88,54 +78,21 @@ impl Model<LauncherData> {
     pub fn sub_view(data: HashMap<LauncherId, Launcher>, cx: &mut App) -> Self {
         let filtered = all_indices(&data);
         let entity = cx.new(|_| LauncherData::new(data));
-        Self::new(
-            entity,
-            filtered,
-            ModelSource::Static,
-            FilterPolicy::QueryOnly,
-        )
+        Self::new(entity, filtered, FilterPolicy::QueryOnly)
     }
 
     /// Local model over an existing data entity, with every item visible.
     /// Used for home and dmenu, which share their launcher entity.
     pub fn standard_with_entity(data: LauncherEntity, cx: &App) -> Self {
         let filtered = all_indices(data.read(cx));
-        Self::new(data, filtered, ModelSource::Static, FilterPolicy::All)
+        Self::new(data, filtered, FilterPolicy::All)
     }
 
-    /// Process model. Starts empty; filled by `ProcessModel` searches.
-    pub fn process(launcher: Arc<LauncherConfig>, cx: &mut App) -> Self {
-        let cap = match launcher.launcher_type.as_ref() {
-            LauncherType::Process(p) => p.max_results,
-            _ => 0,
-        };
-        let data = single_launcher(&launcher, cap, cx);
-        Self::new(
-            data,
-            Arc::from([]),
-            ModelSource::Process(ProcessModel::new(launcher)),
-            FilterPolicy::All,
-        )
-    }
-
-    /// File search model, optionally starting in `dir`.
-    /// Starts empty; filled by `FileSearchModel` searches.
-    pub fn file_search(
-        launcher: Arc<LauncherConfig>,
-        dir: Option<SharedString>,
-        cx: &mut App,
-    ) -> Self {
-        let cap = match launcher.launcher_type.as_ref() {
-            LauncherType::Files(p) => p.max_results,
-            _ => 0,
-        };
-        let data = single_launcher(&launcher, cap, cx);
-        Self::new(
-            data,
-            Arc::from([]),
-            ModelSource::Files(FileSearchModel::new(launcher, dir)),
-            FilterPolicy::All,
-        )
+    /// Empty model over a single launcher, for views that fill it with an external search
+    /// (files, processes). `cap` preallocates room for the results.
+    pub fn external(launcher: &Arc<LauncherConfig>, cap: usize, cx: &mut App) -> Self {
+        let data = single_launcher(launcher, cap, cx);
+        Self::new(data, Arc::from([]), FilterPolicy::All)
     }
 }
 
@@ -218,39 +175,5 @@ impl<D: ModelData> Model<D> {
         self.filtered = results;
         self.last_query = Some(query);
         ResultsChange { changed, restored }
-    }
-}
-
-/// Where the model's items come from.
-pub enum ModelSource {
-    /// Fixed data, filtered locally (home, dmenu, emoji, messages).
-    Static,
-    /// Results from a file search, updated as the query changes
-    Files(FileSearchModel),
-    /// Results from the running-process list, updtaed as the query changes.
-    Process(ProcessModel),
-}
-
-impl ModelSource {
-    /// True if items are filtered locally instead of by an external search.
-    #[inline(always)]
-    pub fn is_static(&self) -> bool {
-        matches!(self, Self::Static)
-    }
-
-    /// Starts an external search. No-op for `Static`.
-    /// Results are written into `data`, then handed back to `view` via `apply_results`.
-    pub fn search(
-        &mut self,
-        query: Arc<str>,
-        data: LauncherWeakEntity,
-        view: WeakEntity<LauncherView>,
-        cx: &mut App,
-    ) {
-        match self {
-            Self::Files(s) => s.search(query, data, view, cx),
-            Self::Process(s) => s.search(query, data, view, cx),
-            Self::Static => {}
-        }
     }
 }

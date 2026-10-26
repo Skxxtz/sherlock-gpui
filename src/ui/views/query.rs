@@ -1,35 +1,24 @@
-use gpui::{AsyncApp, Context, WeakEntity};
+use std::sync::Arc;
 
-use crate::ui::{
-    model::{Model, index::FilterJob},
-    views::{Query, QueryResult},
+use gpui::{App, AsyncApp, Context, WeakEntity};
+
+use crate::{
+    app::LauncherWeakEntity,
+    ui::{
+        launcher::LauncherView,
+        model::{Model, index::FilterJob},
+        views::{Query, QueryResult},
+    },
 };
 
-/// Filters `model` for `query`.
-///
-/// * External sources (files, processes) run their own search and report back through
-///   `LauncherView::apply_results`.
-/// * Static data goes through the search index: contextual items now, pure items now (`sync`)
-///   or on the background executor.
+/// Filters static launcher data in `model` for `query`, through the search index:
+/// contextual items now, pure items now (`sync`) or on the background executor.
 pub fn launcher_query<V: 'static>(
     model: &mut Model,
     query: &Query,
     cx: &mut Context<V>,
 ) -> QueryResult {
     let data = model.data();
-
-    if !model.source.is_static() {
-        if !query.force && model.last_query.as_ref() == Some(&query.text) {
-            return QueryResult::Ignored;
-        }
-        model.source.search(
-            query.text.as_ref().into(),
-            data.downgrade(),
-            query.shell.clone(),
-            cx,
-        );
-        return QueryResult::Pending;
-    }
 
     crate::features::plugin::dispatch_query(data.read(cx), &query.text);
 
@@ -77,6 +66,28 @@ pub fn launcher_query<V: 'static>(
             Some(())
         }
     }));
+    QueryResult::Pending
+}
+
+/// Runs an external search (files, processes) for `query`, unless the query is unchanged.
+///
+/// `search` writes its results into the model's data and reports them through
+/// `LauncherView::apply_results`.
+pub fn external_query(
+    model: &Model,
+    query: &Query,
+    cx: &mut App,
+    search: impl FnOnce(Arc<str>, LauncherWeakEntity, WeakEntity<LauncherView>, &mut App),
+) -> QueryResult {
+    if !query.force && model.last_query.as_ref() == Some(&query.text) {
+        return QueryResult::Ignored;
+    }
+    search(
+        query.text.as_ref().into(),
+        model.data().downgrade(),
+        query.shell.clone(),
+        cx,
+    );
     QueryResult::Pending
 }
 

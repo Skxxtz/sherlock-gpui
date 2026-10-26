@@ -1,20 +1,33 @@
-use crate::ui::views::{Query, QueryResult, query::launcher_query};
-use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
-use gpui::{AnyElement, Context, Window};
 use std::sync::Arc;
 
-use gpui::{App, SharedString};
+use gpui::{AnyElement, App, Context, SharedString, Window};
 
-use crate::{launcher::LauncherConfig, ui::model::Model};
+use crate::{
+    launcher::{LauncherConfig, variant_type::LauncherType},
+    ui::{
+        model::Model,
+        views::{
+            Query, QueryResult, ShellCtx, SherlockView, file::FileSearchModel, list::list_body,
+            query::external_query,
+        },
+    },
+};
 
 pub struct FileView {
     pub model: Model,
+    /// Fills `model` with results as the query changes.
+    search: FileSearchModel,
 }
 
 impl FileView {
     pub fn new(launcher: Arc<LauncherConfig>, dir: Option<SharedString>, cx: &mut App) -> Self {
+        let cap = match launcher.launcher_type.as_ref() {
+            LauncherType::Files(p) => p.max_results,
+            _ => 0,
+        };
         Self {
-            model: Model::file_search(launcher, dir, cx),
+            model: Model::external(&launcher, cap, cx),
+            search: FileSearchModel::new(launcher, dir),
         }
     }
 }
@@ -30,6 +43,8 @@ impl SherlockView for FileView {
     }
 
     fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {
-        launcher_query(&mut self.model, query, cx)
+        external_query(&self.model, query, cx, |q, data, shell, cx| {
+            self.search.search(q, data, shell, cx)
+        })
     }
 }
