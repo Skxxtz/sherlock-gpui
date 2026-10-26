@@ -1,72 +1,22 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use gpui::{AppContext, AsyncApp, Context, SharedString, WeakEntity};
 
+pub use crate::ui::model::pipeline::FilterPolicy;
 use crate::{
     QUERY_MEMORY,
     app::{LauncherEntity, LauncherEntityInner},
-    launcher::{LauncherConfig, LauncherId, LauncherValues},
+    launcher::LauncherValues,
     ui::{
         launcher::{LauncherMode, LauncherView, ModeTransition, navigator::handle::ViewKind},
-        model::ItemIdx,
+        model::{
+            ItemIdx,
+            pipeline::{self, FilterCtx, GroupGate, Scored},
+        },
         traits::RenderableChildDelegate,
-        utils::{scoring::SortKey, search::SherlockSearch},
+        utils::search::SherlockSearch,
     },
-    utils::config::HomeType,
 };
-
-struct FilterResult {
-    index: ItemIdx,
-    prio: SortKey,
-    limiter: Option<(LauncherId, u16)>,
-}
-
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
-pub enum FilterPolicy {
-    /// Use all available filter rules
-    #[default]
-    All,
-    /// Only match the search string
-    QueryOnly,
-}
-
-impl FilterPolicy {
-    #[inline(always)]
-    pub fn keep_launchers(self, cfg: &LauncherConfig, mode: &str, is_home: bool) -> bool {
-        if self == Self::QueryOnly {
-            return true;
-        }
-
-        // [Rule 1]
-        // Case 1: Early return if mode applies but item is not assigned to that mode
-        // Case 2: Early return if current mode is not required mode for item
-        if Some(mode) != cfg.alias.as_deref() && (mode != "all" || cfg.priority < 1) {
-            return false;
-        }
-
-        // [Rule 2]
-        // Not home but item is assigned to only show on home
-        // [Rule 3]
-        // Item should only show on search but mode is home
-        match cfg.home {
-            HomeType::Search => !is_home,
-            HomeType::OnlyHome => is_home,
-            _ => true,
-        }
-    }
-
-    #[inline(always)]
-    pub fn persists(self, cfg: &LauncherConfig) -> bool {
-        // [Rule 4]
-        // Early return if item should always show (websearch for example)
-        self == Self::All && cfg.home == HomeType::Persist
-    }
-
-    #[inline(always)]
-    pub fn uses_limit(self) -> bool {
-        self == Self::All
-    }
-}
 
 impl LauncherView {
     pub fn apply_results(
@@ -190,15 +140,9 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let (data_arc, mode, policy, counter_cache) = self.prepare_filter_inputs(&data, cx);
-        let results_arc = Self::compute_filtered_results(
-            data_arc,
-            policy,
-            mode.as_str(),
-            &query,
-            counter_cache,
-            cx,
-        );
+        let (data_arc, mode, policy) = self.prepare_filter_inputs(&data, cx);
+        let results_arc =
+            Self::compute_filtered_results(data_arc, policy, mode.as_str(), &query, cx);
         self.apply_results(results_arc, query, force, cx);
     }
     fn filter_update_async(
@@ -208,18 +152,16 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let (data_arc, mode, policy, counter_cache) = self.prepare_filter_inputs(&data, cx);
+        let (data_arc, mode, policy) = self.prepare_filter_inputs(&data, cx);
         let render_task = Some(cx.spawn(
             move |this: WeakEntity<LauncherView>, cx: &mut AsyncApp| {
                 let mut cx = cx.clone();
                 async move {
-                    let mode = mode.as_str();
                     let results_arc = Self::compute_filtered_results(
                         data_arc,
                         policy,
-                        mode,
+                        mode.as_str(),
                         &query,
-                        counter_cache,
                         &mut cx,
                     );
 
@@ -237,94 +179,68 @@ impl LauncherView {
         self.navigation
             .with_model_mut(cx, |m, _| m.pending = render_task);
     }
+    /// Runs the rule pipeline (see `model::pipeline`) over `data_arc`.
+    /// Only the cx-dependent parts (`based_show`, fuzzy match, boosts) live here.
     fn compute_filtered_results<C: AppContext>(
         data_arc: LauncherEntityInner,
         policy: FilterPolicy,
         mode: &str,
         query: &SharedString,
-        mut limit_cache: HashMap<LauncherId, u16>,
         cx: &mut C,
     ) -> Arc<[ItemIdx]> {
-        let is_home = query.is_empty() && mode == "all";
+        let fcx = FilterCtx::new(policy, mode, query);
         let boosts = QUERY_MEMORY
             .get()
             .and_then(|l| l.read().ok())
             .map(|m| m.boosts(query))
             .unwrap_or_default();
 
-        // collects Vec<(index, priority)>
-        let mut results: Vec<FilterResult> = data_arc
+        let results: Vec<Scored<ItemIdx>> = data_arc
             .iter()
-            .filter(|(_, launcher)| policy.keep_launchers(&launcher.config, mode, is_home))
-            .flat_map(|(launcher_idx, launcher)| {
+            // [Rules 1–4] once per launcher
+            .filter_map(|(launcher_idx, launcher)| {
+                let gate = fcx.gate(&launcher.config);
+                (gate != GroupGate::Hidden).then_some((*launcher_idx, launcher, gate))
+            })
+            .flat_map(|(launcher_idx, launcher, gate)| {
+                let limit = pipeline::limit_of(&launcher.config);
                 launcher
                     .children
                     .iter_with_ids()
-                    .map(move |(child_idx, child)| {
-                        (launcher_idx, launcher.config.clone(), child_idx, child)
-                    })
+                    .map(move |(child_idx, child)| (launcher_idx, gate, limit, child_idx, child))
             })
-            .filter(|(_, launcher, _, child)| {
-                if policy.persists(launcher) {
-                    return true;
-                }
-                // [Rule 5]
-                // Early return if based show (calc for example) applies
-                if let Some(based) = child.based_show(query, cx) {
-                    return based;
-                }
-                // [Rule 6]
-                // Check if query matches
-                child.search().fuzzy_match(query)
+            // [Rules 4–6] per item
+            .filter(|(_, gate, _, _, child)| {
+                pipeline::admit(
+                    *gate,
+                    || child.based_show(query, cx),
+                    || child.search().fuzzy_match(query),
+                )
             })
-            .map(|(launcher_idx, launcher_config, child_idx, child)| {
+            .map(|(launcher_idx, _, limit, child_idx, child)| {
                 let boost = child.item_key_ref().map(|id| boosts.get(id)).unwrap_or(0.);
-                FilterResult {
-                    index: (*launcher_idx, child_idx),
+                Scored {
+                    index: (launcher_idx, child_idx),
                     prio: child.priority().sort_key(query, child.search(), boost),
-                    limiter: launcher_config
-                        .limit
-                        .map(|limit| (LauncherId::from(launcher_config.as_ref()), limit)),
+                    limit,
                 }
             })
             .collect();
 
-        // sort based on priority
-        results.sort_unstable_by_key(|a| a.prio);
-
-        // strip the priority from results
-        results
-            .into_iter()
-            .filter_map(|r| {
-                if let Some((id, limit)) = r.limiter {
-                    let count = limit_cache.entry(id).or_insert(0);
-                    *count += 1;
-                    (*count <= limit).then_some(r.index)
-                } else {
-                    Some(r.index)
-                }
-            })
-            .collect::<Vec<_>>()
-            .into()
+        pipeline::sort_and_limit(results, policy)
     }
 
     /// Shared setup for both sync and async filtering: snapshot the current
-    /// mode, clone the data handle, and clone the limit cache. Pulled into
-    /// one place so the two call sites can't drift.
-    /// Returns: Data, Mode, LimitCache
+    /// mode, policy and data handle. Pulled into one place so the two call
+    /// sites can't drift.
     fn prepare_filter_inputs(
         &self,
         data: &LauncherEntity,
         cx: &Context<Self>,
-    ) -> (
-        LauncherEntityInner,
-        LauncherMode,
-        FilterPolicy,
-        HashMap<LauncherId, u16>,
-    ) {
+    ) -> (LauncherEntityInner, LauncherMode, FilterPolicy) {
         let mode = self.navigation.current().mode.clone();
         let policy = self.navigation.with_model(cx, |m| m.filter_policy);
         let data_rc = data.read(cx).clone();
-        (data_rc, mode, policy, HashMap::new())
+        (data_rc, mode, policy)
     }
 }

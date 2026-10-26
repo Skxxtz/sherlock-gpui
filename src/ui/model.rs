@@ -19,6 +19,7 @@ pub mod emoji;
 pub mod file;
 pub mod home;
 pub mod message;
+pub mod pipeline;
 pub mod process;
 mod utils;
 
