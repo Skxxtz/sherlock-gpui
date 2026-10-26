@@ -8,13 +8,11 @@ use rayon::iter::{ParallelBridge, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
-use crate::ui::model::{
-    process::{
-        backends::ProcessSearchProvider,
-        utils::{PathSearchUtils, ProcessResult, ResultHeap},
-    },
-    utils::CiUtils,
+use crate::ui::views::process::{
+    backends::ProcessSearchProvider,
+    utils::{PathSearchUtils, ProcessResult, ResultHeap},
 };
+use crate::utils::string::CiUtils;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct InternalBackend;

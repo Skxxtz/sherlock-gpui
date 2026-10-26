@@ -7,7 +7,7 @@ use crate::{
             handle::{ViewHandle, ViewKind},
             views::{Layout, NavView},
         },
-        model::home::HomeView,
+        views::home::HomeView,
     },
 };
 

@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, Entity,
     FontWeight, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render,
-    SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img, list,
+    SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img,
     prelude::FluentBuilder, px, relative,
 };
 use slotmap::Key;
@@ -18,16 +18,17 @@ use crate::{
     loader::resolve_icon_path,
     ui::{
         UIFunction,
-        launcher::{Execute, LauncherMode, LauncherView, navigator::views::Grid},
+        launcher::{Execute, LauncherMode, LauncherView},
         traits::RenderableChildDelegate,
         utils::{ease::Ease, render::ListItemBorder, selection::Selection},
+        views::{Chrome, ShellCtx},
         widgets::RenderableChild,
     },
     utils::config::ConfigGuard,
 };
 
 impl Render for LauncherView {
-    fn render(&mut self, _win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
         let selected = self.navigation.selected_data_idx(cx);
@@ -41,6 +42,8 @@ impl Render for LauncherView {
 
         self.check_actions(cx);
         self.sidebar_controller.check_validity(&self.navigation, cx);
+
+        let chrome = self.navigation.current().handle.chrome(cx);
 
         div()
             .id("sherlock")
@@ -65,22 +68,24 @@ impl Render for LauncherView {
             .on_action(cx.listener(Self::open_context))
             .on_key_down(cx.listener(Self::context_menu_binds_listener))
             .on_key_up(cx.listener(Self::inner_bind_listener))
-            .child(self.render_search_bar(theme.clone()))
+            .when(chrome.search_bar, |this| {
+                this.child(self.render_search_bar(theme.clone()))
+            })
             .when(!self.config_initialized, |this| {
                 this.child(self.render_config_banner(theme.clone()))
             })
-            .child(self.render_mode_label(theme.clone()))
+            .when(chrome.mode_label, |this| {
+                this.child(self.render_mode_label(theme.clone()))
+            })
             .child(
-                div().flex_1().min_h_0().child(
-                    match self.navigation.current().layout.grid.clone() {
-                        Some(grid) => self
-                            .render_result_grid(grid, cx, theme.clone())
-                            .into_any_element(),
-                        None => self.render_results(cx, theme.clone()).into_any_element(),
-                    },
-                ),
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .child(self.render_body(chrome, theme.clone(), win, cx)),
             )
-            .child(self.render_status_bar(theme, cx))
+            .when(chrome.status_bar, |this| {
+                this.child(self.render_status_bar(theme, cx))
+            })
     }
 }
 
@@ -200,35 +205,42 @@ impl LauncherView {
             .child(self.navigation.current().mode.display_str())
     }
 
-    fn render_results(
+    /// The active view's body, plus the sidebar (if the view wants one) and the context menu.
+    fn render_body(
         &mut self,
+        chrome: Chrome,
+        theme: Arc<ThemeData>,
+        win: &mut Window,
         cx: &mut Context<Self>,
-        _theme: Arc<ThemeData>,
     ) -> impl IntoElement {
-        let (indices, data) = self
-            .navigation
-            .with_model(cx, |mdl| (mdl.filtered_indices(), mdl.data()));
-
-        let sidebar = self
-            .navigation
-            .with_selected_item(cx, |item, cx| {
-                let allowed = item.sidebar_default_on() || self.sidebar_controller.is_valid();
-                allowed.then(|| item.sidebar(cx)).flatten()
+        let sidebar = chrome
+            .sidebar
+            .then(|| {
+                self.navigation.with_selected_item(cx, |item, cx| {
+                    let allowed = item.sidebar_default_on() || self.sidebar_controller.is_valid();
+                    allowed.then(|| item.sidebar(cx)).flatten()
+                })
             })
+            .flatten()
             .flatten();
 
         if sidebar.is_some() {
             self.sidebar_controller.sync_scroll();
         }
 
-        let selected_idx = self.navigation.selected_index(cx);
-        let state = self.navigation.current().layout.list.clone();
-        let query = self.text_input.read(cx).content.clone();
+        let nav = self.navigation.current();
+        let is_grid = nav.layout.grid.is_some();
+        let shell = ShellCtx {
+            shell: cx.entity(),
+            query: self.text_input.read(cx).content.clone(),
+            theme: theme.clone(),
+            layout: &nav.layout,
+        };
+        let body = nav.handle.render_body(&shell, win, cx);
 
-        let theme = cx.global::<ActiveTheme>().0.clone();
-        let max_shortcuts = ConfigGuard::read().map_or(5, |c| c.appearance.num_shortcuts) as usize;
         div()
             .id("results-container")
+            .when(is_grid, |this| this.relative())
             .size_full()
             .px(px(10.))
             .child(
@@ -238,56 +250,7 @@ impl LauncherView {
                     .flex_1()
                     .min_h_0()
                     .size_full()
-                    .child({
-                        let view_handle = cx.entity().clone();
-                        let data = data.read(cx).clone();
-                        list(state, {
-                            let theme = theme.clone();
-                            move |idx, _win, cx| {
-                                let data_idx = match indices.get(idx) {
-                                    Some(&i) => i,
-                                    None => return div().into_any_element(),
-                                };
-                                let child = match data
-                                    .get(&data_idx.0)
-                                    .and_then(|l| l.children.get(data_idx.1))
-                                {
-                                    Some(c) => c,
-                                    None => return div().into_any_element(),
-                                };
-
-                                let shortcut_idx = child
-                                    .shortcut()
-                                    .then(|| {
-                                        let count = indices[..idx.min(indices.len())]
-                                            .iter()
-                                            .filter(|&&i| {
-                                                data.get(&i.0).is_some_and(|l| l.config.shortcut)
-                                            })
-                                            .take(max_shortcuts)
-                                            .count();
-                                        if count > max_shortcuts - 1 {
-                                            None
-                                        } else {
-                                            Some(count + 1)
-                                        }
-                                    })
-                                    .flatten();
-
-                                Self::render_list_item(
-                                    child,
-                                    shortcut_idx,
-                                    Selection::new(data_idx, idx == selected_idx),
-                                    &query,
-                                    theme.clone(),
-                                    view_handle.clone(),
-                                    cx,
-                                )
-                            }
-                        })
-                        .pb(px(5.))
-                        .size_full()
-                    })
+                    .child(body)
                     .when_some(sidebar, |this, sidebar| {
                         this.child(
                             div()
@@ -319,85 +282,6 @@ impl LauncherView {
                                 ),
                         )
                     }),
-            )
-            .child(self.context_menu.render(theme))
-    }
-
-    fn render_result_grid(
-        &self,
-        grid: Grid,
-        cx: &mut Context<Self>,
-        theme: Arc<ThemeData>,
-    ) -> impl IntoElement {
-        let (indices, data) = self
-            .navigation
-            .with_model(cx, |mdl| (mdl.filtered_indices(), mdl.data()));
-
-        let selected_idx = self.navigation.selected_index(cx);
-        let query = self.text_input.read(cx).content.clone();
-
-        div()
-            .id("results-container")
-            .relative()
-            .size_full()
-            .px(px(10.))
-            .child(
-                div()
-                    .flex()
-                    .gap(px(10.))
-                    .flex_1()
-                    .min_h_0()
-                    .size_full()
-                    .child(
-                        gpui::uniform_list("emoji-grid", indices.len().div_ceil(grid.columns), {
-                            let theme = theme.clone();
-                            let handle = cx.entity().clone();
-                            move |range, _win, cx| {
-                                let data = data.read(cx).clone();
-                                range
-                                    .map(|row_idx| {
-                                        div()
-                                            .flex()
-                                            .flex_row()
-                                            .w_full()
-                                            .gap(px(2.0))
-                                            .children((0..grid.columns).map(|col_idx| {
-                                                let item_idx = row_idx * grid.columns + col_idx;
-
-                                                if let Some(&data_idx) = indices.get(item_idx)
-                                                    && let Some(child) = data
-                                                        .get(&data_idx.0)
-                                                        .and_then(|l| l.children.get(data_idx.1))
-                                                {
-                                                    return div()
-                                                        .w_0()
-                                                        .flex_1()
-                                                        .child(Self::render_list_item(
-                                                            child,
-                                                            None,
-                                                            Selection::new(
-                                                                data_idx,
-                                                                item_idx == selected_idx,
-                                                            ),
-                                                            &query,
-                                                            theme.clone(),
-                                                            handle.clone(),
-                                                            cx,
-                                                        ))
-                                                        .into_any_element();
-                                                }
-                                                // Empty cell for alignment
-                                                div().flex_1().into_any_element()
-                                            }))
-                                            .into_any_element()
-                                    })
-                                    .collect::<Vec<_>>()
-                            }
-                        })
-                        .gap(px(2.0))
-                        .track_scroll(&grid.scroll)
-                        .size_full(),
-                    ),
             )
             .child(self.context_menu.render(theme))
     }

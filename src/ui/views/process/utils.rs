@@ -1,6 +1,6 @@
 use gpui::SharedString;
 
-use crate::ui::model::utils::CiUtils;
+use crate::utils::string::CiUtils;
 
 #[derive(Clone)]
 pub struct ProcessResult {

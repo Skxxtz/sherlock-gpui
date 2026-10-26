@@ -3,7 +3,7 @@ use std::sync::Arc;
 use gpui::{App, AppContext, px};
 
 use super::{Layout, NavView, ViewHandle, ViewKind};
-use crate::{launcher::LauncherConfig, ui::model::process::view::ProcessView};
+use crate::{launcher::LauncherConfig, ui::views::process::view::ProcessView};
 
 impl NavView {
     /// Create the process view, whick lists running processes.

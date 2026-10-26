@@ -1,3 +1,5 @@
+use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
+use gpui::{AnyElement, Window};
 use std::{cell::Cell, collections::HashMap, sync::Arc};
 
 use gpui::{App, Context, WeakEntity};
@@ -131,5 +133,16 @@ impl MessageView {
             .update(cx, |this, _| *this = LauncherData::default());
         self.model.filtered = Arc::from([]);
         self.count.set(0);
+    }
+}
+
+impl SherlockView for MessageView {
+    fn render_body(
+        &mut self,
+        shell: &ShellCtx,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        list_body(&self.model, shell, cx)
     }
 }

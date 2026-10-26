@@ -1,7 +1,7 @@
 use gpui::{App, AppContext, Entity, px};
 
 use super::{Layout, NavView, ViewHandle, ViewKind};
-use crate::{ui::model::message::MessageView, utils::errors::SherlockMessage};
+use crate::{ui::views::message::MessageView, utils::errors::SherlockMessage};
 
 impl NavView {
     /// Creates the message view, which shows errors and other messages.

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use gpui::{App, AppContext, SharedString, px};
 
 use super::{Layout, NavView, ViewHandle, ViewKind};
-use crate::{launcher::LauncherConfig, ui::model::file::view::FileView};
+use crate::{launcher::LauncherConfig, ui::views::file::view::FileView};
 
 impl NavView {
     /// Creates a file browser view.

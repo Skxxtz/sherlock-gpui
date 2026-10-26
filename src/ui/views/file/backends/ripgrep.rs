@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::ui::model::file::{backends::command::CommandFactory, filter::FileFilter};
+use crate::ui::views::file::{backends::command::CommandFactory, filter::FileFilter};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RgFactory;

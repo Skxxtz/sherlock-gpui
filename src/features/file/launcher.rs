@@ -11,7 +11,7 @@ use crate::{
     sherlock_msg,
     ui::{
         launcher::navigator::handle::ViewKind,
-        model::file::FileSearchBackend,
+        views::file::FileSearchBackend,
         widgets::{
             RenderableChild,
             list_item::{ItemMeta, ListItem, fixed::FixedPayload},

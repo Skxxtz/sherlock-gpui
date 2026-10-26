@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::ui::model::file::{
+use crate::ui::views::file::{
     backends::{
         command::CommandBackend, fd::FdFactory, ripgrep::RgFactory, walkdir::WalkdirBackend,
     },

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use gpui::{App, AppContext, px};
 
 use super::{Layout, NavView, ViewHandle, ViewKind};
-use crate::{launcher::LauncherConfig, ui::model::emoji::EmojiView};
+use crate::{launcher::LauncherConfig, ui::views::emoji::EmojiView};
 
 /// Number of emojis per row in the grid
 const COLUMNS: usize = 6;

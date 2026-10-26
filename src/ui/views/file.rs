@@ -10,10 +10,12 @@ use crate::{
     launcher::{Children, LauncherConfig, variant_type::LauncherType},
     ui::{
         launcher::LauncherView,
-        model::{ItemIdx, file::filter::FileFilter, utils::CiUtils},
+        model::ItemIdx,
+        views::file::filter::FileFilter,
         widgets::{RenderableChild, file::FileData},
     },
     utils::files::expand_path,
+    utils::string::CiUtils,
 };
 
 mod backends;

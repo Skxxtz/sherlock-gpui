@@ -1,3 +1,5 @@
+use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
+use gpui::{AnyElement, Context, Window};
 use std::sync::Arc;
 
 use gpui::{App, SharedString};
@@ -13,5 +15,16 @@ impl FileView {
         Self {
             model: Model::file_search(launcher, dir, cx),
         }
+    }
+}
+
+impl SherlockView for FileView {
+    fn render_body(
+        &mut self,
+        shell: &ShellCtx,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        list_body(&self.model, shell, cx)
     }
 }

@@ -10,23 +10,17 @@ use crate::{
         model::{
             cursor::Cursor,
             data::ModelData,
-            file::FileSearchModel,
             index::SearchIndex,
-            process::ProcessModel,
             utils::{all_indices, single_launcher},
         },
+        views::{file::FileSearchModel, process::ProcessModel},
     },
 };
 
 pub mod cursor;
 pub mod data;
-pub mod emoji;
-pub mod file;
-pub mod home;
 pub mod index;
-pub mod message;
 pub mod pipeline;
-pub mod process;
 mod utils;
 
 pub type ItemIdx = (LauncherId, LocalId);

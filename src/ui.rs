@@ -5,6 +5,7 @@ pub mod model;
 pub mod runtime_arguments;
 pub mod traits;
 mod utils;
+pub mod views;
 pub mod widgets;
 
 use gpui::KeyBinding;

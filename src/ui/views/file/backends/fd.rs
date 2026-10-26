@@ -3,7 +3,7 @@ use std::{borrow::Cow, ffi::OsStr, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ui::model::file::{
+    ui::views::file::{
         backends::command::CommandFactory,
         filter::{FileFilter, TypeFilter},
     },

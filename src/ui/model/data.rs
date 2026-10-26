@@ -33,7 +33,7 @@ impl ModelData for LauncherData {
 
     #[inline(always)]
     fn revision(&self) -> u64 {
-        LauncherData::revision(&self)
+        LauncherData::revision(self)
     }
 
     fn all_ids(&self) -> Arc<[Self::Id]> {

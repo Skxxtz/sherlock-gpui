@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
-use gpui::{AnyEntity, App, AppContext, Entity, SharedString};
+use gpui::{AnyElement, AnyEntity, App, AppContext, Entity, SharedString, Window};
 
 use crate::{
     app::LauncherEntity,
     launcher::{LauncherConfig, variant_type::LauncherType},
     ui::{
         launcher::navigator::views::NavView,
-        model::{
-            Model, emoji::EmojiView, file::view::FileView, home::HomeView, message::MessageView,
+        model::Model,
+        views::{Chrome, ShellCtx, SherlockView},
+        views::{
+            emoji::EmojiView, file::view::FileView, home::HomeView, message::MessageView,
             process::view::ProcessView,
         },
     },
@@ -51,6 +53,16 @@ impl ViewHandle {
         f: impl FnOnce(&mut Model, &mut App) -> R,
     ) -> R {
         dispatch!(self, e => e.update(cx, |v, cx| f(&mut v.model, cx)))
+    }
+
+    /// Which frame parts this view wants.
+    pub fn chrome(&self, cx: &App) -> Chrome {
+        dispatch!(self, e => e.read(cx).chrome())
+    }
+
+    /// The view's body. Updates the view entity, so don't call it from inside that view.
+    pub fn render_body(&self, shell: &ShellCtx, window: &mut Window, cx: &mut App) -> AnyElement {
+        dispatch!(self, e => e.update(cx, |v, cx| v.render_body(shell, window, cx)))
     }
 
     /// Type-erased entity, for rendering

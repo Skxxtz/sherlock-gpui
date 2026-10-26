@@ -9,7 +9,7 @@ use crate::{
     launcher::{Children, LauncherConfig, variant_type::LauncherType},
     ui::{
         launcher::LauncherView,
-        model::process::backends::ProcessBackend,
+        views::process::backends::ProcessBackend,
         widgets::{RenderableChild, process::ProcessData},
     },
 };
