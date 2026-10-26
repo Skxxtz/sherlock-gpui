@@ -519,9 +519,9 @@ impl Render for TextInput {
                     .child(TextElement::new(cx))
             } else {
                 div()
-                    .line_height(px(16.))
-                    .text_size(px(16.))
-                    .h(px(30. + 4. * 2.)) // 38px
+                    .line_height(px(17.))
+                    .text_size(px(17.))
+                    .h(px(34. + 4. * 2.)) // 38px
                     .p(px(4.))
                     .w_auto()
                     .flex()

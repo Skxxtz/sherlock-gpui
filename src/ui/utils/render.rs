@@ -11,7 +11,7 @@ pub trait ListItemBorder: Styled + FluentBuilder + Sized {
     }
     fn list_item_border_for(self, theme: &Arc<ThemeData>, selected: bool) -> Self {
         self.bg(theme.bg_idle)
-            .rounded_md()
+            .rounded_lg()
             .border_1()
             .when(selected, |this| {
                 this.bg(theme.bg_selected)

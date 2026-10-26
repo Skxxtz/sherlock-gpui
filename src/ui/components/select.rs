@@ -5,7 +5,7 @@ use gpui::{
 
 use crate::app::theme::ThemeData;
 
-/// Shows `value` with a cycle hint; `on_click` picks the next option.
+/// Shows `value` (lowercase, mono) with a chevron; `on_click` picks the next option.
 pub fn select(
     id: impl Into<ElementId>,
     value: impl Into<SharedString>,
@@ -17,18 +17,23 @@ pub fn select(
         .flex()
         .flex_none()
         .items_center()
-        .gap(px(8.))
+        .gap(px(10.))
+        .h(px(28.))
         .px(px(10.))
-        .py(px(4.))
-        .rounded_md()
+        .rounded(px(7.))
         .border_1()
         .border_color(theme.border)
-        .bg(theme.bg_idle)
         .cursor_pointer()
-        .hover(|s| s.border_color(theme.border_selected))
+        .hover(|s| s.bg(theme.bg_selected))
+        .font_family(theme.monospace.clone())
         .text_size(px(12.))
         .text_color(theme.primary_text)
-        .child(value.into())
-        .child(div().text_color(theme.tertiary_text).child("⇅"))
+        .child(value.into().to_lowercase())
+        .child(
+            div()
+                .text_size(px(10.))
+                .text_color(theme.secondary_text)
+                .child("▾"),
+        )
         .on_click(on_click)
 }

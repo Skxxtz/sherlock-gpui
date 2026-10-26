@@ -48,6 +48,7 @@ impl Render for LauncherView {
 
         let chrome = self.navigation.current().handle.chrome(cx);
         self.ensure_focus(chrome, win, cx);
+        let sidebar = self.render_sidebar(chrome, &theme, cx);
 
         div()
             .id("sherlock")
@@ -58,7 +59,7 @@ impl Render for LauncherView {
             .bg(theme.bg_app)
             .border_2()
             .border_color(theme.border)
-            .rounded(px(5.))
+            .rounded_xl()
             .overflow_hidden()
             .on_action(cx.listener(Self::selection_up))
             .on_action(cx.listener(Self::selection_down))
@@ -78,17 +79,35 @@ impl Render for LauncherView {
             .when(chrome.search_bar, |this| {
                 this.child(self.render_search_bar(theme.clone()))
             })
-            .when(!self.config_initialized, |this| {
-                this.child(self.render_config_banner(theme.clone()))
-            })
-            .when(chrome.mode_label, |this| {
-                this.child(self.render_mode_label(theme.clone()))
-            })
+            // main area: content column | sidebar (full height between search and status bar)
             .child(
                 div()
+                    .flex()
                     .flex_1()
                     .min_h_0()
-                    .child(self.render_body(chrome, theme.clone(), win, cx)),
+                    .child(
+                        div()
+                            .relative() // the context menu anchors here
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .min_w_0()
+                            .h_full()
+                            .when(!self.config_initialized, |this| {
+                                this.child(self.render_config_banner(theme.clone()))
+                            })
+                            .when(chrome.mode_label, |this| {
+                                this.child(self.render_mode_label(theme.clone()))
+                            })
+                            .child(div().flex_1().min_h_0().child(self.render_body(
+                                chrome,
+                                theme.clone(),
+                                win,
+                                cx,
+                            ))),
+                    )
+                    .when_some(sidebar, |this, sidebar| this.child(sidebar))
+                    .child(self.context_menu.render(theme.clone())),
             )
             .when(chrome.status_bar, |this| {
                 this.child(self.render_status_bar(theme, cx))
@@ -157,7 +176,7 @@ impl LauncherView {
             .w_full()
             .items_center()
             .px_4()
-            .py(px(4.))
+            .py(px(6.))
             .gap_3()
             .when(icon_enabled, |this| {
                 this.child(
@@ -204,7 +223,7 @@ impl LauncherView {
                     |this, frac| this.opacity(frac),
                 )
             }))
-            .border_b_2()
+            .border_b_1()
             .border_color(theme.border)
     }
 
@@ -249,7 +268,49 @@ impl LauncherView {
             .child(self.navigation.current().mode.display_str())
     }
 
-    /// The active view's body, plus the sidebar (if the view wants one) and the context menu.
+    /// The selected item's sidebar, if the view shows one and the item has one. Rendered next to
+    /// the content column, so it spans the full height between search bar and status bar.
+    fn render_sidebar(
+        &mut self,
+        chrome: Chrome,
+        theme: &Arc<ThemeData>,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if !chrome.sidebar {
+            return None;
+        }
+        let content = self
+            .navigation
+            .with_selected_item(cx, |item, cx| {
+                let allowed = item.sidebar_default_on() || self.sidebar_controller.is_valid();
+                allowed.then(|| item.sidebar(cx)).flatten()
+            })
+            .flatten()?;
+        self.sidebar_controller.sync_scroll();
+
+        Some(
+            div()
+                .id("sidebar")
+                .flex_none()
+                .w(px(300.))
+                .h_full()
+                .overflow_y_scroll()
+                .overflow_x_hidden()
+                .track_scroll(self.sidebar_controller.scroll_handle())
+                .p(px(16.))
+                .border_l_1()
+                .border_color(theme.border)
+                .child(content)
+                .with_animation(
+                    "sidebar-pop-in",
+                    Animation::new(Duration::from_millis(200)).with_easing(Ease::ease_out_expo),
+                    |this, frac| this.opacity(frac),
+                )
+                .into_any_element(),
+        )
+    }
+
+    /// The active view's body and the context menu.
     fn render_body(
         &mut self,
         chrome: Chrome,
@@ -257,21 +318,6 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let sidebar = chrome
-            .sidebar
-            .then(|| {
-                self.navigation.with_selected_item(cx, |item, cx| {
-                    let allowed = item.sidebar_default_on() || self.sidebar_controller.is_valid();
-                    allowed.then(|| item.sidebar(cx)).flatten()
-                })
-            })
-            .flatten()
-            .flatten();
-
-        if sidebar.is_some() {
-            self.sidebar_controller.sync_scroll();
-        }
-
         let nav = self.navigation.current();
         let is_grid = nav.layout.grid.is_some();
         let shell = ShellCtx {
@@ -287,47 +333,7 @@ impl LauncherView {
             .when(is_grid, |this| this.relative())
             .size_full()
             .when(chrome.inset, |this| this.px(px(10.)))
-            .child(
-                div()
-                    .flex()
-                    .gap(px(10.))
-                    .flex_1()
-                    .min_h_0()
-                    .size_full()
-                    .child(body)
-                    .when_some(sidebar, |this, sidebar| {
-                        this.child(
-                            div()
-                                .h_full()
-                                .w(px(300.))
-                                .flex_shrink_0()
-                                .overflow_x_hidden()
-                                .pb(px(10.))
-                                .child(
-                                    div()
-                                        .id("sidebar")
-                                        .overflow_y_scroll()
-                                        .overflow_x_hidden()
-                                        .track_scroll(self.sidebar_controller.scroll_handle())
-                                        .size_full()
-                                        .p(px(16.))
-                                        .rounded_lg()
-                                        .bg(theme.bg_selected)
-                                        .border_1()
-                                        .border_color(theme.border_selected)
-                                        .flex_col()
-                                        .child(sidebar)
-                                        .with_animation(
-                                            "sidebar-pop-in",
-                                            Animation::new(Duration::from_millis(200))
-                                                .with_easing(Ease::ease_out_expo),
-                                            |this, frac| this.opacity(frac),
-                                        ),
-                                ),
-                        )
-                    }),
-            )
-            .child(self.context_menu.render(theme))
+            .child(body)
     }
 
     fn render_status_bar(&self, theme: Arc<ThemeData>, cx: &mut Context<Self>) -> impl IntoElement {

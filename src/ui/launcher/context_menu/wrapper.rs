@@ -353,11 +353,11 @@ impl ContextMenu {
 
         div().inset_0().absolute().child(
             div()
-                .p(px(7.))
+                .p(px(6.))
                 .bg(theme.bg_app)
                 .border_color(theme.border)
                 .border(px(1.))
-                .rounded_md()
+                .rounded_lg()
                 .absolute()
                 .bottom(px(10.))
                 .right(px(10.))

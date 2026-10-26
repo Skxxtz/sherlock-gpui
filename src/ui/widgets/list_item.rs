@@ -115,38 +115,43 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
             None => div().size(px(ICON)).into_any_element(),
         };
 
-        let name_color = if selection.is_selected {
-            theme.primary_text
-        } else {
-            theme.secondary_text
-        };
-
         div()
-            .px_4()
-            .py_2()
             .w_full()
-            .h(px(60.))
+            .h(px(56.))
+            .px(px(14.))
             .flex()
-            .gap_5()
             .items_center()
+            .gap(px(14.))
             .font_family(theme.font_family.clone())
             .child(icon)
             .child(
                 div()
-                    .flex_col()
-                    .justify_between()
+                    .flex_1()
                     .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.))
                     .child(
                         div()
-                            .text_sm()
-                            .text_color(name_color)
+                            .text_size(px(14.))
+                            .line_height(px(20.))
+                            .text_color(theme.primary_text)
                             .overflow_hidden()
                             .text_ellipsis()
                             .whitespace_nowrap()
                             .child(substitute(self.meta.name.clone(), "keyword", query)),
                     )
                     .when_some(self.payload.subtitle(&self.meta, launcher), |this, sub| {
-                        this.child(div().text_sm().text_color(theme.secondary_text).child(sub))
+                        this.child(
+                            div()
+                                .text_size(px(12.))
+                                .line_height(px(16.))
+                                .text_color(theme.secondary_text)
+                                .overflow_hidden()
+                                .text_ellipsis()
+                                .whitespace_nowrap()
+                                .child(sub),
+                        )
                     }),
             )
             .into_any_element()

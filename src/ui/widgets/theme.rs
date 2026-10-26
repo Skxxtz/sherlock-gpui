@@ -67,7 +67,7 @@ impl RenderableChildImpl for ThemeWidget {
         let theme = self.theme.clone();
         let active = theme == global_theme;
         div()
-            .rounded_md()
+            .rounded_lg()
             .bg(theme.bg_app)
             .child(
                 div()

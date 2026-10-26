@@ -265,3 +265,11 @@ fn hsla_from_hex<'de, D: Deserializer<'de>>(d: D) -> Result<Hsla, D::Error> {
     let n = u32::from_str_radix(&hex[..6], 16).map_err(serde::de::Error::custom)?;
     Ok(gpui::rgb(n).into())
 }
+
+impl ThemeData {
+    /// The one highlight color (active numbers, modified tags, switches that are on). Themes
+    /// have no own accent yet, so this is the warning color: amber in the default theme.
+    pub fn accent(&self) -> Hsla {
+        self.color_warn
+    }
+}

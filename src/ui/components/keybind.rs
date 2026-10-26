@@ -5,23 +5,19 @@ use gpui::{
 
 use crate::app::theme::ThemeData;
 
-/// Pretty key name: modifiers as symbols, single letters upper-case.
+/// Key name as shown on a cap: short, lowercase words (`ctrl`, `esc`, `n`).
 pub fn key_label(key: &str) -> SharedString {
-    match key {
-        "ctrl" | "control" => "⌃".into(),
-        "shift" => "⇧".into(),
-        "alt" => "⌥".into(),
-        "super" | "cmd" | "meta" => "◆".into(),
-        "enter" | "return" => "↵".into(),
-        "escape" | "esc" => "Esc".into(),
-        "tab" => "⇥".into(),
-        "space" => "Space".into(),
-        k if k.chars().count() == 1 => k.to_uppercase().into(),
-        k => SharedString::from(k.to_string()),
+    let key = key.to_lowercase();
+    match key.as_str() {
+        "control" => "ctrl".into(),
+        "escape" => "esc".into(),
+        "return" => "enter".into(),
+        "cmd" | "meta" => "super".into(),
+        _ => key.into(),
     }
 }
 
-/// `keys` (e.g. `["ctrl", "k"]`) as caps; `on_click` is where recording would start.
+/// `keys` (e.g. `["ctrl", "k"]`) as mono caps; `on_click` is where recording would start.
 pub fn keybind(
     id: impl Into<ElementId>,
     keys: &[SharedString],
@@ -33,22 +29,21 @@ pub fn keybind(
         .flex()
         .flex_none()
         .gap(px(4.))
-        .p(px(2.))
-        .rounded_md()
         .cursor_pointer()
-        .hover(|s| s.bg(theme.bg_idle))
         .children(keys.iter().map(|key| {
             div()
-                .min_w(px(22.))
-                .px(px(6.))
-                .py(px(4.))
+                .min_w(px(24.))
+                .h(px(24.))
+                .px(px(7.))
                 .flex()
+                .items_center()
                 .justify_center()
-                .rounded_sm()
+                .rounded(px(5.))
                 .border_1()
                 .border_color(theme.border)
                 .bg(theme.bg_keybind)
-                .text_size(px(11.))
+                .font_family(theme.monospace.clone())
+                .text_size(px(12.))
                 .line_height(relative(1.0))
                 .text_color(theme.primary_text)
                 .child(key_label(key))

@@ -14,24 +14,24 @@ fn button(
 ) -> impl IntoElement {
     let base = div()
         .id(id)
-        .size(px(24.))
+        .w(px(28.))
+        .h_full()
         .flex()
         .items_center()
         .justify_center()
-        .rounded_sm()
         .text_size(px(14.))
         .child(label);
     if enabled {
         base.cursor_pointer()
-            .text_color(theme.primary_text)
-            .hover(|s| s.bg(theme.bg_selected))
+            .text_color(theme.secondary_text)
+            .hover(|s| s.text_color(theme.primary_text).bg(theme.bg_selected))
             .on_click(on_click)
     } else {
         base.text_color(theme.tertiary_text)
     }
 }
 
-/// `value` between − and +; the buttons are disabled at `min` / `max`.
+/// `value` between ‹ and ›; the buttons are disabled at `min` / `max`.
 pub fn stepper(
     id: impl Into<ElementId>,
     value: i64,
@@ -46,32 +46,31 @@ pub fn stepper(
         .flex()
         .flex_none()
         .items_center()
-        .gap(px(2.))
-        .p(px(2.))
-        .rounded_md()
+        .h(px(28.))
+        .rounded(px(7.))
         .border_1()
         .border_color(theme.border)
-        .bg(theme.bg_idle)
+        .overflow_hidden()
+        .font_family(theme.monospace.clone())
         .child(button(
             ElementId::NamedChild(id.clone().into(), "dec".into()),
-            "−",
+            "‹",
             value > min,
             theme,
             on_dec,
         ))
         .child(
             div()
-                .min_w(px(36.))
+                .w(px(28.))
                 .flex()
                 .justify_center()
-                .font_family(theme.monospace.clone())
-                .text_size(px(12.))
+                .text_size(px(13.))
                 .text_color(theme.primary_text)
                 .child(value.to_string()),
         )
         .child(button(
             ElementId::NamedChild(id.into(), "inc".into()),
-            "+",
+            "›",
             value < max,
             theme,
             on_inc,

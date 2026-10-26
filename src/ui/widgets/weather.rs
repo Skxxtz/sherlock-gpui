@@ -139,7 +139,7 @@ impl RenderableChildImpl for WeatherWidget {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .rounded_xl()
+                    .rounded_lg()
                     .bg(linear_gradient(135., p1, p2))
                     .child(
                         // Left — label + condition
@@ -207,7 +207,7 @@ impl RenderableChildImpl for WeatherWidget {
                     div()
                         .h_full()
                         .aspect_square()
-                        .rounded_xl()
+                        .rounded_lg()
                         .bg(p2.color.opacity(0.85))
                         .flex()
                         .flex_col()
