@@ -57,6 +57,6 @@ impl SherlockView for EmojiView {
     }
 
     fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {
-        launcher_query(&mut self.model, query, cx)
+        launcher_query(&mut self.model, query, cx, |v: &mut Self| &mut v.model)
     }
 }

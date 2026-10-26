@@ -6,26 +6,37 @@ use crate::{
     app::LauncherWeakEntity,
     ui::{
         launcher::LauncherView,
-        model::{Model, index::FilterJob},
+        model::{Model, data::ModelData, index::FilterJob},
         views::{Query, QueryResult},
     },
 };
 
-/// Filters static launcher data in `model` for `query`, through the search index:
-/// contextual items now, pure items now (`sync`) or on the background executor.
+/// Filters static launcher data in `model` for `query`: notifies plugins, then `model_query`.
 pub fn launcher_query<V: 'static>(
     model: &mut Model,
     query: &Query,
     cx: &mut Context<V>,
+    model_of: fn(&mut V) -> &mut Model,
 ) -> QueryResult {
-    let data = model.data();
+    crate::features::plugin::dispatch_query(model.data().read(cx), &query.text);
+    model_query(model, query, cx, model_of)
+}
 
-    crate::features::plugin::dispatch_query(data.read(cx), &query.text);
-
+/// Filters `model` for `query` through its search index: contextual items now, pure items now
+/// (`sync`) or on the background executor.
+///
+/// Results are applied to the model (found again later via `model_of`); the shell is notified
+/// through the return value (`Ready`) or `LauncherView::results_changed` (`Pending`).
+pub fn model_query<V: 'static, D: ModelData>(
+    model: &mut Model<D>,
+    query: &Query,
+    cx: &mut Context<V>,
+    model_of: fn(&mut V) -> &mut Model<D>,
+) -> QueryResult {
     // drop the in-flight task; its results are stale
     model.pending = None;
 
-    let snapshot = data.read(cx).clone();
+    let snapshot = model.data().read(cx).clone();
     let (index, rebuilt) = model.search_index(&snapshot);
 
     #[cfg(debug_assertions)]
@@ -45,12 +56,12 @@ pub fn launcher_query<V: 'static>(
     );
 
     if query.sync {
-        return QueryResult::Ready(job.run());
+        return QueryResult::Ready(model.set_results(job.run(), query.text.clone()));
     }
 
     let shell = query.shell.clone();
     let (text, force) = (query.text.clone(), query.force);
-    model.pending = Some(cx.spawn(move |_: WeakEntity<V>, cx: &mut AsyncApp| {
+    model.pending = Some(cx.spawn(move |this: WeakEntity<V>, cx: &mut AsyncApp| {
         let mut cx = cx.clone();
         async move {
             // pure items: scored off the main thread
@@ -58,9 +69,15 @@ pub fn launcher_query<V: 'static>(
                 .background_executor()
                 .spawn(async move { job.run() })
                 .await;
+            // two separate updates: view first, then shell
+            let change = this
+                .update(&mut cx, |view, _| {
+                    model_of(view).set_results(results, text.clone())
+                })
+                .ok()?;
             shell
                 .update(&mut cx, |shell, cx| {
-                    shell.apply_results(results, text, force, cx)
+                    shell.results_changed(change, text, force, cx)
                 })
                 .ok();
             Some(())
@@ -94,7 +111,7 @@ pub fn external_query(
 /// Catches widgets that override `based_show` but forget `has_based_show`: their `based_show`
 /// would silently never run. The default returns `None` for any input.
 #[cfg(debug_assertions)]
-fn debug_check_contextual<D: crate::ui::model::data::ModelData, C: gpui::AppContext>(
+fn debug_check_contextual<D: ModelData, C: gpui::AppContext>(
     index: &crate::ui::model::index::SearchIndex<D::Id>,
     data: &D,
     cx: &mut C,

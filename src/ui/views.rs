@@ -6,7 +6,7 @@ use crate::{
     app::theme::ThemeData,
     ui::{
         launcher::{LauncherView, navigator::views::Layout},
-        model::ItemIdx,
+        model::ResultsChange,
     },
 };
 
@@ -76,14 +76,15 @@ pub struct Query {
     pub force: bool,
     /// Compute the results right away instead of in the background.
     pub sync: bool,
-    /// Where asynchronous results go: `LauncherView::apply_results`.
+    /// Notified when asynchronous results arrive: `LauncherView::results_changed`.
     pub shell: WeakEntity<LauncherView>,
 }
 
 pub enum QueryResult {
-    /// Results are ready
-    Ready(Arc<[ItemIdx]>),
-    /// Results arrive later through `LauncherView::apply_results`.
+    /// The view already applied the new results to its model; the shell reacts now.
+    Ready(ResultsChange),
+    /// Results arrive later: the view applies them to its model, then calls
+    /// `LauncherView::results_changed`.
     Pending,
     /// The view doesn't filter
     Ignored,

@@ -5,11 +5,13 @@ use gpui::{Context, SharedString};
 pub use crate::ui::model::pipeline::FilterPolicy;
 use crate::ui::{
     launcher::{LauncherView, ModeTransition, navigator::handle::ViewKind},
-    model::ItemIdx,
+    model::{ItemIdx, ResultsChange},
     views::{Query, QueryResult},
 };
 
 impl LauncherView {
+    /// Applies `results` to the active view's (launcher) model, then `results_changed`.
+    /// Used by searches that write into launcher data (files, processes).
     pub fn apply_results(
         &mut self,
         results: Arc<[ItemIdx]>,
@@ -17,21 +19,33 @@ impl LauncherView {
         force: bool,
         cx: &mut Context<Self>,
     ) {
-        let state = &self.navigation.current().layout.list;
-        let mut changed = force;
+        let query: SharedString = query.into();
+        let change = self
+            .navigation
+            .with_model_mut(cx, |mdl, _| mdl.set_results(results, query.clone()));
+        self.results_changed(change, query, force, cx);
+    }
+
+    /// Called after the active view applied new results to its model: resizes the list, keeps or
+    /// moves the selection and refreshes the selected item's vars.
+    pub fn results_changed(
+        &mut self,
+        change: ResultsChange,
+        query: impl Into<SharedString>,
+        force: bool,
+        cx: &mut Context<Self>,
+    ) {
         let query: SharedString = query.into();
 
+        let state = &self.navigation.current().layout.list;
         let old_count = state.item_count();
-        let new_count = results.len();
+        let new_count = self.navigation.with_model(cx, |mdl| mdl.len());
         if old_count != new_count {
             state.splice(0..old_count, new_count);
         }
 
         self.active_bar = 0;
-        let change = self
-            .navigation
-            .with_model_mut(cx, |mdl, _| mdl.set_results(results, query.clone()));
-        changed |= change.changed;
+        let changed = force || change.changed;
 
         self.update_sync(query, cx);
 
@@ -100,7 +114,7 @@ impl LauncherView {
             shell: cx.entity().downgrade(),
         };
         match self.navigation.current().handle.on_query(&query, cx) {
-            QueryResult::Ready(results) => self.apply_results(results, query.text, force, cx),
+            QueryResult::Ready(change) => self.results_changed(change, query.text, force, cx),
             QueryResult::Pending | QueryResult::Ignored => {}
         }
     }
