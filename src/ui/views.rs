@@ -103,7 +103,7 @@ pub trait SherlockView: 'static + Sized {
 
     /// Starts iltering for `query`. Views without a search (plain pages) keep the default.
     ///
-    /// Must not update the shell asynchronously (the shell is mid-update when this runs.), return
+    /// Must not update the shell synchronously (the shell is mid-update when this runs.), return
     /// `Ready` instead.
     fn on_query(&mut self, _query: &Query, _cx: &mut Context<Self>) -> QueryResult {
         QueryResult::Ignored
