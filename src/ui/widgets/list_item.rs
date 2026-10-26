@@ -121,6 +121,7 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
             .px_4()
             .py_2()
             .w_full()
+            .h(px(60.))
             .flex()
             .gap_5()
             .items_center()
