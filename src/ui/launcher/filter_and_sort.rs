@@ -1,35 +1,13 @@
-use std::sync::Arc;
-
 use gpui::{Context, SharedString};
 
 pub use crate::ui::model::pipeline::FilterPolicy;
 use crate::ui::{
     launcher::{LauncherView, ModeTransition, navigator::handle::ViewKind},
-    model::{ItemIdx, ResultsChange},
+    model::ResultsChange,
     views::{Query, QueryResult},
 };
 
 impl LauncherView {
-    /// Applies `results` to the active view's (launcher) model, then `results_changed`.
-    /// Used by searches that write into launcher data (files, processes).
-    pub fn apply_results(
-        &mut self,
-        results: Arc<[ItemIdx]>,
-        query: impl Into<SharedString>,
-        force: bool,
-        cx: &mut Context<Self>,
-    ) {
-        let query: SharedString = query.into();
-        // the active view may have changed since the search started
-        let Some(change) = self
-            .navigation
-            .with_model_mut(cx, |mdl, _| mdl.set_results(results, query.clone()))
-        else {
-            return;
-        };
-        self.results_changed(change, query, force, cx);
-    }
-
     /// Called after the active view applied new results to its model: resizes the list, keeps or
     /// moves the selection and refreshes the selected item's vars.
     pub fn results_changed(
@@ -51,7 +29,7 @@ impl LauncherView {
         self.active_bar = 0;
         let changed = force || change.changed;
 
-        self.update_sync(query, cx);
+        self.navigation.current().handle.on_results(&query, cx);
 
         if changed && change.restored {
             // same item still visible: keep it selected, just reveal it
@@ -77,7 +55,7 @@ impl LauncherView {
     ///
     /// 1. **Routing**: prefix triggers switch the mode, clear the input or push a new view.
     /// 2. **Dispatch**: the active view filters (`SherlockView::on_query`). Results come back
-    ///    right away (`Ready`) or later through `apply_results`.
+    ///    right away (`Ready`) or later through `results_changed`.
     ///
     /// # Arguments
     /// * `force` - Bypasses query-change optimization to re-run the search.

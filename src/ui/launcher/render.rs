@@ -1,10 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, FontWeight,
-    InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, Window, deferred, div, img, prelude::FluentBuilder, px,
-    relative,
+    Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, Focusable,
+    FontWeight, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render,
+    SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img,
+    prelude::FluentBuilder, px, relative,
 };
 
 use crate::{
@@ -31,10 +31,14 @@ impl Render for LauncherView {
     fn render(&mut self, win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
-        let selected = self.navigation.selected_item(cx);
-        if selected.as_ref().map(|i| i.key()) != self.last_selected.as_ref().map(|i| i.key()) {
+        let selected = self.navigation.selected_key(cx);
+        if selected != self.last_selected {
             if let Some(old) = self.last_selected.take() {
-                old.with_launcher_item(cx, |item, cx| item.reset_inner(cx));
+                self.navigation.with_item_by_key(old, cx, |item, cx| {
+                    if let Some(item) = item.as_launcher_item() {
+                        item.reset_inner(cx);
+                    }
+                });
             }
             self.last_selected = selected;
         }
@@ -43,9 +47,11 @@ impl Render for LauncherView {
         self.sidebar_controller.check_validity(&self.navigation, cx);
 
         let chrome = self.navigation.current().handle.chrome(cx);
+        self.ensure_focus(chrome, win, cx);
 
         div()
             .id("sherlock")
+            .track_focus(&self.focus_handle)
             .flex()
             .flex_col()
             .size_full()
@@ -65,6 +71,8 @@ impl Render for LauncherView {
             .on_action(cx.listener(Self::shortcut_listener))
             .on_action(cx.listener(Self::quit))
             .on_action(cx.listener(Self::open_context))
+            .on_action(cx.listener(Self::back))
+            .on_action(cx.listener(Self::backspace))
             .on_key_down(cx.listener(Self::context_menu_binds_listener))
             .on_key_up(cx.listener(Self::inner_bind_listener))
             .when(chrome.search_bar, |this| {
@@ -89,6 +97,43 @@ impl Render for LauncherView {
 }
 
 impl LauncherView {
+    /// Keeps keyboard focus inside the launcher.
+    ///
+    /// Preferred target: the view's `focus_target`, else the search input if it's shown, else
+    /// the launcher root. Focus is moved only when it's invalid: on a hidden search input, on
+    /// nothing, outside the launcher, or parked on the root while something better exists.
+    fn ensure_focus(&mut self, chrome: Chrome, win: &mut Window, cx: &mut Context<Self>) {
+        let input = self.text_input.focus_handle(cx);
+        let preferred = self
+            .navigation
+            .current()
+            .handle
+            .focus_target(cx)
+            .or_else(|| chrome.search_bar.then(|| input.clone()))
+            .unwrap_or_else(|| self.focus_handle.clone());
+
+        let in_search_bar = input.is_focused(win)
+            || self
+                .variable_input
+                .iter()
+                .any(|v| v.focus_handle(cx).is_focused(win));
+
+        let valid = if in_search_bar {
+            // the search bar only counts while it's rendered
+            chrome.search_bar
+        } else if self.focus_handle.is_focused(win) {
+            // the root is a fallback, not a destination
+            preferred.is_focused(win)
+        } else {
+            // something inside the view (as of the last frame)
+            self.focus_handle.contains_focused(win, cx)
+        };
+
+        if !valid {
+            preferred.focus(win, cx);
+        }
+    }
+
     fn render_search_bar(&self, theme: Arc<ThemeData>) -> impl IntoElement {
         let search_icon = ConfigGuard::read().ok().map(|c| c.search_bar_icon.clone());
         let is_search_mode = self.navigation.current_mode() == &LauncherMode::Search;
@@ -241,7 +286,7 @@ impl LauncherView {
             .id("results-container")
             .when(is_grid, |this| this.relative())
             .size_full()
-            .px(px(10.))
+            .when(chrome.inset, |this| this.px(px(10.)))
             .child(
                 div()
                     .flex()

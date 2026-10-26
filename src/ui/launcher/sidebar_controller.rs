@@ -1,10 +1,7 @@
 use gpui::{App, ScrollHandle};
 use scroll::SidebarScroll;
 
-use crate::ui::{
-    launcher::navigator::{Navigator, handle::ViewKind},
-    model::item::SelectionKey,
-};
+use crate::ui::{launcher::navigator::Navigator, model::item::SelectionKey};
 
 mod scroll;
 
@@ -24,7 +21,7 @@ impl SidebarController {
         }
 
         // current view allows sidebar
-        if !matches!(nav.current_kind(), ViewKind::Home | ViewKind::Files { .. }) {
+        if !nav.current().handle.chrome(cx).sidebar {
             self.valid = false;
             return;
         }

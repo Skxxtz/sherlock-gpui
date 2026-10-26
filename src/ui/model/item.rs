@@ -1,13 +1,12 @@
-//! Type-erased access to items, so the shell can work with the selected item of any view.
+//! What the shell needs from items of any data type, and their type-erased identity.
 
 use std::{
     any::TypeId,
     hash::{DefaultHasher, Hash, Hasher},
-    rc::Rc,
     sync::Arc,
 };
 
-use gpui::{App, Entity};
+use gpui::App;
 
 use crate::{
     launcher::{LauncherValues, utils::exec_mode::ExecMode, variant_type::QuickActionCapabilities},
@@ -146,92 +145,6 @@ impl SelectionKey {
     }
 }
 
-/// Handle to one item of some view's data. Cheap to clone; resolves the item on use, so it is
-/// `None` once the item is gone.
-#[derive(Clone)]
-pub struct ItemRef(Rc<dyn ErasedItemRef>);
-
-impl ItemRef {
-    pub fn new<D: ModelData>(data: Entity<D>, id: D::Id) -> Self
-    where
-        D::Item: ShellItem,
-    {
-        Self(Rc::new(EntityItem { data, id }))
-    }
-
-    pub fn key(&self) -> SelectionKey {
-        self.0.key()
-    }
-
-    /// Shared reference to the item.
-    pub fn read<'a>(&self, cx: &'a App) -> Option<&'a dyn ShellItem> {
-        self.0.read(cx)
-    }
-
-    /// Runs `f` with the item and `&mut App`. Updates the item's data entity, so `f` must not
-    /// update that same entity.
-    pub fn with<R>(
-        &self,
-        cx: &mut App,
-        f: impl FnOnce(&dyn ShellItem, &mut App) -> R,
-    ) -> Option<R> {
-        let mut f = Some(f);
-        let mut out = None;
-        self.0.with(cx, &mut |item, cx| {
-            if let Some(f) = f.take() {
-                out = Some(f(item, cx));
-            }
-        });
-        out
-    }
-
-    /// Like `with`, for launcher items only.
-    pub fn with_launcher_item<R>(
-        &self,
-        cx: &mut App,
-        f: impl FnOnce(&RenderableChild, &mut App) -> R,
-    ) -> Option<R> {
-        self.with(cx, |item, cx| item.as_launcher_item().map(|c| f(c, cx)))
-            .flatten()
-    }
-}
-
-trait ErasedItemRef {
-    fn key(&self) -> SelectionKey;
-    fn read<'a>(&self, cx: &'a App) -> Option<&'a dyn ShellItem>;
-    fn with(&self, cx: &mut App, f: &mut dyn FnMut(&dyn ShellItem, &mut App));
-}
-
-struct EntityItem<D: ModelData> {
-    data: Entity<D>,
-    id: D::Id,
-}
-
-impl<D: ModelData> ErasedItemRef for EntityItem<D>
-where
-    D::Item: ShellItem,
-{
-    fn key(&self) -> SelectionKey {
-        SelectionKey::new::<D>(&self.id)
-    }
-
-    fn read<'a>(&self, cx: &'a App) -> Option<&'a dyn ShellItem> {
-        self.data
-            .read(cx)
-            .get(self.id)
-            .map(|item| item as &dyn ShellItem)
-    }
-
-    fn with(&self, cx: &mut App, f: &mut dyn FnMut(&dyn ShellItem, &mut App)) {
-        let id = self.id;
-        self.data.update(cx, |data, cx| {
-            if let Some(item) = data.get(id) {
-                f(item, cx);
-            }
-        });
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,6 +152,8 @@ mod tests {
 
     struct A;
     struct B;
+    impl ShellItem for A {}
+    impl ShellItem for B {}
     impl ListItem for A {
         fn search(&self) -> &str {
             ""

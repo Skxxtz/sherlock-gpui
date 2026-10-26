@@ -1,6 +1,6 @@
 use std::{env::home_dir, path::PathBuf, sync::Arc};
 
-use gpui::{App, SharedString, Task, WeakEntity};
+use gpui::{App, SharedString, Task};
 use tokio::sync::mpsc;
 use utils::{FileResult, ResultHeap};
 
@@ -9,9 +9,11 @@ use crate::{
     features::file::FileLauncher,
     launcher::{Children, LauncherConfig, variant_type::LauncherType},
     ui::{
-        launcher::LauncherView,
         model::ItemIdx,
-        views::file::filter::FileFilter,
+        views::{
+            file::{filter::FileFilter, view::FileView},
+            query::ResultsSink,
+        },
         widgets::{RenderableChild, file::FileData},
     },
     utils::files::expand_path,
@@ -75,7 +77,7 @@ impl FileSearchModel {
         &mut self,
         query_lower: Arc<str>,
         result_entity: LauncherWeakEntity,
-        launcher_weak: WeakEntity<LauncherView>,
+        sink: ResultsSink<FileView>,
         cx: &mut App,
     ) {
         let (filter_raw, query) = FileFilter::parse(&query_lower);
@@ -146,26 +148,18 @@ impl FileSearchModel {
 
                     let indices: Arc<[ItemIdx]> = children.ids().map(|c| (id, c)).collect();
 
-                    if let Some(view) = launcher_weak.upgrade() {
-                        cx.update({
-                            let query = Arc::clone(&query);
-                            |cx| {
-                                view.update(cx, |this, cx| {
-                                    // Swap the entity data directly
-                                    if let Some(entity) = result_entity.upgrade() {
-                                        entity.update(cx, |e, _| {
-                                            let data = e.make_mut();
-                                            if let Some(launcher) = data.get_mut(&id) {
-                                                launcher.children = children;
-                                            }
-                                        });
-                                    }
-                                    // Reuse the exact same apply_results path as regular search
-                                    this.apply_results(indices, query, false, cx);
-                                });
-                            }
-                        });
-                    }
+                    let query: SharedString = query.as_ref().to_owned().into();
+                    cx.update(|cx| {
+                        // Swap the entity data directly
+                        if let Some(entity) = result_entity.upgrade() {
+                            entity.update(cx, |e, _| {
+                                if let Some(launcher) = e.make_mut().get_mut(&id) {
+                                    launcher.children = children;
+                                }
+                            });
+                        }
+                        sink.deliver(indices, query, cx);
+                    });
                 }
 
                 if !channel_open {

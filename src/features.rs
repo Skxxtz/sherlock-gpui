@@ -14,6 +14,7 @@ pub mod message;
 pub mod plugin;
 pub mod process;
 pub mod script;
+pub mod settings;
 pub mod theme;
 pub mod timer;
 pub mod translator;

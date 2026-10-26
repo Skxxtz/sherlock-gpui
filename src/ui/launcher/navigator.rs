@@ -5,16 +5,9 @@ use gpui::{App, AppContext, Entity, Global, SharedString, WeakEntity};
 use crate::{
     app::LauncherEntity,
     ui::{
-        launcher::{
-            LauncherMode,
-            context_menu::ContextMenuAction,
-            navigator::{handle::ViewKind, views::NavView},
-        },
-        model::{
-            AnyModel, Model,
-            item::{ItemRef, SelectionKey, ShellItem},
-        },
-        views::message::MessageView,
+        launcher::{LauncherMode, context_menu::ContextMenuAction, navigator::views::NavView},
+        model::item::{SelectionKey, ShellItem},
+        views::{home::HomeView, message::MessageView},
         widgets::RenderableChild,
     },
     utils::errors::SherlockMessage,
@@ -64,20 +57,17 @@ impl Navigator {
     ///
     /// * `initial`: home's launcher entity
     /// * `messages`: startup messages
-    /// * `len`: home's initial item count
     ///
     /// Also registers `MessageViewGlobal`, so messages can be pushed from anywhere.
-    pub fn new(
-        initial: LauncherEntity,
-        messages: Vec<SherlockMessage>,
-        len: usize,
-        cx: &mut App,
-    ) -> Self {
-        let (messages, message_entity) = NavView::messages(messages, cx);
+    pub fn new(initial: LauncherEntity, messages: Vec<SherlockMessage>, cx: &mut App) -> Self {
+        let message_entity = cx.new(|cx| MessageView::new(messages, cx));
         cx.set_global(MessageViewGlobal(message_entity.downgrade()));
+        let messages = NavView::new(message_entity.clone(), cx);
+
+        let home = cx.new(|cx| HomeView::new(initial, cx));
 
         Self {
-            home: NavView::home(initial, len, cx),
+            home: NavView::new(home, cx),
             messages,
             message_entity,
             stack: Vec::new(),
@@ -106,9 +96,9 @@ impl Navigator {
         }
     }
 
-    /// Returns the kind of view for the currently active view
-    pub fn current_kind(&self) -> &ViewKind {
-        &self.current().kind
+    /// True if the home view is active (no pushed view, no message overlay).
+    pub fn is_home(&self) -> bool {
+        !self.showing_messages && self.stack.is_empty()
     }
 
     /// Returns the `LauncherMode` for the currently active view
@@ -171,74 +161,34 @@ impl Navigator {
 
 // Model Implementations
 impl Navigator {
-    /// Read the active view's launcher model. `None` if it doesn't show launcher data.
-    /// Can't update entities inside `f`; return what you need instead.
-    pub fn with_model<R>(&self, cx: &App, f: impl FnOnce(&Model) -> R) -> Option<R> {
-        self.current().handle.with_model(cx, f)
-    }
-
-    /// Mutate the active view's launcher model. `None` if it doesn't show launcher data.
-    /// Takes `&self` because the model lives in a GPUI entity, not in the navigator.
-    /// Don't re-enter the same view's entity inside `f`, or GPUI panics.
-    pub fn with_model_mut<R, C: AppContext>(
-        &self,
-        cx: &mut C,
-        f: impl FnOnce(&mut Model, &mut App) -> R,
-    ) -> Option<R> {
-        self.current().handle.with_model_mut(cx, f)
-    }
-
-    /// Read the active view's model without knowing its data type.
-    /// `None` if the view has no model.
-    pub fn with_any_model<R>(&self, cx: &App, f: impl FnOnce(&dyn AnyModel) -> R) -> Option<R> {
-        self.current().handle.with_any_model(cx, f)
-    }
-
-    /// Mutate the active view's model without knowing its data type.
-    /// `None` if the view has no model.
-    pub fn with_any_model_mut<R, C: AppContext>(
-        &self,
-        cx: &mut C,
-        f: impl FnOnce(&mut dyn AnyModel) -> R,
-    ) -> Option<R> {
-        self.current().handle.with_any_model_mut(cx, f)
-    }
-
     /// Number of visible items in the active view (0 without a model).
     pub fn len(&self, cx: &App) -> usize {
-        self.with_any_model(cx, |m| m.len()).unwrap_or(0)
+        self.current().handle.len(cx)
     }
 
     /// The query that produced the active view's results, if any.
     pub fn last_query(&self, cx: &App) -> Option<SharedString> {
-        self.with_any_model(cx, |m| m.last_query()).flatten()
+        self.current().handle.last_query(cx)
     }
 
     /// Forget the active view's last query, so the next one always re-runs.
     pub fn clear_last_query(&self, cx: &mut App) {
-        self.with_any_model_mut(cx, |m| m.clear_last_query());
+        self.current().handle.clear_last_query(cx);
     }
 
     /// Identity of the selected item of the active view.
     pub fn selected_key(&self, cx: &App) -> Option<SelectionKey> {
-        self.with_any_model(cx, |m| m.selected_key()).flatten()
-    }
-
-    /// Handle to the selected item of the active view.
-    pub fn selected_item(&self, cx: &App) -> Option<ItemRef> {
-        self.with_any_model(cx, |m| m.selected_item()).flatten()
+        self.current().handle.selected_key(cx)
     }
 
     /// Selected position in the active view's visible items (clamped).
     pub fn selected_index(&self, cx: &App) -> usize {
-        self.with_any_model(cx, |m| m.selected_index()).unwrap_or(0)
+        self.current().handle.selected_index(cx)
     }
 
     /// Selects position `n` and scrolls it into view. Returns `false` if out of range.
     pub fn select(&self, n: usize, cx: &mut App) -> bool {
-        let ok = self
-            .with_any_model_mut(cx, |m| m.select(n))
-            .unwrap_or(false);
+        let ok = self.current().handle.select(n, cx);
         if ok {
             self.current().layout.reveal(n);
         }
@@ -247,28 +197,27 @@ impl Navigator {
 
     /// Selects the visible item with `key`.
     pub fn select_key(&self, key: SelectionKey, cx: &mut App) {
-        self.with_any_model_mut(cx, |m| m.select_key(key));
+        self.current().handle.select_key(key, cx);
     }
 
     /// Back to the first item of the active view.
     pub fn reset_selection(&self, cx: &mut App) {
-        self.with_any_model_mut(cx, |m| m.reset_selection());
+        self.current().handle.reset_selection(cx);
+    }
+
+    /// Shared reference to the visible item at position `n`, whatever its type.
+    pub fn item_ref<'a>(&self, n: usize, cx: &'a App) -> Option<&'a dyn ShellItem> {
+        self.current().handle.item_ref(n, cx)
+    }
+
+    /// Shared reference to the selected item, whatever its type.
+    pub fn selected_shell_item_ref<'a>(&self, cx: &'a App) -> Option<&'a dyn ShellItem> {
+        self.item_ref(self.selected_index(cx), cx)
     }
 
     /// Shared reference to the selected launcher item.
     pub fn selected_item_ref<'a>(&self, cx: &'a App) -> Option<&'a RenderableChild> {
-        let item = self.selected_item(cx)?;
-        item.read(cx)?.as_launcher_item()
-    }
-
-    /// Read the selected launcher item.
-    /// Don't re-enter the same widget's entity inside `f`, or GPUI panics.
-    pub fn with_selected_item<R>(
-        &self,
-        cx: &mut App,
-        f: impl FnOnce(&RenderableChild, &mut App) -> R,
-    ) -> Option<R> {
-        self.selected_item(cx)?.with_launcher_item(cx, f)
+        self.selected_shell_item_ref(cx)?.as_launcher_item()
     }
 
     /// Run `f` with the selected item, whatever its type.
@@ -278,7 +227,43 @@ impl Navigator {
         cx: &mut App,
         f: impl FnOnce(&dyn ShellItem, &mut App) -> R,
     ) -> Option<R> {
-        self.selected_item(cx)?.with(cx, f)
+        let n = self.selected_index(cx);
+        self.current().handle.with_item(n, cx, f)
+    }
+
+    /// Read the selected launcher item.
+    /// Don't re-enter the same widget's entity inside `f`, or GPUI panics.
+    pub fn with_selected_item<R>(
+        &self,
+        cx: &mut App,
+        f: impl FnOnce(&RenderableChild, &mut App) -> R,
+    ) -> Option<R> {
+        self.with_selected_shell_item(cx, |item, cx| item.as_launcher_item().map(|c| f(c, cx)))
+            .flatten()
+    }
+
+    /// Run `f` with the visible item with `key`, if it is still visible.
+    pub fn with_item_by_key<R>(
+        &self,
+        key: SelectionKey,
+        cx: &mut App,
+        f: impl FnOnce(&dyn ShellItem, &mut App) -> R,
+    ) -> Option<R> {
+        let n = self.current().handle.position_of(key, cx)?;
+        self.current().handle.with_item(n, cx, f)
+    }
+
+    /// Position of the nth (1-based) visible item that allows shortcuts.
+    fn shortcut_position(&self, n: usize, cx: &App) -> Option<usize> {
+        let skip = n.checked_sub(1)?;
+        (0..self.len(cx))
+            .filter(|&i| self.item_ref(i, cx).is_some_and(|item| item.shortcut()))
+            .nth(skip)
+    }
+
+    /// Shared reference to the nth item that allows shortcuts, whatever its type.
+    pub fn shortcut_item_ref<'a>(&self, n: usize, cx: &'a App) -> Option<&'a dyn ShellItem> {
+        self.item_ref(self.shortcut_position(n, cx)?, cx)
     }
 
     /// Run `f` with the nth item that allows shortcuts, whatever its type.
@@ -288,7 +273,8 @@ impl Navigator {
         cx: &mut App,
         f: impl FnOnce(&dyn ShellItem, &mut App) -> R,
     ) -> Option<R> {
-        self.nth_shortcut_item(n, cx)?.with(cx, f)
+        let pos = self.shortcut_position(n, cx)?;
+        self.current().handle.with_item(pos, cx, f)
     }
 
     /// Read the nth item that allows shortcuts (launcher items only).
@@ -299,25 +285,15 @@ impl Navigator {
         cx: &mut App,
         f: impl FnOnce(&RenderableChild, &mut App) -> R,
     ) -> Option<R> {
-        self.nth_shortcut_item(n, cx)?.with_launcher_item(cx, f)
-    }
-
-    /// Read the nth item that allows shortcuts as a shared reference
-    pub fn nth_shortcut_item_ref<'a>(&self, n: usize, cx: &'a App) -> Option<&'a RenderableChild> {
-        let item = self.nth_shortcut_item(n, cx)?;
-        item.read(cx)?.as_launcher_item()
-    }
-
-    /// The nth (1-based) visible item that allows shortcuts.
-    pub fn nth_shortcut_item(&self, n: usize, cx: &App) -> Option<ItemRef> {
-        let skip = n.checked_sub(1)?;
-        self.with_any_model(cx, |m| {
-            (0..m.len())
-                .filter_map(|i| m.item_at(i))
-                .filter(|item| item.read(cx).is_some_and(|i| i.shortcut()))
-                .nth(skip)
+        self.with_nth_shortcut_shell_item(n, cx, |item, cx| {
+            item.as_launcher_item().map(|c| f(c, cx))
         })
         .flatten()
+    }
+
+    /// Read the nth item that allows shortcuts as a shared reference (launcher items only).
+    pub fn nth_shortcut_item_ref<'a>(&self, n: usize, cx: &'a App) -> Option<&'a RenderableChild> {
+        self.shortcut_item_ref(n, cx)?.as_launcher_item()
     }
 
     /// Returns the collection of `ContextMenuAction` for the currently active item.

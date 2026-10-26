@@ -1,31 +1,30 @@
 use gpui::{ListState, Pixels, UniformListScrollHandle};
 
-use crate::ui::launcher::{
-    LauncherMode,
-    navigator::handle::{ViewHandle, ViewKind},
-};
+use gpui::App;
 
-mod emoji;
-mod file;
-mod home;
-mod message;
-mod process;
+use crate::ui::launcher::{LauncherMode, navigator::handle::ViewHandle};
 
-/// One entry in the navigator: a view plus its selection and scroll state.
+/// One entry in the navigator: a view plus its scroll state and mode.
 pub struct NavView {
     pub handle: ViewHandle,
     pub layout: Layout,
-    pub kind: ViewKind,
     pub mode: LauncherMode,
 }
 
 impl NavView {
-    /// Shared constructor for the per-view builders. Starts in `LauncherMode::Home`.
-    fn new(handle: ViewHandle, layout: Layout, kind: ViewKind) -> Self {
+    /// Entry for `view`, with the layout the view asks for (`SherlockView::layout`).
+    /// Starts in `LauncherMode::Home`.
+    pub fn new(view: impl Into<ViewHandle>, cx: &App) -> Self {
+        let handle = view.into();
+        let layout = handle.layout(cx);
+        Self::with_layout(handle, layout)
+    }
+
+    /// Entry for `view` with an explicit layout.
+    pub fn with_layout(view: impl Into<ViewHandle>, layout: Layout) -> Self {
         Self {
-            handle,
+            handle: view.into(),
             layout,
-            kind,
             mode: LauncherMode::Home,
         }
     }
@@ -52,6 +51,7 @@ pub struct Grid {
 
 /// Direction for keyboard navigation.
 /// `Left/Right` only move in grid layouts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MoveDirection {
     Up,
     Down,

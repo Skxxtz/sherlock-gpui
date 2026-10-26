@@ -1,4 +1,4 @@
-use crate::ui::model::AnyModel;
+use crate::app::data::LauncherData;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, SharedString, Window};
@@ -34,6 +34,16 @@ impl FileView {
 }
 
 impl SherlockView for FileView {
+    type Data = LauncherData;
+
+    fn model(&self) -> Option<&Model<LauncherData>> {
+        Some(&self.model)
+    }
+
+    fn model_mut(&mut self) -> Option<&mut Model<LauncherData>> {
+        Some(&mut self.model)
+    }
+
     fn render_body(
         &mut self,
         shell: &ShellCtx,
@@ -44,24 +54,12 @@ impl SherlockView for FileView {
     }
 
     fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {
-        external_query(&self.model, query, cx, |q, data, shell, cx| {
-            self.search.search(q, data, shell, cx)
-        })
-    }
-
-    fn model(&self) -> Option<&dyn AnyModel> {
-        Some(&self.model)
-    }
-
-    fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
-        Some(&mut self.model)
-    }
-
-    fn launcher_model(&self) -> Option<&Model> {
-        Some(&self.model)
-    }
-
-    fn launcher_model_mut(&mut self) -> Option<&mut Model> {
-        Some(&mut self.model)
+        external_query(
+            &self.model,
+            query,
+            cx,
+            |v: &mut Self| &mut v.model,
+            |q, data, sink, cx| self.search.search(q, data, sink, cx),
+        )
     }
 }

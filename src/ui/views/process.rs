@@ -1,4 +1,4 @@
-use gpui::{App, Task, WeakEntity};
+use gpui::{App, SharedString, Task};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use utils::{ProcessResult, ResultHeap};
@@ -8,8 +8,10 @@ use crate::{
     features::process::ProcessLauncher,
     launcher::{Children, LauncherConfig, variant_type::LauncherType},
     ui::{
-        launcher::LauncherView,
-        views::process::backends::ProcessBackend,
+        views::{
+            process::{backends::ProcessBackend, view::ProcessView},
+            query::ResultsSink,
+        },
         widgets::{RenderableChild, process::ProcessData},
     },
 };
@@ -48,7 +50,7 @@ impl ProcessModel {
         &mut self,
         query_lower: Arc<str>,
         result_entity: LauncherWeakEntity,
-        launcher_weak: WeakEntity<LauncherView>,
+        sink: ResultsSink<ProcessView>,
         cx: &mut App,
     ) {
         self.cancel_tx = None;
@@ -87,21 +89,17 @@ impl ProcessModel {
                 })
                 .collect();
             let indices = children.ids().map(|c| (id, c)).collect();
-            if let Some(view) = launcher_weak.upgrade() {
-                cx.update(|cx| {
-                    view.update(cx, |this, cx| {
-                        if let Some(entity) = result_entity.upgrade() {
-                            entity.update(cx, |e, _| {
-                                let data = e.make_mut();
-                                if let Some(launcher) = data.get_mut(&id) {
-                                    launcher.children = children;
-                                }
-                            });
+            let query: SharedString = query_lower.as_ref().to_owned().into();
+            cx.update(|cx| {
+                if let Some(entity) = result_entity.upgrade() {
+                    entity.update(cx, |e, _| {
+                        if let Some(launcher) = e.make_mut().get_mut(&id) {
+                            launcher.children = children;
                         }
-                        this.apply_results(indices, query_lower, false, cx);
                     });
-                });
-            }
+                }
+                sink.deliver(indices, query, cx);
+            });
         });
 
         self._poll_task = Some(poll_task);

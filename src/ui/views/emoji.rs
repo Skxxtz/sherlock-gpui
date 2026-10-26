@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, AppContext, Context, Window};
+use gpui::{AnyElement, App, AppContext, Context, Window, px};
 
 use crate::{
     app::data::next_revision,
@@ -10,9 +10,9 @@ use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::utils::PriorityGuard,
     ui::{
-        launcher::{LauncherView, context_menu::ContextMenuAction},
+        launcher::{LauncherView, context_menu::ContextMenuAction, navigator::views::Layout},
         model::{
-            AnyModel, Model,
+            Model,
             data::ModelData,
             index::{IndexBuilder, Row, SearchIndex},
             item::ShellItem,
@@ -135,6 +135,9 @@ impl RowRender<EmojiId> for EmojiEntry {
     }
 }
 
+/// Number of emojis per row in the grid.
+const COLUMNS: usize = 6;
+
 pub struct EmojiView {
     pub model: Model<EmojiSet>,
 }
@@ -150,6 +153,20 @@ impl EmojiView {
 }
 
 impl SherlockView for EmojiView {
+    type Data = EmojiSet;
+
+    fn model(&self) -> Option<&Model<EmojiSet>> {
+        Some(&self.model)
+    }
+
+    fn model_mut(&mut self) -> Option<&mut Model<EmojiSet>> {
+        Some(&mut self.model)
+    }
+
+    fn layout(&self) -> Layout {
+        Layout::grid(self.model.len(), px(100.), COLUMNS)
+    }
+
     fn chrome(&self) -> Chrome {
         Chrome::NO_SIDEBAR
     }
@@ -168,14 +185,6 @@ impl SherlockView for EmojiView {
 
     fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {
         model_query(&mut self.model, query, cx, |v: &mut Self| &mut v.model)
-    }
-
-    fn model(&self) -> Option<&dyn AnyModel> {
-        Some(&self.model)
-    }
-
-    fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
-        Some(&mut self.model)
     }
 }
 

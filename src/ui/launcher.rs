@@ -15,7 +15,7 @@ use crate::{
             context_menu::wrapper::ContextMenu, navigator::Navigator,
             sidebar_controller::SidebarController,
         },
-        model::item::ItemRef,
+        model::item::SelectionKey,
     },
     utils::{networking::ServerResponse, sized_message_sync::SizedMessage},
 };
@@ -30,8 +30,8 @@ pub mod sidebar;
 pub mod sidebar_controller;
 
 pub use actions::{
-    Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft, SelectionRight,
-    SelectionUp,
+    Back, Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft,
+    SelectionRight, SelectionUp,
 };
 
 #[derive(Clone, Debug)]
@@ -87,7 +87,7 @@ pub struct LauncherView {
     pub backdrop: Option<WindowHandle<Backdrop>>,
 
     /// Last rendered selection; its inner focus is reset when the selection moves.
-    pub last_selected: Option<ItemRef>,
+    pub last_selected: Option<SelectionKey>,
 }
 
 impl Focusable for LauncherView {

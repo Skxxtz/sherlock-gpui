@@ -48,6 +48,10 @@ impl ItemMeta {
             vars: Arc::new([]),
         }
     }
+    pub fn icon_name(mut self, name: &str) -> Self {
+        self.icon = resolve_icon_path(name);
+        self
+    }
 }
 
 pub trait Payload: Clone + 'static {

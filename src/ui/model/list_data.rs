@@ -10,6 +10,7 @@ use crate::{
     ui::model::{
         data::ModelData,
         index::{IndexBuilder, Row, SearchIndex},
+        item::ShellItem,
         pipeline::GroupRules,
     },
     utils::item_key::ItemKey,
@@ -87,7 +88,7 @@ impl<T> Default for ListData<T> {
     }
 }
 
-impl<T: ListItem> ModelData for ListData<T> {
+impl<T: ListItem + ShellItem> ModelData for ListData<T> {
     type Id = ListId;
     type Item = T;
 
@@ -137,6 +138,7 @@ mod tests {
     };
 
     struct Entry(&'static str, u16);
+    impl crate::ui::model::item::ShellItem for Entry {}
     impl ListItem for Entry {
         fn search(&self) -> &str {
             self.0

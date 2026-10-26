@@ -2,6 +2,7 @@ use gpui::{App, ClipboardItem, Context, SharedString, Window};
 
 use crate::{
     QUERY_MEMORY,
+    app::LauncherEntityGlobal,
     launcher::{ExecEffect, utils::exec_mode::ExecMode},
     loader::utils::CounterReader,
     sherlock_msg,
@@ -119,10 +120,10 @@ impl LauncherView {
             }
 
             let target = match source {
-                ExecSource::Shortcut(n) => self.navigation.nth_shortcut_item(n, cx),
-                _ => self.navigation.selected_item(cx),
+                ExecSource::Shortcut(n) => self.navigation.shortcut_item_ref(n, cx),
+                _ => self.navigation.selected_shell_item_ref(cx),
             };
-            if let Some(item) = target.as_ref().and_then(|t| t.read(cx)) {
+            if let Some(item) = target {
                 item.refresh_popularity();
             }
         }
@@ -216,15 +217,15 @@ impl LauncherView {
                 SherlockIgnore::add_entry(&config.files.ignore, &entry)?;
 
                 if !req.exit {
-                    self.navigation.with_model_mut(cx, |model, cx| {
-                        let mut initial_messages = Vec::new();
+                    // the hidden app lives in the global launcher data, whatever view is open
+                    if let Some(data) = cx.global::<LauncherEntityGlobal>().0.upgrade() {
                         reload(
                             cx,
-                            &model.data,
-                            &mut initial_messages,
+                            &data,
+                            &mut Vec::new(),
                             crate::utils::config::ConfigFileChange::Ignore,
                         );
-                    });
+                    }
                     self.filter_and_sort_sync(cx);
                     self.context_menu.focus_first();
                     self.update_async(cx);

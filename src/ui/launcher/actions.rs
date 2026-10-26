@@ -9,25 +9,25 @@ use smallvec::SmallVec;
 use super::execute;
 use crate::{
     app::reset_generation,
-    launcher::{
-        LauncherValues,
-        utils::exec_mode::ExecMode,
-        variant_type::{LauncherType, QuickActionCapabilities},
-    },
+    launcher::{LauncherValues, utils::exec_mode::ExecMode, variant_type::QuickActionCapabilities},
     sherlock_msg,
     ui::{
         components::{
             choice::Choice,
-            search_bar::{EmptyBackspace, TextInput, actions::ShortcutAction},
+            search_bar::{
+                EmptyBackspace, TextInput,
+                actions::{Backspace as SearchBackspace, ShortcutAction},
+            },
         },
         launcher::{
-            LauncherView, VariableInput,
+            LauncherMode, LauncherView, VariableInput,
             context_menu::{ContextMenuAction, wrapper::Move},
             execute::ExecSource,
             navigator::views::MoveDirection,
         },
         runtime_arguments::RuntimeArgument,
         traits::RenderableChildDelegate,
+        views::{LauncherEvent, Propagation},
     },
     utils::errors::types::SherlockErrorType,
 };
@@ -45,23 +45,17 @@ actions!(
         Execute,
         ExecuteInplace,
         OpenContext,
-        Backspace,
+        /// Go back: dispatched by an empty search bar's backspace.
+        Back,
     ]
 );
 
 impl LauncherView {
     pub fn focus_first(&mut self, cx: &mut Context<Self>) {
         // Find the first focusable item
-        let first = self
-            .navigation
-            .with_any_model(cx, |m| {
-                (0..m.len()).find(|&i| {
-                    m.item_at(i)
-                        .and_then(|item| item.read(cx).map(|item| item.spawn_focus()))
-                        .unwrap_or(false)
-                })
-            })
-            .flatten();
+        let nav = &self.navigation;
+        let first =
+            (0..nav.len(cx)).find(|&i| nav.item_ref(i, cx).is_some_and(|item| item.spawn_focus()));
         if let Some(n) = first {
             self.focus_nth(n, cx);
         }
@@ -98,6 +92,9 @@ impl LauncherView {
         if self.context_menu.is_open() {
             self.context_menu.handle_move(direction);
             cx.notify();
+            return;
+        }
+        if self.view_handled(LauncherEvent::Move(direction), win, cx) {
             return;
         }
 
@@ -225,7 +222,14 @@ impl LauncherView {
                 return;
             };
             self.execute_context_action(action.clone(), exit_override, win, cx);
-        } else if let Some(req) = self.request(ExecSource::Selected, exit_override, cx) {
+        } else if !self.view_handled(
+            LauncherEvent::Execute {
+                exit: exit_override,
+            },
+            win,
+            cx,
+        ) && let Some(req) = self.request(ExecSource::Selected, exit_override, cx)
+        {
             self.run(req, win, cx);
         }
     }
@@ -404,9 +408,12 @@ impl LauncherView {
     pub(super) fn open_context(
         &mut self,
         _: &OpenContext,
-        _win: &mut Window,
+        win: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.context_menu.is_open() && self.view_handled(LauncherEvent::OpenContext, win, cx) {
+            return;
+        }
         if !self.context_menu.can_open() {
             return;
         }
@@ -452,9 +459,57 @@ impl LauncherView {
     pub(super) fn quit(&mut self, _: &Quit, win: &mut Window, cx: &mut Context<Self>) {
         if self.context_menu.is_open() {
             self.close_context(cx);
-        } else {
+        } else if !self.view_handled(LauncherEvent::Quit, win, cx) {
             self.close_window(win, cx);
         }
+    }
+
+    /// `Back`, from an empty search bar.
+    pub(super) fn back(&mut self, _: &Back, win: &mut Window, cx: &mut Context<Self>) {
+        self.go_back(win, cx);
+    }
+
+    /// Backspace that no input handled: a page without a search bar is focused.
+    pub(super) fn backspace(
+        &mut self,
+        _: &SearchBackspace,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.go_back(win, cx);
+    }
+
+    /// Previous view, or back to home mode. The current view can override it.
+    fn go_back(&mut self, win: &mut Window, cx: &mut Context<Self>) {
+        if self.context_menu.is_open() || self.view_handled(LauncherEvent::Back, win, cx) {
+            return;
+        }
+        if !self.navigation.is_home() {
+            self.navigation.back(cx);
+            if let Some(c) = self.navigation.last_query(cx) {
+                self.text_input.update(cx, |ipt, _| ipt.set_text(c));
+            }
+            self.force_filter_and_sort(cx);
+        } else if self.navigation.current().mode != LauncherMode::Home {
+            self.navigation.current_mut().mode = LauncherMode::Home;
+            self.navigation.clear_last_query(cx);
+            self.filter_and_sort(cx);
+        }
+    }
+
+    /// Offers `event` to the current view. `true`: the view handled it, skip the default.
+    fn view_handled(
+        &mut self,
+        event: LauncherEvent,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let handled =
+            self.navigation.current().handle.on_event(&event, win, cx) == Propagation::Stop;
+        if handled {
+            cx.notify();
+        }
+        handled
     }
 
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
@@ -517,46 +572,8 @@ impl LauncherView {
         }
     }
 
+    /// Refreshes live items (weather, music, ...) of the active view.
     pub(crate) fn update_async(&mut self, cx: &mut Context<Self>) {
-        let Some(data) = self.navigation.with_model(cx, |mdl| mdl.data()) else {
-            return;
-        };
-        let data_snapshot_rc = data.read(cx).clone();
-        data_snapshot_rc
-            .values()
-            .filter_map(|launcher| {
-                if matches!(
-                    launcher.config.launcher_type,
-                    LauncherType::Weather(_)
-                        | LauncherType::MusicPlayer(_)
-                        | LauncherType::Clipboard(_)
-                        | LauncherType::Event(_)
-                        | LauncherType::Plugin(_)
-                ) {
-                    Some(launcher.children.iter())
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .for_each(|item| item.update_async(cx));
-    }
-
-    pub(crate) fn update_sync(&mut self, query: SharedString, cx: &mut Context<Self>) {
-        let Some((data_entity, filtered_indices_arc)) = self
-            .navigation
-            .with_model(cx, |mdl| (mdl.data(), mdl.filtered_indices()))
-        else {
-            return;
-        };
-        let data_snapshot_arc = data_entity.read(cx).clone();
-        filtered_indices_arc
-            .iter()
-            .filter_map(|i| {
-                data_snapshot_arc
-                    .get(&i.0)
-                    .and_then(|l| l.children.get(i.1))
-            })
-            .for_each(|render_child| render_child.update_sync(query.clone(), cx));
+        self.navigation.current().handle.refresh(cx);
     }
 }

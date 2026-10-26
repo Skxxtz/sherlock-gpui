@@ -23,7 +23,7 @@ use crate::{
         backdrop::Backdrop,
         components::search_bar::{EmptyBackspace, TextInput},
         launcher::{
-            LauncherMode, LauncherView,
+            Back, LauncherMode, LauncherView,
             context_menu::wrapper::ContextMenu,
             navigator::{Navigator, handle::ViewKind},
             sidebar_controller::SidebarController,
@@ -142,7 +142,6 @@ fn spawn_launcher(
         });
 
         cx.new(|cx| {
-            let data_len = data.read(cx).len();
 
             // Re-run the filter when launcher data changes (e.g. plugin tiles
             // arriving asynchronously).
@@ -156,23 +155,14 @@ fn spawn_launcher(
                 this.filter_and_sort(cx);
             });
 
-            let backspace_sub = cx.subscribe(&text_input, |this, _, _: &EmptyBackspace, cx| {
-                if !matches!(this.navigation.current_kind(), ViewKind::Home) {
-                    this.navigation.back(cx);
-                    if let Some(c) = this.navigation.last_query(cx) {
-                        this.text_input.update(cx, |ipt, _| ipt.set_text(c));
-                    }
-                    this.force_filter_and_sort(cx);
-                } else if this.navigation.current().mode != LauncherMode::Home {
-                    this.navigation.current_mut().mode = LauncherMode::Home;
-                    this.navigation.clear_last_query(cx);
-                    this.filter_and_sort(cx);
-                }
+            // routed through `Back`, so the current view can override it
+            let backspace_sub = cx.subscribe(&text_input, |_, _, _: &EmptyBackspace, cx| {
+                cx.dispatch_action(&Back);
             });
 
             text_input.update(cx, |this, _| this._sub = Some(backspace_sub));
 
-            let mut navigation = Navigator::new(data, initial_messages, data_len, cx);
+            let mut navigation = Navigator::new(data, initial_messages, cx);
 
             let mode = ConfigGuard::read_with(|c| {
                 c.runtime

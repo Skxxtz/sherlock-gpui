@@ -11,7 +11,7 @@ use crate::{
             cursor::Cursor,
             data::ModelData,
             index::SearchIndex,
-            item::{ItemRef, SelectionKey, ShellItem},
+            item::SelectionKey,
             utils::{all_indices, single_launcher},
         },
     },
@@ -172,92 +172,31 @@ impl<D: ModelData> Model<D> {
 
     /// Replaces the visible items. If the selection was explicit and the selected item is still
     /// visible, it stays selected (e.g. a plugin refresh doesn't move the cursor).
+    /// Identity of the selected item, if any items are visible.
+    pub fn selected_key(&self) -> Option<SelectionKey> {
+        self.selected_id().map(|id| SelectionKey::new::<D>(&id))
+    }
+
+    /// Position of the visible item with `key`.
+    pub fn position_of_key(&self, key: SelectionKey) -> Option<usize> {
+        self.filtered
+            .iter()
+            .position(|id| SelectionKey::new::<D>(id) == key)
+    }
+
+    /// Selects the visible item with `key`. Returns `false` if it isn't visible.
+    pub fn select_key(&mut self, key: SelectionKey) -> bool {
+        match self.position_of_key(key) {
+            Some(n) => self.select(n),
+            None => false,
+        }
+    }
+
     pub fn set_results(&mut self, results: Arc<[D::Id]>, query: SharedString) -> ResultsChange {
         let changed = self.filtered != results;
         let restored = self.cursor.restore(&self.filtered, &results);
         self.filtered = results;
         self.last_query = Some(query);
         ResultsChange { changed, restored }
-    }
-}
-
-/// Object-safe view of a `Model<D>` for code that doesn't know `D` (shell, navigator):
-/// size, selection and last query.
-pub trait AnyModel {
-    fn len(&self) -> usize;
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-    /// Selected position, clamped to the visible items.
-    fn selected_index(&self) -> usize;
-    /// Selects position `n`. Returns `false` (and changes nothing) if out of range.
-    fn select(&mut self, n: usize) -> bool;
-    /// Back to the first item.
-    fn reset_selection(&mut self);
-    /// The query that produced the current results, if any.
-    fn last_query(&self) -> Option<SharedString>;
-    /// Forget the last query, so the next one always re-runs.
-    fn clear_last_query(&mut self);
-
-    /// Handle to the visible item at position `n`.
-    fn item_at(&self, n: usize) -> Option<ItemRef>;
-    /// Handle to the selected item, if any items are visible.
-    fn selected_item(&self) -> Option<ItemRef> {
-        if self.is_empty() {
-            None
-        } else {
-            self.item_at(self.selected_index())
-        }
-    }
-    /// Identity of the selected item, if any items are visible.
-    fn selected_key(&self) -> Option<SelectionKey>;
-    /// Selects the visible item with `key`. Returns `false` if it isn't visible.
-    fn select_key(&mut self, key: SelectionKey) -> bool;
-}
-
-impl<D: ModelData> AnyModel for Model<D>
-where
-    D::Item: ShellItem,
-{
-    #[inline]
-    fn len(&self) -> usize {
-        Model::len(self)
-    }
-    #[inline]
-    fn selected_index(&self) -> usize {
-        Model::selected_index(self)
-    }
-    #[inline]
-    fn select(&mut self, n: usize) -> bool {
-        Model::select(self, n)
-    }
-    #[inline]
-    fn reset_selection(&mut self) {
-        Model::reset_selection(self)
-    }
-    #[inline]
-    fn last_query(&self) -> Option<SharedString> {
-        self.last_query.clone()
-    }
-    #[inline]
-    fn clear_last_query(&mut self) {
-        self.last_query = None;
-    }
-    fn item_at(&self, n: usize) -> Option<ItemRef> {
-        let id = *self.filtered.get(n)?;
-        Some(ItemRef::new(self.data.clone(), id))
-    }
-    fn selected_key(&self) -> Option<SelectionKey> {
-        self.selected_id().map(|id| SelectionKey::new::<D>(&id))
-    }
-    fn select_key(&mut self, key: SelectionKey) -> bool {
-        match self
-            .filtered
-            .iter()
-            .position(|id| SelectionKey::new::<D>(id) == key)
-        {
-            Some(n) => Model::select(self, n),
-            None => false,
-        }
     }
 }

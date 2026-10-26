@@ -1,14 +1,11 @@
 use std::sync::Arc;
 
-use gpui::{App, AsyncApp, Context, WeakEntity};
+use gpui::{App, AsyncApp, Context, SharedString, WeakEntity};
 
-use crate::{
-    app::LauncherWeakEntity,
-    ui::{
-        launcher::LauncherView,
-        model::{Model, data::ModelData, index::FilterJob},
-        views::{Query, QueryResult},
-    },
+use crate::ui::{
+    launcher::LauncherView,
+    model::{Model, data::ModelData, index::FilterJob},
+    views::{Query, QueryResult, SherlockView},
 };
 
 /// Filters static launcher data in `model` for `query`: notifies plugins, then `model_query`.
@@ -86,23 +83,72 @@ pub fn model_query<V: 'static, D: ModelData>(
     QueryResult::Pending
 }
 
+/// Where an external search delivers its results: the view's own model, then the shell.
+///
+/// Holding the view (not "whatever view is on top") means results can't land in another view
+/// that was pushed while the search ran.
+pub struct ResultsSink<V: SherlockView> {
+    view: WeakEntity<V>,
+    shell: WeakEntity<LauncherView>,
+    model_of: fn(&mut V) -> &mut Model<V::Data>,
+}
+
+impl<V: SherlockView> Clone for ResultsSink<V> {
+    fn clone(&self) -> Self {
+        Self {
+            view: self.view.clone(),
+            shell: self.shell.clone(),
+            model_of: self.model_of,
+        }
+    }
+}
+
+impl<V: SherlockView> ResultsSink<V> {
+    /// Applies `ids` to the view's model, then lets the shell react. Two separate updates, so
+    /// call it from a task, not from inside the view or the shell.
+    pub fn deliver(
+        &self,
+        ids: Arc<[<V::Data as ModelData>::Id]>,
+        query: SharedString,
+        cx: &mut App,
+    ) {
+        let model_of = self.model_of;
+        let Ok(change) = self
+            .view
+            .update(cx, |view, _| model_of(view).set_results(ids, query.clone()))
+        else {
+            return;
+        };
+        self.shell
+            .update(cx, |shell, cx| {
+                shell.results_changed(change, query, false, cx)
+            })
+            .ok();
+    }
+}
+
 /// Runs an external search (files, processes) for `query`, unless the query is unchanged.
 ///
-/// `search` writes its results into the model's data and reports them through
-/// `LauncherView::apply_results`.
-pub fn external_query(
-    model: &Model,
+/// `search` writes its results into the model's data and hands the ids to the `ResultsSink`.
+pub fn external_query<V: SherlockView>(
+    model: &Model<V::Data>,
     query: &Query,
-    cx: &mut App,
-    search: impl FnOnce(Arc<str>, LauncherWeakEntity, WeakEntity<LauncherView>, &mut App),
+    cx: &mut Context<V>,
+    model_of: fn(&mut V) -> &mut Model<V::Data>,
+    search: impl FnOnce(Arc<str>, WeakEntity<V::Data>, ResultsSink<V>, &mut App),
 ) -> QueryResult {
     if !query.force && model.last_query.as_ref() == Some(&query.text) {
         return QueryResult::Ignored;
     }
+    let sink = ResultsSink {
+        view: cx.entity().downgrade(),
+        shell: query.shell.clone(),
+        model_of,
+    };
     search(
         query.text.as_ref().into(),
         model.data().downgrade(),
-        query.shell.clone(),
+        sink,
         cx,
     );
     QueryResult::Pending

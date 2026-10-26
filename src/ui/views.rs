@@ -1,22 +1,26 @@
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, SharedString, WeakEntity, Window};
+use gpui::{AnyElement, App, Context, Entity, FocusHandle, SharedString, WeakEntity, Window, px};
 
 use crate::{
     app::theme::ThemeData,
     ui::{
         launcher::{LauncherView, navigator::views::Layout},
-        model::{AnyModel, Model, ResultsChange},
+        model::{Model, ResultsChange, data::ModelData},
     },
 };
 
 pub mod emoji;
+pub mod events;
 pub mod file;
 pub mod home;
 pub mod list;
 pub mod message;
 pub mod process;
 pub mod query;
+pub mod settings;
+
+pub use events::{LauncherEvent, Propagation};
 
 /// Which parts of the shared frame a view wants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -25,6 +29,9 @@ pub struct Chrome {
     pub mode_label: bool,
     pub status_bar: bool,
     pub sidebar: bool,
+    /// Horizontal padding around the body (and sidebar). Off for pages that lay out the whole
+    /// area themselves.
+    pub inset: bool,
 }
 
 impl Chrome {
@@ -33,6 +40,7 @@ impl Chrome {
         mode_label: true,
         status_bar: true,
         sidebar: true,
+        inset: true,
     };
 
     /// Like `DEFAULT`, without the sidebar
@@ -47,6 +55,7 @@ impl Chrome {
         mode_label: false,
         status_bar: false,
         sidebar: false,
+        inset: false,
     };
 }
 
@@ -91,10 +100,24 @@ pub enum QueryResult {
 }
 
 pub trait SherlockView: 'static + Sized {
+    /// The data this view's model filters; `NoData` for views without items.
+    type Data: ModelData;
+
     fn chrome(&self) -> Chrome {
         Chrome::DEFAULT
     }
     /// The view's content
+    /// Initial scroll layout when the view is pushed: a row list by default.
+    /// Where keyboard focus goes while this view is shown, e.g. a text field of a page.
+    /// `None`: the search input if the view shows one, otherwise the launcher itself.
+    fn focus_target(&self, _cx: &App) -> Option<FocusHandle> {
+        None
+    }
+
+    fn layout(&self) -> Layout {
+        Layout::row(self.model().map_or(0, |m| m.len()), px(50.))
+    }
+
     fn render_body(
         &mut self,
         shell: &ShellCtx,
@@ -110,22 +133,24 @@ pub trait SherlockView: 'static + Sized {
         QueryResult::Ignored
     }
 
-    /// The view's model, type-erased, for selection and size. `None` for views without items.
-    fn model(&self) -> Option<&dyn AnyModel> {
+    /// Sees launcher events (move, execute, back, ...) before the shell's default. Return
+    /// `Stop` to replace the default. Runs while the shell is mid-update: don't update the shell
+    /// from here.
+    fn on_event(
+        &mut self,
+        _event: &LauncherEvent,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> Propagation {
+        Propagation::Continue
+    }
+
+    /// The view's model (selection, size, items). `None` for views without items.
+    fn model(&self) -> Option<&Model<Self::Data>> {
         None
     }
 
-    fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
-        None
-    }
-
-    /// The model, if this view shows launcher data. Needed for launcher-only features
-    /// (async widget updates, `update_sync`, config reload).
-    fn launcher_model(&self) -> Option<&Model> {
-        None
-    }
-
-    fn launcher_model_mut(&mut self) -> Option<&mut Model> {
+    fn model_mut(&mut self) -> Option<&mut Model<Self::Data>> {
         None
     }
 }
