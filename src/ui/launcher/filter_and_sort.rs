@@ -20,9 +20,13 @@ impl LauncherView {
         cx: &mut Context<Self>,
     ) {
         let query: SharedString = query.into();
-        let change = self
+        // the active view may have changed since the search started
+        let Some(change) = self
             .navigation
-            .with_model_mut(cx, |mdl, _| mdl.set_results(results, query.clone()));
+            .with_model_mut(cx, |mdl, _| mdl.set_results(results, query.clone()))
+        else {
+            return;
+        };
         self.results_changed(change, query, force, cx);
     }
 

@@ -11,6 +11,7 @@ use crate::{
             cursor::Cursor,
             data::ModelData,
             index::SearchIndex,
+            item::{ItemRef, SelectionKey, ShellItem},
             utils::{all_indices, single_launcher},
         },
     },
@@ -19,6 +20,7 @@ use crate::{
 pub mod cursor;
 pub mod data;
 pub mod index;
+pub mod item;
 pub mod list_data;
 pub mod pipeline;
 mod utils;
@@ -196,9 +198,27 @@ pub trait AnyModel {
     fn last_query(&self) -> Option<SharedString>;
     /// Forget the last query, so the next one always re-runs.
     fn clear_last_query(&mut self);
+
+    /// Handle to the visible item at position `n`.
+    fn item_at(&self, n: usize) -> Option<ItemRef>;
+    /// Handle to the selected item, if any items are visible.
+    fn selected_item(&self) -> Option<ItemRef> {
+        if self.is_empty() {
+            None
+        } else {
+            self.item_at(self.selected_index())
+        }
+    }
+    /// Identity of the selected item, if any items are visible.
+    fn selected_key(&self) -> Option<SelectionKey>;
+    /// Selects the visible item with `key`. Returns `false` if it isn't visible.
+    fn select_key(&mut self, key: SelectionKey) -> bool;
 }
 
-impl<D: ModelData> AnyModel for Model<D> {
+impl<D: ModelData> AnyModel for Model<D>
+where
+    D::Item: ShellItem,
+{
     #[inline]
     fn len(&self) -> usize {
         Model::len(self)
@@ -222,5 +242,22 @@ impl<D: ModelData> AnyModel for Model<D> {
     #[inline]
     fn clear_last_query(&mut self) {
         self.last_query = None;
+    }
+    fn item_at(&self, n: usize) -> Option<ItemRef> {
+        let id = *self.filtered.get(n)?;
+        Some(ItemRef::new(self.data.clone(), id))
+    }
+    fn selected_key(&self) -> Option<SelectionKey> {
+        self.selected_id().map(|id| SelectionKey::new::<D>(&id))
+    }
+    fn select_key(&mut self, key: SelectionKey) -> bool {
+        match self
+            .filtered
+            .iter()
+            .position(|id| SelectionKey::new::<D>(id) == key)
+        {
+            Some(n) => Model::select(self, n),
+            None => false,
+        }
     }
 }

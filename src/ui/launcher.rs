@@ -15,7 +15,7 @@ use crate::{
             context_menu::wrapper::ContextMenu, navigator::Navigator,
             sidebar_controller::SidebarController,
         },
-        model::ItemIdx,
+        model::item::ItemRef,
     },
     utils::{networking::ServerResponse, sized_message_sync::SizedMessage},
 };
@@ -86,7 +86,8 @@ pub struct LauncherView {
 
     pub backdrop: Option<WindowHandle<Backdrop>>,
 
-    pub last_selected: Option<ItemIdx>,
+    /// Last rendered selection; its inner focus is reset when the selection moves.
+    pub last_selected: Option<ItemRef>,
 }
 
 impl Focusable for LauncherView {

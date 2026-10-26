@@ -54,30 +54,18 @@ actions!(
 
 impl LauncherView {
     pub fn focus_first(&mut self, cx: &mut Context<Self>) {
-        let Some((indices, data_entity)) = self.navigation.with_model(cx, |mdl| {
-            let filtered_indices = mdl.filtered_indices();
-            if filtered_indices.is_empty() {
-                None
-            } else {
-                Some((filtered_indices, mdl.data()))
-            }
-        }) else {
-            return;
-        };
-
-        if data_entity.read(cx).is_empty() {
-            return;
-        }
-
         // Find the first focusable item
-        if let Some(n) = {
-            let data_guard = data_entity.read(cx);
-            indices.iter().position(|&idx| {
-                data_guard
-                    .get(&idx.0)
-                    .is_some_and(|launcher| launcher.config.spawn_focus)
+        let first = self
+            .navigation
+            .with_any_model(cx, |m| {
+                (0..m.len()).find(|&i| {
+                    m.item_at(i)
+                        .and_then(|item| item.read(cx).map(|item| item.spawn_focus()))
+                        .unwrap_or(false)
+                })
             })
-        } {
+            .flatten();
+        if let Some(n) = first {
             self.focus_nth(n, cx);
         }
     }
@@ -266,8 +254,8 @@ impl LauncherView {
     }
 
     pub(super) fn check_actions(&mut self, cx: &mut App) -> bool {
-        let selected_data_idx = self.navigation.selected_data_idx(cx);
-        self.context_menu.refresh_for(selected_data_idx, || {
+        let selected = self.navigation.selected_key(cx);
+        self.context_menu.refresh_for(selected, || {
             self.navigation
                 .with_selected_item(cx, |itm, cx| {
                     (ContextMenu::availability_mask(itm), itm.has_actions(cx))
@@ -493,20 +481,10 @@ impl LauncherView {
     }
 
     pub(super) fn update_vars(&mut self, cx: &mut Context<Self>) {
-        let Some(idx) = self.navigation.selected_data_idx(cx) else {
-            self.variable_input.clear();
-            return;
-        };
-
-        let needed_vars: Option<Vec<RuntimeArgument>> = {
-            self.navigation.with_model_mut(cx, |mdl, cx| {
-                let data_guard = mdl.data().read(cx).clone();
-                data_guard
-                    .get(&idx.0)
-                    .and_then(|l| l.children.get(idx.1))
-                    .and_then(|data| data.vars(cx).map(|slice| slice.to_vec()))
-            })
-        };
+        let needed_vars: Option<Vec<RuntimeArgument>> = self
+            .navigation
+            .with_selected_item(cx, |item, cx| item.vars(cx).map(|slice| slice.to_vec()))
+            .flatten();
 
         if let Some(vars_to_create) = needed_vars {
             self.variable_input = vars_to_create
@@ -545,7 +523,9 @@ impl LauncherView {
     }
 
     pub(crate) fn update_async(&mut self, cx: &mut Context<Self>) {
-        let data = self.navigation.with_model(cx, |mdl| mdl.data());
+        let Some(data) = self.navigation.with_model(cx, |mdl| mdl.data()) else {
+            return;
+        };
         let data_snapshot_rc = data.read(cx).clone();
         data_snapshot_rc
             .values()
@@ -568,10 +548,13 @@ impl LauncherView {
     }
 
     pub(crate) fn update_sync(&mut self, query: SharedString, cx: &mut Context<Self>) {
-        let data_entity = self.navigation.with_model(cx, |mdl| mdl.data().clone());
-
+        let Some((data_entity, filtered_indices_arc)) = self
+            .navigation
+            .with_model(cx, |mdl| (mdl.data(), mdl.filtered_indices()))
+        else {
+            return;
+        };
         let data_snapshot_arc = data_entity.read(cx).clone();
-        let filtered_indices_arc = self.navigation.with_model(cx, |mdl| mdl.filtered_indices());
         filtered_indices_arc
             .iter()
             .filter_map(|i| {

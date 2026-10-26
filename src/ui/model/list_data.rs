@@ -1,9 +1,3 @@
-//! `ListData<T>`: the simplest `ModelData`, a plain list of items.
-//!
-//! Use it for views over data that isn't launcher-based (bookmarks, history, ...): implement
-//! `ListItem` for the item type and wrap the items in `ListData`.
-
-// Not used by a view yet; the first non-launcher view will.
 #![allow(dead_code)]
 
 use std::{rc::Rc, sync::Arc};

@@ -68,4 +68,12 @@ impl SherlockView for EmojiView {
     fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
         Some(&mut self.model)
     }
+
+    fn launcher_model(&self) -> Option<&Model> {
+        Some(&self.model)
+    }
+
+    fn launcher_model_mut(&mut self) -> Option<&mut Model> {
+        Some(&mut self.model)
+    }
 }

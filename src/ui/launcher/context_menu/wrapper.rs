@@ -18,7 +18,7 @@ use crate::{
             },
             navigator::views::MoveDirection,
         },
-        model::ItemIdx,
+        model::item::SelectionKey,
         traits::RenderableChildDelegate,
         widgets::{
             RenderableChild,
@@ -80,7 +80,7 @@ pub struct ContextMenu {
 
     pub has_actions: bool,
 
-    cached_for: Option<ItemIdx>,
+    cached_for: Option<SelectionKey>,
 
     is_flashing: Option<usize>,
     scroll_handle: ScrollHandle,
@@ -249,7 +249,7 @@ impl ContextMenu {
 
     pub fn refresh_for(
         &mut self,
-        selected: Option<ItemIdx>,
+        selected: Option<SelectionKey>,
         compute: impl FnOnce() -> (QuickActionCapabilities, bool),
     ) -> bool {
         if self.cached_for != selected {

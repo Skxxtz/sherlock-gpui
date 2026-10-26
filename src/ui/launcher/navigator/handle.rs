@@ -40,19 +40,20 @@ macro_rules! dispatch {
 }
 
 impl ViewHandle {
-    /// Read this view's model
-    pub fn with_model<R>(&self, cx: &App, f: impl FnOnce(&Model) -> R) -> R {
-        dispatch!(self, e => f(&e.read(cx).model))
+    /// Read this view's launcher model. `None` if the view doesn't show launcher data.
+    pub fn with_model<R>(&self, cx: &App, f: impl FnOnce(&Model) -> R) -> Option<R> {
+        dispatch!(self, e => e.read(cx).launcher_model().map(f))
     }
 
-    /// Mutate this view's model through an entity update.
+    /// Mutate this view's launcher model through an entity update. `None` if the view doesn't
+    /// show launcher data.
     /// Don't update the same entity again inside `f`, or GPUI panics.
     pub fn with_model_mut<R, C: AppContext>(
         &self,
         cx: &mut C,
         f: impl FnOnce(&mut Model, &mut App) -> R,
-    ) -> R {
-        dispatch!(self, e => e.update(cx, |v, cx| f(&mut v.model, cx)))
+    ) -> Option<R> {
+        dispatch!(self, e => e.update(cx, |v, cx| v.launcher_model_mut().map(|m| f(m, cx))))
     }
 
     /// Read this view's model without knowing its data type. `None` if the view has no model.

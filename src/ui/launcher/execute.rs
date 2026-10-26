@@ -238,8 +238,8 @@ impl LauncherView {
                 done
             }
             ExecMode::Info => {
-                if let Some(idx) = self.navigation.selected_data_idx(cx) {
-                    self.sidebar_controller.set_for_item(idx);
+                if let Some(key) = self.navigation.selected_key(cx) {
+                    self.sidebar_controller.set_for_item(key);
                 } else {
                     self.navigation.push_message(
                         sherlock_msg!(

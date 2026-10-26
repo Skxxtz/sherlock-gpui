@@ -1,19 +1,16 @@
 use gpui::{App, ScrollHandle};
 use scroll::SidebarScroll;
 
-use crate::{
-    launcher::LauncherId,
-    ui::{
-        launcher::navigator::{Navigator, handle::ViewKind},
-        model::ItemIdx,
-    },
+use crate::ui::{
+    launcher::navigator::{Navigator, handle::ViewKind},
+    model::item::SelectionKey,
 };
 
 mod scroll;
 
 #[derive(Default)]
 pub struct SidebarController {
-    for_item: Option<ItemIdx>,
+    for_item: Option<SelectionKey>,
     scroll: SidebarScroll,
     valid: bool,
 }
@@ -33,8 +30,7 @@ impl SidebarController {
         }
 
         // current index is the same as for item
-        let current_data_idx = nav.selected_data_idx(cx);
-        if current_data_idx != self.for_item {
+        if nav.selected_key(cx) != self.for_item {
             self.for_item = None;
             self.valid = false;
             return;
@@ -43,16 +39,12 @@ impl SidebarController {
         self.valid = true;
     }
 
-    pub fn set_for_item(&mut self, item: ItemIdx) {
+    pub fn set_for_item(&mut self, item: SelectionKey) {
         self.for_item = Some(item);
     }
 
     pub fn is_valid(&self) -> bool {
         self.valid
-    }
-
-    pub fn launcher(&self) -> Option<LauncherId> {
-        self.for_item.map(|(id, _)| id)
     }
 
     /// Restores the remembered sidebar scroll position

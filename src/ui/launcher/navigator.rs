@@ -10,7 +10,10 @@ use crate::{
             context_menu::ContextMenuAction,
             navigator::{handle::ViewKind, views::NavView},
         },
-        model::{AnyModel, ItemIdx, Model},
+        model::{
+            AnyModel, Model,
+            item::{ItemRef, SelectionKey},
+        },
         traits::RenderableChildDelegate,
         views::message::MessageView,
         widgets::RenderableChild,
@@ -169,20 +172,20 @@ impl Navigator {
 
 // Model Implementations
 impl Navigator {
-    /// Read the active view's model.
+    /// Read the active view's launcher model. `None` if it doesn't show launcher data.
     /// Can't update entities inside `f`; return what you need instead.
-    pub fn with_model<R>(&self, cx: &App, f: impl FnOnce(&Model) -> R) -> R {
+    pub fn with_model<R>(&self, cx: &App, f: impl FnOnce(&Model) -> R) -> Option<R> {
         self.current().handle.with_model(cx, f)
     }
 
-    /// Mutate the active view's model.
+    /// Mutate the active view's launcher model. `None` if it doesn't show launcher data.
     /// Takes `&self` because the model lives in a GPUI entity, not in the navigator.
     /// Don't re-enter the same view's entity inside `f`, or GPUI panics.
     pub fn with_model_mut<R, C: AppContext>(
         &self,
         cx: &mut C,
         f: impl FnOnce(&mut Model, &mut App) -> R,
-    ) -> R {
+    ) -> Option<R> {
         self.current().handle.with_model_mut(cx, f)
     }
 
@@ -217,9 +220,14 @@ impl Navigator {
         self.with_any_model_mut(cx, |m| m.clear_last_query());
     }
 
-    /// Returns the currently active data index
-    pub fn selected_data_idx(&self, cx: &App) -> Option<ItemIdx> {
-        self.with_model(cx, |mdl| mdl.selected_id())
+    /// Identity of the selected item of the active view.
+    pub fn selected_key(&self, cx: &App) -> Option<SelectionKey> {
+        self.with_any_model(cx, |m| m.selected_key()).flatten()
+    }
+
+    /// Handle to the selected item of the active view.
+    pub fn selected_item(&self, cx: &App) -> Option<ItemRef> {
+        self.with_any_model(cx, |m| m.selected_item()).flatten()
     }
 
     /// Selected position in the active view's visible items (clamped).
@@ -238,9 +246,9 @@ impl Navigator {
         ok
     }
 
-    /// Sets the currently active data index
-    pub fn set_selected_data_idx(&self, data_idx: ItemIdx, cx: &mut App) {
-        self.with_model_mut(cx, |mdl, _| mdl.select_id(data_idx));
+    /// Selects the visible item with `key`.
+    pub fn select_key(&self, key: SelectionKey, cx: &mut App) {
+        self.with_any_model_mut(cx, |m| m.select_key(key));
     }
 
     /// Back to the first item of the active view.
@@ -248,48 +256,23 @@ impl Navigator {
         self.with_any_model_mut(cx, |m| m.reset_selection());
     }
 
-    /// Returns a shared reference to the currently active widget
+    /// Shared reference to the selected launcher item.
     pub fn selected_item_ref<'a>(&self, cx: &'a App) -> Option<&'a RenderableChild> {
-        let idx = self.selected_data_idx(cx)?;
-        self.item_ref(idx, cx)
+        let item = self.selected_item(cx)?;
+        item.read(cx)?.as_launcher_item()
     }
 
-    /// Returns a shared reference to the widget at the given index
-    fn item_ref<'a>(&self, idx: ItemIdx, cx: &'a App) -> Option<&'a RenderableChild> {
-        let data = self.with_model(cx, |mdl| mdl.data());
-        data.read(cx)
-            .get(&idx.0)
-            .and_then(|l| l.children.get(idx.1))
-    }
-
-    /// Read the widget at the given index.
-    /// Can't update entities inside `f`: return what you need instead.
-    pub fn with_item<R>(
-        &self,
-        idx: ItemIdx,
-        cx: &mut App,
-        f: impl FnOnce(&RenderableChild, &mut App) -> R,
-    ) -> Option<R> {
-        let data = self.with_model(cx, |mdl| mdl.data());
-        data.update(cx, |data, cx| {
-            data.get(&idx.0)
-                .and_then(|l| l.children.get(idx.1))
-                .map(|item| f(item, cx))
-        })
-    }
-
-    /// Read the currently active widget.
+    /// Read the selected launcher item.
     /// Don't re-enter the same widget's entity inside `f`, or GPUI panics.
     pub fn with_selected_item<R>(
         &self,
         cx: &mut App,
         f: impl FnOnce(&RenderableChild, &mut App) -> R,
     ) -> Option<R> {
-        let idx = self.selected_data_idx(cx)?;
-        self.with_item(idx, cx, f)
+        self.selected_item(cx)?.with_launcher_item(cx, f)
     }
 
-    /// Read the nth item that allows shortcuts.
+    /// Read the nth item that allows shortcuts (launcher items only).
     /// Don't re-enter the same widget's entity inside `f`, or GPUI panics.
     pub fn with_nth_shortcut_item<R>(
         &self,
@@ -297,28 +280,25 @@ impl Navigator {
         cx: &mut App,
         f: impl FnOnce(&RenderableChild, &mut App) -> R,
     ) -> Option<R> {
-        let idx = self.idx_for_shortcut(n, cx)?;
-        self.with_item(idx, cx, f)
+        self.nth_shortcut_item(n, cx)?.with_launcher_item(cx, f)
     }
 
     /// Read the nth item that allows shortcuts as a shared reference
     pub fn nth_shortcut_item_ref<'a>(&self, n: usize, cx: &'a App) -> Option<&'a RenderableChild> {
-        let idx = self.idx_for_shortcut(n, cx)?;
-        self.item_ref(idx, cx)
+        let item = self.nth_shortcut_item(n, cx)?;
+        item.read(cx)?.as_launcher_item()
     }
 
-    // get the nth shortcut item index if any is valid.
-    fn idx_for_shortcut(&self, n: usize, cx: &App) -> Option<ItemIdx> {
+    /// The nth (1-based) visible item that allows shortcuts.
+    fn nth_shortcut_item(&self, n: usize, cx: &App) -> Option<ItemRef> {
         let skip = n.checked_sub(1)?;
-        self.with_model(cx, |mdl| {
-            let entity = mdl.data();
-            let data = entity.read(cx);
-            mdl.filtered_indices()
-                .iter()
-                .copied()
-                .filter(|i| data.get(&i.0).is_some_and(|l| l.config.shortcut))
+        self.with_any_model(cx, |m| {
+            (0..m.len())
+                .filter_map(|i| m.item_at(i))
+                .filter(|item| item.read(cx).is_some_and(|i| i.shortcut()))
                 .nth(skip)
         })
+        .flatten()
     }
 
     /// Returns the collection of `ContextMenuAction` for the currently active item.

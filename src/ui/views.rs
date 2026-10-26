@@ -6,7 +6,7 @@ use crate::{
     app::theme::ThemeData,
     ui::{
         launcher::{LauncherView, navigator::views::Layout},
-        model::{AnyModel, ResultsChange},
+        model::{AnyModel, Model, ResultsChange},
     },
 };
 
@@ -116,6 +116,16 @@ pub trait SherlockView: 'static + Sized {
     }
 
     fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
+        None
+    }
+
+    /// The model, if this view shows launcher data. Needed for launcher-only features
+    /// (async widget updates, `update_sync`, config reload).
+    fn launcher_model(&self) -> Option<&Model> {
+        None
+    }
+
+    fn launcher_model_mut(&mut self) -> Option<&mut Model> {
         None
     }
 }

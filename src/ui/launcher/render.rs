@@ -12,6 +12,7 @@ use crate::{
     CONTEXT_MENU_BIND,
     app::{
         bindings::ShortcutKeyMod,
+        data::LauncherData,
         theme::{ActiveTheme, ThemeData},
     },
     launcher::LauncherValues,
@@ -19,6 +20,7 @@ use crate::{
     ui::{
         UIFunction,
         launcher::{Execute, LauncherMode, LauncherView},
+        model::item::SelectionKey,
         traits::RenderableChildDelegate,
         utils::{ease::Ease, render::ListItemBorder, selection::Selection},
         views::{Chrome, ShellCtx},
@@ -31,11 +33,10 @@ impl Render for LauncherView {
     fn render(&mut self, win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
-        let selected = self.navigation.selected_data_idx(cx);
-        if selected != self.last_selected {
-            if let Some(old) = self.last_selected {
-                self.navigation
-                    .with_item(old, cx, |item, cx| item.reset_inner(cx));
+        let selected = self.navigation.selected_item(cx);
+        if selected.as_ref().map(|i| i.key()) != self.last_selected.as_ref().map(|i| i.key()) {
+            if let Some(old) = self.last_selected.take() {
+                old.with_launcher_item(cx, |item, cx| item.reset_inner(cx));
             }
             self.last_selected = selected;
         }
@@ -399,14 +400,16 @@ impl LauncherView {
 
                 if evt.click_count() as u8 >= n_clicks {
                     handle.update(cx, move |this, cx| {
-                        this.navigation.set_selected_data_idx(idx, cx);
+                        this.navigation
+                            .select_key(SelectionKey::new::<LauncherData>(&idx), cx);
                         if !this.context_menu.is_open() {
                             this.execute_listener(&Execute {}, win, cx);
                         }
                     })
                 } else {
                     handle.update(cx, move |this, cx| {
-                        this.navigation.set_selected_data_idx(idx, cx);
+                        this.navigation
+                            .select_key(SelectionKey::new::<LauncherData>(&idx), cx);
                         if this.context_menu.is_open() {
                             this.context_menu.close();
                         }
