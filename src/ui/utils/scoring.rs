@@ -2,9 +2,19 @@ use std::cmp::Ordering;
 
 use crate::loader::utils::Priority;
 
+/// Below this `P̂(item | query)` a pick only nudges the text score; at or above it, the item
+/// ranks above every item that wasn't learned for this query (within the same `base`).
+/// One pick under a fresh prefix gives `p = 0.5`; one pick among 4+ other picks stays below.
+pub const LEARNED_MIN_P: f32 = 0.2;
+
+/// Rank of a learned item: lower is better, `NOT_LEARNED` for everything else.
+const NOT_LEARNED: u16 = 1000;
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct SortKey {
     base: u16,
+    /// `NOT_LEARNED`, or `(1 - p) * 1000` for items learned for this query.
+    learned: u16,
     score: u16,
     count: u16,
     tie: u16,
@@ -14,6 +24,11 @@ impl Priority {
         let text = search_score(query, match_in);
         SortKey {
             base: self.base,
+            learned: if p >= LEARNED_MIN_P && text < 10_000 {
+                ((1.0 - p.min(1.0)) * NOT_LEARNED as f32).round() as u16
+            } else {
+                NOT_LEARNED
+            },
             score: if text < 10_000 {
                 (text as f32 * (1.0 - p)).round() as u16
             } else {
@@ -28,6 +43,7 @@ impl Ord for SortKey {
     fn cmp(&self, other: &Self) -> Ordering {
         self.base
             .cmp(&other.base)
+            .then(self.learned.cmp(&other.learned))
             .then(self.score.cmp(&other.score))
             .then(other.count.cmp(&self.count))
             .then(self.tie.cmp(&other.tie))
@@ -173,6 +189,49 @@ mod tests {
         let query = "code";
         let score = search_score(query, "Visual Studio;code;editor");
         assert_eq!(score, 0);
+    }
+
+    fn prio() -> Priority {
+        Priority {
+            base: 1,
+            count: 0,
+            tie: 0,
+        }
+    }
+
+    #[test]
+    fn learned_pick_beats_better_text_match() {
+        // "hea" is a prefix of "heart" but only a substring of "blue heart"
+        let heart = prio().sort_key("hea", "heart", 0.0);
+        let blue_heart = prio().sort_key("hea", "blue heart", 0.5);
+        assert!(blue_heart < heart);
+    }
+
+    #[test]
+    fn weak_pick_only_nudges() {
+        let heart = prio().sort_key("hea", "heart", 0.0);
+        let blue_heart = prio().sort_key("hea", "blue heart", LEARNED_MIN_P / 2.0);
+        assert!(heart < blue_heart);
+    }
+
+    #[test]
+    fn stronger_pick_ranks_first() {
+        let a = prio().sort_key("hea", "blue heart", 0.6);
+        let b = prio().sort_key("hea", "heart", 0.3);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn learning_never_beats_base_priority() {
+        let high = Priority { base: 0, ..prio() }.sort_key("hea", "heart", 0.0);
+        let learned = prio().sort_key("hea", "blue heart", 0.9);
+        assert!(high < learned);
+    }
+
+    #[test]
+    fn non_match_is_never_promoted() {
+        let k = prio().sort_key("xyz", "heart", 0.9);
+        assert_eq!(k.learned, NOT_LEARNED);
     }
 
     #[test]

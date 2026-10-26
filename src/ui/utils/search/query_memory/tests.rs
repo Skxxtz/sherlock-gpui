@@ -187,3 +187,36 @@ fn serde_roundtrip() {
     let back: QueryMemory = serde_json::from_str(&json).unwrap();
     approx(back.boosts("fire", 7).get(&key("firefox")), 0.5);
 }
+
+#[test]
+fn learned_emoji_ranks_first_on_every_prefix() {
+    use crate::{
+        launcher::LauncherConfig,
+        ui::{
+            model::{
+                data::ModelData,
+                pipeline::{self, FilterCtx, FilterPolicy},
+            },
+            views::emoji::EmojiSet,
+        },
+        utils::config::HomeType,
+    };
+
+    let mut m = QueryMemory::default();
+    let blue_heart = ItemKey::new("emoji", "Blue Heart");
+    m.record("hear", &blue_heart, 0);
+
+    let data = EmojiSet::new(&LauncherConfig {
+        priority: 1,
+        home: HomeType::Home,
+        ..Default::default()
+    });
+    let index = data.build_index();
+    for q in ["h", "he", "hea", "hear"] {
+        let gates = index.gates(&FilterCtx::new(FilterPolicy::All, "all", q));
+        let scored = index.score(&index.pure, &gates, q, &m.boosts(q, 0), |_| None);
+        let ids = pipeline::sort_and_limit(scored, FilterPolicy::All);
+        let first = ids.first().and_then(|&id| data.get(id)).map(|e| e.name);
+        assert_eq!(first, Some("Blue Heart"), "query {q:?}");
+    }
+}
