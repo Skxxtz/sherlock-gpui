@@ -126,6 +126,9 @@ impl RenderableChildImpl for CalcData {
         }
         Some(show)
     }
+    fn has_based_show(&self) -> bool {
+        true
+    }
 }
 
 fn calc_tile(
