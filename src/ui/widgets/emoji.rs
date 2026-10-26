@@ -4,16 +4,12 @@ use std::sync::{
 };
 
 use arrayvec::ArrayString;
-use gpui::{AnyElement, App, IntoElement, ParentElement, Styled, div, px};
+use gpui::{AnyElement, IntoElement, ParentElement, Styled, div, px};
 
 use crate::{
     app::theme::ThemeData,
-    features::emoji::{EMOJIS, EmojiData, EmojiEntry, SkinTone},
-    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
-    ui::{
-        launcher::context_menu::ContextMenuAction,
-        widgets::{RenderableChildImpl, Selection},
-    },
+    features::emoji::{EMOJIS, EmojiEntry, SkinTone},
+    ui::launcher::context_menu::ContextMenuAction,
 };
 
 static SELECTED_SKIN_TONE: OnceLock<RwLock<[SkinTone; 2]>> = OnceLock::new();
@@ -87,103 +83,66 @@ pub fn apply_skin_tones(template: &str, tones: &[SkinTone]) -> ArrayString<64> {
     result
 }
 
-impl RenderableChildImpl for EmojiData {
-    fn render(
-        &self,
-        _launcher: &Arc<LauncherConfig>,
-        selection: Selection,
-        _query: &str,
-        theme: Arc<ThemeData>,
-        _cx: &mut App,
-    ) -> AnyElement {
-        let emoji = get_emoji(self.entry, &get_selected_skin_tones());
-        div()
-            .size_full()
-            .flex()
-            .flex_col()
-            .gap(px(5.))
-            .py(px(25.))
-            .items_center()
-            .justify_center()
-            .rounded_md()
-            .child(
-                div()
-                    .text_size(px(24.))
-                    .line_height(px(24.))
-                    .text_color(theme.primary_text)
-                    .child(emoji.as_str().to_string()),
-            )
-            .child(
-                div()
-                    .w_full()
-                    .px(px(10.))
-                    .overflow_hidden()
-                    .text_ellipsis()
-                    .whitespace_nowrap()
-                    .text_size(px(10.))
-                    .font_family(theme.font_family.clone())
-                    .text_center()
-                    .text_color(if selection.is_selected {
-                        theme.primary_text
-                    } else {
-                        theme.secondary_text
-                    })
-                    .child(self.entry.name),
-            )
-            .into_any_element()
-    }
-    #[inline(always)]
-    fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
-        Some(ExecMode::Copy {
-            content: get_emoji(self.entry, &get_selected_skin_tones())
-                .as_str()
-                .to_string(),
-        })
-    }
-    #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
-        Some(
-            get_emoji(self.entry, &get_selected_skin_tones())
-                .as_str()
-                .to_string(),
+/// The emoji for `entry` with the currently selected skin tones.
+pub fn emoji_content(entry: &EmojiEntry) -> String {
+    get_emoji(entry, &get_selected_skin_tones())
+        .as_str()
+        .to_string()
+}
+
+/// Grid cell for `entry`: the emoji with its name below.
+pub fn render_emoji_cell(entry: &EmojiEntry, selected: bool, theme: &Arc<ThemeData>) -> AnyElement {
+    let emoji = get_emoji(entry, &get_selected_skin_tones());
+    div()
+        .size_full()
+        .flex()
+        .flex_col()
+        .gap(px(5.))
+        .py(px(25.))
+        .items_center()
+        .justify_center()
+        .rounded_md()
+        .child(
+            div()
+                .text_size(px(24.))
+                .line_height(px(24.))
+                .text_color(theme.primary_text)
+                .child(emoji.as_str().to_string()),
         )
-    }
-    #[inline(always)]
-    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
-        self.entry.keywords
-    }
-    #[inline(always)]
-    fn actions(
-        &self,
-        _launcher: &Arc<LauncherConfig>,
-        _cx: &mut App,
-    ) -> Option<Arc<[Arc<ContextMenuAction>]>> {
-        let num_tones = self.entry.skin_tones as usize;
-        let template = &*EMOJI_CONTEXT_ACTIONS;
+        .child(
+            div()
+                .w_full()
+                .px(px(10.))
+                .overflow_hidden()
+                .text_ellipsis()
+                .whitespace_nowrap()
+                .text_size(px(10.))
+                .font_family(theme.font_family.clone())
+                .text_center()
+                .text_color(if selected {
+                    theme.primary_text
+                } else {
+                    theme.secondary_text
+                })
+                .child(entry.name),
+        )
+        .into_any_element()
+}
 
-        for action_arc in template.iter().take(num_tones) {
-            if let ContextMenuAction::Emoji(act) = action_arc.as_ref() {
-                let idx = EMOJIS
-                    .iter()
-                    .position(|e| std::ptr::eq(e, self.entry))
-                    .unwrap();
-                act.emoji.store(idx, Ordering::Relaxed);
-            }
-        }
+/// Skin-tone context actions for the emoji at `index` in `EMOJIS`.
+pub fn emoji_actions(index: usize) -> Option<Arc<[Arc<ContextMenuAction>]>> {
+    let entry = EMOJIS.get(index)?;
+    let num_tones = entry.skin_tones as usize;
+    let template = &*EMOJI_CONTEXT_ACTIONS;
 
-        let subset: Vec<Arc<ContextMenuAction>> =
-            template.iter().take(num_tones).cloned().collect();
-
-        if subset.is_empty() {
-            None
-        } else {
-            Some(Arc::from(subset))
+    for action_arc in template.iter().take(num_tones) {
+        if let ContextMenuAction::Emoji(act) = action_arc.as_ref() {
+            act.emoji.store(index, Ordering::Relaxed);
         }
     }
-    #[inline(always)]
-    fn has_actions(&self, _cx: &mut App) -> bool {
-        self.entry.skin_tones > 0
-    }
+
+    let subset: Vec<Arc<ContextMenuAction>> = template.iter().take(num_tones).cloned().collect();
+    (!subset.is_empty()).then(|| Arc::from(subset))
 }
 
 #[derive(Debug, Default)]

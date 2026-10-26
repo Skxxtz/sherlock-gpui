@@ -7,10 +7,13 @@ use crate::{app::theme::ThemeData, ui::utils::selection::Selection};
 #[allow(dead_code)]
 pub trait ListItemBorder: Styled + FluentBuilder + Sized {
     fn list_item_border(self, theme: &Arc<ThemeData>, selection: &Selection) -> Self {
+        self.list_item_border_for(theme, selection.is_selected)
+    }
+    fn list_item_border_for(self, theme: &Arc<ThemeData>, selected: bool) -> Self {
         self.bg(theme.bg_idle)
             .rounded_md()
             .border_1()
-            .when(selection.is_selected, |this| {
+            .when(selected, |this| {
                 this.bg(theme.bg_selected)
                     .border_color(theme.border_selected)
             })

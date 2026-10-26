@@ -371,15 +371,27 @@ impl LauncherView {
         }
     }
 
+    /// A launcher item's row: its own content inside the shared row frame.
     pub fn render_list_item(
         ad: &RenderableChild,
         row: &RowCtx<ItemIdx>,
         cx: &mut App,
     ) -> AnyElement {
-        let shortcut_idx = row.shortcut;
         let selection = Selection::new(row.id, row.selected);
+        let content = ad.render(selection, row.query, row.theme.clone(), cx);
+        Self::render_row_frame(row, ad.handles_borders(), content)
+    }
+
+    /// The shared row frame around any item's `content`: click to select / run, selection
+    /// border (unless `borderless`), shortcut badge and fade-in.
+    pub fn render_row_frame<Id>(
+        row: &RowCtx<Id>,
+        borderless: bool,
+        content: AnyElement,
+    ) -> AnyElement {
+        let shortcut_idx = row.shortcut;
+        let selected = row.selected;
         let key = row.key;
-        let query = row.query;
         let theme = row.theme.clone();
         let handle = row.shell.clone();
         div()
@@ -419,10 +431,10 @@ impl LauncherView {
                     .mb(px(5.0))
                     .w_full()
                     .cursor_pointer()
-                    .when(!ad.handles_borders(), |this| {
-                        this.list_item_border(&theme, &selection)
+                    .when(!borderless, |this| {
+                        this.list_item_border_for(&theme, selected)
                     })
-                    .child(ad.render(selection, query, theme.clone(), cx))
+                    .child(content)
                     .when_some(shortcut_idx, |this, shortcut_idx| {
                         this.child(
                             div()
@@ -446,11 +458,11 @@ impl LauncherView {
                                         .border_color(theme.border_selected)
                                         .text_size(px(12.))
                                         .text_color(theme.secondary_text)
-                                        .when(selection.is_selected, |this| {
+                                        .when(selected, |this| {
                                             this.aspect_square()
                                                 .child(div().child("↵").relative().top(px(1.)))
                                         })
-                                        .when(!selection.is_selected, |this| {
+                                        .when(!selected, |this| {
                                             this.children(
                                                 ShortcutKeyMod::get()
                                                     .map(|mods| {

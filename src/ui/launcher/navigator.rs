@@ -12,9 +12,8 @@ use crate::{
         },
         model::{
             AnyModel, Model,
-            item::{ItemRef, SelectionKey},
+            item::{ItemRef, SelectionKey, ShellItem},
         },
-        traits::RenderableChildDelegate,
         views::message::MessageView,
         widgets::RenderableChild,
     },
@@ -272,6 +271,26 @@ impl Navigator {
         self.selected_item(cx)?.with_launcher_item(cx, f)
     }
 
+    /// Run `f` with the selected item, whatever its type.
+    /// Don't re-enter the item's data entity inside `f`, or GPUI panics.
+    pub fn with_selected_shell_item<R>(
+        &self,
+        cx: &mut App,
+        f: impl FnOnce(&dyn ShellItem, &mut App) -> R,
+    ) -> Option<R> {
+        self.selected_item(cx)?.with(cx, f)
+    }
+
+    /// Run `f` with the nth item that allows shortcuts, whatever its type.
+    pub fn with_nth_shortcut_shell_item<R>(
+        &self,
+        n: usize,
+        cx: &mut App,
+        f: impl FnOnce(&dyn ShellItem, &mut App) -> R,
+    ) -> Option<R> {
+        self.nth_shortcut_item(n, cx)?.with(cx, f)
+    }
+
     /// Read the nth item that allows shortcuts (launcher items only).
     /// Don't re-enter the same widget's entity inside `f`, or GPUI panics.
     pub fn with_nth_shortcut_item<R>(
@@ -290,7 +309,7 @@ impl Navigator {
     }
 
     /// The nth (1-based) visible item that allows shortcuts.
-    fn nth_shortcut_item(&self, n: usize, cx: &App) -> Option<ItemRef> {
+    pub fn nth_shortcut_item(&self, n: usize, cx: &App) -> Option<ItemRef> {
         let skip = n.checked_sub(1)?;
         self.with_any_model(cx, |m| {
             (0..m.len())
@@ -303,7 +322,7 @@ impl Navigator {
 
     /// Returns the collection of `ContextMenuAction` for the currently active item.
     pub fn current_actions(&self, cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {
-        self.with_selected_item(cx, |item, cx| item.actions(cx))
+        self.with_selected_shell_item(cx, |item, cx| item.actions(cx))
             .flatten()
     }
 }

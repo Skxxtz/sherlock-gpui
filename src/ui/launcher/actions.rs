@@ -22,10 +22,7 @@ use crate::{
         },
         launcher::{
             LauncherView, VariableInput,
-            context_menu::{
-                ContextMenuAction,
-                wrapper::{ContextMenu, Move},
-            },
+            context_menu::{ContextMenuAction, wrapper::Move},
             execute::ExecSource,
             navigator::views::MoveDirection,
         },
@@ -241,7 +238,7 @@ impl LauncherView {
         cx: &mut Context<Self>,
     ) {
         let Some(mut req) = self.request_with(ExecSource::ContextAction, exit, cx, |item, cx| {
-            Some(item.build_action_exec(action, cx))
+            Some(item.action_exec(action, cx))
         }) else {
             // no selected item anymore: the menu may be stale
             self.refresh_context_actions(cx);
@@ -257,9 +254,7 @@ impl LauncherView {
         let selected = self.navigation.selected_key(cx);
         self.context_menu.refresh_for(selected, || {
             self.navigation
-                .with_selected_item(cx, |itm, cx| {
-                    (ContextMenu::availability_mask(itm), itm.has_actions(cx))
-                })
+                .with_selected_shell_item(cx, |itm, cx| (itm.quick_actions(), itm.has_actions(cx)))
                 .unwrap_or((QuickActionCapabilities::empty(), false))
         })
     }
@@ -352,8 +347,8 @@ impl LauncherView {
             return;
         };
 
-        if let Some(req) = self.request_with(ExecSource::Bind, true, cx, |child, cx| {
-            ExecMode::from_bind(pressed, child, cx)
+        if let Some(req) = self.request_with(ExecSource::Bind, true, cx, |item, cx| {
+            ExecMode::from_bind(pressed, item.as_launcher_item()?, cx)
         }) {
             self.run(req, win, cx);
         }

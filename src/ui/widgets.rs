@@ -25,7 +25,6 @@ use theme::ThemeWidget;
 
 use crate::{
     app::theme::ThemeData,
-    features::emoji::EmojiData,
     launcher::{
         ExecEffect, LauncherConfig, LauncherValues,
         utils::{binds::Bind, exec_mode::ExecMode},
@@ -96,7 +95,6 @@ child_kinds! { $
     Category(ListItem<CategoryPayload>),
     Clip(ClipWidget),
     Command(ListItem<CommandPayload>),
-    Emoji(EmojiData),
     Event(EventWidget),
     File(FileData),
     Fixed(ListItem<FixedPayload>),

@@ -2,14 +2,13 @@ use gpui::{App, ClipboardItem, Context, SharedString, Window};
 
 use crate::{
     QUERY_MEMORY,
-    launcher::{ExecEffect, LauncherValues, utils::exec_mode::ExecMode},
+    launcher::{ExecEffect, utils::exec_mode::ExecMode},
     loader::utils::CounterReader,
     sherlock_msg,
     ui::{
         launcher::{LauncherView, context_menu::ContextMenuAction},
-        query_memory::QueryMemoryGuard,
+        model::item::ShellItem,
         traits::RenderableChildDelegate,
-        widgets::RenderableChild,
     },
     utils::{
         command_launch::spawn_detached,
@@ -63,7 +62,7 @@ impl LauncherView {
         exit: bool,
         cx: &mut Context<Self>,
     ) -> Option<ExecRequest> {
-        self.request_with(source, exit, cx, ExecMode::from_child)
+        self.request_with(source, exit, cx, |item, cx| item.exec(cx))
     }
 
     pub(super) fn request_with(
@@ -71,21 +70,16 @@ impl LauncherView {
         source: ExecSource,
         exit: bool,
         cx: &mut App,
-        mode_fn: impl FnOnce(&RenderableChild, &mut App) -> Option<ExecMode>,
+        mode_fn: impl FnOnce(&dyn ShellItem, &mut App) -> Option<ExecMode>,
     ) -> Option<ExecRequest> {
-        let build = |child: &RenderableChild, cx: &mut App| {
-            let mode = mode_fn(child, cx)?;
-            let key = child
-                .launcher_type()
-                .is_pickable()
-                .then(|| child.item_key())
-                .flatten();
-            Some((mode, key))
+        let build = |item: &dyn ShellItem, cx: &mut App| {
+            let mode = mode_fn(item, cx)?;
+            Some((mode, item.pick_key()))
         };
 
         let (mode, key) = match source {
-            ExecSource::Shortcut(n) => self.navigation.with_nth_shortcut_item(n, cx, build),
-            _ => self.navigation.with_selected_item(cx, build),
+            ExecSource::Shortcut(n) => self.navigation.with_nth_shortcut_shell_item(n, cx, build),
+            _ => self.navigation.with_selected_shell_item(cx, build),
         }??;
 
         Some(ExecRequest {
@@ -120,15 +114,12 @@ impl LauncherView {
                 self.navigation.push_message(e, cx);
             }
 
-            let target_ref = match source {
-                ExecSource::Shortcut(n) => self.navigation.nth_shortcut_item_ref(n, cx),
-                _ => self.navigation.selected_item_ref(cx),
+            let target = match source {
+                ExecSource::Shortcut(n) => self.navigation.nth_shortcut_item(n, cx),
+                _ => self.navigation.selected_item(cx),
             };
-
-            if let Some(item) = target_ref
-                && let Some(id) = item.item_key_ref()
-            {
-                item.set_count(QueryMemoryGuard::popularity_count(id));
+            if let Some(item) = target.as_ref().and_then(|t| t.read(cx)) {
+                item.refresh_popularity();
             }
         }
 

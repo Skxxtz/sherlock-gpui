@@ -4,13 +4,21 @@ use std::{
     any::TypeId,
     hash::{DefaultHasher, Hash, Hasher},
     rc::Rc,
+    sync::Arc,
 };
 
 use gpui::{App, Entity};
 
 use crate::{
-    launcher::LauncherValues,
-    ui::{model::data::ModelData, widgets::RenderableChild},
+    launcher::{LauncherValues, utils::exec_mode::ExecMode, variant_type::QuickActionCapabilities},
+    ui::{
+        launcher::context_menu::{ContextMenuAction, wrapper::ContextMenu},
+        model::data::ModelData,
+        query_memory::QueryMemoryGuard,
+        traits::RenderableChildDelegate,
+        widgets::RenderableChild,
+    },
+    utils::item_key::ItemKey,
 };
 
 /// What the shell needs from an item, whatever its data type. Every method has a default, so a
@@ -26,8 +34,41 @@ pub trait ShellItem: 'static {
         false
     }
 
-    /// The launcher item behind this item, if any. Running, the context menu, sidebars, vars and
-    /// binds currently only work for launcher items; other items are selectable only.
+    /// What Enter does. `None`: nothing.
+    fn exec(&self, _cx: &mut App) -> Option<ExecMode> {
+        None
+    }
+
+    /// Context-menu actions of this item.
+    fn actions(&self, _cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {
+        None
+    }
+
+    /// Whether `actions` returns anything (checked for the selected item on every frame).
+    fn has_actions(&self, _cx: &mut App) -> bool {
+        false
+    }
+
+    /// What running one of this item's context-menu actions does.
+    fn action_exec(&self, _action: Arc<ContextMenuAction>, _cx: &mut App) -> ExecMode {
+        ExecMode::default()
+    }
+
+    /// Built-in quick actions (hide, info) this item supports.
+    fn quick_actions(&self) -> QuickActionCapabilities {
+        QuickActionCapabilities::empty()
+    }
+
+    /// Key under which picks are learned (query memory). `None`: picks aren't learned.
+    fn pick_key(&self) -> Option<ItemKey> {
+        None
+    }
+
+    /// Called after the item was picked, to refresh its popularity.
+    fn refresh_popularity(&self) {}
+
+    /// The launcher item behind this item, if any. Sidebars, vars, binds and inner functions
+    /// only work for launcher items.
     fn as_launcher_item(&self) -> Option<&RenderableChild> {
         None
     }
@@ -42,6 +83,39 @@ impl ShellItem for RenderableChild {
     #[inline]
     fn shortcut(&self) -> bool {
         LauncherValues::shortcut(self)
+    }
+
+    fn exec(&self, cx: &mut App) -> Option<ExecMode> {
+        ExecMode::from_child(self, cx)
+    }
+
+    fn actions(&self, cx: &mut App) -> Option<Arc<[Arc<ContextMenuAction>]>> {
+        RenderableChildDelegate::actions(self, cx)
+    }
+
+    fn has_actions(&self, cx: &mut App) -> bool {
+        RenderableChildDelegate::has_actions(self, cx)
+    }
+
+    fn action_exec(&self, action: Arc<ContextMenuAction>, cx: &mut App) -> ExecMode {
+        self.build_action_exec(action, cx)
+    }
+
+    fn quick_actions(&self) -> QuickActionCapabilities {
+        ContextMenu::availability_mask(self)
+    }
+
+    fn pick_key(&self) -> Option<ItemKey> {
+        self.launcher_type()
+            .is_pickable()
+            .then(|| self.item_key())
+            .flatten()
+    }
+
+    fn refresh_popularity(&self) {
+        if let Some(id) = self.item_key_ref() {
+            self.set_count(QueryMemoryGuard::popularity_count(id));
+        }
     }
 
     #[inline]
