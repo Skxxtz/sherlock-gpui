@@ -2,6 +2,7 @@ use crate::ui::views::{
     Chrome, ShellCtx, SherlockView,
     list::{grid_body, list_body},
 };
+use crate::ui::views::{Query, QueryResult, query::launcher_query};
 use gpui::{AnyElement, Context, Window};
 use std::{collections::HashMap, sync::Arc};
 
@@ -53,5 +54,9 @@ impl SherlockView for EmojiView {
             Some(grid) => grid_body(&self.model, grid, shell),
             None => list_body(&self.model, shell, cx),
         }
+    }
+
+    fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {
+        launcher_query(&mut self.model, query, cx)
     }
 }

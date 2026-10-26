@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, SharedString, Window};
+use gpui::{AnyElement, Context, Entity, SharedString, WeakEntity, Window};
 
 use crate::{
     app::theme::ThemeData,
-    ui::launcher::{LauncherView, navigator::views::Layout},
+    ui::{
+        launcher::{LauncherView, navigator::views::Layout},
+        model::ItemIdx,
+    },
 };
 
 pub mod emoji;
@@ -13,6 +16,7 @@ pub mod home;
 pub mod list;
 pub mod message;
 pub mod process;
+pub mod query;
 
 /// Which parts of the shared frame a view wants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,6 +66,29 @@ pub struct ShellCtx<'a> {
     pub layout: &'a Layout,
 }
 
+#[derive(Clone)]
+pub struct Query {
+    /// Lowercased search text.
+    pub text: SharedString,
+    /// Current mode (`"all"` or an alias)
+    pub mode: SharedString,
+    /// Re-run even if the query didn't change.
+    pub force: bool,
+    /// Compute the results right away instead of in the background.
+    pub sync: bool,
+    /// Where asynchronous results go: `LauncherView::apply_results`.
+    pub shell: WeakEntity<LauncherView>,
+}
+
+pub enum QueryResult {
+    /// Results are ready
+    Ready(Arc<[ItemIdx]>),
+    /// Results arrive later through `LauncherView::apply_results`.
+    Pending,
+    /// The view doesn't filter
+    Ignored,
+}
+
 pub trait SherlockView: 'static + Sized {
     fn chrome(&self) -> Chrome {
         Chrome::DEFAULT
@@ -73,4 +100,12 @@ pub trait SherlockView: 'static + Sized {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement;
+
+    /// Starts iltering for `query`. Views without a search (plain pages) keep the default.
+    ///
+    /// Must not update the shell asynchronously (the shell is mid-update when this runs.), return
+    /// `Ready` instead.
+    fn on_query(&mut self, _query: &Query, _cx: &mut Context<Self>) -> QueryResult {
+        QueryResult::Ignored
+    }
 }

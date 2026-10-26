@@ -8,7 +8,7 @@ use crate::{
     ui::{
         launcher::navigator::views::NavView,
         model::Model,
-        views::{Chrome, ShellCtx, SherlockView},
+        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView},
         views::{
             emoji::EmojiView, file::view::FileView, home::HomeView, message::MessageView,
             process::view::ProcessView,
@@ -63,6 +63,11 @@ impl ViewHandle {
     /// The view's body. Updates the view entity, so don't call it from inside that view.
     pub fn render_body(&self, shell: &ShellCtx, window: &mut Window, cx: &mut App) -> AnyElement {
         dispatch!(self, e => e.update(cx, |v, cx| v.render_body(shell, window, cx)))
+    }
+
+    /// Hands `query` to the view. Updates the view entity, so don't call it from inside that view.
+    pub fn on_query(&self, query: &Query, cx: &mut App) -> QueryResult {
+        dispatch!(self, e => e.update(cx, |v, cx| v.on_query(query, cx)))
     }
 
     /// Type-erased entity, for rendering

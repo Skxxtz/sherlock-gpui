@@ -1,3 +1,4 @@
+use crate::ui::views::{Query, QueryResult, query::launcher_query};
 use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
 use gpui::{AnyElement, Window};
 use std::{cell::Cell, collections::HashMap, sync::Arc};
@@ -144,5 +145,9 @@ impl SherlockView for MessageView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         list_body(&self.model, shell, cx)
+    }
+
+    fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {
+        launcher_query(&mut self.model, query, cx)
     }
 }
