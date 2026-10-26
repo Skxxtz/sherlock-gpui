@@ -104,33 +104,122 @@ impl<Id: Copy> SearchIndex<Id> {
     }
 }
 
+/// Builds a `SearchIndex` without assembling groups and rows by hand.
+///
+/// ```ignore
+/// let mut b = IndexBuilder::new(data.revision());
+/// let g = b.group(GroupRules::plain());
+/// for (id, item) in items {
+///     b.push(g, Row::new(id, item.name(), PriorityGuard::new(1, 0)));
+/// }
+/// let index = b.finish();
+/// ```
+pub struct IndexBuilder<Id> {
+    revision: u64,
+    groups: Vec<GroupRules>,
+    pure: Vec<SearchRow<Id>>,
+    contextual: Vec<SearchRow<Id>>,
+}
+
+/// Handle to a group added with `IndexBuilder::group`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GroupId(u32);
+
+/// One item for `IndexBuilder::push`.
+pub struct Row<Id> {
+    id: Id,
+    text: Arc<str>,
+    key: Option<ItemKey>,
+    prio: PriorityGuard,
+    contextual: bool,
+}
+
+impl<Id> Row<Id> {
+    /// `text` is matched against the query; it should already be lowercase.
+    pub fn new(id: Id, text: impl Into<Arc<str>>, prio: PriorityGuard) -> Self {
+        Self {
+            id,
+            text: text.into(),
+            key: None,
+            prio,
+            contextual: false,
+        }
+    }
+
+    /// Key for query-memory boosts.
+    pub fn key(mut self, key: Option<ItemKey>) -> Self {
+        self.key = key;
+        self
+    }
+
+    /// The item needs `ModelData::based_show` (and so `cx`); filtered on the main thread.
+    pub fn contextual(mut self, contextual: bool) -> Self {
+        self.contextual = contextual;
+        self
+    }
+}
+
+impl<Id: Copy> IndexBuilder<Id> {
+    pub fn new(revision: u64) -> Self {
+        Self {
+            revision,
+            groups: Vec::new(),
+            pure: Vec::new(),
+            contextual: Vec::new(),
+        }
+    }
+
+    /// Adds a group; items pushed into it share its rules (mode, home, limit).
+    pub fn group(&mut self, rules: GroupRules) -> GroupId {
+        self.groups.push(rules);
+        GroupId(self.groups.len() as u32 - 1)
+    }
+
+    pub fn push(&mut self, group: GroupId, row: Row<Id>) -> &mut Self {
+        let Row {
+            id,
+            text,
+            key,
+            prio,
+            contextual,
+        } = row;
+        let row = SearchRow {
+            id,
+            group: group.0,
+            text,
+            key,
+            prio,
+        };
+        if contextual {
+            self.contextual.push(row);
+        } else {
+            self.pure.push(row);
+        }
+        self
+    }
+
+    pub fn finish(self) -> SearchIndex<Id> {
+        SearchIndex::new(self.revision, self.groups, self.pure, self.contextual)
+    }
+}
+
 impl SearchIndex<ItemIdx> {
     pub fn build(data: &LauncherData) -> Self {
-        let mut groups = Vec::with_capacity(data.len());
-        let mut pure = Vec::new();
-        let mut contextual = Vec::new();
+        let mut b = IndexBuilder::new(data.revision());
 
         for (&launcher_id, launcher) in data.iter() {
-            let group = groups.len() as u32;
-            groups.push(GroupRules::from(launcher.config.as_ref()));
-
+            let group = b.group(GroupRules::from(launcher.config.as_ref()));
             for (local_id, child) in launcher.children.iter_with_ids() {
-                let row = SearchRow {
-                    id: (launcher_id, local_id),
+                b.push(
                     group,
-                    text: Arc::from(child.search()),
-                    key: child.item_key(),
-                    prio: child.prio.clone(),
-                };
-                if child.has_based_show() {
-                    contextual.push(row);
-                } else {
-                    pure.push(row);
-                }
+                    Row::new((launcher_id, local_id), child.search(), child.prio.clone())
+                        .key(child.item_key())
+                        .contextual(child.has_based_show()),
+                );
             }
         }
 
-        Self::new(data.revision(), groups, pure, contextual)
+        b.finish()
     }
 }
 

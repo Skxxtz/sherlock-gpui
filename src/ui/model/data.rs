@@ -7,6 +7,7 @@ use crate::{
     ui::{
         model::{ItemIdx, all_indices, index::SearchIndex},
         traits::RenderableChildDelegate,
+        widgets::RenderableChild,
     },
 };
 
@@ -15,8 +16,14 @@ pub trait ModelData: Clone + 'static {
     /// selection.
     type Id: Copy + Eq + Hash + Debug + Send + Sync + 'static;
 
+    /// The item type views render and act on.
+    type Item: 'static;
+
     /// Changes whenever the data changes; invalidates the search index.
     fn revision(&self) -> u64;
+
+    /// The item with `id`, if it still exists.
+    fn get(&self, id: Self::Id) -> Option<&Self::Item>;
 
     /// Every item, unfiltered
     fn all_ids(&self) -> Arc<[Self::Id]>;
@@ -30,10 +37,16 @@ pub trait ModelData: Clone + 'static {
 
 impl ModelData for LauncherData {
     type Id = ItemIdx;
+    type Item = RenderableChild;
 
     #[inline(always)]
     fn revision(&self) -> u64 {
         LauncherData::revision(self)
+    }
+
+    #[inline]
+    fn get(&self, id: Self::Id) -> Option<&RenderableChild> {
+        self.child(id)
     }
 
     fn all_ids(&self) -> Arc<[Self::Id]> {

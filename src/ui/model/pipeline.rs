@@ -36,6 +36,19 @@ pub struct GroupRules {
     pub limit: Option<(LauncherId, u16)>,
 }
 
+impl GroupRules {
+    /// A group without alias, home restrictions or limit: shown on home and while searching
+    /// in the default mode, hidden in alias modes. For data that has no launchers.
+    pub fn plain() -> Self {
+        Self {
+            alias: None,
+            priority: 1,
+            home: HomeType::Home,
+            limit: None,
+        }
+    }
+}
+
 impl From<&LauncherConfig> for GroupRules {
     fn from(cfg: &LauncherConfig) -> Self {
         Self {

@@ -13,8 +13,9 @@ use crate::{
 /// Global so revisions are unique across *all* data entites.
 static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);
 
+/// Next unique data revision. Use for every `ModelData` implementation.
 #[inline]
-fn next_revision() -> u64 {
+pub fn next_revision() -> u64 {
     NEXT_REVISION.fetch_add(1, Ordering::Relaxed)
 }
 
