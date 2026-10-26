@@ -7,7 +7,7 @@ use crate::{
     launcher::{LauncherConfig, variant_type::LauncherType},
     ui::{
         launcher::navigator::views::NavView,
-        model::Model,
+        model::{AnyModel, Model},
         views::{Chrome, Query, QueryResult, ShellCtx, SherlockView},
         views::{
             emoji::EmojiView, file::view::FileView, home::HomeView, message::MessageView,
@@ -53,6 +53,20 @@ impl ViewHandle {
         f: impl FnOnce(&mut Model, &mut App) -> R,
     ) -> R {
         dispatch!(self, e => e.update(cx, |v, cx| f(&mut v.model, cx)))
+    }
+
+    /// Read this view's model without knowing its data type. `None` if the view has no model.
+    pub fn with_any_model<R>(&self, cx: &App, f: impl FnOnce(&dyn AnyModel) -> R) -> Option<R> {
+        dispatch!(self, e => e.read(cx).model().map(f))
+    }
+
+    /// Mutate this view's model without knowing its data type. `None` if the view has no model.
+    pub fn with_any_model_mut<R, C: AppContext>(
+        &self,
+        cx: &mut C,
+        f: impl FnOnce(&mut dyn AnyModel) -> R,
+    ) -> Option<R> {
+        dispatch!(self, e => e.update(cx, |v, _| v.model_mut().map(f)))
     }
 
     /// Which frame parts this view wants.

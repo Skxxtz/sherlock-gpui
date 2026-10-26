@@ -1,3 +1,4 @@
+use crate::ui::model::AnyModel;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, SharedString, Window};
@@ -46,5 +47,13 @@ impl SherlockView for FileView {
         external_query(&self.model, query, cx, |q, data, shell, cx| {
             self.search.search(q, data, shell, cx)
         })
+    }
+
+    fn model(&self) -> Option<&dyn AnyModel> {
+        Some(&self.model)
+    }
+
+    fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
+        Some(&mut self.model)
     }
 }

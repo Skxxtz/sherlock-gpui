@@ -178,3 +178,49 @@ impl<D: ModelData> Model<D> {
         ResultsChange { changed, restored }
     }
 }
+
+/// Object-safe view of a `Model<D>` for code that doesn't know `D` (shell, navigator):
+/// size, selection and last query.
+pub trait AnyModel {
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    /// Selected position, clamped to the visible items.
+    fn selected_index(&self) -> usize;
+    /// Selects position `n`. Returns `false` (and changes nothing) if out of range.
+    fn select(&mut self, n: usize) -> bool;
+    /// Back to the first item.
+    fn reset_selection(&mut self);
+    /// The query that produced the current results, if any.
+    fn last_query(&self) -> Option<SharedString>;
+    /// Forget the last query, so the next one always re-runs.
+    fn clear_last_query(&mut self);
+}
+
+impl<D: ModelData> AnyModel for Model<D> {
+    #[inline]
+    fn len(&self) -> usize {
+        Model::len(self)
+    }
+    #[inline]
+    fn selected_index(&self) -> usize {
+        Model::selected_index(self)
+    }
+    #[inline]
+    fn select(&mut self, n: usize) -> bool {
+        Model::select(self, n)
+    }
+    #[inline]
+    fn reset_selection(&mut self) {
+        Model::reset_selection(self)
+    }
+    #[inline]
+    fn last_query(&self) -> Option<SharedString> {
+        self.last_query.clone()
+    }
+    #[inline]
+    fn clear_last_query(&mut self) {
+        self.last_query = None;
+    }
+}

@@ -1,3 +1,4 @@
+use crate::ui::model::AnyModel;
 use crate::ui::views::{Query, QueryResult, query::launcher_query};
 use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
 use gpui::{AnyElement, Window};
@@ -149,5 +150,13 @@ impl SherlockView for MessageView {
 
     fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {
         launcher_query(&mut self.model, query, cx, |v: &mut Self| &mut v.model)
+    }
+
+    fn model(&self) -> Option<&dyn AnyModel> {
+        Some(&self.model)
+    }
+
+    fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
+        Some(&mut self.model)
     }
 }

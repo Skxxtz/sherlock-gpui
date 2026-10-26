@@ -159,13 +159,13 @@ fn spawn_launcher(
             let backspace_sub = cx.subscribe(&text_input, |this, _, _: &EmptyBackspace, cx| {
                 if !matches!(this.navigation.current_kind(), ViewKind::Home) {
                     this.navigation.back(cx);
-                    if let Some(c) = this.navigation.with_model(cx, |m| m.last_query()) {
+                    if let Some(c) = this.navigation.last_query(cx) {
                         this.text_input.update(cx, |ipt, _| ipt.set_text(c));
                     }
                     this.force_filter_and_sort(cx);
                 } else if this.navigation.current().mode != LauncherMode::Home {
                     this.navigation.current_mut().mode = LauncherMode::Home;
-                    this.navigation.with_model_mut(cx, |m, _| m.last_query = None);
+                    this.navigation.clear_last_query(cx);
                     this.filter_and_sort(cx);
                 }
             });

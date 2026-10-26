@@ -84,7 +84,7 @@ impl LauncherView {
 
     #[inline(always)]
     fn valid_selection_idx(&self, n: usize, cx: &mut Context<Self>) -> bool {
-        let list_len = self.navigation.with_model(cx, |mdl| mdl.len());
+        let list_len = self.navigation.len(cx);
         n < list_len && list_len != 0
     }
 

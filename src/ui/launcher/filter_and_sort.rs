@@ -39,7 +39,7 @@ impl LauncherView {
 
         let state = &self.navigation.current().layout.list;
         let old_count = state.item_count();
-        let new_count = self.navigation.with_model(cx, |mdl| mdl.len());
+        let new_count = self.navigation.len(cx);
         if old_count != new_count {
             state.splice(0..old_count, new_count);
         }

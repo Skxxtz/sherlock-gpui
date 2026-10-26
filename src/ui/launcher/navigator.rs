@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{App, AppContext, Entity, Global, WeakEntity};
+use gpui::{App, AppContext, Entity, Global, SharedString, WeakEntity};
 
 use crate::{
     app::LauncherEntity,
@@ -10,7 +10,7 @@ use crate::{
             context_menu::ContextMenuAction,
             navigator::{handle::ViewKind, views::NavView},
         },
-        model::{ItemIdx, Model},
+        model::{AnyModel, ItemIdx, Model},
         traits::RenderableChildDelegate,
         views::message::MessageView,
         widgets::RenderableChild,
@@ -186,6 +186,37 @@ impl Navigator {
         self.current().handle.with_model_mut(cx, f)
     }
 
+    /// Read the active view's model without knowing its data type.
+    /// `None` if the view has no model.
+    pub fn with_any_model<R>(&self, cx: &App, f: impl FnOnce(&dyn AnyModel) -> R) -> Option<R> {
+        self.current().handle.with_any_model(cx, f)
+    }
+
+    /// Mutate the active view's model without knowing its data type.
+    /// `None` if the view has no model.
+    pub fn with_any_model_mut<R, C: AppContext>(
+        &self,
+        cx: &mut C,
+        f: impl FnOnce(&mut dyn AnyModel) -> R,
+    ) -> Option<R> {
+        self.current().handle.with_any_model_mut(cx, f)
+    }
+
+    /// Number of visible items in the active view (0 without a model).
+    pub fn len(&self, cx: &App) -> usize {
+        self.with_any_model(cx, |m| m.len()).unwrap_or(0)
+    }
+
+    /// The query that produced the active view's results, if any.
+    pub fn last_query(&self, cx: &App) -> Option<SharedString> {
+        self.with_any_model(cx, |m| m.last_query()).flatten()
+    }
+
+    /// Forget the active view's last query, so the next one always re-runs.
+    pub fn clear_last_query(&self, cx: &mut App) {
+        self.with_any_model_mut(cx, |m| m.clear_last_query());
+    }
+
     /// Returns the currently active data index
     pub fn selected_data_idx(&self, cx: &App) -> Option<ItemIdx> {
         self.with_model(cx, |mdl| mdl.selected_id())
@@ -193,12 +224,14 @@ impl Navigator {
 
     /// Selected position in the active view's visible items (clamped).
     pub fn selected_index(&self, cx: &App) -> usize {
-        self.with_model(cx, |mdl| mdl.selected_index())
+        self.with_any_model(cx, |m| m.selected_index()).unwrap_or(0)
     }
 
     /// Selects position `n` and scrolls it into view. Returns `false` if out of range.
     pub fn select(&self, n: usize, cx: &mut App) -> bool {
-        let ok = self.with_model_mut(cx, |mdl, _| mdl.select(n));
+        let ok = self
+            .with_any_model_mut(cx, |m| m.select(n))
+            .unwrap_or(false);
         if ok {
             self.current().layout.reveal(n);
         }
@@ -212,7 +245,7 @@ impl Navigator {
 
     /// Back to the first item of the active view.
     pub fn reset_selection(&self, cx: &mut App) {
-        self.with_model_mut(cx, |mdl, _| mdl.reset_selection());
+        self.with_any_model_mut(cx, |m| m.reset_selection());
     }
 
     /// Returns a shared reference to the currently active widget

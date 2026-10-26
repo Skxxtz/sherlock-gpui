@@ -6,7 +6,7 @@ use crate::{
     app::theme::ThemeData,
     ui::{
         launcher::{LauncherView, navigator::views::Layout},
-        model::ResultsChange,
+        model::{AnyModel, ResultsChange},
     },
 };
 
@@ -108,5 +108,14 @@ pub trait SherlockView: 'static + Sized {
     /// `Ready` instead.
     fn on_query(&mut self, _query: &Query, _cx: &mut Context<Self>) -> QueryResult {
         QueryResult::Ignored
+    }
+
+    /// The view's model, type-erased, for selection and size. `None` for views without items.
+    fn model(&self) -> Option<&dyn AnyModel> {
+        None
+    }
+
+    fn model_mut(&mut self) -> Option<&mut dyn AnyModel> {
+        None
     }
 }
