@@ -74,6 +74,6 @@ bench = []
 docs = ["md-rs"]
 
 [dev-dependencies]
+gpui = { git = "https://github.com/zed-industries/zed", rev = "70733ceb6e1dd8079030bdebfb062f92ce4809b4", features = ["test-support"] }
 criterion = { version = "0.5", features = ["html_reports"] }
 md-rs = { path = "./crates/md-rs", features = ["github", "validate-examples"] }
-

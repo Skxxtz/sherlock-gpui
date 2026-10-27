@@ -97,7 +97,7 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
     fn render(
         &self,
         launcher: &Arc<LauncherConfig>,
-        selection: crate::ui::utils::selection::Selection,
+        _selection: crate::ui::utils::selection::Selection,
         query: &str,
         theme: Arc<crate::app::theme::ThemeData>,
         _cx: &mut gpui::App,

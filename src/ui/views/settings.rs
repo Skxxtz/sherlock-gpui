@@ -1,14 +1,21 @@
+use std::collections::HashMap;
+
 use gpui::{
-    AnyElement, App, ClickEvent, Context, FontWeight, Hsla, InteractiveElement, IntoElement,
-    ParentElement, ScrollHandle, SharedString, StatefulInteractiveElement, Styled, Window, div,
-    prelude::FluentBuilder, px, rgb,
+    AnyElement, App, AppContext, ClickEvent, Context, Entity, FontWeight, Hsla, InteractiveElement,
+    IntoElement, ParentElement, ScrollHandle, SharedString, StatefulInteractiveElement, Styled,
+    Subscription, Window, div, prelude::FluentBuilder, px, rgb,
 };
 
 use crate::{
     app::theme::ThemeData,
     ui::{
         components::{
-            color_swatch::color_swatch, keybind::keybind, select::select, stepper::stepper,
+            color_picker::{ColorEvent, ColorItem},
+            keybind::chord_label,
+            keymap_input::KeymapEvent,
+            keymap_item::KeymapItem,
+            select::select,
+            stepper::stepper,
             toggle::toggle,
         },
         launcher::navigator::views::MoveDirection,
@@ -22,6 +29,7 @@ use crate::{
 pub enum SettingValue {
     Toggle(bool),
     Color(Hsla),
+    /// Every chord bound to the action (`"ctrl-n"`, `"down"`); an action can have several.
     Keybind(Vec<SharedString>),
     Choice {
         options: &'static [&'static str],
@@ -65,6 +73,7 @@ enum Edit {
     Toggle,
     NextChoice,
     Step(i64),
+    SetColor(Hsla),
 }
 
 impl SettingValue {
@@ -80,6 +89,7 @@ impl SettingValue {
                 },
                 Edit::Step(delta),
             ) => *value = (*value + delta).clamp(*min, *max),
+            (Self::Color(c), Edit::SetColor(new)) => *c = new,
             _ => {}
         }
     }
@@ -115,8 +125,9 @@ fn setting(
     }
 }
 
-fn keys(keys: &[&'static str]) -> SettingValue {
-    SettingValue::Keybind(keys.iter().map(|&k| SharedString::from(k)).collect())
+/// An action bound to `chords` (`["ctrl-n", "down"]`).
+fn keys(chords: &[&'static str]) -> SettingValue {
+    SettingValue::Keybind(chords.iter().map(|&c| SharedString::from(c)).collect())
 }
 
 /// Placeholder data until settings are read from the config.
@@ -198,19 +209,19 @@ pub fn dummy_sections() -> Vec<SettingsSection> {
                     "navigation",
                     "Next item",
                     "Move the selection down.",
-                    keys(&["ctrl", "n"]),
+                    keys(&["ctrl-n", "down"]),
                 ),
                 setting(
                     "navigation",
                     "Previous item",
                     "Move the selection up.",
-                    keys(&["ctrl", "p"]),
+                    keys(&["ctrl-p", "up"]),
                 ),
                 setting(
                     "navigation",
                     "Context menu",
                     "Open actions for the selected item.",
-                    keys(&["ctrl", "l"]),
+                    keys(&["ctrl-l"]),
                 ),
                 setting("window", "Quit", "Close the launcher.", keys(&["escape"])),
             ],
@@ -259,6 +270,11 @@ pub struct SettingsView {
     query: SharedString,
     /// Keeps the selected row in view.
     scroll: ScrollHandle,
+    /// One color input per color setting, created on first render.
+    colors: HashMap<(usize, usize), Entity<ColorItem>>,
+    /// One key-binding input per keybind setting, created on first render.
+    keymaps: HashMap<(usize, usize), Entity<KeymapItem>>,
+    _subs: Vec<Subscription>,
 }
 
 impl SettingsView {
@@ -271,6 +287,9 @@ impl SettingsView {
             row: 0,
             query: SharedString::default(),
             scroll: ScrollHandle::new(),
+            colors: HashMap::new(),
+            keymaps: HashMap::new(),
+            _subs: Vec::new(),
         }
     }
 
@@ -346,6 +365,127 @@ impl SettingsView {
         }
     }
 
+    /// Creates the color inputs of all color settings (once); their picks apply live.
+    fn ensure_colors(&mut self, cx: &mut Context<Self>) {
+        if !self.colors.is_empty() {
+            return;
+        }
+        for (si, section) in self.sections.iter().enumerate() {
+            for (ri, setting) in section.settings.iter().enumerate() {
+                let SettingValue::Color(color) = setting.value else {
+                    continue;
+                };
+                let item = cx.new(|cx| ColorItem::new(color, cx));
+                self._subs.push(cx.subscribe(
+                    &item,
+                    move |this, _, ColorEvent::Changed(color): &ColorEvent, cx| {
+                        apply_edit(&mut this.sections, si, ri, Edit::SetColor(*color));
+                        this.select_setting((si, ri));
+                        cx.notify();
+                    },
+                ));
+                self.colors.insert((si, ri), item);
+            }
+        }
+    }
+
+    /// Selects the row showing setting `at`, if it is visible.
+    fn select_setting(&mut self, at: (usize, usize)) {
+        if let Some(pos) = self.visible().iter().position(|&v| v == at) {
+            self.row = pos;
+        }
+    }
+
+    /// Creates the key-binding inputs of all keybind settings (once) and keeps them in sync.
+    fn ensure_keymaps(&mut self, cx: &mut Context<Self>) {
+        if !self.keymaps.is_empty() {
+            return;
+        }
+        for (si, section) in self.sections.iter().enumerate() {
+            for (ri, setting) in section.settings.iter().enumerate() {
+                let SettingValue::Keybind(chords) = &setting.value else {
+                    continue;
+                };
+                let (label, chords) = (setting.label, chords.clone());
+                let input = cx.new(|cx| KeymapItem::new(label, chords, cx));
+                self._subs.push(
+                    cx.subscribe(&input, move |this, input, _: &KeymapEvent, cx| {
+                        let chords = input.read(cx).chords(cx).to_vec();
+                        if let Some(c) = this.chords_mut(si, ri) {
+                            *c = chords;
+                        }
+                        this.select_setting((si, ri));
+                        this.refresh_keymap_notes(cx);
+                        cx.notify();
+                    }),
+                );
+                self.keymaps.insert((si, ri), input);
+            }
+        }
+        self.refresh_keymap_notes(cx);
+    }
+
+    /// Tells each input which of its chords other actions use too.
+    fn refresh_keymap_notes(&self, cx: &mut Context<Self>) {
+        for (&at, input) in &self.keymaps {
+            let notes: Vec<Option<String>> = match &self.sections[at.0].settings[at.1].value {
+                SettingValue::Keybind(chords) => chords
+                    .iter()
+                    .map(|c| {
+                        let others = self.conflicts(at, c);
+                        (!others.is_empty()).then(|| format!("also {}", others.join(", ")))
+                    })
+                    .collect(),
+                _ => continue,
+            };
+            input.update(cx, |input, cx| input.set_notes(notes, cx));
+        }
+    }
+
+    fn chords_mut(&mut self, section: usize, row: usize) -> Option<&mut Vec<SharedString>> {
+        match &mut self.sections.get_mut(section)?.settings.get_mut(row)?.value {
+            SettingValue::Keybind(chords) => Some(chords),
+            _ => None,
+        }
+    }
+
+    /// "⌃ J is also bound to Previous item", for the first shared chord of a keybind setting.
+    fn conflict_note(&self, section: usize, row: usize) -> Option<String> {
+        let SettingValue::Keybind(chords) = &self.sections.get(section)?.settings.get(row)?.value
+        else {
+            return None;
+        };
+        chords.iter().find_map(|chord| {
+            let others = self.conflicts((section, row), chord);
+            (!others.is_empty()).then(|| {
+                format!(
+                    "{} is also bound to {}",
+                    chord_label(chord),
+                    others.join(", ")
+                )
+            })
+        })
+    }
+
+    /// Other actions bound to `chord`, by label.
+    fn conflicts(&self, at: (usize, usize), chord: &str) -> Vec<&'static str> {
+        self.sections
+            .iter()
+            .enumerate()
+            .flat_map(|(si, s)| {
+                s.settings
+                    .iter()
+                    .enumerate()
+                    .map(move |(ri, st)| ((si, ri), st))
+            })
+            .filter(|&(other, st)| {
+                other != at
+                    && matches!(&st.value, SettingValue::Keybind(c) if c.iter().any(|c| c == chord))
+            })
+            .map(|(_, st)| st.label)
+            .collect()
+    }
+
     /// Click handler that applies `edit` to setting `row` of `section`, listed at `pos`.
     fn on_edit(
         cx: &mut Context<Self>,
@@ -407,15 +547,12 @@ impl SettingsView {
                                 .hover(|s| s.bg(theme.bg_selected))
                         }
                     })
-                    .child(mono(
-                        format!("{:02}", i + 1),
-                        if active {
-                            theme.accent()
-                        } else {
-                            theme.tertiary_text
-                        },
-                    ))
-                    .child(div().flex_1().child(section.title))
+                    .child(
+                        div()
+                            .flex_1()
+                            .child(section.title)
+                            .when(active, |this| this.text_color(theme.accent())),
+                    )
                     .child(mono(
                         section.settings.len().to_string(),
                         theme.tertiary_text,
@@ -428,6 +565,7 @@ impl SettingsView {
     }
 
     fn render_control(
+        &self,
         value: &SettingValue,
         at: (usize, usize),
         pos: usize,
@@ -439,14 +577,14 @@ impl SettingsView {
             SettingValue::Toggle(on) => {
                 toggle(id, *on, theme, Self::on_edit(cx, at, pos, Edit::Toggle)).into_any_element()
             }
-            SettingValue::Color(color) => {
-                // TODO: open a color picker
-                color_swatch(id, *color, theme, |_, _, _| {}).into_any_element()
-            }
-            SettingValue::Keybind(keys) => {
-                // TODO: start recording a new combination
-                keybind(id, keys, theme, |_, _, _| {}).into_any_element()
-            }
+            SettingValue::Color(_) => match self.colors.get(&at) {
+                Some(item) => item.clone().into_any_element(),
+                None => div().into_any_element(),
+            },
+            SettingValue::Keybind(_) => match self.keymaps.get(&at) {
+                Some(input) => input.clone().into_any_element(),
+                None => div().into_any_element(),
+            },
             SettingValue::Choice { options, selected } => select(
                 id,
                 options.get(*selected).copied().unwrap_or_default(),
@@ -536,14 +674,18 @@ impl SettingsView {
                                 this.child(mono("modified".into(), 10., theme.accent()))
                             }),
                     )
-                    .child(
-                        div()
+                    .child(match self.conflict_note(si, ri) {
+                        Some(note) => div()
+                            .text_size(px(12.))
+                            .text_color(theme.color_warn)
+                            .child(note),
+                        None => div()
                             .text_size(px(12.))
                             .text_color(theme.secondary_text)
                             .child(setting.description),
-                    ),
+                    }),
             )
-            .child(div().flex_none().child(Self::render_control(
+            .child(div().flex_none().child(self.render_control(
                 &setting.value,
                 (si, ri),
                 pos,
@@ -572,6 +714,7 @@ impl SettingsView {
         theme: &ThemeData,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
+        let unsaved = self.unsaved();
         let (title, description): (SharedString, SharedString) = if self.searching() {
             let n = visible.len();
             (
@@ -622,10 +765,26 @@ impl SettingsView {
                     .gap(px(6.))
                     .child(
                         div()
-                            .text_size(px(26.))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(theme.primary_text)
-                            .child(title),
+                            .flex()
+                            .items_baseline()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .text_size(px(26.))
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_color(theme.primary_text)
+                                    .child(title),
+                            )
+                            .when(unsaved > 0, |this| {
+                                this.child(
+                                    div().text_size(px(12.)).text_color(theme.accent()).child(
+                                        format!(
+                                            "{unsaved} unsaved change{}",
+                                            if unsaved == 1 { "" } else { "s" }
+                                        ),
+                                    ),
+                                )
+                            }),
                     )
                     .child(
                         div()
@@ -647,59 +806,6 @@ impl SettingsView {
                     .pb(px(24.))
                     .children(rows),
             )
-    }
-
-    fn render_footer(&self, theme: &ThemeData) -> impl IntoElement {
-        let unsaved = self.unsaved();
-        let hint = |key: &'static str, label: &'static str| {
-            div()
-                .flex()
-                .items_center()
-                .gap(px(6.))
-                .child(
-                    div()
-                        .px(px(5.))
-                        .py(px(1.))
-                        .rounded(px(4.))
-                        .bg(theme.bg_keybind)
-                        .text_color(theme.primary_text)
-                        .child(key),
-                )
-                .child(label)
-        };
-
-        div()
-            .flex_none()
-            .flex()
-            .items_center()
-            .gap(px(18.))
-            .h(px(36.))
-            .px(px(16.))
-            .border_t_1()
-            .border_color(theme.border)
-            .bg(theme.bg_status_bar)
-            .font_family(theme.monospace.clone())
-            .text_size(px(11.))
-            .text_color(theme.secondary_text)
-            .when(unsaved > 0, |this| {
-                this.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(7.))
-                        .text_color(theme.accent())
-                        .child(div().size(px(6.)).rounded(px(3.)).bg(theme.accent()))
-                        .child(format!(
-                            "{unsaved} unsaved change{}",
-                            if unsaved == 1 { "" } else { "s" }
-                        )),
-                )
-            })
-            .child(div().flex_1())
-            .child(hint("↑↓", "move"))
-            .child(hint("←→", "section"))
-            .child(hint("↵", "change"))
-            .child(hint("⌫", "back"))
     }
 }
 
@@ -726,6 +832,7 @@ impl SherlockView for SettingsView {
     fn chrome(&self) -> Chrome {
         Chrome {
             search_bar: true,
+            status_bar: true,
             ..Chrome::NONE
         }
     }
@@ -744,7 +851,7 @@ impl SherlockView for SettingsView {
     fn on_event(
         &mut self,
         event: &LauncherEvent,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Propagation {
         match event {
@@ -757,7 +864,17 @@ impl SherlockView for SettingsView {
                 self.select_section(self.active + 1)
             }
             LauncherEvent::Move(_) => {}
-            LauncherEvent::Execute { .. } => self.activate(),
+            // values with their own editor open it; it takes the keyboard while open
+            LauncherEvent::Execute { .. } => {
+                let at = self.visible().get(self.row).copied();
+                if let Some(item) = at.and_then(|at| self.keymaps.get(&at)) {
+                    item.update(cx, |item, cx| item.open(window, cx));
+                } else if let Some(item) = at.and_then(|at| self.colors.get(&at)) {
+                    item.update(cx, |item, cx| item.open(window, cx));
+                } else {
+                    self.activate();
+                }
+            }
             _ => return Propagation::Continue,
         }
         cx.notify();
@@ -770,6 +887,8 @@ impl SherlockView for SettingsView {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        self.ensure_keymaps(cx);
+        self.ensure_colors(cx);
         let theme = shell.theme.clone();
         let visible = self.visible();
         // while searching, the nav follows the selected result
@@ -792,7 +911,6 @@ impl SherlockView for SettingsView {
                     .child(self.render_nav(current, &theme, cx))
                     .child(self.render_main(&visible, &theme, cx)),
             )
-            .child(self.render_footer(&theme))
             .into_any_element()
     }
 }
@@ -850,6 +968,25 @@ mod tests {
     fn activate_skips_values_with_own_editor() {
         assert!(SettingValue::Keybind(vec![]).activate().is_none());
         assert!(SettingValue::Color(rgb(0).into()).activate().is_none());
+    }
+
+    #[test]
+    fn set_color_applies_to_colors_only() {
+        let red: Hsla = rgb(0xff0000).into();
+        let mut v = SettingValue::Color(rgb(0).into());
+        v.apply(Edit::SetColor(red));
+        assert_eq!(v, SettingValue::Color(red));
+        let mut t = SettingValue::Toggle(true);
+        t.apply(Edit::SetColor(red));
+        assert_eq!(t, SettingValue::Toggle(true));
+    }
+
+    #[test]
+    fn shared_chords_are_reported() {
+        let mut view = SettingsView::new();
+        view.chords_mut(2, 0).unwrap().push("ctrl-p".into()); // Previous item has it too
+        assert_eq!(view.conflicts((2, 0), "ctrl-p"), ["Previous item"]);
+        assert!(view.conflict_note(2, 0).unwrap().contains("Previous item"));
     }
 
     #[test]

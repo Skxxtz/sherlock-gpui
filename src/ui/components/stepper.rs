@@ -3,15 +3,22 @@ use gpui::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use crate::app::theme::ThemeData;
+use crate::{app::theme::ThemeData, loader::resolve_icon_path};
+
+const ICON: f32 = 12.;
 
 fn button(
     id: ElementId,
-    label: &'static str,
+    icon: &'static str,
     enabled: bool,
     theme: &ThemeData,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
+    let color = if enabled {
+        theme.secondary_text
+    } else {
+        theme.tertiary_text
+    };
     let base = div()
         .id(id)
         .w(px(28.))
@@ -19,19 +26,21 @@ fn button(
         .flex()
         .items_center()
         .justify_center()
-        .text_size(px(14.))
-        .child(label);
+        .children(
+            resolve_icon_path(icon)
+                .and_then(|i| i.svg())
+                .map(|svg| svg.size(px(ICON)).text_color(color)),
+        );
     if enabled {
         base.cursor_pointer()
-            .text_color(theme.secondary_text)
-            .hover(|s| s.text_color(theme.primary_text).bg(theme.bg_selected))
+            .hover(|s| s.bg(theme.bg_selected))
             .on_click(on_click)
     } else {
-        base.text_color(theme.tertiary_text)
+        base
     }
 }
 
-/// `value` between ‹ and ›; the buttons are disabled at `min` / `max`.
+/// `value` between chevrons; the buttons are disabled at `min` / `max`.
 pub fn stepper(
     id: impl Into<ElementId>,
     value: i64,
@@ -54,7 +63,7 @@ pub fn stepper(
         .font_family(theme.monospace.clone())
         .child(button(
             ElementId::NamedChild(id.clone().into(), "dec".into()),
-            "‹",
+            "sherlock-chevron-left",
             value > min,
             theme,
             on_dec,
@@ -62,15 +71,18 @@ pub fn stepper(
         .child(
             div()
                 .w(px(28.))
+                .h_full()
                 .flex()
+                .items_center()
                 .justify_center()
                 .text_size(px(13.))
+                .line_height(px(16.))
                 .text_color(theme.primary_text)
                 .child(value.to_string()),
         )
         .child(button(
             ElementId::NamedChild(id.into(), "inc".into()),
-            "›",
+            "sherlock-chevron-right",
             value < max,
             theme,
             on_inc,
