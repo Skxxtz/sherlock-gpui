@@ -2,8 +2,23 @@ use std::{rc::Rc, sync::Arc, time::Duration};
 
 use chrono::{Local, Timelike};
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, AppContext, FontWeight, Hsla, Image, ImageSource,
-    IntoElement, ParentElement, Styled, div, img, linear_gradient, prelude::FluentBuilder, px,
+    Animation,
+    AnimationExt,
+    AnyElement,
+    App,
+    AppContext,
+    FontWeight,
+    Hsla,
+    Image,
+    ImageSource,
+    IntoElement,
+    ParentElement,
+    Styled,
+    div,
+    img,
+    linear_gradient,
+    prelude::FluentBuilder,
+    px,
     relative,
 };
 use sherlock_derive::Hideable;

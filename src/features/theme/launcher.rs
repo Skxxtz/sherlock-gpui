@@ -4,9 +4,14 @@ use gpui::App;
 
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
-    define_inner_functions, ensure_func,
+    define_inner_functions,
+    ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, variant_type::InnerFunction,
+        ExecEffect,
+        LauncherConfig,
+        LauncherProvider,
+        LauncherType,
+        variant_type::InnerFunction,
     },
     loader::utils::RawLauncher,
     sherlock_msg,

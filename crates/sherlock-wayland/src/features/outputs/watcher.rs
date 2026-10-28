@@ -1,7 +1,8 @@
 use std::sync::{Arc, PoisonError};
 
 use wayland_client::{
-    Connection, Proxy,
+    Connection,
+    Proxy,
     protocol::{wl_output::WlOutput, wl_registry::WlRegistry},
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::zxdg_output_manager_v1::ZxdgOutputManagerV1;

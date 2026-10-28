@@ -1,8 +1,18 @@
 use std::sync::Arc;
 
 use gpui::{
-    Div, IntoElement, ParentElement, Pixels, RenderOnce, SharedString, Styled, StyledImage, div,
-    img, prelude::FluentBuilder, px,
+    Div,
+    IntoElement,
+    ParentElement,
+    Pixels,
+    RenderOnce,
+    SharedString,
+    Styled,
+    StyledImage,
+    div,
+    img,
+    prelude::FluentBuilder,
+    px,
 };
 
 use super::FileMeta;

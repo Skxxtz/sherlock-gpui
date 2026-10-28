@@ -7,10 +7,22 @@ use std::{
 };
 
 use gpui::{
-    App, AppContext, AsyncApp, Bounds, Entity, Global, Size, WeakEntity,
-    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
+    App,
+    AppContext,
+    AsyncApp,
+    Bounds,
+    Entity,
+    Global,
+    Size,
+    WeakEntity,
+    WindowBackgroundAppearance,
+    WindowBounds,
+    WindowHandle,
+    WindowKind,
+    WindowOptions,
     layer_shell::{Layer, LayerShellOptions},
-    point, px,
+    point,
+    px,
 };
 use tokio::net::UnixListener;
 
@@ -24,7 +36,8 @@ use crate::{
         backdrop::Backdrop,
         components::search_bar::{EmptyBackspace, TextInput},
         launcher::{
-            LauncherMode, LauncherView,
+            LauncherMode,
+            LauncherView,
             context_menu::wrapper::ContextMenu,
             navigator::{Navigator, handle::ViewKind},
             sidebar_controller::SidebarController,

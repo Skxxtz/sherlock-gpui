@@ -2,14 +2,22 @@ use std::borrow::Cow;
 
 use gpui::SharedString;
 use serde::{
-    Deserialize, Deserializer, Serialize, Serializer,
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
     de::{self, DeserializeOwned},
 };
 
 use crate::ui::{
     runtime_arguments::{
-        choice::ChoiceVar, command::CommandVar, number::NumberVar, password::PasswordVar,
-        path::PathVar, string::StringVar, utils::Finalize,
+        choice::ChoiceVar,
+        command::CommandVar,
+        number::NumberVar,
+        password::PasswordVar,
+        path::PathVar,
+        string::StringVar,
+        utils::Finalize,
     },
     utils::input_rule::CharSet,
 };

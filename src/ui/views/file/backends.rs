@@ -4,7 +4,10 @@ use tokio::sync::mpsc::{Receiver, Sender};
 
 use crate::ui::views::file::{
     backends::{
-        command::CommandBackend, fd::FdFactory, ripgrep::RgFactory, walkdir::WalkdirBackend,
+        command::CommandBackend,
+        fd::FdFactory,
+        ripgrep::RgFactory,
+        walkdir::WalkdirBackend,
     },
     filter::FileFilter,
     utils::{FileResult, ResultHeap},

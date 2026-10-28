@@ -1,12 +1,25 @@
 use gpui::{
-    Context, Element, FocusHandle, InteractiveElement, IntoElement, ParentElement, Pixels, Render,
-    Styled, Subscription, TextRun, div, prelude::FluentBuilder, px,
+    Context,
+    Element,
+    FocusHandle,
+    InteractiveElement,
+    IntoElement,
+    ParentElement,
+    Pixels,
+    Render,
+    Styled,
+    Subscription,
+    TextRun,
+    div,
+    prelude::FluentBuilder,
+    px,
 };
 
 use crate::{
     app::theme::ActiveTheme,
     ui::{
-        components::choice::builder::ChoiceInputBuilder, runtime_arguments::choice::ChoiceOption,
+        components::choice::builder::ChoiceInputBuilder,
+        runtime_arguments::choice::ChoiceOption,
         utils::pango::CachedPango,
     },
 };

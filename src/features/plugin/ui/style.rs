@@ -1,6 +1,19 @@
 use gpui::{
-    AbsoluteLength, AlignItems, DefiniteLength, Display, EdgesRefinement, Fill, FlexDirection,
-    Hsla, JustifyContent, Length, Rgba, SharedString, SizeRefinement, StyleRefinement, TextAlign,
+    AbsoluteLength,
+    AlignItems,
+    DefiniteLength,
+    Display,
+    EdgesRefinement,
+    Fill,
+    FlexDirection,
+    Hsla,
+    JustifyContent,
+    Length,
+    Rgba,
+    SharedString,
+    SizeRefinement,
+    StyleRefinement,
+    TextAlign,
     px,
 };
 use serde::Deserialize;

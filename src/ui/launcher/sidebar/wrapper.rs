@@ -1,7 +1,15 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, Div, IntoElement, ParentElement, SharedString, StyleRefinement, Styled, div, img,
+    AnyElement,
+    Div,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    StyleRefinement,
+    Styled,
+    div,
+    img,
     px,
 };
 

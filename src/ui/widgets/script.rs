@@ -6,8 +6,18 @@ use std::{
 };
 
 use gpui::{
-    App, AppContext, AsyncApp, Entity, IntoElement, ParentElement, SharedString, Styled, Task,
-    WeakEntity, div, prelude::FluentBuilder,
+    App,
+    AppContext,
+    AsyncApp,
+    Entity,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    Styled,
+    Task,
+    WeakEntity,
+    div,
+    prelude::FluentBuilder,
 };
 use serde::{Deserialize, Serialize};
 use sherlock_derive::Hideable;

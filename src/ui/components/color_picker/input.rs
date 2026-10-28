@@ -1,12 +1,45 @@
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    Anchor, App, AppContext, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, Hsla,
-    InteractiveElement, IntoElement, KeyDownEvent, Keystroke, MouseDownEvent, ParentElement,
-    Pixels, Render, Stateful, StatefulInteractiveElement, Styled, Subscription, Window, anchored,
-    deferred, div, point, prelude::FluentBuilder, px,
+    Anchor,
+    App,
+    AppContext,
+    Bounds,
+    Context,
+    Entity,
+    EventEmitter,
+    FocusHandle,
+    Focusable,
+    Hsla,
+    InteractiveElement,
+    IntoElement,
+    KeyDownEvent,
+    Keystroke,
+    MouseDownEvent,
+    ParentElement,
+    Pixels,
+    Render,
+    Stateful,
+    StatefulInteractiveElement,
+    Styled,
+    Subscription,
+    Window,
+    anchored,
+    deferred,
+    div,
+    point,
+    prelude::FluentBuilder,
+    px,
 };
 
+use super::{
+    ColorEvent,
+    PAD,
+    PANEL_W,
+    data::Hsv,
+    render::{field, hue_slider, key_hint},
+    state::ColorPickerState,
+};
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
     ui::{
@@ -18,13 +51,6 @@ use crate::{
         traits::{HandleActions, HandleInputExt},
         views::Propagation,
     },
-};
-
-use super::{
-    ColorEvent, PAD, PANEL_W,
-    data::Hsv,
-    render::{field, hue_slider, key_hint},
-    state::ColorPickerState,
 };
 
 const HUE_STEP: f32 = 1. / 72.;

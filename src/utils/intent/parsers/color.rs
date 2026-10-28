@@ -67,7 +67,8 @@ mod tests {
 
     use super::*;
     use crate::utils::intent::{
-        Cursor, Intent,
+        Cursor,
+        Intent,
         Intent::{ColorConvert, ColorDisplay},
     };
 

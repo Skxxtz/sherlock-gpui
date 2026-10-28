@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use wayland_client::{
-    Connection, Dispatch, QueueHandle, WEnum,
+    Connection,
+    Dispatch,
+    QueueHandle,
+    WEnum,
     protocol::wl_keyboard::{self, KeymapFormat, WlKeyboard},
 };
 use xkbcommon::xkb;

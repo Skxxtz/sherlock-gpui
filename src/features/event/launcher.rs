@@ -4,13 +4,17 @@ use gpui::{App, SharedString};
 use serde::Deserialize;
 
 use crate::{
-    define_inner_functions, ensure_func,
+    define_inner_functions,
+    ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherProvider,
+        ExecEffect,
+        LauncherConfig,
+        LauncherProvider,
         variant_type::{InnerFunction, LauncherType},
     },
     loader::utils::RawLauncher,
-    sherlock_msg, skip_func_if_nav,
+    sherlock_msg,
+    skip_func_if_nav,
     ui::widgets::{ChildKind, RenderableChild, event::EventWidget},
     utils::{
         command_launch::{mime_lookup, spawn_detached},

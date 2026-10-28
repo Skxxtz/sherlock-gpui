@@ -1,9 +1,30 @@
 use std::{cell::Cell, sync::Arc};
 
 use gpui::{
-    AnyElement, App, AppContext, AsyncApp, Div, Entity, ImageSource, InteractiveElement,
-    IntoElement, MouseButton, ObjectFit, ParentElement, Resource, SharedString, SharedUri, Styled,
-    StyledImage, StyledText, WeakEntity, div, img, prelude::FluentBuilder, px, relative,
+    AnyElement,
+    App,
+    AppContext,
+    AsyncApp,
+    Div,
+    Entity,
+    ImageSource,
+    InteractiveElement,
+    IntoElement,
+    MouseButton,
+    ObjectFit,
+    ParentElement,
+    Resource,
+    SharedString,
+    SharedUri,
+    Styled,
+    StyledImage,
+    StyledText,
+    WeakEntity,
+    div,
+    img,
+    prelude::FluentBuilder,
+    px,
+    relative,
 };
 use sherlock_derive::Hideable;
 

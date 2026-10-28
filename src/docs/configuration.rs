@@ -1,12 +1,16 @@
 use md_rs::{
     components::{
-        ParentComponentExt, TextComponentExt,
+        ParentComponentExt,
+        TextComponentExt,
         container::Container,
         heading::h2,
         span::{br, html_underline},
         span_nodes::p,
     },
-    item, list_iter, md, p,
+    item,
+    list_iter,
+    md,
+    p,
 };
 
 use crate::{

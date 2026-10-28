@@ -26,7 +26,9 @@ use theme::ThemeWidget;
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherValues,
+        ExecEffect,
+        LauncherConfig,
+        LauncherValues,
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::{InnerFunction, LauncherType, LauncherVariant},
     },
@@ -46,8 +48,13 @@ use crate::{
             dmenu::DmenuData,
             event::EventWidget,
             list_item::{
-                ListItem, Payload, app::AppPayload, category::CategoryPayload,
-                command::CommandPayload, fixed::FixedPayload, web::WebPayload,
+                ListItem,
+                Payload,
+                app::AppPayload,
+                category::CategoryPayload,
+                command::CommandPayload,
+                fixed::FixedPayload,
+                web::WebPayload,
             },
             message::MessageChild,
             plugin::PluginWidget,

@@ -1,15 +1,27 @@
 use gpui::{
-    AnyElement, App, ClickEvent, Context, FontWeight, Hsla, InteractiveElement, IntoElement,
-    ParentElement, SharedString, StatefulInteractiveElement, Styled, Window, div,
-    prelude::FluentBuilder, px,
+    AnyElement,
+    App,
+    ClickEvent,
+    Context,
+    FontWeight,
+    Hsla,
+    InteractiveElement,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    StatefulInteractiveElement,
+    Styled,
+    Window,
+    div,
+    prelude::FluentBuilder,
+    px,
 };
 
+use super::model::{Edit, SettingValue, apply_edit};
 use crate::{
     app::theme::ThemeData,
     ui::components::{stepper::stepper, toggle::toggle},
 };
-
-use super::model::{Edit, SettingValue, apply_edit};
 
 const NAV_WIDTH: f32 = 208.;
 /// Left/right padding of the content; rows reach `ROW_PAD` further out so their selection

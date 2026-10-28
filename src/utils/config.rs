@@ -25,7 +25,11 @@ mod watcher;
 
 pub use alias::SherlockAlias;
 pub use defaults::{
-    AppearanceDefaults, ConstantDefaults, FileDefaults, KeybindDefaults, OtherDefaults,
+    AppearanceDefaults,
+    ConstantDefaults,
+    FileDefaults,
+    KeybindDefaults,
+    OtherDefaults,
 };
 pub use flags::SherlockFlags;
 pub use guard::ConfigGuard;

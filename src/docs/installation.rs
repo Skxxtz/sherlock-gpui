@@ -1,7 +1,8 @@
 use indoc::indoc;
 use md_rs::{
     components::{
-        ParentComponentExt, TextComponentExt,
+        ParentComponentExt,
+        TextComponentExt,
         code_block::codeblock,
         container::Container,
         details::{Details, details},
@@ -9,7 +10,11 @@ use md_rs::{
         span::{bold, br, code, html_strong, html_underline, link, link_bold},
         span_nodes::blockquote,
     },
-    item, list, list_iter, md, p,
+    item,
+    list,
+    list_iter,
+    md,
+    p,
 };
 
 use crate::docs::{

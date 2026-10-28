@@ -1,8 +1,19 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    AnyElement, FillOptions, FontWeight, IntoElement, ParentElement, Path, PathBuilder, Pixels,
-    Point, Styled, canvas, div, px,
+    AnyElement,
+    FillOptions,
+    FontWeight,
+    IntoElement,
+    ParentElement,
+    Path,
+    PathBuilder,
+    Pixels,
+    Point,
+    Styled,
+    canvas,
+    div,
+    px,
 };
 
 use crate::{app::theme::ThemeData, ui::widgets::timer::TimerState};

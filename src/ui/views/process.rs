@@ -1,5 +1,6 @@
-use gpui::{App, SharedString, Task};
 use std::sync::Arc;
+
+use gpui::{App, SharedString, Task};
 use tokio::sync::mpsc;
 use utils::{ProcessResult, ResultHeap};
 

@@ -1,5 +1,8 @@
 use std::sync::{
-    Arc, LazyLock, OnceLock, RwLock,
+    Arc,
+    LazyLock,
+    OnceLock,
+    RwLock,
     atomic::{AtomicU8, AtomicUsize, Ordering},
 };
 

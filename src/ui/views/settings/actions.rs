@@ -1,8 +1,7 @@
 use gpui::{Context, Window};
 
-use crate::ui::{actions::*, traits::HandleActions, views::Propagation};
-
 use super::SettingsView;
+use crate::ui::{actions::*, traits::HandleActions, views::Propagation};
 
 /// Notifes context of changes and stops propagation.
 #[inline]

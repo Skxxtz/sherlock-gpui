@@ -1,7 +1,14 @@
 use std::{os::unix::net::UnixStream, sync::Arc};
 
 use gpui::{
-    AnyElement, App, Entity, FocusHandle, Focusable, IntoElement, SharedString, Subscription,
+    AnyElement,
+    App,
+    Entity,
+    FocusHandle,
+    Focusable,
+    IntoElement,
+    SharedString,
+    Subscription,
     WindowHandle,
 };
 
@@ -13,7 +20,8 @@ use crate::{
         backdrop::Backdrop,
         components::{choice::Choice, search_bar::TextInput},
         launcher::{
-            context_menu::wrapper::ContextMenu, navigator::Navigator,
+            context_menu::wrapper::ContextMenu,
+            navigator::Navigator,
             sidebar_controller::SidebarController,
         },
         model::item::SelectionKey,

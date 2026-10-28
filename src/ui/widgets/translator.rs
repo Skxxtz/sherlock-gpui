@@ -1,8 +1,19 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    Animation, AnimationExt, App, AppContext, AsyncApp, Entity, FontWeight, IntoElement,
-    ParentElement, Styled, div, prelude::FluentBuilder, px,
+    Animation,
+    AnimationExt,
+    App,
+    AppContext,
+    AsyncApp,
+    Entity,
+    FontWeight,
+    IntoElement,
+    ParentElement,
+    Styled,
+    div,
+    prelude::FluentBuilder,
+    px,
 };
 use sherlock_derive::Hideable;
 use tokio::time::sleep;
@@ -30,7 +41,10 @@ use crate::{
             types::{NetworkAction, SherlockErrorType},
         },
         intent::{
-            Intent, IntentResult, parsers::translation::TranslationParser, translation::Language,
+            Intent,
+            IntentResult,
+            parsers::translation::TranslationParser,
+            translation::Language,
         },
     },
 };

@@ -1,7 +1,15 @@
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    App, Bounds, Context, EventEmitter, FocusHandle, Focusable, Pixels, ScrollHandle, SharedString,
+    App,
+    Bounds,
+    Context,
+    EventEmitter,
+    FocusHandle,
+    Focusable,
+    Pixels,
+    ScrollHandle,
+    SharedString,
     Window,
 };
 

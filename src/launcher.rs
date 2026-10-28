@@ -1,7 +1,6 @@
 pub mod utils;
 pub mod variant_type;
 
-use slotmap::{SlotMap, new_key_type};
 use std::{
     fmt::Display,
     hash::{DefaultHasher, Hash, Hasher},
@@ -9,13 +8,16 @@ use std::{
 };
 
 use gpui::{App, SharedString};
+use slotmap::{SlotMap, new_key_type};
 pub use variant_type::{LauncherType, LauncherVariant};
 
 use crate::{
     features::dmenu::DmenuLauncher,
     launcher::{utils::binds::Bind, variant_type::InnerFunction},
     loader::{
-        IconType, LoadContext, resolve_icon_path,
+        IconType,
+        LoadContext,
+        resolve_icon_path,
         utils::{ApplicationAction, ApplicationActionSerde, Priority, RawLauncher},
     },
     sherlock_msg,

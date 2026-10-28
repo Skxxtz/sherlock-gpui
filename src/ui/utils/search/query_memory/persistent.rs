@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use super::memory::{Boosts, QueryMemory, today};
 use crate::{
-    QUERY_MEMORY, sherlock_msg,
+    QUERY_MEMORY,
+    sherlock_msg,
     utils::{
         cache::BinaryCache,
         errors::{

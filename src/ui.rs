@@ -13,7 +13,7 @@ use gpui::KeyBinding;
 use serde::{Deserialize, Serialize};
 pub use utils::search::query_memory;
 
-use crate::ui::{actions::launcher::*, actions::search_bar::Complete};
+use crate::ui::actions::{launcher::*, search_bar::Complete};
 
 #[derive(Deserialize, Serialize, Hash, Debug, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]

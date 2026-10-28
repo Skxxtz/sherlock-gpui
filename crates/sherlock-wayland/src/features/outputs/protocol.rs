@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use wayland_client::{
-    Connection, Dispatch, QueueHandle, delegate_noop,
+    Connection,
+    Dispatch,
+    QueueHandle,
+    delegate_noop,
     protocol::wl_output::{self, WlOutput},
 };
 use wayland_protocols::xdg::xdg_output::zv1::client::{

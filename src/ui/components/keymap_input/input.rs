@@ -1,12 +1,36 @@
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    Anchor, AsKeystroke, Bounds, Context, Div, EventEmitter, FocusHandle, Focusable,
-    InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Pixels, Render, ScrollHandle,
-    SharedString, Stateful, StatefulInteractiveElement, Styled, Subscription, Window, anchored,
-    deferred, div, point, prelude::FluentBuilder, px,
+    Anchor,
+    AsKeystroke,
+    Bounds,
+    Context,
+    Div,
+    EventEmitter,
+    FocusHandle,
+    Focusable,
+    InteractiveElement,
+    IntoElement,
+    MouseDownEvent,
+    ParentElement,
+    Pixels,
+    Render,
+    ScrollHandle,
+    SharedString,
+    Stateful,
+    StatefulInteractiveElement,
+    Styled,
+    Subscription,
+    Window,
+    anchored,
+    deferred,
+    div,
+    point,
+    prelude::FluentBuilder,
+    px,
 };
 
+use super::KeymapEvent;
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
     ui::{
@@ -20,8 +44,6 @@ use crate::{
         },
     },
 };
-
-use super::KeymapEvent;
 
 pub struct KeymapInput {
     title: SharedString,

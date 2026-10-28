@@ -1,8 +1,18 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled, div,
-    img, prelude::FluentBuilder, px,
+    AnyElement,
+    App,
+    Image,
+    ImageSource,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    Styled,
+    div,
+    img,
+    prelude::FluentBuilder,
+    px,
 };
 use sherlock_derive::Hideable;
 
@@ -12,7 +22,8 @@ use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::InnerFunction},
     loader::{IconType, resolve_icon_path},
     ui::widgets::{
-        RenderableChildImpl, Selection,
+        RenderableChildImpl,
+        Selection,
         process::{metadata::ProcessMeta, sidebar::ProcessSidebar},
     },
 };

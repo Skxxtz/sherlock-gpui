@@ -1,15 +1,29 @@
 use gpui::{
-    Anchor, Context, Div, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render,
-    Stateful, StatefulInteractiveElement, Styled, Window, anchored, deferred, div, point,
-    prelude::FluentBuilder, px,
+    Anchor,
+    Context,
+    Div,
+    InteractiveElement,
+    IntoElement,
+    MouseDownEvent,
+    ParentElement,
+    Render,
+    Stateful,
+    StatefulInteractiveElement,
+    Styled,
+    Window,
+    anchored,
+    deferred,
+    div,
+    point,
+    prelude::FluentBuilder,
+    px,
 };
 
+use super::{PAD, ROW_H, Select, VISIBLE};
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
     ui::{components::keybind::bounds_probe, traits::HandleInputExt},
 };
-
-use super::{PAD, ROW_H, Select, VISIBLE};
 
 impl Select {
     fn render_list(&self, theme: &ThemeData, cx: &mut Context<Self>) -> Stateful<Div> {

@@ -5,12 +5,18 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    define_inner_functions, ensure_func,
+    define_inner_functions,
+    ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, variant_type::InnerFunction,
+        ExecEffect,
+        LauncherConfig,
+        LauncherProvider,
+        LauncherType,
+        variant_type::InnerFunction,
     },
     loader::{LoadContext, utils::RawLauncher},
-    sherlock_msg, skip_func_if_nav,
+    sherlock_msg,
+    skip_func_if_nav,
     ui::widgets::{ChildKind, RenderableChild, timer::TimerChild},
     utils::errors::{SherlockMessage, types::SherlockErrorType},
 };

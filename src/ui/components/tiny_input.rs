@@ -1,6 +1,16 @@
 use gpui::{
-    Context, EventEmitter, FocusHandle, Focusable, InteractiveElement, ParentElement, Render,
-    SharedString, Styled, div, prelude::FluentBuilder, px,
+    Context,
+    EventEmitter,
+    FocusHandle,
+    Focusable,
+    InteractiveElement,
+    ParentElement,
+    Render,
+    SharedString,
+    Styled,
+    div,
+    prelude::FluentBuilder,
+    px,
 };
 
 use crate::{app::theme::ActiveTheme, ui::traits::HandleInputExt};

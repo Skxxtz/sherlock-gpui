@@ -1,6 +1,15 @@
 use gpui::{
-    App, ClickEvent, ElementId, InteractiveElement, IntoElement, ParentElement,
-    StatefulInteractiveElement, Styled, Window, div, px,
+    App,
+    ClickEvent,
+    ElementId,
+    InteractiveElement,
+    IntoElement,
+    ParentElement,
+    StatefulInteractiveElement,
+    Styled,
+    Window,
+    div,
+    px,
 };
 
 use crate::{app::theme::ThemeData, loader::resolve_icon_path};

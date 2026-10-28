@@ -7,7 +7,9 @@ use crate::{
     sherlock_msg,
     utils::{
         config::{
-            SherlockConfig, SherlockFlags, transformer::fallback_migration::LegacyRawLauncher,
+            SherlockConfig,
+            SherlockFlags,
+            transformer::fallback_migration::LegacyRawLauncher,
         },
         errors::{
             SherlockMessage,

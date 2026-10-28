@@ -4,7 +4,8 @@ use gpui::{App, SharedString};
 
 use crate::{
     launcher::{
-        LauncherConfig, LauncherValues,
+        LauncherConfig,
+        LauncherValues,
         utils::binds::Bind,
         variant_type::{InnerFunction, LauncherType},
     },

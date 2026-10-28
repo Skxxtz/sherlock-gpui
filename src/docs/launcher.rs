@@ -2,7 +2,8 @@ use indoc::indoc;
 use md_rs::{
     cached_component,
     components::{
-        Component, ParentComponentExt,
+        Component,
+        ParentComponentExt,
         code_block::codeblock,
         container::Container,
         details::details,
@@ -13,7 +14,8 @@ use md_rs::{
         span_nodes::Paragraph,
         table::{Table, table},
     },
-    md, p,
+    md,
+    p,
 };
 
 use crate::{

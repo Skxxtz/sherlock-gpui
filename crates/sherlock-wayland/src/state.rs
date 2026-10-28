@@ -1,6 +1,9 @@
 use smallvec::SmallVec;
 use wayland_client::{
-    Connection, Dispatch, QueueHandle, WEnum,
+    Connection,
+    Dispatch,
+    QueueHandle,
+    WEnum,
     protocol::{
         wl_registry::{self, WlRegistry},
         wl_seat::{self, WlSeat},

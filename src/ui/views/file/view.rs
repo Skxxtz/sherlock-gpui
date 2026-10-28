@@ -1,17 +1,21 @@
-use crate::{
-    app::data::LauncherData,
-    ui::{traits::HandleActions, views::Propagation},
-};
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, SharedString, Window};
 
 use crate::{
+    app::data::LauncherData,
     launcher::{LauncherConfig, variant_type::LauncherType},
     ui::{
         model::Model,
+        traits::HandleActions,
         views::{
-            Query, QueryResult, ShellCtx, SherlockView, file::FileSearchModel, list::list_body,
+            Propagation,
+            Query,
+            QueryResult,
+            ShellCtx,
+            SherlockView,
+            file::FileSearchModel,
+            list::list_body,
             query::external_query,
         },
     },

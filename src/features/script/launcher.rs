@@ -4,17 +4,24 @@ use gpui::{App, AppContext, SharedString};
 use serde_json::Value;
 
 use crate::{
-    define_inner_functions, ensure_func,
+    define_inner_functions,
+    ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, utils::binds::Bind,
+        ExecEffect,
+        LauncherConfig,
+        LauncherProvider,
+        LauncherType,
+        utils::binds::Bind,
         variant_type::InnerFunction,
     },
     loader::utils::RawLauncher,
-    sherlock_msg, skip_func_if_nav,
+    sherlock_msg,
+    skip_func_if_nav,
     ui::{
         traits::RenderableChildImpl,
         widgets::{
-            ChildKind, RenderableChild,
+            ChildKind,
+            RenderableChild,
             script::{ScriptData, ScriptDataUpdateEntity},
         },
     },

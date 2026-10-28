@@ -15,7 +15,8 @@ use crate::{
         resolve_icon_path,
         utils::{RawLauncher, construct_search},
     },
-    sher_log, sherlock_msg,
+    sher_log,
+    sherlock_msg,
     ui::widgets::{
         RenderableChild,
         list_item::{ItemMeta, ListItem, web::WebPayload},

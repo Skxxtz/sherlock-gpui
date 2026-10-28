@@ -21,7 +21,12 @@ use crate::{
         query_memory::QueryMemoryGuard,
         traits::HandleActions,
         views::{
-            Chrome, Propagation, Query, QueryResult, ShellCtx, SherlockView,
+            Chrome,
+            Propagation,
+            Query,
+            QueryResult,
+            ShellCtx,
+            SherlockView,
             list::{RowCtx, RowRender, grid_body, list_body},
             query::model_query,
         },

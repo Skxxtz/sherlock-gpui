@@ -1,8 +1,15 @@
 use std::sync::Arc;
 
 use gpui::{
-    AppContext, Entity, IntoElement, ParentElement, Render, Styled, TestAppContext,
-    VisualTestContext, div,
+    AppContext,
+    Entity,
+    IntoElement,
+    ParentElement,
+    Render,
+    Styled,
+    TestAppContext,
+    VisualTestContext,
+    div,
 };
 
 use super::*;

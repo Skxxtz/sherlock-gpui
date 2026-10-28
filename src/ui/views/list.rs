@@ -6,7 +6,16 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, Entity, IntoElement, ParentElement, Styled, div, list, px, uniform_list,
+    AnyElement,
+    App,
+    Entity,
+    IntoElement,
+    ParentElement,
+    Styled,
+    div,
+    list,
+    px,
+    uniform_list,
 };
 
 use crate::{
@@ -14,7 +23,8 @@ use crate::{
     ui::{
         launcher::{LauncherView, navigator::views::Grid},
         model::{
-            ItemIdx, Model,
+            ItemIdx,
+            Model,
             data::ModelData,
             item::{SelectionKey, ShellItem},
         },

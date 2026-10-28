@@ -1,17 +1,26 @@
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    AppContext, Bounds, Context, Entity, EventEmitter, Hsla, ParentElement, Pixels, Render, Styled,
-    Subscription, Window, div,
+    AppContext,
+    Bounds,
+    Context,
+    Entity,
+    EventEmitter,
+    Hsla,
+    ParentElement,
+    Pixels,
+    Render,
+    Styled,
+    Subscription,
+    Window,
+    div,
 };
 
+use super::{ColorEvent, input::ColorInput};
 use crate::{
     app::theme::ActiveTheme,
     ui::components::{color_swatch::color_swatch, keybind::bounds_probe},
 };
-
-use super::ColorEvent;
-use super::input::ColorInput;
 
 pub struct ColorItem {
     input: Entity<ColorInput>,

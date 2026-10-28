@@ -1,9 +1,26 @@
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    App, Bounds, DispatchPhase, Hsla, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, ParentElement, Pixels, Point, Styled, Window, canvas, div, hsla,
-    linear_color_stop, linear_gradient, px,
+    App,
+    Bounds,
+    DispatchPhase,
+    Hsla,
+    IntoElement,
+    MouseButton,
+    MouseDownEvent,
+    MouseMoveEvent,
+    MouseUpEvent,
+    ParentElement,
+    Pixels,
+    Point,
+    Styled,
+    Window,
+    canvas,
+    div,
+    hsla,
+    linear_color_stop,
+    linear_gradient,
+    px,
 };
 
 use super::{FIELD_H, HANDLE, HUE_H, INNER_W, data::Hsv, state::ColorPickerState};

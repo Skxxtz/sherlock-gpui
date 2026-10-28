@@ -1,7 +1,8 @@
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
-    CONFIG, sherlock_msg,
+    CONFIG,
+    sherlock_msg,
     utils::{
         config::SherlockConfig,
         errors::{SherlockMessage, types::SherlockErrorType},

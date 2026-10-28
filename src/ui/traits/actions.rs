@@ -123,8 +123,15 @@ mod tests {
     use std::{cell::Cell, rc::Rc};
 
     use gpui::{
-        AppContext, Entity, FocusHandle, IntoElement, ParentElement, Render, TestAppContext,
-        VisualTestContext, div,
+        AppContext,
+        Entity,
+        FocusHandle,
+        IntoElement,
+        ParentElement,
+        Render,
+        TestAppContext,
+        VisualTestContext,
+        div,
     };
 
     use super::*;

@@ -1,7 +1,8 @@
 use indoc::indoc;
 use md_rs::{
     components::{
-        IntoComponent, ParentComponentExt,
+        IntoComponent,
+        ParentComponentExt,
         code_block::{CodeBlock, codeblock},
         container::Container,
         details::details,
@@ -10,7 +11,10 @@ use md_rs::{
         span_nodes::Paragraph,
     },
     github::components::alert::tip,
-    list, list_iter, md, p,
+    list,
+    list_iter,
+    md,
+    p,
 };
 
 use crate::{
@@ -19,8 +23,13 @@ use crate::{
         launcher::{FieldDoc, field_table},
     },
     ui::runtime_arguments::{
-        RuntimeArgument, choice::ChoiceVar, command::CommandVar, number::NumberVar,
-        password::PasswordVar, path::PathVar, string::StringVar,
+        RuntimeArgument,
+        choice::ChoiceVar,
+        command::CommandVar,
+        number::NumberVar,
+        password::PasswordVar,
+        path::PathVar,
+        string::StringVar,
     },
 };
 

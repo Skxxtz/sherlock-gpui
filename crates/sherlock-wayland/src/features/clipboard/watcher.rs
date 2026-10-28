@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use wayland_client::{
-    Connection, Proxy,
+    Connection,
+    Proxy,
     protocol::{
         wl_registry::WlRegistry,
         wl_seat::{Capability, WlSeat},

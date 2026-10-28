@@ -1,8 +1,7 @@
 use gpui::Context;
 
-use crate::ui::components::keybind::chord_label;
-
 use super::model::SettingValue;
+use crate::ui::components::keybind::chord_label;
 
 impl super::SettingsView {
     /// Tells each input which of its chords other actions use too.

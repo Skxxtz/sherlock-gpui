@@ -1,6 +1,17 @@
 use gpui::{
-    App, ClickEvent, ElementId, Hsla, InteractiveElement, IntoElement, ParentElement, Rgba,
-    StatefulInteractiveElement, Styled, Window, div, px,
+    App,
+    ClickEvent,
+    ElementId,
+    Hsla,
+    InteractiveElement,
+    IntoElement,
+    ParentElement,
+    Rgba,
+    StatefulInteractiveElement,
+    Styled,
+    Window,
+    div,
+    px,
 };
 
 use crate::app::theme::ThemeData;
@@ -68,8 +79,9 @@ pub fn color_swatch(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use gpui::rgb;
+
+    use super::*;
 
     #[test]
     fn hex_roundtrip() {

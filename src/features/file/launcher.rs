@@ -5,7 +5,10 @@ use serde::Deserialize;
 
 use crate::{
     launcher::{
-        LauncherConfig, LauncherProvider, utils::exec_mode::ExecMode, variant_type::LauncherType,
+        LauncherConfig,
+        LauncherProvider,
+        utils::exec_mode::ExecMode,
+        variant_type::LauncherType,
     },
     loader::{resolve_icon_path, utils::RawLauncher},
     sherlock_msg,

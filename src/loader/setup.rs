@@ -5,7 +5,8 @@ use std::{
 
 use super::Loader;
 use crate::{
-    CONFIG, ICONS,
+    CONFIG,
+    ICONS,
     loader::{CustomIconTheme, IconThemeGuard},
     sherlock_msg,
     utils::{

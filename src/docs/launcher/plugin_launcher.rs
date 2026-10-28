@@ -1,14 +1,16 @@
 use md_rs::{
     cached_component,
     components::{
-        Component, ParentComponentExt,
+        Component,
+        ParentComponentExt,
         code_block::codeblock,
         details::details,
         heading::h4,
         raw::{Raw, raw},
         span::{bold, br, code, html_strong},
     },
-    md, p,
+    md,
+    p,
 };
 
 use crate::features::plugin::api::docs::plugin_capability_docs;

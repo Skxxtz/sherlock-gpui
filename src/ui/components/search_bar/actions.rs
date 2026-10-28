@@ -1,8 +1,16 @@
 use std::ops::Range;
 
 use gpui::{
-    ClipboardItem, Context, EntityInputHandler, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    Pixels, Point, SharedString, Window,
+    ClipboardItem,
+    Context,
+    EntityInputHandler,
+    MouseDownEvent,
+    MouseMoveEvent,
+    MouseUpEvent,
+    Pixels,
+    Point,
+    SharedString,
+    Window,
 };
 use unicode_segmentation::UnicodeSegmentation;
 

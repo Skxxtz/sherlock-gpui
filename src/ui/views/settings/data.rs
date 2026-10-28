@@ -1,5 +1,6 @@
-use super::model::{Setting, SettingValue, SettingsSection};
 use gpui::{SharedString, rgb};
+
+use super::model::{Setting, SettingValue, SettingsSection};
 
 fn setting(
     group: &'static str,

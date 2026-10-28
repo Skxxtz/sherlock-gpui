@@ -1,7 +1,14 @@
 use std::collections::HashMap;
 
 use gpui::{
-    AnyElement, AppContext, Context, Entity, IntoElement, ScrollHandle, SharedString, Subscription,
+    AnyElement,
+    AppContext,
+    Context,
+    Entity,
+    IntoElement,
+    ScrollHandle,
+    SharedString,
+    Subscription,
     Window,
 };
 

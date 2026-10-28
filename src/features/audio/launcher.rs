@@ -14,13 +14,19 @@ use zbus::blocking::{Connection, Proxy};
 
 use super::io::MprisData;
 use crate::{
-    define_inner_functions, ensure_func,
+    define_inner_functions,
+    ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, utils::binds::Bind,
+        ExecEffect,
+        LauncherConfig,
+        LauncherProvider,
+        LauncherType,
+        utils::binds::Bind,
         variant_type::InnerFunction,
     },
     loader::utils::RawLauncher,
-    sherlock_msg, skip_func_if_nav,
+    sherlock_msg,
+    skip_func_if_nav,
     ui::widgets::{ChildKind, RenderableChild, audio::MusicPlayerWidget},
     utils::{
         config::ConfigGuard,

@@ -2,7 +2,8 @@ use indoc::indoc;
 use md_rs::{
     cached_component,
     components::{
-        Component, ParentComponentExt,
+        Component,
+        ParentComponentExt,
         code_block::codeblock,
         container::Container,
         details::details,
@@ -12,7 +13,8 @@ use md_rs::{
         span::{bold, code, html_strong, italic, keybind},
         table::table,
     },
-    md, p,
+    md,
+    p,
 };
 
 /// Guide for plugin authors, shown in the plugin launcher's docs.

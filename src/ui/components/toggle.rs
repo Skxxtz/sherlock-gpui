@@ -1,6 +1,16 @@
 use gpui::{
-    App, ClickEvent, ElementId, InteractiveElement, IntoElement, ParentElement,
-    StatefulInteractiveElement, Styled, Window, div, prelude::FluentBuilder, px,
+    App,
+    ClickEvent,
+    ElementId,
+    InteractiveElement,
+    IntoElement,
+    ParentElement,
+    StatefulInteractiveElement,
+    Styled,
+    Window,
+    div,
+    prelude::FluentBuilder,
+    px,
 };
 
 use crate::app::theme::ThemeData;

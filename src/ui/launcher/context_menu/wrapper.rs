@@ -1,8 +1,19 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    Animation, AnimationExt, App, InteractiveElement, IntoElement, Keystroke, ParentElement,
-    ScrollHandle, StatefulInteractiveElement, Styled, div, prelude::FluentBuilder, px,
+    Animation,
+    AnimationExt,
+    App,
+    InteractiveElement,
+    IntoElement,
+    Keystroke,
+    ParentElement,
+    ScrollHandle,
+    StatefulInteractiveElement,
+    Styled,
+    div,
+    prelude::FluentBuilder,
+    px,
 };
 
 use crate::{

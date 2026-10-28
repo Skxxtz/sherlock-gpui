@@ -16,8 +16,7 @@ use crate::{
         },
         widgets::{RenderableChild, file::FileData},
     },
-    utils::files::expand_path,
-    utils::string::CiUtils,
+    utils::{files::expand_path, string::CiUtils},
 };
 
 mod backends;

@@ -7,16 +7,22 @@ use std::{
 use gpui::App;
 
 use crate::{
-    define_inner_functions, ensure_func,
+    define_inner_functions,
+    ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherProvider, LauncherType, utils::exec_mode::ExecMode,
+        ExecEffect,
+        LauncherConfig,
+        LauncherProvider,
+        LauncherType,
+        utils::exec_mode::ExecMode,
         variant_type::InnerFunction,
     },
     loader::{
         resolve_icon_path,
         utils::{ApplicationAction, RawLauncher},
     },
-    sherlock_msg, skip_func_if_nav,
+    sherlock_msg,
+    skip_func_if_nav,
     ui::{
         launcher::context_menu::ContextMenuAction,
         widgets::{

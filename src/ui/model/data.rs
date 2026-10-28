@@ -7,7 +7,8 @@ use crate::{
     launcher::variant_type::LauncherType,
     ui::{
         model::{
-            ItemIdx, all_indices,
+            ItemIdx,
+            all_indices,
             index::{IndexBuilder, SearchIndex},
             item::ShellItem,
         },

@@ -1,8 +1,21 @@
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    App, AppContext, Bounds, Context, Entity, EventEmitter, IntoElement, ParentElement, Pixels,
-    Render, SharedString, Styled, Subscription, Window, div,
+    App,
+    AppContext,
+    Bounds,
+    Context,
+    Entity,
+    EventEmitter,
+    IntoElement,
+    ParentElement,
+    Pixels,
+    Render,
+    SharedString,
+    Styled,
+    Subscription,
+    Window,
+    div,
 };
 
 use crate::{

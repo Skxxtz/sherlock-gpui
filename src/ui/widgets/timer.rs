@@ -1,8 +1,17 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    AnyElement, App, AppContext, Entity, IntoElement, ParentElement, SharedString, Styled, Task,
-    div, px,
+    AnyElement,
+    App,
+    AppContext,
+    Entity,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    Styled,
+    Task,
+    div,
+    px,
 };
 use sherlock_derive::Hideable;
 use smallvec::SmallVec;
@@ -16,7 +25,8 @@ use crate::{
         runtime_arguments::RuntimeArgument,
         utils::{search::SherlockSearch, timeout::Timeout},
         widgets::{
-            RenderableChildImpl, Selection,
+            RenderableChildImpl,
+            Selection,
             timer::{
                 model::{Timer, TimerState},
                 render::{render_new_timer_pill, render_timer},

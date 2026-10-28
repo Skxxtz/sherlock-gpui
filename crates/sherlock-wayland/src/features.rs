@@ -7,7 +7,8 @@ pub mod outputs;
 
 use enum_dispatch::enum_dispatch;
 use wayland_client::{
-    Connection, QueueHandle,
+    Connection,
+    QueueHandle,
     protocol::{
         wl_registry::WlRegistry,
         wl_seat::{Capability, WlSeat},

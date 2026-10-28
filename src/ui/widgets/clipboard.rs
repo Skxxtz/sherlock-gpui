@@ -2,8 +2,21 @@ use std::sync::Arc;
 
 use futures::{StreamExt, channel::mpsc};
 use gpui::{
-    App, AppContext, Entity, Image, ImageSource, IntoElement, ParentElement, SharedString, Styled,
-    div, img, prelude::FluentBuilder, px, rgb, svg,
+    App,
+    AppContext,
+    Entity,
+    Image,
+    ImageSource,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    Styled,
+    div,
+    img,
+    prelude::FluentBuilder,
+    px,
+    rgb,
+    svg,
 };
 use sherlock_derive::Hideable;
 
@@ -13,7 +26,8 @@ use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     loader::{resolve_icon_path, utils::ApplicationAction},
     ui::{
-        launcher::context_menu::ContextMenuAction, traits::RenderableChildImpl,
+        launcher::context_menu::ContextMenuAction,
+        traits::RenderableChildImpl,
         utils::selection::Selection,
     },
     utils::intent::{Intent, IntentResult},

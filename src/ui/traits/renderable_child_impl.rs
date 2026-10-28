@@ -5,7 +5,8 @@ use gpui::{AnyElement, App, AppContext, SharedString};
 use crate::{
     app::theme::ThemeData,
     launcher::{
-        ExecEffect, LauncherConfig,
+        ExecEffect,
+        LauncherConfig,
         utils::{binds::Bind, exec_mode::ExecMode},
         variant_type::InnerFunction,
     },

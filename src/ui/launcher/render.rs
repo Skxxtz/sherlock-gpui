@@ -1,10 +1,31 @@
 use std::{sync::Arc, time::Duration};
 
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, ClickEvent, Context, Element, ElementId, Focusable,
-    FontWeight, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Render,
-    SharedString, StatefulInteractiveElement, Styled, Window, deferred, div, img,
-    prelude::FluentBuilder, px, relative,
+    Animation,
+    AnimationExt,
+    AnyElement,
+    App,
+    ClickEvent,
+    Context,
+    Element,
+    ElementId,
+    Focusable,
+    FontWeight,
+    InteractiveElement,
+    IntoElement,
+    MouseDownEvent,
+    ParentElement,
+    Render,
+    SharedString,
+    StatefulInteractiveElement,
+    Styled,
+    Window,
+    deferred,
+    div,
+    img,
+    prelude::FluentBuilder,
+    px,
+    relative,
 };
 
 use crate::{

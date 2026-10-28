@@ -1,7 +1,8 @@
 use std::{
     path::Path,
     sync::{
-        Arc, Mutex,
+        Arc,
+        Mutex,
         atomic::{AtomicU64, AtomicUsize, Ordering},
     },
 };
@@ -20,13 +21,19 @@ use super::{
 };
 use crate::{
     app::{LauncherEntityGlobal, LauncherEntityInner, theme::ActiveTheme},
-    define_inner_functions, ensure_func,
+    define_inner_functions,
+    ensure_func,
     launcher::{
-        ExecEffect, LauncherConfig, LauncherId, LauncherProvider, LauncherType,
+        ExecEffect,
+        LauncherConfig,
+        LauncherId,
+        LauncherProvider,
+        LauncherType,
         variant_type::InnerFunction,
     },
     loader::{LoadContext, utils::RawLauncher},
-    sherlock_msg, skip_func_if_nav,
+    sherlock_msg,
+    skip_func_if_nav,
     ui::{
         launcher::navigator::MessageViewGlobal,
         widgets::{ChildKind, RenderableChild, plugin::PluginWidget},
@@ -460,7 +467,11 @@ mod docs {
         display_name,
         docs::{
             launcher::{
-                Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry,
+                Example,
+                FieldDoc,
+                InnerFunctionDoc,
+                LauncherDoc,
+                LauncherDocEntry,
                 plugin_launcher::plugin_capabilities_section,
             },
             plugins::plugin_guide_section,

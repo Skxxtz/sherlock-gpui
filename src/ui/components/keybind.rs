@@ -6,8 +6,22 @@
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    App, Bounds, ElementId, InteractiveElement, IntoElement, ParentElement, Pixels, SharedString,
-    StatefulInteractiveElement, Styled, Window, canvas, div, prelude::FluentBuilder, px, relative,
+    App,
+    Bounds,
+    ElementId,
+    InteractiveElement,
+    IntoElement,
+    ParentElement,
+    Pixels,
+    SharedString,
+    StatefulInteractiveElement,
+    Styled,
+    Window,
+    canvas,
+    div,
+    prelude::FluentBuilder,
+    px,
+    relative,
 };
 
 use crate::app::theme::ThemeData;

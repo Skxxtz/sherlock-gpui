@@ -5,8 +5,7 @@ use crate::ui::{
         launcher::{ItemDown, ItemUp},
         search_bar::Backspace,
     },
-    components::choice::Choice,
-    components::search_bar::EmptyBackspace,
+    components::{choice::Choice, search_bar::EmptyBackspace},
 };
 
 impl Choice {

@@ -3,10 +3,16 @@ use std::{borrow::Cow, ffi::OsStr, io::BufRead, path::PathBuf, process::Child, s
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
-use crate::ui::views::file::{
-    FileResult, FileSearchUtility, ResultHeap, backends::FileSearchProvider, filter::FileFilter,
+use crate::{
+    ui::views::file::{
+        FileResult,
+        FileSearchUtility,
+        ResultHeap,
+        backends::FileSearchProvider,
+        filter::FileFilter,
+    },
+    utils::string::CiUtils,
 };
-use crate::utils::string::CiUtils;
 
 pub struct ChildGuard(pub Child);
 impl Drop for ChildGuard {

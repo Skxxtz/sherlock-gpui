@@ -1,8 +1,18 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, FontWeight, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    Styled, div, prelude::FluentBuilder, px, relative,
+    AnyElement,
+    App,
+    FontWeight,
+    InteractiveElement,
+    IntoElement,
+    MouseButton,
+    ParentElement,
+    Styled,
+    div,
+    prelude::FluentBuilder,
+    px,
+    relative,
 };
 use sherlock_derive::Hideable;
 

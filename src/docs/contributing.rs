@@ -6,7 +6,10 @@ use md_rs::{
         heading::{h1, h2, h3},
         span::{bold, code, link},
     },
-    item, list, md, p,
+    item,
+    list,
+    md,
+    p,
 };
 
 use crate::docs::Documentation;

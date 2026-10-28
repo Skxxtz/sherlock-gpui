@@ -1,20 +1,24 @@
-use crate::ui::launcher::navigator::views::Layout;
-use crate::ui::traits::HandleActions;
-use crate::ui::views::Propagation;
-use crate::ui::views::{Query, QueryResult, query::launcher_query};
-use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
-use gpui::px;
-use gpui::{AnyElement, Window};
 use std::{cell::Cell, collections::HashMap, sync::Arc};
 
-use gpui::{App, Context, WeakEntity};
+use gpui::{AnyElement, App, Context, WeakEntity, Window, px};
 
 use crate::{
     app::data::LauncherData,
     features::message::MessageLauncher,
     launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     ui::{
+        launcher::navigator::views::Layout,
         model::{ItemIdx, Model},
+        traits::HandleActions,
+        views::{
+            Propagation,
+            Query,
+            QueryResult,
+            ShellCtx,
+            SherlockView,
+            list::list_body,
+            query::launcher_query,
+        },
         widgets::{ChildKind, RenderableChild, message::MessageChild},
     },
     utils::{config::HomeType, errors::SherlockMessage},

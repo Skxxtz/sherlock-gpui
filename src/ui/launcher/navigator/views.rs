@@ -1,6 +1,4 @@
-use gpui::{ListState, Pixels, UniformListScrollHandle};
-
-use gpui::App;
+use gpui::{App, ListState, Pixels, UniformListScrollHandle};
 
 use crate::ui::launcher::{LauncherMode, navigator::handle::ViewHandle};
 

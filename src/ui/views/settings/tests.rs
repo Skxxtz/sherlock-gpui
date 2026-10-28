@@ -1,6 +1,6 @@
-use super::model::apply_edit;
-use super::*;
 use gpui::{Hsla, rgb};
+
+use super::{model::apply_edit, *};
 
 #[test]
 fn toggle_flips() {

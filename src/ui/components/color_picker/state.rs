@@ -1,8 +1,8 @@
-use gpui::Hsla;
 use std::{cell::Cell, rc::Rc};
 
-use super::data::Hsv;
-use super::render::Drag;
+use gpui::Hsla;
+
+use super::{data::Hsv, render::Drag};
 
 /// An open picker. Owned by the view showing it; dropped when the picker closes.
 #[derive(Clone)]

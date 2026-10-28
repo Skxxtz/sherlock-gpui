@@ -8,8 +8,22 @@ use std::{
 
 use chrono::Local;
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, AppContext, FontWeight, Hsla, InteractiveElement,
-    IntoElement, ParentElement, SharedString, Styled, div, prelude::FluentBuilder, px, rgb,
+    Animation,
+    AnimationExt,
+    AnyElement,
+    App,
+    AppContext,
+    FontWeight,
+    Hsla,
+    InteractiveElement,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    Styled,
+    div,
+    prelude::FluentBuilder,
+    px,
+    rgb,
 };
 use sherlock_derive::Hideable;
 use simd_json::prelude::ArrayTrait;

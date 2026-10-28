@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use super::utils::parse_f64;
 use crate::utils::intent::{
-    Capabilities, Cursor, Intent,
+    Capabilities,
+    Cursor,
+    Intent,
     units::{Unit, UnitCategory},
 };
 

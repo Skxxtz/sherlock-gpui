@@ -1,10 +1,22 @@
 use std::time::Duration;
 
 use gpui::{
-    Animation, AnimationExt, Bounds, IntoElement, Pixels, Render, Styled, WindowBounds, WindowKind,
-    WindowOptions, black, div,
+    Animation,
+    AnimationExt,
+    Bounds,
+    IntoElement,
+    Pixels,
+    Render,
+    Styled,
+    WindowBounds,
+    WindowKind,
+    WindowOptions,
+    black,
+    div,
     layer_shell::{Layer, LayerShellOptions},
-    point, px, size,
+    point,
+    px,
+    size,
 };
 
 use crate::OUTPUTS;

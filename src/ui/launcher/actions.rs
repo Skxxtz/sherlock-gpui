@@ -19,7 +19,9 @@ use crate::{
             search_bar::{EmptyBackspace, TextInput},
         },
         launcher::{
-            LauncherMode, LauncherView, VariableInput,
+            LauncherMode,
+            LauncherView,
+            VariableInput,
             context_menu::{ContextMenuAction, wrapper::Move},
             execute::ExecSource,
             navigator::views::MoveDirection,

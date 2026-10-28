@@ -1,8 +1,18 @@
 use std::{rc::Rc, sync::Arc};
 
 use gpui::{
-    AnyElement, App, AppContext, Image, ImageSource, IntoElement, ParentElement, Styled, div, img,
-    prelude::FluentBuilder, px,
+    AnyElement,
+    App,
+    AppContext,
+    Image,
+    ImageSource,
+    IntoElement,
+    ParentElement,
+    Styled,
+    div,
+    img,
+    prelude::FluentBuilder,
+    px,
 };
 use sherlock_derive::Hideable;
 

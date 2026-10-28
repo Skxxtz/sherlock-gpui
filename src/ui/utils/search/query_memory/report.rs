@@ -1,7 +1,8 @@
 use std::fmt::{self, Write as _};
 
 use super::{
-    ALPHA, MIN_P,
+    ALPHA,
+    MIN_P,
     memory::{Node, QueryMemory, ROOT, normalize},
 };
 

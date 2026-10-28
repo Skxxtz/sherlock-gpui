@@ -5,7 +5,10 @@ use gpui::SharedString;
 
 use crate::{
     loader::{
-        IconType, application_loader::should_ignore, resolve_icon_path, utils::ApplicationAction,
+        IconType,
+        application_loader::should_ignore,
+        resolve_icon_path,
+        utils::ApplicationAction,
     },
     ui::widgets::list_item::{ItemMeta, ListItem, app::AppPayload},
     utils::{config::SherlockAlias, files::read_lines},

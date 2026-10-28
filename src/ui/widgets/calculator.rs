@@ -1,8 +1,16 @@
 use std::sync::{Arc, RwLock};
 
 use gpui::{
-    App, AppContext, IntoElement, ParentElement, SharedString, Styled, div, prelude::FluentBuilder,
-    px, rgb,
+    App,
+    AppContext,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    Styled,
+    div,
+    prelude::FluentBuilder,
+    px,
+    rgb,
 };
 use sherlock_derive::Hideable;
 

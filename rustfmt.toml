@@ -1,1 +1,12 @@
+edition = "2024"
+
 max_width = 100
+
+# Stable
+reorder_imports = true          # sort imports alphabetically (default: true)
+reorder_modules = true          # sort `mod` declarations (default: true)
+
+# Unstable (nightly only)
+group_imports = "StdExternalCrate"   # std/core/alloc → external crates → crate/self/super
+imports_granularity = "Crate"        # merge `use` statements per crate
+imports_layout = "HorizontalVertical"

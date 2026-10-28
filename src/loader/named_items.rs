@@ -2,7 +2,8 @@ use std::{fmt, marker::PhantomData, sync::Arc};
 
 use gpui::SharedString;
 use serde::{
-    Deserialize, Deserializer,
+    Deserialize,
+    Deserializer,
     de::{MapAccess, Visitor},
 };
 

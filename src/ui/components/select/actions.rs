@@ -1,12 +1,11 @@
 use gpui::{Context, KeyDownEvent, Window};
 
+use super::Select;
 use crate::ui::{
     actions::{End, Execute, ExecuteInplace, Home, ItemDown, ItemUp, Quit},
     traits::HandleActions,
     views::Propagation,
 };
-
-use super::Select;
 
 impl HandleActions for Select {
     const UNHANDLED: Propagation = Propagation::Stop;

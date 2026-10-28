@@ -1,7 +1,14 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, IntoElement, ParentElement, SharedString, Styled, div, img, prelude::FluentBuilder,
+    AnyElement,
+    IntoElement,
+    ParentElement,
+    SharedString,
+    Styled,
+    div,
+    img,
+    prelude::FluentBuilder,
     px,
 };
 use serde::{Deserialize, Serialize};
@@ -9,7 +16,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::{
-        IconType, resolve_icon_path,
+        IconType,
+        resolve_icon_path,
         utils::{ApplicationAction, construct_search},
     },
     ui::{

@@ -1,14 +1,22 @@
-use crate::app::data::LauncherData;
-use crate::ui::launcher::navigator::views::Layout;
-use crate::ui::traits::HandleActions;
-use crate::ui::views::Propagation;
-use crate::ui::views::{Query, QueryResult, query::launcher_query};
-use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
-use gpui::App;
-use gpui::px;
-use gpui::{AnyElement, Context, Window};
+use gpui::{AnyElement, App, Context, Window, px};
 
-use crate::{app::LauncherEntity, ui::model::Model};
+use crate::{
+    app::{LauncherEntity, data::LauncherData},
+    ui::{
+        launcher::navigator::views::Layout,
+        model::Model,
+        traits::HandleActions,
+        views::{
+            Propagation,
+            Query,
+            QueryResult,
+            ShellCtx,
+            SherlockView,
+            list::list_body,
+            query::launcher_query,
+        },
+    },
+};
 
 pub struct HomeView {
     pub model: Model,
