@@ -1,4 +1,6 @@
 use crate::ui::launcher::navigator::views::Layout;
+use crate::ui::traits::HandleActions;
+use crate::ui::views::Propagation;
 use crate::ui::views::{Query, QueryResult, query::launcher_query};
 use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
 use gpui::px;
@@ -137,6 +139,10 @@ impl MessageView {
         self.model.filtered = Arc::from([]);
         self.count.set(0);
     }
+}
+
+impl HandleActions for MessageView {
+    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for MessageView {

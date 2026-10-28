@@ -11,10 +11,11 @@ use crate::{
             data::ModelData,
             item::{SelectionKey, ShellItem},
         },
+        traits::InputAction,
         views::{
-            Chrome, LauncherEvent, Propagation, Query, QueryResult, ShellCtx, SherlockView,
-            emoji::EmojiView, file::view::FileView, home::HomeView, message::MessageView,
-            process::view::ProcessView, settings::SettingsView,
+            Chrome, Propagation, Query, QueryResult, ShellCtx, SherlockView, emoji::EmojiView,
+            file::view::FileView, home::HomeView, message::MessageView, process::view::ProcessView,
+            settings::SettingsView,
         },
     },
 };
@@ -211,15 +212,14 @@ impl ViewHandle {
         dispatch!(self, e => e.update(cx, |v, cx| v.on_query(query, cx)))
     }
 
-    /// Offers a launcher event to the view. Updates the view entity, so don't call it from inside
-    /// that view.
-    pub fn on_event(
+    /// Offers `action` to the view. Updates the view entity.
+    pub fn route<A: InputAction>(
         &self,
-        event: &LauncherEvent,
+        action: &A,
         window: &mut Window,
         cx: &mut App,
     ) -> Propagation {
-        dispatch!(self, e => e.update(cx, |v, cx| v.on_event(event, window, cx)))
+        dispatch!(self, e => e.update(cx, |v, cx| action.route(v, window, cx)))
     }
 
     /// Type-erased entity, for rendering

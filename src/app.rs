@@ -20,10 +20,11 @@ use crate::{
     features::plugin::runtime::LuaRuntimeHandle,
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
+        actions::Back,
         backdrop::Backdrop,
         components::search_bar::{EmptyBackspace, TextInput},
         launcher::{
-            Back, LauncherMode, LauncherView,
+            LauncherMode, LauncherView,
             context_menu::wrapper::ContextMenu,
             navigator::{Navigator, handle::ViewKind},
             sidebar_controller::SidebarController,

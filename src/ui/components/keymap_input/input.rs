@@ -10,14 +10,13 @@ use gpui::{
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
     ui::{
+        actions::{
+            launcher::{Execute, ExecuteInplace, ItemDown, ItemLeft, ItemRight, ItemUp, Quit},
+            search_bar::Backspace,
+        },
         components::{
             keybind::{LINE_GAP, LINE_H, VISIBLE_LINES, caps, chord_label},
             keymap_input::state::KeymapState,
-            search_bar::actions::Backspace,
-        },
-        launcher::{
-            Execute, Quit, SelectionDown, SelectionLeft, SelectionRight, SelectionUp,
-            actions::ExecuteInplace,
         },
     },
 };
@@ -186,12 +185,12 @@ impl KeymapInput {
 // Handles launcher actions while the editor has focus
 impl KeymapInput {
     #[inline(always)]
-    fn up(&mut self, _: &SelectionUp, _: &mut Window, cx: &mut Context<Self>) {
+    fn up(&mut self, _: &ItemUp, _: &mut Window, cx: &mut Context<Self>) {
         self.set_cursor(self.state.cursor.saturating_sub(1));
         cx.notify();
     }
     #[inline(always)]
-    fn down(&mut self, _: &SelectionDown, _: &mut Window, cx: &mut Context<Self>) {
+    fn down(&mut self, _: &ItemDown, _: &mut Window, cx: &mut Context<Self>) {
         self.set_cursor(self.state.cursor.saturating_add(1));
         cx.notify();
     }
@@ -227,12 +226,8 @@ impl Render for KeymapInput {
             .on_action(
                 cx.listener(|this, _: &ExecuteInplace, win, cx| this.confirm(&Execute, win, cx)),
             )
-            .on_action(
-                cx.listener(|this, _: &SelectionLeft, win, cx| this.up(&SelectionUp, win, cx)),
-            )
-            .on_action(
-                cx.listener(|this, _: &SelectionRight, win, cx| this.down(&SelectionDown, win, cx)),
-            )
+            .on_action(cx.listener(|this, _: &ItemLeft, win, cx| this.up(&ItemUp, win, cx)))
+            .on_action(cx.listener(|this, _: &ItemRight, win, cx| this.down(&ItemDown, win, cx)))
             .when(self.open, |this| {
                 let theme = cx.global::<ActiveTheme>().0.clone();
                 this.child(

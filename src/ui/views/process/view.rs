@@ -1,4 +1,7 @@
-use crate::app::data::LauncherData;
+use crate::{
+    app::data::LauncherData,
+    ui::{traits::HandleActions, views::Propagation},
+};
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, Window};
@@ -31,6 +34,10 @@ impl ProcessView {
             search: ProcessModel::new(launcher),
         }
     }
+}
+
+impl HandleActions for ProcessView {
+    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for ProcessView {

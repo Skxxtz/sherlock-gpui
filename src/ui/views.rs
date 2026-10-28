@@ -7,6 +7,7 @@ use crate::{
     ui::{
         launcher::{LauncherView, navigator::views::Layout},
         model::{Model, ResultsChange, data::ModelData},
+        traits::HandleActions,
     },
 };
 
@@ -20,7 +21,7 @@ pub mod process;
 pub mod query;
 pub mod settings;
 
-pub use events::{LauncherEvent, Propagation};
+pub use events::Propagation;
 
 /// Which parts of the shared frame a view wants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -99,7 +100,7 @@ pub enum QueryResult {
     Ignored,
 }
 
-pub trait SherlockView: 'static + Sized {
+pub trait SherlockView: HandleActions + 'static + Sized {
     /// The data this view's model filters; `NoData` for views without items.
     type Data: ModelData;
 
@@ -131,18 +132,6 @@ pub trait SherlockView: 'static + Sized {
     /// `Ready` instead.
     fn on_query(&mut self, _query: &Query, _cx: &mut Context<Self>) -> QueryResult {
         QueryResult::Ignored
-    }
-
-    /// Sees launcher events (move, execute, back, ...) before the shell's default. Return
-    /// `Stop` to replace the default. Runs while the shell is mid-update: don't update the shell
-    /// from here.
-    fn on_event(
-        &mut self,
-        _event: &LauncherEvent,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> Propagation {
-        Propagation::Continue
     }
 
     /// The view's model (selection, size, items). `None` for views without items.

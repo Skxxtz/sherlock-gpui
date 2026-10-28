@@ -1,3 +1,4 @@
+pub mod actions;
 pub mod backdrop;
 pub mod components;
 pub mod launcher;
@@ -12,12 +13,7 @@ use gpui::KeyBinding;
 use serde::{Deserialize, Serialize};
 pub use utils::search::query_memory;
 
-use crate::ui::{
-    components::search_bar::actions::Complete,
-    launcher::{
-        Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft, SelectionUp,
-    },
-};
+use crate::ui::{actions::launcher::*, actions::search_bar::Complete};
 
 #[derive(Deserialize, Serialize, Hash, Debug, Clone, Copy, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -60,10 +56,10 @@ impl UIFunction {
 
         match self {
             Self::Exit => Some(KeyBinding::new(key_part, Quit, scope)),
-            Self::ItemDown => Some(KeyBinding::new(key_part, SelectionDown, scope)),
-            Self::ItemUp => Some(KeyBinding::new(key_part, SelectionUp, scope)),
-            Self::ItemLeft => Some(KeyBinding::new(key_part, SelectionLeft, scope)),
-            Self::ItemRight => Some(KeyBinding::new(key_part, SelectionLeft, scope)),
+            Self::ItemDown => Some(KeyBinding::new(key_part, ItemDown, scope)),
+            Self::ItemUp => Some(KeyBinding::new(key_part, ItemUp, scope)),
+            Self::ItemLeft => Some(KeyBinding::new(key_part, ItemLeft, scope)),
+            Self::ItemRight => Some(KeyBinding::new(key_part, ItemLeft, scope)),
             Self::Exec => Some(KeyBinding::new(key_part, Execute, scope)),
             Self::ArgNext => Some(KeyBinding::new(key_part, NextVar, scope)),
             Self::ArgPrev => Some(KeyBinding::new(key_part, PrevVar, scope)),

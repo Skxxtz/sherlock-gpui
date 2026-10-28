@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use gpui::{
     AnyElement, App, AppContext, ClickEvent, Context, Entity, FontWeight, Hsla, InteractiveElement,
     IntoElement, ParentElement, ScrollHandle, SharedString, StatefulInteractiveElement, Styled,
-    Subscription, Window, div, prelude::FluentBuilder, px, rgb,
+    Subscription, Window, div, prelude::FluentBuilder, px,
 };
 
 use crate::{
@@ -14,15 +14,17 @@ use crate::{
             keybind::chord_label,
             keymap_input::KeymapEvent,
             keymap_item::KeymapItem,
-            select::select,
+            select::{Select, SelectEvent},
             stepper::stepper,
             toggle::toggle,
         },
-        launcher::navigator::views::MoveDirection,
         model::data::NoData,
-        views::{Chrome, LauncherEvent, Propagation, Query, QueryResult, ShellCtx, SherlockView},
+        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView},
     },
 };
+
+mod actions;
+mod data;
 
 /// The value of one setting; decides which control is shown.
 #[derive(Clone, Debug, PartialEq)]
@@ -71,7 +73,7 @@ pub struct SettingsSection {
 #[derive(Clone, Copy, Debug)]
 enum Edit {
     Toggle,
-    NextChoice,
+    SetChoice(usize),
     Step(i64),
     SetColor(Hsla),
 }
@@ -80,8 +82,8 @@ impl SettingValue {
     fn apply(&mut self, edit: Edit) {
         match (self, edit) {
             (Self::Toggle(on), Edit::Toggle) => *on = !*on,
-            (Self::Choice { options, selected }, Edit::NextChoice) => {
-                *selected = (*selected + 1) % options.len().max(1);
+            (Self::Choice { options, selected }, Edit::SetChoice(i)) => {
+                *selected = i.min(options.len().saturating_sub(1));
             }
             (
                 Self::Number {
@@ -94,19 +96,18 @@ impl SettingValue {
         }
     }
 
-    /// What Enter does: flip, next option, or step up (wrapping to `min` at `max`).
-    /// `None` for values that need their own editor (color, keybind).
+    /// What Enter does: flip, or step up (wrapping to `min` at `max`).
+    /// `None` for values that open their own editor (color, keybind, choice).
     fn activate(&self) -> Option<Edit> {
         match *self {
             Self::Toggle(_) => Some(Edit::Toggle),
-            Self::Choice { .. } => Some(Edit::NextChoice),
             Self::Number {
                 value,
                 min,
                 max,
                 step,
             } => Some(Edit::Step(if value >= max { min - value } else { step })),
-            Self::Color(_) | Self::Keybind(_) => None,
+            Self::Color(_) | Self::Keybind(_) | Self::Choice { .. } => None,
         }
     }
 }
@@ -128,123 +129,6 @@ fn setting(
 /// An action bound to `chords` (`["ctrl-n", "down"]`).
 fn keys(chords: &[&'static str]) -> SettingValue {
     SettingValue::Keybind(chords.iter().map(|&c| SharedString::from(c)).collect())
-}
-
-/// Placeholder data until settings are read from the config.
-pub fn dummy_sections() -> Vec<SettingsSection> {
-    use SettingValue::*;
-    vec![
-        SettingsSection {
-            title: "General",
-            description: "How Sherlock starts, and what it does once you've found something.",
-            settings: vec![
-                setting(
-                    "startup",
-                    "Launch on startup",
-                    "Start the Sherlock daemon when you log in.",
-                    Toggle(true),
-                ),
-                setting(
-                    "startup",
-                    "Close after run",
-                    "Hide the launcher after an item was executed.",
-                    Toggle(true),
-                ),
-                setting(
-                    "behaviour",
-                    "Clicks to run",
-                    "How many clicks run an item; fewer just select it.",
-                    Number {
-                        value: 2,
-                        min: 1,
-                        max: 3,
-                        step: 1,
-                    },
-                ),
-            ],
-        },
-        SettingsSection {
-            title: "Appearance",
-            description: "Colors and density. Applied the next time the launcher opens.",
-            settings: vec![
-                setting(
-                    "theme",
-                    "Theme",
-                    "Color scheme of the launcher.",
-                    Choice {
-                        options: &["System", "Dark", "Light"],
-                        selected: 0,
-                    },
-                ),
-                setting(
-                    "theme",
-                    "Accent color",
-                    "Used for selections and highlights.",
-                    Color(rgb(0xf5a524).into()),
-                ),
-                setting(
-                    "theme",
-                    "Background",
-                    "Window background.",
-                    Color(rgb(0x0e0e12).into()),
-                ),
-                setting(
-                    "results",
-                    "Shortcut count",
-                    "How many results get a numbered shortcut.",
-                    Number {
-                        value: 5,
-                        min: 0,
-                        max: 9,
-                        step: 1,
-                    },
-                ),
-            ],
-        },
-        SettingsSection {
-            title: "Keyboard",
-            description: "Every action has a key. Click one to record a new combination.",
-            settings: vec![
-                setting(
-                    "navigation",
-                    "Next item",
-                    "Move the selection down.",
-                    keys(&["ctrl-n", "down"]),
-                ),
-                setting(
-                    "navigation",
-                    "Previous item",
-                    "Move the selection up.",
-                    keys(&["ctrl-p", "up"]),
-                ),
-                setting(
-                    "navigation",
-                    "Context menu",
-                    "Open actions for the selected item.",
-                    keys(&["ctrl-l"]),
-                ),
-                setting("window", "Quit", "Close the launcher.", keys(&["escape"])),
-            ],
-        },
-        SettingsSection {
-            title: "Search",
-            description: "How results are matched and ranked. Picks stay on this device.",
-            settings: vec![
-                setting(
-                    "ranking",
-                    "Learn from picks",
-                    "Rank items you pick often higher for the same query.",
-                    Toggle(true),
-                ),
-                setting(
-                    "ranking",
-                    "Fuzzy matching",
-                    "Also match slightly misspelled queries.",
-                    Toggle(false),
-                ),
-            ],
-        },
-    ]
 }
 
 const NAV_WIDTH: f32 = 208.;
@@ -272,6 +156,8 @@ pub struct SettingsView {
     scroll: ScrollHandle,
     /// One color input per color setting, created on first render.
     colors: HashMap<(usize, usize), Entity<ColorItem>>,
+    /// One select per choice setting, created on first render.
+    selects: HashMap<(usize, usize), Entity<Select>>,
     /// One key-binding input per keybind setting, created on first render.
     keymaps: HashMap<(usize, usize), Entity<KeymapItem>>,
     _subs: Vec<Subscription>,
@@ -279,7 +165,7 @@ pub struct SettingsView {
 
 impl SettingsView {
     pub fn new() -> Self {
-        let sections = dummy_sections();
+        let sections = data::dummy_sections();
         Self {
             defaults: sections.clone(),
             sections,
@@ -288,6 +174,7 @@ impl SettingsView {
             query: SharedString::default(),
             scroll: ScrollHandle::new(),
             colors: HashMap::new(),
+            selects: HashMap::new(),
             keymaps: HashMap::new(),
             _subs: Vec::new(),
         }
@@ -385,6 +272,31 @@ impl SettingsView {
                     },
                 ));
                 self.colors.insert((si, ri), item);
+            }
+        }
+    }
+
+    /// Creates the selects of all choice settings (once); a pick applies right away.
+    fn ensure_selects(&mut self, cx: &mut Context<Self>) {
+        if !self.selects.is_empty() {
+            return;
+        }
+        for (si, section) in self.sections.iter().enumerate() {
+            for (ri, setting) in section.settings.iter().enumerate() {
+                let SettingValue::Choice { options, selected } = setting.value else {
+                    continue;
+                };
+                let options = options.iter().map(|&o| SharedString::from(o)).collect();
+                let select = cx.new(|cx| Select::new(options, selected, cx));
+                self._subs.push(cx.subscribe(
+                    &select,
+                    move |this, _, SelectEvent::Changed(i): &SelectEvent, cx| {
+                        apply_edit(&mut this.sections, si, ri, Edit::SetChoice(*i));
+                        this.select_setting((si, ri));
+                        cx.notify();
+                    },
+                ));
+                self.selects.insert((si, ri), select);
             }
         }
     }
@@ -585,13 +497,10 @@ impl SettingsView {
                 Some(input) => input.clone().into_any_element(),
                 None => div().into_any_element(),
             },
-            SettingValue::Choice { options, selected } => select(
-                id,
-                options.get(*selected).copied().unwrap_or_default(),
-                theme,
-                Self::on_edit(cx, at, pos, Edit::NextChoice),
-            )
-            .into_any_element(),
+            SettingValue::Choice { .. } => match self.selects.get(&at) {
+                Some(select) => select.clone().into_any_element(),
+                None => div().into_any_element(),
+            },
             SettingValue::Number {
                 value,
                 min,
@@ -847,40 +756,6 @@ impl SherlockView for SettingsView {
         QueryResult::Ignored
     }
 
-    /// ↑↓ rows, ←→ sections, Enter changes the selected value; back and quit keep the default.
-    fn on_event(
-        &mut self,
-        event: &LauncherEvent,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        match event {
-            LauncherEvent::Move(MoveDirection::Up) => self.select_row(self.row.saturating_sub(1)),
-            LauncherEvent::Move(MoveDirection::Down) => self.select_row(self.row + 1),
-            LauncherEvent::Move(MoveDirection::Left) if !self.searching() => {
-                self.select_section(self.active.saturating_sub(1))
-            }
-            LauncherEvent::Move(MoveDirection::Right) if !self.searching() => {
-                self.select_section(self.active + 1)
-            }
-            LauncherEvent::Move(_) => {}
-            // values with their own editor open it; it takes the keyboard while open
-            LauncherEvent::Execute { .. } => {
-                let at = self.visible().get(self.row).copied();
-                if let Some(item) = at.and_then(|at| self.keymaps.get(&at)) {
-                    item.update(cx, |item, cx| item.open(window, cx));
-                } else if let Some(item) = at.and_then(|at| self.colors.get(&at)) {
-                    item.update(cx, |item, cx| item.open(window, cx));
-                } else {
-                    self.activate();
-                }
-            }
-            _ => return Propagation::Continue,
-        }
-        cx.notify();
-        Propagation::Stop
-    }
-
     fn render_body(
         &mut self,
         shell: &ShellCtx,
@@ -889,6 +764,7 @@ impl SherlockView for SettingsView {
     ) -> AnyElement {
         self.ensure_keymaps(cx);
         self.ensure_colors(cx);
+        self.ensure_selects(cx);
         let theme = shell.theme.clone();
         let visible = self.visible();
         // while searching, the nav follows the selected result
@@ -918,6 +794,7 @@ impl SherlockView for SettingsView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui::rgb;
 
     #[test]
     fn toggle_flips() {
@@ -927,13 +804,13 @@ mod tests {
     }
 
     #[test]
-    fn choice_wraps() {
+    fn choice_is_clamped() {
         let mut v = SettingValue::Choice {
             options: &["a", "b"],
-            selected: 1,
+            selected: 0,
         };
-        v.apply(Edit::NextChoice);
-        assert!(matches!(v, SettingValue::Choice { selected: 0, .. }));
+        v.apply(Edit::SetChoice(5));
+        assert!(matches!(v, SettingValue::Choice { selected: 1, .. }));
     }
 
     #[test]
@@ -968,6 +845,11 @@ mod tests {
     fn activate_skips_values_with_own_editor() {
         assert!(SettingValue::Keybind(vec![]).activate().is_none());
         assert!(SettingValue::Color(rgb(0).into()).activate().is_none());
+        let choice = SettingValue::Choice {
+            options: &["a"],
+            selected: 0,
+        };
+        assert!(choice.activate().is_none());
     }
 
     #[test]
@@ -998,7 +880,7 @@ mod tests {
 
     #[test]
     fn edit_targets_one_row() {
-        let mut sections = dummy_sections();
+        let mut sections = data::dummy_sections();
         let before = sections[0].settings[1].value.clone();
         apply_edit(&mut sections, 0, 0, Edit::Toggle);
         assert!(matches!(

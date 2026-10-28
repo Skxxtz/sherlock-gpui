@@ -1,5 +1,7 @@
 use crate::app::data::LauncherData;
 use crate::ui::launcher::navigator::views::Layout;
+use crate::ui::traits::HandleActions;
+use crate::ui::views::Propagation;
 use crate::ui::views::{Query, QueryResult, query::launcher_query};
 use crate::ui::views::{ShellCtx, SherlockView, list::list_body};
 use gpui::App;
@@ -18,6 +20,10 @@ impl HomeView {
             model: Model::standard_with_entity(entity, cx),
         }
     }
+}
+
+impl HandleActions for HomeView {
+    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for HomeView {

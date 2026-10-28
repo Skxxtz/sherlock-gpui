@@ -7,14 +7,12 @@ use crate::{
     SHORTCUT_MOD,
     ui::{
         UIFunction,
-        components::search_bar::actions::{
-            Backspace, Copy, Cut, Delete, DeleteAll, End, Home, Paste, SelectAll, ShortcutAction,
+        actions::{
+            Backspace, Copy, Cut, DeleteAll, DeleteForward, End, Execute, ExecuteInplace, Home,
+            ItemDown, ItemLeft, ItemRight, ItemUp, NextVar, OpenContext, Paste, PrevVar, Quit,
+            SelectAll, ShortcutAction,
         },
-        launcher::{
-            Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft,
-            SelectionRight, SelectionUp, actions::ExecuteInplace,
-            context_menu::action_keys::ContextActionBinds,
-        },
+        launcher::context_menu::action_keys::ContextActionBinds,
     },
     utils::config::ConfigGuard,
 };
@@ -31,7 +29,7 @@ pub(super) fn register_bindings(cx: &mut App) {
 
     // default binds
     add("backspace", KeyBinding::new("backspace", Backspace, None));
-    add("delete", KeyBinding::new("delete", Delete, None));
+    add("delete", KeyBinding::new("delete", DeleteForward, None));
     add(
         "ctrl-backspace",
         KeyBinding::new("ctrl-backspace", DeleteAll, None),
@@ -46,10 +44,10 @@ pub(super) fn register_bindings(cx: &mut App) {
     add("end", KeyBinding::new("end", End, None));
     // add("left", KeyBinding::new("left", Left, None));
     // add("right", KeyBinding::new("right", Right, None));
-    add("down", KeyBinding::new("down", SelectionDown, None));
-    add("up", KeyBinding::new("up", SelectionUp, None));
-    add("left", KeyBinding::new("left", SelectionLeft, None));
-    add("right", KeyBinding::new("right", SelectionRight, None));
+    add("down", KeyBinding::new("down", ItemDown, None));
+    add("up", KeyBinding::new("up", ItemUp, None));
+    add("left", KeyBinding::new("left", ItemLeft, None));
+    add("right", KeyBinding::new("right", ItemRight, None));
     add(
         "variable.tab",
         UIFunction::Complete.get_binding("variable.tab").unwrap(),

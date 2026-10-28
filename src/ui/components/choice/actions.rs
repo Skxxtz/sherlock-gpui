@@ -1,31 +1,22 @@
 use gpui::{Context, Window};
 
 use crate::ui::{
-    components::{
-        choice::Choice,
-        search_bar::{EmptyBackspace, actions::Backspace},
+    actions::{
+        launcher::{ItemDown, ItemUp},
+        search_bar::Backspace,
     },
-    launcher::{SelectionDown, SelectionUp},
+    components::choice::Choice,
+    components::search_bar::EmptyBackspace,
 };
 
 impl Choice {
-    pub fn on_selection_up(
-        &mut self,
-        _ev: &SelectionUp,
-        _win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn on_selection_up(&mut self, _ev: &ItemUp, _win: &mut Window, cx: &mut Context<Self>) {
         self.saturating_prev();
         cx.notify();
         cx.stop_propagation();
     }
 
-    pub fn on_selection_down(
-        &mut self,
-        _ev: &SelectionDown,
-        _win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn on_selection_down(&mut self, _ev: &ItemDown, _win: &mut Window, cx: &mut Context<Self>) {
         self.saturating_next();
         cx.notify();
         cx.stop_propagation();

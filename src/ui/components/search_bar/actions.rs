@@ -1,72 +1,16 @@
 use std::ops::Range;
 
 use gpui::{
-    Action, ClipboardItem, Context, EntityInputHandler, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Pixels, Point, SharedString, Window, actions,
+    ClipboardItem, Context, EntityInputHandler, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    Pixels, Point, SharedString, Window,
 };
-use serde::Deserialize;
 use unicode_segmentation::UnicodeSegmentation;
 
-use super::TextInput;
-use crate::ui::components::search_bar::EmptyBackspace;
+use super::{EmptyBackspace, TextInput};
+use crate::ui::actions::search_bar::*;
 
-actions!(
-    text_input,
-    [
-        Backspace,
-        Complete,
-        Delete,
-        DeleteAll,
-        Left,
-        Right,
-        SelectLeft,
-        SelectRight,
-        SelectAll,
-        Home,
-        End,
-        ShowCharacterPalette,
-        Paste,
-        Cut,
-        Copy,
-    ]
-);
-
-#[derive(
-    std::clone::Clone, std::cmp::PartialEq, std::default::Default, std::fmt::Debug, Deserialize,
-)]
-pub struct ShortcutAction {
-    pub index: usize,
-}
-impl Action for ShortcutAction {
-    fn boxed_clone(&self) -> Box<dyn Action> {
-        Box::new(self.clone())
-    }
-
-    fn name_for_type() -> &'static str {
-        "ShortcutAction"
-    }
-
-    fn name(&self) -> &'static str {
-        "ShortcutAction"
-    }
-
-    fn partial_eq(&self, action: &dyn Action) -> bool {
-        // We use downcast_ref to check if the other action is the same type
-        action
-            .as_any()
-            .downcast_ref::<Self>()
-            .is_some_and(|other| other.index == self.index)
-    }
-
-    fn build(value: serde_json::Value) -> gpui::Result<Box<dyn Action>> {
-        // This allows GPUI to create this action from a JSON/TOML value
-        // e.g. { "index": 1 }
-        let action: Self = serde_json::from_value(value)?;
-        Ok(Box::new(action))
-    }
-}
 impl TextInput {
-    pub(super) fn left(&mut self, _: &Left, _: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn left(&mut self, _: &CursorLeft, _: &mut Window, cx: &mut Context<Self>) {
         if self.selected_range.is_empty() {
             self.move_to(self.previous_boundary(self.cursor_offset()), cx);
         } else {
@@ -74,7 +18,7 @@ impl TextInput {
         }
     }
 
-    pub(super) fn right(&mut self, _: &Right, _: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn right(&mut self, _: &CursorRight, _: &mut Window, cx: &mut Context<Self>) {
         if self.selected_range.is_empty() {
             self.move_to(self.next_boundary(self.selected_range.end), cx);
         } else {
@@ -137,7 +81,12 @@ impl TextInput {
         }
     }
 
-    pub(super) fn delete(&mut self, _: &Delete, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn delete(
+        &mut self,
+        _: &DeleteForward,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.selected_range.is_empty() {
             self.select_to(self.next_boundary(self.cursor_offset()), cx)
         }

@@ -1,8 +1,6 @@
 use std::{borrow::Cow, sync::Arc, time::Duration};
 
-use gpui::{
-    App, AppContext, Context, Focusable, KeyDownEvent, KeyUpEvent, SharedString, Window, actions,
-};
+use gpui::{App, AppContext, Context, Focusable, KeyDownEvent, KeyUpEvent, SharedString, Window};
 use simd_json::prelude::{ArrayTrait, Indexed};
 use smallvec::SmallVec;
 
@@ -12,12 +10,13 @@ use crate::{
     launcher::{LauncherValues, utils::exec_mode::ExecMode, variant_type::QuickActionCapabilities},
     sherlock_msg,
     ui::{
+        actions::{
+            launcher::*,
+            search_bar::{Backspace as SearchBackspace, ShortcutAction},
+        },
         components::{
             choice::Choice,
-            search_bar::{
-                EmptyBackspace, TextInput,
-                actions::{Backspace as SearchBackspace, ShortcutAction},
-            },
+            search_bar::{EmptyBackspace, TextInput},
         },
         launcher::{
             LauncherMode, LauncherView, VariableInput,
@@ -26,30 +25,13 @@ use crate::{
             navigator::views::MoveDirection,
         },
         runtime_arguments::RuntimeArgument,
-        traits::RenderableChildDelegate,
-        views::{LauncherEvent, Propagation},
+        traits::{InputAction, RenderableChildDelegate},
+        views::Propagation,
     },
     utils::errors::types::SherlockErrorType,
 };
 
-actions!(
-    example_input,
-    [
-        Quit,
-        SelectionDown,
-        SelectionUp,
-        SelectionLeft,
-        SelectionRight,
-        NextVar,
-        PrevVar,
-        Execute,
-        ExecuteInplace,
-        OpenContext,
-        /// Go back: dispatched by an empty search bar's backspace.
-        Back,
-    ]
-);
-
+// Selection and focus
 impl LauncherView {
     pub fn focus_first(&mut self, cx: &mut Context<Self>) {
         // Find the first focusable item
@@ -83,21 +65,14 @@ impl LauncherView {
         cx.notify()
     }
 
+    /// Default for the arrow keys: the selected item moves inside itself first, otherwise the
+    /// selection moves.
     fn move_selection(
         &mut self,
         direction: MoveDirection,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.context_menu.is_open() {
-            self.context_menu.handle_move(direction);
-            cx.notify();
-            return;
-        }
-        if self.view_handled(LauncherEvent::Move(direction), win, cx) {
-            return;
-        }
-
         let handled = self
             .navigation
             .with_selected_item(cx, |item, cx| item.move_inner(&direction, cx))
@@ -118,43 +93,20 @@ impl LauncherView {
         }
     }
 
-    pub(super) fn selection_down(
-        &mut self,
-        _: &SelectionDown,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.move_selection(MoveDirection::Down, win, cx);
+    #[inline(always)]
+    pub(super) fn focus_search_bar(&mut self, win: &mut Window, cx: &mut Context<Self>) {
+        if self.active_bar == 0 {
+            return;
+        }
+
+        self.active_bar = 0;
+        self.text_input.update(cx, |this, cx| {
+            this.focus_handle(cx).focus(win, cx);
+        });
     }
 
-    pub(super) fn selection_up(
-        &mut self,
-        _: &SelectionUp,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.move_selection(MoveDirection::Up, win, cx);
-    }
-
-    pub(super) fn selection_left(
-        &mut self,
-        _: &SelectionLeft,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.move_selection(MoveDirection::Left, win, cx);
-    }
-
-    pub(super) fn selection_right(
-        &mut self,
-        _: &SelectionRight,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.move_selection(MoveDirection::Right, win, cx);
-    }
-
-    pub(super) fn next_var(&mut self, _: &NextVar, win: &mut Window, cx: &mut Context<Self>) {
+    /// Tab: focus the next variable input.
+    fn focus_next_var(&mut self, win: &mut Window, cx: &mut Context<Self>) {
         let total_inputs = 1 + self.variable_input.len();
 
         if self.active_bar < total_inputs - 1 {
@@ -201,7 +153,8 @@ impl LauncherView {
         }
     }
 
-    pub(super) fn prev_var(&mut self, _: &PrevVar, win: &mut Window, cx: &mut Context<Self>) {
+    /// Shift-Tab: focus the previous variable input (or the search bar).
+    fn focus_prev_var(&mut self, win: &mut Window, cx: &mut Context<Self>) {
         if self.active_bar > 0 {
             self.active_bar -= 1;
 
@@ -215,78 +168,140 @@ impl LauncherView {
             cx.notify();
         }
     }
+}
 
-    fn execute_current(&mut self, exit_override: bool, win: &mut Window, cx: &mut Context<Self>) {
-        if self.context_menu.is_open() {
-            let Some(action) = self.context_menu.get_current() else {
-                return;
-            };
-            self.execute_context_action(action.clone(), exit_override, win, cx);
-        } else if !self.view_handled(
-            LauncherEvent::Execute {
-                exit: exit_override,
-            },
-            win,
-            cx,
-        ) && let Some(req) = self.request(ExecSource::Selected, exit_override, cx)
-        {
-            self.run(req, win, cx);
+// Action listeners. Order for every action: context menu (where it applies), then the current
+// view, then the launcher's default.
+impl LauncherView {
+    /// Offers `action` to the current view and runs `default` unless the view took it.
+    fn dispatch<A: InputAction>(
+        &mut self,
+        action: &A,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+        default: impl FnOnce(&mut Self, &mut Window, &mut Context<Self>),
+    ) {
+        if !self.view_handled(action, win, cx) {
+            default(self, win, cx);
         }
     }
 
-    fn execute_context_action(
+    /// Offers `action` to the current view. `true`: the view handled it, skip the default.
+    fn view_handled<A: InputAction>(
         &mut self,
-        action: Arc<ContextMenuAction>,
-        exit: bool,
+        action: &A,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let handled = self.navigation.current().handle.route(action, win, cx) == Propagation::Stop;
+        if handled {
+            cx.notify();
+        }
+        handled
+    }
+
+    /// Arrow keys: an open context menu takes them, otherwise the view, otherwise the list.
+    fn arrow<A: InputAction>(
+        &mut self,
+        action: &A,
+        direction: MoveDirection,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(mut req) = self.request_with(ExecSource::ContextAction, exit, cx, |item, cx| {
-            Some(item.action_exec(action, cx))
-        }) else {
-            // no selected item anymore: the menu may be stale
-            self.refresh_context_actions(cx);
+        if self.context_menu.is_open() {
+            self.context_menu.handle_move(direction);
             cx.notify();
             return;
-        };
-        req.keyword = SharedString::default(); // `req.query` stays for learning
-
-        self.run(req, win, cx);
-    }
-
-    pub(super) fn check_actions(&mut self, cx: &mut App) -> bool {
-        let selected = self.navigation.selected_key(cx);
-        self.context_menu.refresh_for(selected, || {
-            self.navigation
-                .with_selected_shell_item(cx, |itm, cx| (itm.quick_actions(), itm.has_actions(cx)))
-                .unwrap_or((QuickActionCapabilities::empty(), false))
-        })
-    }
-
-    pub(super) fn refresh_context_actions(&mut self, cx: &mut Context<Self>) {
-        if self.check_actions(cx) {
-            self.context_menu
-                .set_actions(self.navigation.current_actions(cx).unwrap_or_default(), cx);
-            self.context_menu.idx = self
-                .context_menu
-                .idx
-                .map(|idx| idx.min(self.context_menu.num_actions().saturating_sub(1)));
-        } else {
-            self.context_menu.clear_actions();
-            self.close_context(cx);
         }
+        self.dispatch(action, win, cx, |this, win, cx| {
+            this.move_selection(direction, win, cx)
+        });
+    }
+
+    pub(super) fn selection_down(
+        &mut self,
+        action: &ItemDown,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.arrow(action, MoveDirection::Down, win, cx);
+    }
+
+    pub(super) fn selection_up(
+        &mut self,
+        action: &ItemUp,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.arrow(action, MoveDirection::Up, win, cx);
+    }
+
+    pub(super) fn selection_left(
+        &mut self,
+        action: &ItemLeft,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.arrow(action, MoveDirection::Left, win, cx);
+    }
+
+    pub(super) fn selection_right(
+        &mut self,
+        action: &ItemRight,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.arrow(action, MoveDirection::Right, win, cx);
+    }
+
+    pub(super) fn next_var(&mut self, action: &NextVar, win: &mut Window, cx: &mut Context<Self>) {
+        self.dispatch(action, win, cx, Self::focus_next_var);
+    }
+
+    pub(super) fn prev_var(&mut self, action: &PrevVar, win: &mut Window, cx: &mut Context<Self>) {
+        self.dispatch(action, win, cx, Self::focus_prev_var);
+    }
+
+    /// Enter: an open context menu runs its action, otherwise the view, otherwise the selection.
+    fn execute_current<A: InputAction>(
+        &mut self,
+        action: &A,
+        exit_override: bool,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.context_menu.is_open() {
+            let Some(menu_action) = self.context_menu.get_current() else {
+                return;
+            };
+            self.execute_context_action(menu_action.clone(), exit_override, win, cx);
+            return;
+        }
+        self.dispatch(action, win, cx, |this, win, cx| {
+            if let Some(req) = this.request(ExecSource::Selected, exit_override, cx) {
+                this.run(req, win, cx);
+            }
+        });
     }
 
     #[inline(always)]
-    pub(super) fn focus_search_bar(&mut self, win: &mut Window, cx: &mut Context<Self>) {
-        if self.active_bar == 0 {
-            return;
-        }
+    pub(super) fn execute_listener(
+        &mut self,
+        action: &Execute,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.execute_current(action, true, win, cx);
+    }
 
-        self.active_bar = 0;
-        self.text_input.update(cx, |this, cx| {
-            this.focus_handle(cx).focus(win, cx);
-        });
+    #[inline(always)]
+    pub(super) fn execute_inplace_listener(
+        &mut self,
+        action: &ExecuteInplace,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.execute_current(action, false, win, cx);
     }
 
     #[inline(always)]
@@ -296,9 +311,49 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some(req) = self.request(execute::ExecSource::Shortcut(action.index), true, cx) {
-            self.run(req, win, cx);
+        let index = action.index;
+        self.dispatch(action, win, cx, |this, win, cx| {
+            if let Some(req) = this.request(execute::ExecSource::Shortcut(index), true, cx) {
+                this.run(req, win, cx);
+            }
+        });
+    }
+
+    /// ctrl-l: an open menu always closes; the view only gets to override opening it.
+    pub(super) fn open_context(
+        &mut self,
+        action: &OpenContext,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.context_menu.is_open() {
+            self.close_context(cx);
+            return;
         }
+        self.dispatch(action, win, cx, Self::open_context_menu);
+    }
+
+    pub(super) fn quit(&mut self, action: &Quit, win: &mut Window, cx: &mut Context<Self>) {
+        if self.context_menu.is_open() {
+            self.close_context(cx);
+            return;
+        }
+        self.dispatch(action, win, cx, Self::close_window);
+    }
+
+    /// `Back`, from an empty search bar.
+    pub(super) fn back(&mut self, action: &Back, win: &mut Window, cx: &mut Context<Self>) {
+        self.dispatch(action, win, cx, Self::go_back);
+    }
+
+    /// Backspace that no input handled: a page without a search bar is focused.
+    pub(super) fn backspace(
+        &mut self,
+        action: &SearchBackspace,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.dispatch(action, win, cx, Self::go_back);
     }
 
     pub(super) fn context_menu_binds_listener(
@@ -357,63 +412,55 @@ impl LauncherView {
             self.run(req, win, cx);
         }
     }
+}
 
-    pub(super) fn get_variables(
-        &self,
-        cx: &mut App,
-    ) -> SmallVec<[(SharedString, SharedString); 4]> {
-        self.variable_input
-            .iter()
-            .filter_map(|input| match input {
-                VariableInput::Choice(ent) => {
-                    let c = ent.read(cx);
-                    let value = c.selected.and_then(|i| c.options.get(i))?.value.clone();
-                    Some((c.placeholder.text.clone(), value))
-                }
-                VariableInput::Text(ent) => {
-                    let t = ent.read(cx);
-                    let value = match &t.variable {
-                        Some(var) => var.finalize(&t.content),
-                        None => Cow::Borrowed(t.content.as_ref()),
-                    };
-                    Some((
-                        t.placeholder.clone(),
-                        SharedString::from(value.into_owned()),
-                    ))
-                }
-            })
-            .collect()
-    }
-
-    #[inline(always)]
-    pub(super) fn execute_inplace_listener(
+// Context menu
+impl LauncherView {
+    fn execute_context_action(
         &mut self,
-        _: &ExecuteInplace,
+        action: Arc<ContextMenuAction>,
+        exit: bool,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.execute_current(false, win, cx);
-    }
-
-    #[inline(always)]
-    pub(super) fn execute_listener(
-        &mut self,
-        _: &Execute,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.execute_current(true, win, cx);
-    }
-
-    pub(super) fn open_context(
-        &mut self,
-        _: &OpenContext,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        if !self.context_menu.is_open() && self.view_handled(LauncherEvent::OpenContext, win, cx) {
+        let Some(mut req) = self.request_with(ExecSource::ContextAction, exit, cx, |item, cx| {
+            Some(item.action_exec(action, cx))
+        }) else {
+            // no selected item anymore: the menu may be stale
+            self.refresh_context_actions(cx);
+            cx.notify();
             return;
+        };
+        req.keyword = SharedString::default(); // `req.query` stays for learning
+
+        self.run(req, win, cx);
+    }
+
+    pub(super) fn check_actions(&mut self, cx: &mut App) -> bool {
+        let selected = self.navigation.selected_key(cx);
+        self.context_menu.refresh_for(selected, || {
+            self.navigation
+                .with_selected_shell_item(cx, |itm, cx| (itm.quick_actions(), itm.has_actions(cx)))
+                .unwrap_or((QuickActionCapabilities::empty(), false))
+        })
+    }
+
+    pub(super) fn refresh_context_actions(&mut self, cx: &mut Context<Self>) {
+        if self.check_actions(cx) {
+            self.context_menu
+                .set_actions(self.navigation.current_actions(cx).unwrap_or_default(), cx);
+            self.context_menu.idx = self
+                .context_menu
+                .idx
+                .map(|idx| idx.min(self.context_menu.num_actions().saturating_sub(1)));
+        } else {
+            self.context_menu.clear_actions();
+            self.close_context(cx);
         }
+    }
+
+    /// Default for ctrl-l with no menu open: opens the selected item's context menu.
+    fn open_context_menu(&mut self, _win: &mut Window, cx: &mut Context<Self>) {
         if !self.context_menu.can_open() {
             return;
         }
@@ -442,11 +489,7 @@ impl LauncherView {
             return;
         }
 
-        // toggle logic
-        if !self.context_menu.close() {
-            self.context_menu.open(0);
-        }
-
+        self.context_menu.open(0);
         cx.notify();
     }
 
@@ -455,33 +498,13 @@ impl LauncherView {
             cx.notify();
         }
     }
+}
 
-    pub(super) fn quit(&mut self, _: &Quit, win: &mut Window, cx: &mut Context<Self>) {
+// Navigation, window and variables
+impl LauncherView {
+    /// Previous view, or back to home mode.
+    fn go_back(&mut self, _win: &mut Window, cx: &mut Context<Self>) {
         if self.context_menu.is_open() {
-            self.close_context(cx);
-        } else if !self.view_handled(LauncherEvent::Quit, win, cx) {
-            self.close_window(win, cx);
-        }
-    }
-
-    /// `Back`, from an empty search bar.
-    pub(super) fn back(&mut self, _: &Back, win: &mut Window, cx: &mut Context<Self>) {
-        self.go_back(win, cx);
-    }
-
-    /// Backspace that no input handled: a page without a search bar is focused.
-    pub(super) fn backspace(
-        &mut self,
-        _: &SearchBackspace,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.go_back(win, cx);
-    }
-
-    /// Previous view, or back to home mode. The current view can override it.
-    fn go_back(&mut self, win: &mut Window, cx: &mut Context<Self>) {
-        if self.context_menu.is_open() || self.view_handled(LauncherEvent::Back, win, cx) {
             return;
         }
         if !self.navigation.is_home() {
@@ -495,21 +518,6 @@ impl LauncherView {
             self.navigation.clear_last_query(cx);
             self.filter_and_sort(cx);
         }
-    }
-
-    /// Offers `event` to the current view. `true`: the view handled it, skip the default.
-    fn view_handled(
-        &mut self,
-        event: LauncherEvent,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> bool {
-        let handled =
-            self.navigation.current().handle.on_event(&event, win, cx) == Propagation::Stop;
-        if handled {
-            cx.notify();
-        }
-        handled
     }
 
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
@@ -528,6 +536,33 @@ impl LauncherView {
         // Propagate state change
         reset_generation();
         cx.notify();
+    }
+
+    pub(super) fn get_variables(
+        &self,
+        cx: &mut App,
+    ) -> SmallVec<[(SharedString, SharedString); 4]> {
+        self.variable_input
+            .iter()
+            .filter_map(|input| match input {
+                VariableInput::Choice(ent) => {
+                    let c = ent.read(cx);
+                    let value = c.selected.and_then(|i| c.options.get(i))?.value.clone();
+                    Some((c.placeholder.text.clone(), value))
+                }
+                VariableInput::Text(ent) => {
+                    let t = ent.read(cx);
+                    let value = match &t.variable {
+                        Some(var) => var.finalize(&t.content),
+                        None => Cow::Borrowed(t.content.as_ref()),
+                    };
+                    Some((
+                        t.placeholder.clone(),
+                        SharedString::from(value.into_owned()),
+                    ))
+                }
+            })
+            .collect()
     }
 
     pub(super) fn update_vars(&mut self, cx: &mut Context<Self>) {

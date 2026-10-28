@@ -19,8 +19,9 @@ use crate::{
             pipeline::{FilterPolicy, GroupRules},
         },
         query_memory::QueryMemoryGuard,
+        traits::HandleActions,
         views::{
-            Chrome, Query, QueryResult, ShellCtx, SherlockView,
+            Chrome, Propagation, Query, QueryResult, ShellCtx, SherlockView,
             list::{RowCtx, RowRender, grid_body, list_body},
             query::model_query,
         },
@@ -150,6 +151,10 @@ impl EmojiView {
             model: Model::new(cx.new(|_| data), all, FilterPolicy::All),
         }
     }
+}
+
+impl HandleActions for EmojiView {
+    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for EmojiView {

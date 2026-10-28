@@ -1,20 +1,22 @@
-use std::{any::Any, cell::Cell, rc::Rc};
+use std::{cell::Cell, rc::Rc};
 
 use gpui::{
-    Anchor, App, Bounds, Context, EventEmitter, FocusHandle, Focusable, Hsla, InteractiveElement,
-    IntoElement, Keystroke, MouseDownEvent, ParentElement, Pixels, Render, Stateful,
-    StatefulInteractiveElement, Styled, Subscription, Window, anchored, deferred, div, point,
-    prelude::FluentBuilder, px,
+    Anchor, App, AppContext, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, Hsla,
+    InteractiveElement, IntoElement, KeyDownEvent, Keystroke, MouseDownEvent, ParentElement,
+    Pixels, Render, Stateful, StatefulInteractiveElement, Styled, Subscription, Window, anchored,
+    deferred, div, point, prelude::FluentBuilder, px,
 };
 
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
     ui::{
-        components::{color_swatch::hex, keyboard_grab::grab_keyboard},
-        launcher::{
-            Execute, Quit, SelectionDown, SelectionLeft, SelectionRight, SelectionUp,
-            actions::ExecuteInplace,
+        actions::{Execute, ExecuteInplace, ItemDown, ItemLeft, ItemRight, ItemUp, Quit},
+        components::{
+            color_swatch::{hex, parse_hex},
+            tiny_input::{TextEvent, TinyInput},
         },
+        traits::{HandleActions, HandleInputExt},
+        views::Propagation,
     },
 };
 
@@ -35,8 +37,10 @@ pub struct ColorInput {
     focus: FocusHandle,
     /// The element picker bounds
     anchor: Rc<Cell<Option<Bounds<Pixels>>>>,
-    /// Holds the keyboard while open.
-    grab: Option<Subscription>,
+
+    hex: Entity<TinyInput>,
+    editing: Option<Hsv>,
+    hex_sub: Option<Subscription>,
 }
 
 impl EventEmitter<ColorEvent> for ColorInput {}
@@ -54,12 +58,22 @@ impl ColorInput {
         anchor: Rc<Cell<Option<Bounds<Pixels>>>>,
         cx: &mut Context<Self>,
     ) -> Self {
+        let hex = cx.new(|cx| {
+            TinyInput::new(cx)
+                .max_len(6)
+                .filter(|_, _, c| c.is_ascii_hexdigit())
+                .with_text(self::hex(color))
+                .prefix("#")
+        });
         Self {
             state: ColorPickerState::new(color),
             open: false,
             focus: cx.focus_handle(),
             anchor,
-            grab: None,
+
+            hex,
+            editing: None,
+            hex_sub: None,
         }
     }
 
@@ -73,6 +87,7 @@ impl ColorInput {
     #[inline(always)]
     pub fn set_color(&mut self, color: Hsla, cx: &mut Context<Self>) {
         self.state = ColorPickerState::new(color);
+        self.sync_hex(cx);
         cx.notify();
     }
 
@@ -80,6 +95,7 @@ impl ColorInput {
     pub fn set_hsv(&mut self, hsv: Hsv, cx: &mut Context<Self>) {
         if hsv != self.state.hsv {
             self.state.hsv = hsv;
+            self.sync_hex(cx);
             cx.emit(ColorEvent::Changed(self.state.color()));
             cx.notify();
         }
@@ -96,14 +112,14 @@ impl ColorInput {
         self.open = true;
         self.state = ColorPickerState::new(self.state.color());
         self.focus.focus(win, cx);
-        self.grab = Some(grab_keyboard(cx, Self::on_key));
+        self.hex_sub = Some(cx.subscribe_in(&self.hex, win, Self::on_hex));
         cx.notify();
     }
 
     /// Closes the picker, keeping the color.
     pub fn close(&mut self, win: &mut Window, cx: &mut Context<Self>) {
         self.open = false;
-        self.grab = None;
+        self.hex_sub = None;
         if self.focus.is_focused(win) {
             win.blur();
         }
@@ -126,38 +142,136 @@ impl ColorInput {
         self.state.revert();
     }
 
-    /// Keyboard while open. Swallows every key
-    fn on_key(
+    /// Whether `keystroke` starts editing the hex: plain typing of `#` (the field's prefix, so
+    /// it only starts the edit) or a char the field takes as its first one.
+    fn starts_hex(&self, keystroke: &Keystroke, cx: &App) -> bool {
+        if keystroke.modifiers.modified() {
+            return false;
+        }
+        let Some(typed) = keystroke.key_char.as_deref() else {
+            return false;
+        };
+        let hex = self.hex.read(cx);
+        typed.chars().all(|c| c == '#' || hex.filter_accepts(c))
+    }
+
+    fn nudge(
         &mut self,
-        _: &Keystroke,
-        action: Option<&dyn Any>,
+        cx: &mut Context<Self>,
+        f: impl FnOnce(&mut ColorPickerState),
+    ) -> Propagation {
+        let mut next = self.state.clone();
+        f(&mut next);
+        self.set_hsv(next.hsv, cx);
+        Propagation::Stop
+    }
+}
+
+impl HandleActions for ColorInput {
+    /// A popup: nothing it doesn't use reaches the launcher.
+    const UNHANDLED: Propagation = Propagation::Stop;
+
+    fn item_left(&mut self, _: &ItemLeft, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
+        self.nudge(cx, |s| s.nudge_hue(-HUE_STEP))
+    }
+    fn item_right(&mut self, _: &ItemRight, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
+        self.nudge(cx, |s| s.nudge_hue(HUE_STEP))
+    }
+    fn item_up(&mut self, _: &ItemUp, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
+        self.nudge(cx, |s| s.nudge_value(VALUE_STEP))
+    }
+    fn item_down(&mut self, _: &ItemDown, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
+        self.nudge(cx, |s| s.nudge_value(-VALUE_STEP))
+    }
+
+    fn execute(&mut self, _: &Execute, win: &mut Window, cx: &mut Context<Self>) -> Propagation {
+        self.close(win, cx);
+        Propagation::Stop
+    }
+    fn execute_inplace(
+        &mut self,
+        _: &ExecuteInplace,
         win: &mut Window,
         cx: &mut Context<Self>,
-    ) -> bool {
-        let Some(action) = action else {
-            return true;
-        };
-
-        let mut next = self.state.clone();
-        if action.is::<SelectionLeft>() {
-            next.nudge_hue(-HUE_STEP);
-        } else if action.is::<SelectionRight>() {
-            next.nudge_hue(HUE_STEP);
-        } else if action.is::<SelectionUp>() {
-            next.nudge_value(VALUE_STEP);
-        } else if action.is::<SelectionDown>() {
-            next.nudge_value(-VALUE_STEP);
-        } else if action.is::<Execute>() || action.is::<ExecuteInplace>() {
-            self.close(win, cx);
-            return true;
-        } else if action.is::<Quit>() {
-            self.revert();
-            self.close(win, cx);
-            return true;
+    ) -> Propagation {
+        self.close(win, cx);
+        Propagation::Stop
+    }
+    fn quit(&mut self, _: &Quit, win: &mut Window, cx: &mut Context<Self>) -> Propagation {
+        self.revert();
+        self.close(win, cx);
+        Propagation::Stop
+    }
+    /// Typing a hex digit (or `#`) starts an edit with that key. While editing, the field has
+    /// focus and gets keys first; only what it passes on arrives here.
+    fn key_down(
+        &mut self,
+        event: &KeyDownEvent,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Propagation {
+        if self.editing.is_none() && self.starts_hex(&event.keystroke, cx) {
+            self.start_editing(win, cx);
+            self.hex.update(cx, |i, cx| {
+                i.set_text("", cx);
+                i.key_down(event, win, cx)
+            });
         }
+        Propagation::Stop
+    }
+}
 
-        self.set_hsv(next.hsv, cx);
-        true
+// TinyInput stuff
+impl ColorInput {
+    /// Syncs the hex input field to the current color
+    fn sync_hex(&self, cx: &mut Context<Self>) {
+        if self.editing.is_none() {
+            let text = hex(self.state.color());
+            self.hex.update(cx, |i, cx| i.set_text(&text[1..], cx));
+        }
+    }
+
+    /// Starts editing the hex field.
+    fn start_editing(&mut self, win: &mut Window, cx: &mut Context<Self>) {
+        if self.editing.is_none() {
+            self.editing = Some(self.state.hsv);
+            self.hex.focus_handle(cx).focus(win, cx);
+            cx.notify();
+        }
+    }
+
+    fn stop_editing(&mut self, restore: bool, win: &mut Window, cx: &mut Context<Self>) {
+        let Some(before) = self.editing.take() else {
+            return;
+        };
+        if restore {
+            self.set_hsv(before, cx);
+        }
+        self.sync_hex(cx);
+
+        if self.is_open() {
+            self.focus.focus(win, cx);
+        }
+        cx.notify();
+    }
+
+    fn on_hex(
+        &mut self,
+        hex: &Entity<TinyInput>,
+        event: &TextEvent,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match event {
+            // a valid code applies live; the field keeps what was typed
+            TextEvent::Changed => {
+                if let Some(color) = parse_hex(hex.read(cx).text()) {
+                    self.set_hsv(Hsv::from_hsla(color), cx);
+                }
+            }
+            TextEvent::Submit => self.stop_editing(false, win, cx),
+            TextEvent::Cancel => self.stop_editing(true, win, cx),
+        }
     }
 }
 
@@ -223,10 +337,24 @@ impl ColorInput {
                     )
                     .child(
                         div()
+                            .id("hex")
+                            .flex_1()
+                            .h(px(28.))
+                            .px(px(8.))
+                            .flex()
+                            .items_center()
+                            .rounded(px(6.))
+                            .border_1()
+                            .border_color(if self.editing.is_some() {
+                                theme.accent()
+                            } else {
+                                theme.border
+                            })
+                            .cursor_text()
                             .font_family(theme.monospace.clone())
                             .text_size(px(13.))
-                            .text_color(theme.primary_text)
-                            .child(hex(color)),
+                            .child(self.hex.clone())
+                            .on_click(cx.listener(|this, _, win, cx| this.start_editing(win, cx))),
                     ),
             )
             .child(field(
@@ -252,10 +380,18 @@ impl ColorInput {
                     .border_color(theme.border)
                     .text_size(px(11.))
                     .text_color(theme.secondary_text)
-                    .child(key_hint("←→", "hue", theme))
-                    .child(key_hint("↑↓", "brightness", theme))
-                    .child(div().flex_1())
-                    .child(key_hint("↵", "done", theme)),
+                    .map(|this| {
+                        if self.editing.is_some() {
+                            this.child(key_hint("esc", "restore", theme))
+                                .child(div().flex_1())
+                                .child(key_hint("↵", "apply", theme))
+                        } else {
+                            this.child(key_hint("←→", "hue", theme))
+                                .child(key_hint("↑↓", "brightness", theme))
+                                .child(div().flex_1())
+                                .child(key_hint("↵", "done", theme))
+                        }
+                    }),
             )
     }
 }
@@ -273,6 +409,7 @@ impl Render for ColorInput {
             .bottom_0()
             .size_0()
             .track_focus(&self.focus)
+            .handle_input(cx)
             // the grab only sees key downs
             .on_key_up(|_, _, cx| cx.stop_propagation())
             .when_some(panel, |this, panel| {

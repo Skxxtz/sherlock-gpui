@@ -1,4 +1,7 @@
-use crate::app::data::LauncherData;
+use crate::{
+    app::data::LauncherData,
+    ui::{traits::HandleActions, views::Propagation},
+};
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, SharedString, Window};
@@ -31,6 +34,10 @@ impl FileView {
             search: FileSearchModel::new(launcher, dir),
         }
     }
+}
+
+impl HandleActions for FileView {
+    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for FileView {

@@ -9,6 +9,7 @@ use crate::{
     launcher::LauncherConfig,
     tokio_utils::SizedMessageObj,
     ui::{
+        actions::launcher::*,
         backdrop::Backdrop,
         components::{choice::Choice, search_bar::TextInput},
         launcher::{
@@ -28,11 +29,6 @@ pub mod navigator;
 pub mod render;
 pub mod sidebar;
 pub mod sidebar_controller;
-
-pub use actions::{
-    Back, Execute, NextVar, OpenContext, PrevVar, Quit, SelectionDown, SelectionLeft,
-    SelectionRight, SelectionUp,
-};
 
 #[derive(Clone, Debug)]
 pub enum VariableInput {
