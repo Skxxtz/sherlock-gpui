@@ -1,5 +1,24 @@
-use super::{SettingValue, SettingsSection, keys, setting};
-use gpui::rgb;
+use super::model::{Setting, SettingValue, SettingsSection};
+use gpui::{SharedString, rgb};
+
+fn setting(
+    group: &'static str,
+    label: &'static str,
+    description: &'static str,
+    value: SettingValue,
+) -> Setting {
+    Setting {
+        group,
+        label,
+        description,
+        value,
+    }
+}
+
+/// An action bound to `chords` (`["ctrl-n", "down"]`).
+fn keys(chords: &[&'static str]) -> SettingValue {
+    SettingValue::Keybind(chords.iter().map(|&c| SharedString::from(c)).collect())
+}
 
 /// Placeholder data until settings are read from the config.
 pub fn dummy_sections() -> Vec<SettingsSection> {
