@@ -1,48 +1,41 @@
 use std::collections::HashMap;
 
-use gpui::{
-    AnyElement,
-    AppContext,
-    Context,
-    Entity,
-    IntoElement,
-    ScrollHandle,
-    SharedString,
-    Subscription,
-    Window,
-};
+use gpui::{AnyElement, Context, IntoElement, ScrollHandle, SharedString, Subscription, Window};
 
-use crate::ui::{
-    components::{
-        color_picker::{ColorEvent, ColorItem},
-        keymap_input::KeymapEvent,
-        keymap_item::KeymapItem,
-        select::{Select, SelectEvent},
+use crate::{
+    ui::{
+        model::data::NoData,
+        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView},
     },
-    model::data::NoData,
-    views::{Chrome, Query, QueryResult, ShellCtx, SherlockView},
+    utils::config::{ConfigGuard, SherlockConfig},
 };
 
 mod actions;
+mod config_value;
 mod control;
-mod data;
+mod defs;
 mod keymaps;
 mod model;
 mod render;
+pub(crate) mod schema;
 #[cfg(test)]
 mod tests;
 
-use model::{Edit, SettingValue, SettingsSection};
+use control::Control;
+use defs::{SectionDef, SettingDef};
+use model::{Edit, Setting, SettingsSection};
 
-/// Settings in Sherlock's own look, below the shell's search bar: numbered sections on the left, a ruled list of settings with `// group` headings on the right, and a status
-/// footer with unsaved changes and key hints. The search filters settings across sections.
-///
-/// ↑↓ pick a row, ←→ switch sections, Enter changes the selected value, backspace on an empty
-/// search goes back.
 pub struct SettingsView {
+    /// What is shown and where each setting lives in the config.
+    defs: Vec<SectionDef>,
+    /// The config as edited: every change is written here first (saving writes it out).
+    config: SherlockConfig,
+    /// The values shown, read from `config`.
     sections: Vec<SettingsSection>,
     /// Values as loaded; a setting that differs is "modified".
     defaults: Vec<SettingsSection>,
+    /// Editors of the settings that have one, by setting id.
+    controls: HashMap<&'static str, Control>,
     /// Index of the shown section (while not searching).
     active: usize,
     /// Selected position in `visible()`.
@@ -51,19 +44,12 @@ pub struct SettingsView {
     query: SharedString,
     /// Keeps the selected row in view.
     scroll: ScrollHandle,
-    /// One color input per color setting, created on first render.
-    colors: HashMap<(usize, usize), Entity<ColorItem>>,
-    /// One select per choice setting, created on first render.
-    selects: HashMap<(usize, usize), Entity<Select>>,
-    /// One key-binding input per keybind setting, created on first render.
-    keymaps: HashMap<(usize, usize), Entity<KeymapItem>>,
     _subs: Vec<Subscription>,
 }
 
-impl Default for SettingsView {
-    fn default() -> Self {
-        Self::new()
-    }
+/// The config with every field at its default (what an empty config file gives).
+fn default_config() -> SherlockConfig {
+    toml::from_str("").unwrap_or_default()
 }
 
 impl SherlockView for SettingsView {
@@ -94,30 +80,65 @@ impl SherlockView for SettingsView {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        self.ensure_keymaps(cx);
-        self.ensure_colors(cx);
-        self.ensure_selects(cx);
-
         let theme = shell.theme.clone();
         self.render_page(&theme, cx).into_any_element()
     }
 }
 
 impl SettingsView {
-    pub fn new() -> Self {
-        let sections = data::dummy_sections();
-        Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let config = ConfigGuard::read()
+            .map(|c| c.clone())
+            .unwrap_or_else(|_| default_config());
+        let defs = defs::sections();
+        let sections: Vec<_> = defs.iter().map(|d| d.read(&config)).collect();
+
+        let mut controls = HashMap::new();
+        let mut subs = Vec::new();
+        for setting in sections.iter().flat_map(|s| &s.settings) {
+            if let Some((control, sub)) = Control::new(setting, cx) {
+                controls.insert(setting.id, control);
+                subs.push(sub);
+            }
+        }
+
+        let this = Self {
+            defs,
+            config,
             defaults: sections.clone(),
             sections,
+            controls,
             active: 0,
             row: 0,
             query: SharedString::default(),
             scroll: ScrollHandle::new(),
-            colors: HashMap::new(),
-            selects: HashMap::new(),
-            keymaps: HashMap::new(),
-            _subs: Vec::new(),
-        }
+            _subs: subs,
+        };
+        this.refresh_keymap_notes(cx);
+        this
+    }
+
+    /// Every setting, in order.
+    fn settings(&self) -> impl Iterator<Item = &Setting> {
+        self.sections.iter().flat_map(|s| &s.settings)
+    }
+
+    fn setting(&self, id: &str) -> Option<&Setting> {
+        self.settings().find(|s| s.id == id)
+    }
+
+    fn setting_mut(&mut self, id: &str) -> Option<&mut Setting> {
+        self.sections
+            .iter_mut()
+            .flat_map(|s| &mut s.settings)
+            .find(|s| s.id == id)
+    }
+
+    fn def(&self, id: &str) -> Option<&SettingDef> {
+        self.defs
+            .iter()
+            .flat_map(|s| &s.settings)
+            .find(|d| d.id == id)
     }
 
     fn searching(&self) -> bool {
@@ -147,25 +168,23 @@ impl SettingsView {
             .collect()
     }
 
-    fn is_modified(&self, section: usize, row: usize) -> bool {
-        let value = |s: &[SettingsSection]| {
-            s.get(section)
-                .and_then(|s| s.settings.get(row))
-                .map(|s| s.value.clone())
-        };
-        value(&self.sections) != value(&self.defaults)
+    /// The setting on the selected row.
+    fn selected(&self) -> Option<&Setting> {
+        let (si, ri) = *self.visible().get(self.row)?;
+        self.sections.get(si)?.settings.get(ri)
+    }
+
+    fn is_modified(&self, id: &str) -> bool {
+        let default = self
+            .defaults
+            .iter()
+            .flat_map(|s| &s.settings)
+            .find(|s| s.id == id);
+        self.setting(id).map(|s| &s.value) != default.map(|s| &s.value)
     }
 
     fn unsaved(&self) -> usize {
-        self.sections
-            .iter()
-            .enumerate()
-            .map(|(si, s)| {
-                (0..s.settings.len())
-                    .filter(|&ri| self.is_modified(si, ri))
-                    .count()
-            })
-            .sum()
+        self.settings().filter(|s| self.is_modified(s.id)).count()
     }
 
     fn select_row(&mut self, row: usize) {
@@ -182,105 +201,66 @@ impl SettingsView {
         }
     }
 
-    /// Enter on the selected row.
-    fn activate(&mut self) {
-        let Some(&(si, ri)) = self.visible().get(self.row) else {
-            return;
-        };
-        if let Some(edit) = self.sections[si].settings[ri].value.activate() {
-            model::apply_edit(&mut self.sections, si, ri, edit);
-        }
-    }
-
-    /// Creates the color inputs of all color settings (once); their picks apply live.
-    fn ensure_colors(&mut self, cx: &mut Context<Self>) {
-        if !self.colors.is_empty() {
-            return;
-        }
-        for (si, section) in self.sections.iter().enumerate() {
-            for (ri, setting) in section.settings.iter().enumerate() {
-                let SettingValue::Color(color) = setting.value else {
-                    continue;
-                };
-                let item = cx.new(|cx| ColorItem::new(color, cx));
-                self._subs.push(cx.subscribe(
-                    &item,
-                    move |this, _, ColorEvent::Changed(color): &ColorEvent, cx| {
-                        model::apply_edit(&mut this.sections, si, ri, Edit::SetColor(*color));
-                        this.select_setting((si, ri));
-                        cx.notify();
-                    },
-                ));
-                self.colors.insert((si, ri), item);
-            }
-        }
-    }
-
-    /// Creates the selects of all choice settings (once); a pick applies right away.
-    fn ensure_selects(&mut self, cx: &mut Context<Self>) {
-        if !self.selects.is_empty() {
-            return;
-        }
-        for (si, section) in self.sections.iter().enumerate() {
-            for (ri, setting) in section.settings.iter().enumerate() {
-                let SettingValue::Choice { options, selected } = setting.value else {
-                    continue;
-                };
-                let options = options.iter().map(|&o| SharedString::from(o)).collect();
-                let select = cx.new(|cx| Select::new(options, selected, cx));
-                self._subs.push(cx.subscribe(
-                    &select,
-                    move |this, _, SelectEvent::Changed(i): &SelectEvent, cx| {
-                        model::apply_edit(&mut this.sections, si, ri, Edit::SetChoice(*i));
-                        this.select_setting((si, ri));
-                        cx.notify();
-                    },
-                ));
-                self.selects.insert((si, ri), select);
-            }
-        }
-    }
-
-    /// Selects the row showing setting `at`, if it is visible.
-    fn select_setting(&mut self, at: (usize, usize)) {
-        if let Some(pos) = self.visible().iter().position(|&v| v == at) {
+    /// Selects the row showing setting `id`, if it is listed.
+    fn select_setting(&mut self, id: &str) {
+        let visible = self.visible();
+        if let Some(pos) = visible
+            .iter()
+            .position(|&(si, ri)| self.sections[si].settings[ri].id == id)
+        {
             self.row = pos;
         }
     }
 
-    /// Creates the key-binding inputs of all keybind settings (once) and keeps them in sync.
-    fn ensure_keymaps(&mut self, cx: &mut Context<Self>) {
-        if !self.keymaps.is_empty() {
+    /// The one place edits arrive (clicks, Enter, editors): applies `edit` to setting `id`,
+    /// writes it to the config, and selects its row.
+    fn apply(&mut self, id: &'static str, edit: Edit, cx: &mut Context<Self>) {
+        let keybind = matches!(edit, Edit::SetChords(_));
+        let Some(setting) = self.setting_mut(id) else {
             return;
+        };
+        setting.value.apply(edit);
+        let value = setting.value.clone();
+        if let Some(def) = self.def(id) {
+            (def.set)(&mut self.config, &value);
         }
-        for (si, section) in self.sections.iter().enumerate() {
-            for (ri, setting) in section.settings.iter().enumerate() {
-                let SettingValue::Keybind(chords) = &setting.value else {
-                    continue;
-                };
-                let (label, chords) = (setting.label, chords.clone());
-                let input = cx.new(|cx| KeymapItem::new(label, chords, cx));
-                self._subs.push(
-                    cx.subscribe(&input, move |this, input, _: &KeymapEvent, cx| {
-                        let chords = input.read(cx).chords(cx).to_vec();
-                        if let Some(c) = this.chords_mut(si, ri) {
-                            *c = chords;
-                        }
-                        this.select_setting((si, ri));
-                        this.refresh_keymap_notes(cx);
-                        cx.notify();
-                    }),
-                );
-                self.keymaps.insert((si, ri), input);
-            }
+        self.reread(id, cx);
+        self.select_setting(id);
+        if keybind {
+            self.refresh_keymap_notes(cx);
         }
-        self.refresh_keymap_notes(cx);
+        cx.notify();
     }
 
-    fn chords_mut(&mut self, section: usize, row: usize) -> Option<&mut Vec<SharedString>> {
-        match &mut self.sections.get_mut(section)?.settings.get_mut(row)?.value {
-            SettingValue::Keybind(chords) => Some(chords),
-            _ => None,
+    /// Reads every setting back from the config, so writes that touch other settings show up
+    /// (a chord moved from one action to another). Editors of changed settings are synced,
+    /// except `edited`'s, which already shows its value.
+    fn reread(&mut self, edited: &str, cx: &mut Context<Self>) {
+        for (section, def) in self.sections.iter_mut().zip(&self.defs) {
+            for (setting, def) in section.settings.iter_mut().zip(&def.settings) {
+                let value = (def.get)(&self.config, def.meta);
+                if value != setting.value {
+                    if setting.id != edited
+                        && let Some(control) = self.controls.get(setting.id)
+                    {
+                        control.sync(&value, cx);
+                    }
+                    setting.value = value;
+                }
+            }
+        }
+    }
+
+    /// Enter on the selected row: opens its editor, or changes the value directly.
+    fn activate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(setting) = self.selected() else {
+            return;
+        };
+        let id = setting.id;
+        if let Some(control) = self.controls.get(id) {
+            control.open(window, cx);
+        } else if let Some(edit) = setting.value.activate() {
+            self.apply(id, edit, cx);
         }
     }
 }

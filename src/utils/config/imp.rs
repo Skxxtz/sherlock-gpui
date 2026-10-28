@@ -12,9 +12,7 @@ use crate::utils::{
         ConfigDefaultApps,
         ConfigExpand,
         ConfigFiles,
-        ConfigKeybinds,
         ConfigUnits,
-        KeybindDefaults,
         SearchBarIcon,
         StatusBar,
         defaults::{AppearanceDefaults, ConstantDefaults, FileDefaults, OtherDefaults},
@@ -74,12 +72,6 @@ impl Default for ConfigBehavior {
             remember_query: false,
             n_clicks: Some(2),
         }
-    }
-}
-
-impl Default for ConfigKeybinds {
-    fn default() -> Self {
-        KeybindDefaults::binds()
     }
 }
 

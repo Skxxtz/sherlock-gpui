@@ -1,111 +1,58 @@
-use std::collections::HashMap;
-
-use gpui::{App, AsKeystroke, Global, KeyBinding, Modifiers};
+use gpui::{App, AsKeystroke, Global, KeyBinding, Keystroke, Modifiers};
 use smallvec::SmallVec;
 
 use crate::{
     SHORTCUT_MOD,
     ui::{
-        UIFunction,
-        actions::{
-            Backspace,
-            Copy,
-            Cut,
-            DeleteAll,
-            DeleteForward,
-            End,
-            Execute,
-            ExecuteInplace,
-            Home,
-            ItemDown,
-            ItemLeft,
-            ItemRight,
-            ItemUp,
-            NextVar,
-            OpenContext,
-            Paste,
-            PrevVar,
-            Quit,
-            SelectAll,
-            ShortcutAction,
-        },
+        actions::{ShortcutAction, UIFunction},
         launcher::context_menu::action_keys::ContextActionBinds,
     },
-    utils::config::ConfigGuard,
+    utils::config::{ConfigGuard, ConfigKeybinds},
 };
 
 pub struct ReservedKeys(pub Vec<ContextActionBinds>);
 impl Global for ReservedKeys {}
 
+/// `"variable.tab"` → `(Some("variable"), "tab")`; `"ctrl-n"` → `(None, "ctrl-n")`.
+pub fn split_scope(key: &str) -> (Option<&str>, &str) {
+    match key.rsplit_once('.') {
+        Some((scope, keys)) if !keys.is_empty() => (Some(scope), keys),
+        _ => (None, key),
+    }
+}
+
 pub(super) fn register_bindings(cx: &mut App) {
-    let mut bindings: HashMap<String, KeyBinding> = HashMap::new();
+    // one config read: the binds and the symbols for the shortcut modifiers
+    let (binds, mod_symbols) =
+        ConfigGuard::read_with(|c| (c.keybinds.effective(), c.appearance.mod_key_ascii))
+            .unwrap_or_else(|_| {
+                (
+                    ConfigKeybinds::default().effective(),
+                    crate::utils::config::AppearanceDefaults::modkey_ascii(),
+                )
+            });
 
-    let mut add = |key: &str, binding: KeyBinding| {
-        bindings.insert(key.to_string(), binding);
-    };
-
-    // default binds
-    add("backspace", KeyBinding::new("backspace", Backspace, None));
-    add("delete", KeyBinding::new("delete", DeleteForward, None));
-    add(
-        "ctrl-backspace",
-        KeyBinding::new("ctrl-backspace", DeleteAll, None),
-    );
-    add("ctrl-a", KeyBinding::new("ctrl-a", SelectAll, None));
-    add("ctrl-v", KeyBinding::new("ctrl-v", Paste, None));
-    add("ctrl-c", KeyBinding::new("ctrl-c", Copy, None));
-    add("ctrl-x", KeyBinding::new("ctrl-x", Cut, None));
-    add("escape", KeyBinding::new("escape", Quit, None));
-
-    add("home", KeyBinding::new("home", Home, None));
-    add("end", KeyBinding::new("end", End, None));
-    // add("left", KeyBinding::new("left", Left, None));
-    // add("right", KeyBinding::new("right", Right, None));
-    add("down", KeyBinding::new("down", ItemDown, None));
-    add("up", KeyBinding::new("up", ItemUp, None));
-    add("left", KeyBinding::new("left", ItemLeft, None));
-    add("right", KeyBinding::new("right", ItemRight, None));
-    add(
-        "variable.tab",
-        UIFunction::Complete.get_binding("variable.tab").unwrap(),
-    );
-    add("enter", KeyBinding::new("enter", Execute, None));
-    add(
-        "ctrl-enter",
-        KeyBinding::new("ctrl-enter", ExecuteInplace, None),
-    );
-    add("tab", KeyBinding::new("tab", NextVar, None));
-    add("shift-tab", KeyBinding::new("shift-tab", PrevVar, None));
-    add("ctrl-l", KeyBinding::new("ctrl-l", OpenContext, None));
-
-    if let Ok(config) = ConfigGuard::read() {
-        for (key, action_type) in &config.keybinds.0 {
-            if *action_type == UIFunction::Shortcut && key.contains("<digit>") {
-                // First one to capture modifier key
-                let actual_key = key.replace("<digit>", "1");
-                let binding = KeyBinding::new(&actual_key, ShortcutAction { index: 1 }, None);
-                let mods = binding.keystrokes().first().map(|k| k.modifiers());
-                mods.map(ShortcutKeyMod::from);
-                add(&actual_key, binding);
-
-                for i in 2..=9 {
-                    let actual_key = key.replace("<digit>", &i.to_string());
-                    add(
-                        &actual_key,
-                        KeyBinding::new(&actual_key, ShortcutAction { index: i }, None),
-                    );
+    let mut bindings: Vec<KeyBinding> = Vec::with_capacity(binds.len() + 8);
+    for (key, function) in &binds {
+        let (scope, keys) = split_scope(key);
+        match function {
+            // `ctrl-<digit>`: ctrl-1 … ctrl-9 run the n-th result
+            UIFunction::Shortcut if keys.contains("<digit>") => {
+                for index in 1..=9 {
+                    let keys = keys.replace("<digit>", &index.to_string());
+                    bindings.push(KeyBinding::new(&keys, ShortcutAction { index }, scope));
                 }
-            } else if let Some(binding) = action_type.get_binding(key) {
-                add(key, binding);
+                if let Some(mods) = shortcut_modifiers(keys) {
+                    ShortcutKeyMod::set(&mods, &mod_symbols);
+                }
             }
+            function => bindings.extend(function.binding(keys, scope)),
         }
     }
 
-    // ORDER MATTERS: MORE SPECIFIC ONES HAVE TO COME LAST
-    let mut bindings: Vec<KeyBinding> = bindings.into_values().collect();
+    // bindings with a context come last: on equal keys, GPUI prefers the later one
     bindings.sort_by_key(|b| b.predicate().is_some());
 
-    // store them in ReservedKeys
     let reserved = bindings
         .iter()
         .filter_map(|b| match b.keystrokes() {
@@ -118,38 +65,27 @@ pub(super) fn register_bindings(cx: &mut App) {
     cx.bind_keys(bindings);
 }
 
+/// The modifiers of a pattern like `"ctrl-<digit>"`, read from its first expansion.
+fn shortcut_modifiers(pattern: &str) -> Option<Modifiers> {
+    Keystroke::parse(&pattern.replace("<digit>", "1"))
+        .ok()
+        .map(|k| k.modifiers)
+}
+
+/// The modifier symbols shown next to shortcut numbers (`^1`, `⌘1`, …).
 pub struct ShortcutKeyMod {
     buf: SmallVec<[char; 4]>,
 }
+
 impl ShortcutKeyMod {
-    pub fn from(mods: &Modifiers) {
-        let mut buf: SmallVec<[char; 4]> = SmallVec::new();
-        let mut push = |idx: usize, default: char| {
-            buf.push(
-                ConfigGuard::read_with(|c| {
-                    c.appearance
-                        .mod_key_ascii
-                        .get(idx)
-                        .cloned()
-                        .unwrap_or(default)
-                })
-                .unwrap_or(default),
-            )
-        };
-
-        if mods.platform {
-            push(0, '⌘');
-        }
-        if mods.control {
-            push(1, '^');
-        }
-        if mods.alt {
-            push(2, '⌥');
-        }
-        if mods.shift {
-            push(3, '⇧');
-        }
-
+    /// Stores the symbols for `mods`; `symbols` are ⌘, ^, ⌥, ⇧ (from the config). Set once:
+    /// later calls are ignored.
+    fn set(mods: &Modifiers, symbols: &[char; 4]) {
+        let buf = [mods.platform, mods.control, mods.alt, mods.shift]
+            .into_iter()
+            .zip(symbols)
+            .filter_map(|(held, &symbol)| held.then_some(symbol))
+            .collect();
         let _ = SHORTCUT_MOD.set(Self { buf });
     }
 

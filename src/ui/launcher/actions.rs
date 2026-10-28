@@ -23,7 +23,7 @@ use crate::{
             LauncherView,
             VariableInput,
             context_menu::{ContextMenuAction, wrapper::Move},
-            execute::ExecSource,
+            execute::{ExecRequest, ExecSource},
             navigator::views::MoveDirection,
         },
         runtime_arguments::RuntimeArgument,
@@ -324,7 +324,7 @@ impl LauncherView {
     /// ctrl-l: an open menu always closes; the view only gets to override opening it.
     pub(super) fn open_context(
         &mut self,
-        action: &OpenContext,
+        action: &ToggleContext,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -333,6 +333,21 @@ impl LauncherView {
             return;
         }
         self.dispatch(action, win, cx, Self::open_context_menu);
+    }
+
+    pub(super) fn error_page(&mut self, _: &ErrorPage, win: &mut Window, cx: &mut Context<Self>) {
+        self.run(
+            ExecRequest {
+                mode: ExecMode::ShowMessages,
+                source: ExecSource::Bind,
+                query: self.text_input.read(cx).content.clone(),
+                keyword: "".into(),
+                key: None,
+                exit: false,
+            },
+            win,
+            cx,
+        );
     }
 
     pub(super) fn quit(&mut self, action: &Quit, win: &mut Window, cx: &mut Context<Self>) {

@@ -104,7 +104,7 @@ input_actions! {
     Quit => quit,
     NextVar => next_var,
     PrevVar => prev_var,
-    OpenContext => open_context,
+    ToggleContext => open_context,
     ShortcutAction => shortcut,
     Complete => complete,
     Backspace => backspace,

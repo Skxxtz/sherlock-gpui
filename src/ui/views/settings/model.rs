@@ -1,6 +1,9 @@
+//! The settings data: values, settings, sections, and the edits that change them.
+
 use gpui::{Hsla, SharedString};
 
 /// The value of one setting; decides which control is shown.
+#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum SettingValue {
     Toggle(bool),
@@ -17,10 +20,14 @@ pub enum SettingValue {
         max: i64,
         step: i64,
     },
+    /// Free text (a command, a placeholder). Empty can mean "not set" for optional fields.
+    Text(SharedString),
 }
 
 #[derive(Clone, Debug)]
 pub struct Setting {
+    /// Stable key (`"appearance.accent"`): finds the setting and its control, whatever the order.
+    pub id: &'static str,
     /// Sub-heading within the section (`// startup`); consecutive settings share one.
     pub group: &'static str,
     pub label: &'static str,
@@ -30,7 +37,7 @@ pub struct Setting {
 
 impl Setting {
     /// `query` must be lowercase.
-    pub fn matches(&self, query: &str) -> bool {
+    pub(super) fn matches(&self, query: &str) -> bool {
         self.label.to_lowercase().contains(query) || self.description.to_lowercase().contains(query)
     }
 }
@@ -43,55 +50,44 @@ pub struct SettingsSection {
     pub settings: Vec<Setting>,
 }
 
-/// What a click on a control does to its value.
-#[derive(Clone, Copy, Debug)]
-pub enum Edit {
+/// A change to a value, from a click, Enter, or an editor (color, choice, keybind).
+#[derive(Clone, Debug)]
+pub(super) enum Edit {
     Toggle,
+    SetNumber(i64),
     SetChoice(usize),
-    Step(i64),
     SetColor(Hsla),
+    SetChords(Vec<SharedString>),
+    SetText(SharedString),
 }
 
 impl SettingValue {
-    pub fn apply(&mut self, edit: Edit) {
+    /// Applies `edit`; an edit for another kind of value is ignored.
+    pub(super) fn apply(&mut self, edit: Edit) {
         match (self, edit) {
             (Self::Toggle(on), Edit::Toggle) => *on = !*on,
-            (Self::Choice { options, selected }, Edit::SetChoice(i)) => {
-                *selected = i.min(options.len().saturating_sub(1));
-            }
             (
                 Self::Number {
                     value, min, max, ..
                 },
-                Edit::Step(delta),
-            ) => *value = (*value + delta).clamp(*min, *max),
+                Edit::SetNumber(new),
+            ) => *value = new.clamp(*min, *max),
+            (Self::Choice { options, selected }, Edit::SetChoice(i)) => {
+                *selected = i.min(options.len().saturating_sub(1));
+            }
             (Self::Color(c), Edit::SetColor(new)) => *c = new,
+            (Self::Keybind(chords), Edit::SetChords(new)) => *chords = new,
+            (Self::Text(text), Edit::SetText(new)) => *text = new,
             _ => {}
         }
     }
 
-    /// What Enter does: flip, or step up (wrapping to `min` at `max`).
-    /// `None` for values that open their own editor (color, keybind, choice).
-    pub fn activate(&self) -> Option<Edit> {
-        match *self {
+    /// What Enter does to a value without an editor: flips a toggle. Everything else opens
+    /// its editor.
+    pub(super) fn activate(&self) -> Option<Edit> {
+        match self {
             Self::Toggle(_) => Some(Edit::Toggle),
-            Self::Number {
-                value,
-                min,
-                max,
-                step,
-            } => Some(Edit::Step(if value >= max { min - value } else { step })),
-            Self::Color(_) | Self::Keybind(_) | Self::Choice { .. } => None,
+            _ => None,
         }
-    }
-}
-
-/// Applies `edit` to setting `row` of `section`, if it exists.
-pub fn apply_edit(sections: &mut [SettingsSection], section: usize, row: usize, edit: Edit) {
-    if let Some(setting) = sections
-        .get_mut(section)
-        .and_then(|s| s.settings.get_mut(row))
-    {
-        setting.value.apply(edit);
     }
 }

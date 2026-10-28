@@ -37,7 +37,7 @@ use crate::{
     launcher::LauncherValues,
     loader::resolve_icon_path,
     ui::{
-        UIFunction,
+        actions::UIFunction,
         launcher::{Execute, LauncherMode, LauncherView},
         model::ItemIdx,
         traits::RenderableChildDelegate,
@@ -93,6 +93,7 @@ impl Render for LauncherView {
             .on_action(cx.listener(Self::shortcut_listener))
             .on_action(cx.listener(Self::quit))
             .on_action(cx.listener(Self::open_context))
+            .on_action(cx.listener(Self::error_page))
             .on_action(cx.listener(Self::back))
             .on_action(cx.listener(Self::backspace))
             .on_key_down(cx.listener(Self::context_menu_binds_listener))

@@ -277,7 +277,7 @@ impl ViewKind {
                 NavView::new(cx.new(|cx| FileView::new(launcher, dir.clone(), cx)), cx)
             }
             Self::Dmenu { entity } => NavView::dmenu(entity.clone(), cx),
-            Self::Settings => NavView::new(cx.new(|_| SettingsView::new()), cx),
+            Self::Settings => NavView::new(cx.new(SettingsView::new), cx),
             Self::Home | Self::Messages => return None,
         })
     }

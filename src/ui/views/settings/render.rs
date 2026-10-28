@@ -17,11 +17,11 @@ use gpui::{
     px,
 };
 
-use super::model::{Edit, SettingValue, apply_edit};
-use crate::{
-    app::theme::ThemeData,
-    ui::components::{stepper::stepper, toggle::toggle},
+use super::{
+    SettingsView,
+    model::{Edit, Setting, SettingValue},
 };
+use crate::{app::theme::ThemeData, ui::components::toggle::toggle};
 
 const NAV_WIDTH: f32 = 208.;
 /// Left/right padding of the content; rows reach `ROW_PAD` further out so their selection
@@ -29,8 +29,13 @@ const NAV_WIDTH: f32 = 208.;
 const CONTENT_PAD: f32 = 36.;
 const ROW_PAD: f32 = 12.;
 
-impl super::SettingsView {
-    pub fn render_page(&self, theme: &ThemeData, cx: &mut Context<Self>) -> impl IntoElement {
+impl SettingsView {
+    /// The whole page: section nav | title + rows.
+    pub(super) fn render_page(
+        &self,
+        theme: &ThemeData,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         let visible = self.visible();
         // while searching, the nav follows the selected result
         let current = match (self.searching(), visible.get(self.row)) {
@@ -52,6 +57,19 @@ impl super::SettingsView {
                     .child(self.render_nav(current, theme, cx))
                     .child(self.render_main(&visible, theme, cx)),
             )
+    }
+
+    /// Click handler that applies `edit` to setting `id`, listed at `pos`.
+    fn on_edit(
+        cx: &mut Context<Self>,
+        id: &'static str,
+        pos: usize,
+        edit: Edit,
+    ) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
+        cx.listener(move |this, _: &ClickEvent, _, cx| {
+            this.row = pos;
+            this.apply(id, edit.clone(), cx);
+        })
     }
 
     fn render_nav(
@@ -118,46 +136,24 @@ impl super::SettingsView {
             }))
     }
 
+    /// The setting's editor, or a toggle drawn from the value.
     fn render_control(
         &self,
-        value: &SettingValue,
-        at: (usize, usize),
+        setting: &Setting,
         pos: usize,
         theme: &ThemeData,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let id = ("setting", at.0 * 1000 + at.1);
-        match value {
+        if let Some(control) = self.controls.get(setting.id) {
+            return control.element(theme);
+        }
+        let id = setting.id;
+        match &setting.value {
             SettingValue::Toggle(on) => {
-                toggle(id, *on, theme, Self::on_edit(cx, at, pos, Edit::Toggle)).into_any_element()
+                toggle(id, *on, theme, Self::on_edit(cx, id, pos, Edit::Toggle)).into_any_element()
             }
-            SettingValue::Color(_) => match self.colors.get(&at) {
-                Some(item) => item.clone().into_any_element(),
-                None => div().into_any_element(),
-            },
-            SettingValue::Keybind(_) => match self.keymaps.get(&at) {
-                Some(input) => input.clone().into_any_element(),
-                None => div().into_any_element(),
-            },
-            SettingValue::Choice { .. } => match self.selects.get(&at) {
-                Some(select) => select.clone().into_any_element(),
-                None => div().into_any_element(),
-            },
-            SettingValue::Number {
-                value,
-                min,
-                max,
-                step,
-            } => stepper(
-                id,
-                *value,
-                *min,
-                *max,
-                theme,
-                Self::on_edit(cx, at, pos, Edit::Step(-step)),
-                Self::on_edit(cx, at, pos, Edit::Step(*step)),
-            )
-            .into_any_element(),
+            // every other value has its editor in `controls`
+            _ => div().into_any_element(),
         }
     }
 
@@ -221,11 +217,11 @@ impl super::SettingsView {
                                     .text_color(theme.primary_text)
                                     .child(setting.label),
                             )
-                            .when(self.is_modified(si, ri), |this| {
+                            .when(self.is_modified(setting.id), |this| {
                                 this.child(mono("modified".into(), 10., theme.accent()))
                             }),
                     )
-                    .child(match self.conflict_note(si, ri) {
+                    .child(match self.conflict_note(setting.id) {
                         Some(note) => div()
                             .text_size(px(12.))
                             .text_color(theme.color_warn)
@@ -236,13 +232,11 @@ impl super::SettingsView {
                             .child(setting.description),
                     }),
             )
-            .child(div().flex_none().child(self.render_control(
-                &setting.value,
-                (si, ri),
-                pos,
-                theme,
-                cx,
-            )));
+            .child(
+                div()
+                    .flex_none()
+                    .child(self.render_control(setting, pos, theme, cx)),
+            );
 
         div()
             .flex()
@@ -357,19 +351,5 @@ impl super::SettingsView {
                     .pb(px(24.))
                     .children(rows),
             )
-    }
-
-    /// Click handler that applies `edit` to setting `row` of `section`, listed at `pos`.
-    fn on_edit(
-        cx: &mut Context<Self>,
-        (section, row): (usize, usize),
-        pos: usize,
-        edit: Edit,
-    ) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
-        cx.listener(move |this, _: &ClickEvent, _, cx| {
-            apply_edit(&mut this.sections, section, row, edit);
-            this.row = pos;
-            cx.notify();
-        })
     }
 }

@@ -208,7 +208,7 @@ impl LauncherView {
                 Outcome::Navigated
             }
             ExecMode::OpenContextMenu => {
-                self.open_context(&super::OpenContext, win, cx);
+                self.open_context(&super::ToggleContext, win, cx);
                 Outcome::NoOp
             }
             ExecMode::Hide { exec } => {
