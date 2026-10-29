@@ -56,18 +56,35 @@ pub struct LauncherLoadResult {
     pub modes: Arc<[LauncherMode]>,
     pub messages: Vec<SherlockMessage>,
 }
+
+/// `fallback.json`, parsed: the launchers and the warnings while reading them.
+pub type RawLaunchers = (Vec<RawLauncher>, Vec<SherlockMessage>);
+
 impl Loader {
+    /// Reads and builds the launchers on the calling thread.
     pub fn load_launchers(
         cx: &mut App,
         data_handle: LauncherEntity,
         changes: Option<ConfigFileChange>,
     ) -> Result<LauncherLoadResult, SherlockMessage> {
-        // read config
-        let config = ConfigGuard::read()?;
+        let path = ConfigGuard::read_with(|c| c.files.fallback.clone())?;
+        let raw = Self::read_launchers(&path);
+        Self::build_launchers(cx, data_handle, changes, raw)
+    }
 
-        // Read fallback data here:
-        let (raw_launchers, mut messages) = parse_launcher_configs(&config.files.fallback);
+    /// The file part of loading: no app access, so it can run in `background_spawn`.
+    pub fn read_launchers(fallback: &Path) -> RawLaunchers {
+        parse_launcher_configs(fallback)
+    }
 
+    /// The app part of loading: builds the launchers from `raw` and stores them in
+    /// `data_handle`.
+    pub fn build_launchers(
+        cx: &mut App,
+        data_handle: LauncherEntity,
+        changes: Option<ConfigFileChange>,
+        (raw_launchers, mut messages): RawLaunchers,
+    ) -> Result<LauncherLoadResult, SherlockMessage> {
         // Read cached counter file
         let subscribers = cx.global::<TileSubscribersGlobal>().0.clone();
         let ctx = LoadContext::new(changes, subscribers)?;

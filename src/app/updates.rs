@@ -15,7 +15,13 @@ use tokio::{
 };
 
 use crate::{
-    app::{LauncherEntity, data::LauncherData, run_async_updates, spawn_launcher},
+    app::{
+        LauncherEntity,
+        LauncherViewGlobal,
+        data::LauncherData,
+        run_async_updates,
+        spawn_launcher,
+    },
     launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     sherlock_msg,
     tokio_utils::AsyncSizedMessage,
@@ -94,7 +100,9 @@ pub(super) async fn run_event_loop(
 
     loop {
         notify.notified().await;
-        for result in slot.lock().unwrap().drain(..) {
+        // take the batch out, so the listener isn't blocked while a reload awaits
+        let batch: Vec<_> = slot.lock().unwrap().drain(..).collect();
+        for result in batch {
             let (msg_res, response_socket) = result;
             let msg = match msg_res {
                 Ok(m) => m,
@@ -137,7 +145,8 @@ pub(super) async fn run_event_loop(
             // Config reload
             if let Ok(audit) = watcher.audit()
                 && !audit.is_empty()
-                && let Some(new_modes) = reload_async(&mut cx, &data, &mut initial_messages, audit)
+                && let Some(new_modes) =
+                    reload_async(&mut cx, &data, &mut initial_messages, audit).await
             {
                 modes = new_modes;
             }
@@ -259,6 +268,11 @@ fn refresh_launcher_view(
             response_socket,
         )
     }));
+
+    // Set launcher entity global
+    if let Some(e) = win.and_then(|w| w.entity(cx).ok()) {
+        cx.update(|cx| cx.set_global(LauncherViewGlobal(e.downgrade())))
+    }
 }
 
 fn open_window(win: &Option<WindowHandle<LauncherView>>, cx: &mut AsyncApp) {

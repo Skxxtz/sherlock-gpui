@@ -69,6 +69,10 @@ pub type LauncherEntityInner = LauncherData;
 pub struct LauncherEntityGlobal(pub LauncherWeakEntity);
 impl Global for LauncherEntityGlobal {}
 
+#[derive(Clone)]
+pub struct LauncherViewGlobal(pub WeakEntity<LauncherView>);
+impl gpui::Global for LauncherViewGlobal {}
+
 pub fn run_app(cx: &mut App, result: SetupResult) {
     LuaRuntimeHandle::spawn(cx);
 
