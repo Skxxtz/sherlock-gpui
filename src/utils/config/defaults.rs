@@ -170,6 +170,8 @@ impl KeybindDefaults {
             ("down", ItemDown),
             ("left", ItemLeft),
             ("right", ItemRight),
+            ("search_bar.left", CursorLeft),
+            ("search_bar.right", CursorRight),
             ("enter", Execute),
             ("ctrl-enter", ExecuteInplace),
             ("escape", Quit),
