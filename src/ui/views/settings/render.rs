@@ -30,7 +30,7 @@ const NAV_WIDTH: f32 = 208.;
 /// Left/right padding of the content; rows reach `ROW_PAD` further out so their selection
 /// background has room while their text stays aligned with the title.
 const CONTENT_PAD: f32 = 36.;
-const ROW_PAD: f32 = 12.;
+pub const ROW_PAD: f32 = 12.;
 
 impl SettingsView {
     /// Whether the credits page is showing (search results take precedence).
@@ -342,7 +342,7 @@ impl SettingsView {
                 .flex()
                 .flex_col()
                 .px(px(CONTENT_PAD - ROW_PAD))
-                .pb(px(24.))
+                .pb(px(ROW_PAD))
                 .children(rows)
                 .into_any_element()
         };

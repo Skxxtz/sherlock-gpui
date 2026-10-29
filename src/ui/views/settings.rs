@@ -1,11 +1,20 @@
 use std::collections::HashMap;
 
-use gpui::{AnyElement, Context, IntoElement, ScrollHandle, SharedString, Subscription, Window};
+use gpui::{
+    AnyElement,
+    Context,
+    IntoElement,
+    ScrollHandle,
+    SharedString,
+    Subscription,
+    Window,
+    px,
+};
 
 use crate::{
     ui::{
         model::data::NoData,
-        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView, settings::model::SectionKind},
+        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView, settings::{model::SectionKind, render::ROW_PAD}},
     },
     utils::config::{ConfigGuard, SherlockConfig},
 };
@@ -199,7 +208,24 @@ impl SettingsView {
 
     fn select_row(&mut self, row: usize) {
         self.row = row.min(self.visible().len().saturating_sub(1));
-        self.scroll.scroll_to_item(self.row);
+
+        let h = &self.scroll;
+        let Some(item) = h.bounds_for_item(self.row) else {
+            h.scroll_to_item(self.row);
+            return;
+        };
+        let view = h.bounds();
+        let pad = px(ROW_PAD);
+
+        let mut off = h.offset();
+        if item.top() + off.y < view.top() + pad {
+            off.y = view.top() + pad - item.top();
+        } else if item.bottom() + off.y > view.bottom() - pad {
+            off.y = view.bottom() - pad - item.bottom();
+        }
+
+        off.y = off.y.min(px(0.)).max(-h.max_offset().y);
+        h.set_offset(off);
     }
 
     fn select_section(&mut self, section: usize) {
