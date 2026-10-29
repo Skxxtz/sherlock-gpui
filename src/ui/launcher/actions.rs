@@ -530,6 +530,7 @@ impl LauncherView {
                 self.text_input.update(cx, |ipt, _| ipt.set_text(c));
             }
             self.force_filter_and_sort(cx);
+            cx.notify();
         } else if self.navigation.current().mode != LauncherMode::Home {
             self.navigation.current_mut().mode = LauncherMode::Home;
             self.navigation.clear_last_query(cx);
