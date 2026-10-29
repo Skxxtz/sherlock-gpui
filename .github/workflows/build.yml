@@ -15,6 +15,7 @@ on:
       - "**.png"
       - "**.gif"
       - "**.svg"
+      - "release.sh"
       - "LICENSE"
 
   pull_request:
@@ -88,7 +89,10 @@ jobs:
           clang \
           valac \
           gobject-introspection \
-          libxkbcommon-x11-dev
+          libxkbcommon-x11-dev \
+          fd-find
+          # Ubuntu names the binary `fdfind`; Sherlock looks for `fd`
+          sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
 
       - name: Build gtk4-layer-shell
         run: |

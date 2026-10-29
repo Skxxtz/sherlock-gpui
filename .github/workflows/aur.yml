@@ -1,0 +1,38 @@
+name: Publish AUR
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.2.4)"
+        required: true
+
+jobs:
+  aur:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Download release archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.tag }}" -p "sherlock-${{ inputs.tag }}-x86_64.tar.gz"
+
+      - name: Update PKGBUILD
+        run: |
+          TAG="${{ inputs.tag }}"
+          SHA=$(sha256sum "sherlock-$TAG-x86_64.tar.gz" | cut -d' ' -f1)
+          sed -i "s/^pkgver=.*/pkgver=${TAG#v}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('$SHA')/" PKGBUILD
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@da03e160361ce01bf087e790b6ffd196d7dccff7
+        with:
+          pkgname: sherlock-launcher-gpui-bin
+          pkgbuild: ./PKGBUILD
+          commit_username: github-actions[bot]
+          commit_email: github-actions[bot]@users.noreply.github.com
+          ssh_private_key: ${{ secrets.AUR_SSH_KEY }}
+          commit_message: update to ${{ inputs.tag }}
