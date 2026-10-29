@@ -19,19 +19,25 @@ use crate::ui::actions::search_bar::*;
 
 impl TextInput {
     pub(super) fn left(&mut self, _: &CursorLeft, _: &mut Window, cx: &mut Context<Self>) {
-        if self.selected_range.is_empty() {
-            self.move_to(self.previous_boundary(self.cursor_offset()), cx);
-        } else {
-            self.move_to(self.selected_range.start, cx)
+        if !self.selected_range.is_empty() {
+            return self.move_to(self.selected_range.start, cx);
         }
+        let offset = self.cursor_offset();
+        if offset == 0 {
+            return cx.propagate();
+        }
+        self.move_to(self.previous_boundary(offset), cx);
     }
 
     pub(super) fn right(&mut self, _: &CursorRight, _: &mut Window, cx: &mut Context<Self>) {
-        if self.selected_range.is_empty() {
-            self.move_to(self.next_boundary(self.selected_range.end), cx);
-        } else {
-            self.move_to(self.selected_range.end, cx)
+        if !self.selected_range.is_empty() {
+            return self.move_to(self.selected_range.end, cx);
         }
+        let offset = self.cursor_offset();
+        if offset == self.content.len() {
+            return cx.propagate();
+        }
+        self.move_to(self.next_boundary(offset), cx);
     }
 
     pub(super) fn select_left(&mut self, _: &SelectLeft, _: &mut Window, cx: &mut Context<Self>) {
