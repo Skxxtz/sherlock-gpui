@@ -21,6 +21,13 @@ pub fn split_scope(key: &str) -> (Option<&str>, &str) {
     }
 }
 
+/// Clear current bindings and reload them from `ConfigGuard`.
+#[inline(always)]
+pub fn reload_bindings(cx: &mut App) {
+    cx.clear_key_bindings();
+    register_bindings(cx);
+}
+
 pub(super) fn register_bindings(cx: &mut App) {
     // one config read: the binds and the symbols for the shortcut modifiers
     let (binds, mod_symbols) =

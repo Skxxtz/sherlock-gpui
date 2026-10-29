@@ -7,16 +7,25 @@ use gpui::{
     ScrollHandle,
     SharedString,
     Subscription,
+    Task,
     Window,
     px,
 };
 
 use crate::{
+    app::{LauncherEntityGlobal, bindings::reload_bindings},
     ui::{
         model::data::NoData,
-        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView, settings::{model::SectionKind, render::ROW_PAD}},
+        views::{
+            Chrome,
+            Query,
+            QueryResult,
+            ShellCtx,
+            SherlockView,
+            settings::{model::SectionKind, render::ROW_PAD},
+        },
     },
-    utils::config::{ConfigGuard, SherlockConfig},
+    utils::config::{ConfigFileChange, ConfigGuard, SherlockConfig, reload_async, write_changes},
 };
 
 mod actions;
@@ -37,8 +46,10 @@ use model::{Edit, Setting, SettingsSection};
 pub struct SettingsView {
     /// What is shown and where each setting lives in the config.
     defs: Vec<SectionDef>,
-    /// The config as edited: every change is written here first (saving writes it out).
+    /// The config as edited: every change is written here, then saved to the file.
     config: SherlockConfig,
+    /// Why the last save failed.
+    save_error: Option<SharedString>,
     /// The values shown, read from `config`.
     sections: Vec<SettingsSection>,
     /// Values as loaded; a setting that differs is "modified".
@@ -53,6 +64,8 @@ pub struct SettingsView {
     query: SharedString,
     /// Keeps the selected row in view.
     scroll: ScrollHandle,
+    /// Task used to reload the config
+    reload_task: Option<Task<()>>,
     _subs: Vec<Subscription>,
 }
 
@@ -124,6 +137,7 @@ impl SettingsView {
         let this = Self {
             defs,
             config,
+            save_error: None,
             defaults: sections.clone(),
             sections,
             controls,
@@ -131,6 +145,7 @@ impl SettingsView {
             row: 0,
             query: SharedString::default(),
             scroll: ScrollHandle::new(),
+            reload_task: None,
             _subs: subs,
         };
         this.refresh_keymap_notes(cx);
@@ -202,10 +217,6 @@ impl SettingsView {
         self.setting(id).map(|s| &s.value) != default.map(|s| &s.value)
     }
 
-    fn unsaved(&self) -> usize {
-        self.settings().filter(|s| self.is_modified(s.id)).count()
-    }
-
     fn select_row(&mut self, row: usize) {
         self.row = row.min(self.visible().len().saturating_sub(1));
 
@@ -248,9 +259,16 @@ impl SettingsView {
         }
     }
 
-    /// The one place edits arrive (clicks, Enter, editors): applies `edit` to setting `id`,
-    /// writes it to the config, and selects its row.
+    /// A finished edit (clicks, Enter, editors): [`Self::edit`], then saves the config file.
     fn apply(&mut self, id: &'static str, edit: Edit, cx: &mut Context<Self>) {
+        let refresh_binds = matches!(edit, Edit::SetChords(_));
+        self.edit(id, edit, cx);
+        self.save(cx, refresh_binds);
+    }
+
+    /// The one place edits arrive: applies `edit` to setting `id`, writes it to the config,
+    /// and selects its row. Not saved; for edits still in progress (number steps).
+    fn edit(&mut self, id: &'static str, edit: Edit, cx: &mut Context<Self>) {
         let keybind = matches!(edit, Edit::SetChords(_));
         let Some(setting) = self.setting_mut(id) else {
             return;
@@ -266,6 +284,43 @@ impl SettingsView {
             self.refresh_keymap_notes(cx);
         }
         cx.notify();
+    }
+
+    /// Shows setting `id`'s current value in its editor again (an abandoned edit).
+    fn restore(&mut self, id: &str, cx: &mut Context<Self>) {
+        if let (Some(setting), Some(control)) = (self.setting(id), self.controls.get(id)) {
+            control.sync(&setting.value, cx);
+        }
+    }
+
+    /// Writes what differs from the global config to its file, then makes the edited config
+    /// the global one.
+    fn save(&mut self, cx: &mut Context<Self>, refresh_binds: bool) {
+        let Ok(written) = ConfigGuard::read_with(|global| {
+            write_changes(&global.files.config, global, &self.config)
+        }) else {
+            return;
+        };
+        let saved = written.and_then(|()| ConfigGuard::write_with(|g| *g = self.config.clone()));
+        self.save_error = saved.as_ref().err().map(|e| format!("{e}").into());
+        if saved.is_err() {
+            return;
+        }
+        if refresh_binds {
+            reload_bindings(cx);
+        }
+
+        // rebuild launchers with the new config (the config itself is already applied above)
+        let Some(data) = cx
+            .try_global::<LauncherEntityGlobal>()
+            .and_then(|g| g.0.upgrade())
+        else {
+            return;
+        };
+        self.reload_task = Some(cx.spawn(async move |_, cx| {
+            let mut messages = Vec::new();
+            reload_async(cx, &data, &mut messages, ConfigFileChange::Fallback).await;
+        }));
     }
 
     /// Reads every setting back from the config, so writes that touch other settings show up

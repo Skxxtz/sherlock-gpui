@@ -18,6 +18,8 @@ mod render;
 pub enum NumberEvent {
     /// The value changed.
     Changed(i64),
+    /// Editing ended (↵, Esc, click outside, etc.)
+    Done,
 }
 
 pub struct NumberInput {
@@ -113,7 +115,9 @@ impl NumberInput {
         if self.typing.is_some() {
             self.apply_typed(cx);
         }
-        self.entry = None;
+        if self.entry.take().is_some() {
+            cx.emit(NumberEvent::Done);
+        }
         self.field_sub = None;
         if self.focus.contains_focused(win, cx) {
             win.blur();
@@ -127,6 +131,9 @@ impl NumberInput {
         if value != self.value {
             self.value = value;
             cx.emit(NumberEvent::Changed(value));
+            if self.entry.is_none() {
+                cx.emit(NumberEvent::Done);
+            }
         }
         self.sync_field(cx);
         cx.notify();

@@ -289,7 +289,7 @@ impl SettingsView {
         theme: &ThemeData,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let unsaved = self.unsaved();
+        let save_error = self.save_error.clone();
         let on_credits = self.on_credits();
         let (title, description): (SharedString, SharedString) = if self.searching() {
             let n = visible.len();
@@ -374,14 +374,12 @@ impl SettingsView {
                                         .text_color(theme.primary_text)
                                         .child(title),
                                 )
-                                .when(unsaved > 0, |this| {
+                                .when_some(save_error, |this, err| {
                                     this.child(
-                                        div().text_size(px(12.)).text_color(theme.accent()).child(
-                                            format!(
-                                                "{unsaved} unsaved change{}",
-                                                if unsaved == 1 { "" } else { "s" }
-                                            ),
-                                        ),
+                                        div()
+                                            .text_size(px(12.))
+                                            .text_color(theme.accent())
+                                            .child(format!("not saved: {err}")),
                                     )
                                 }),
                         )

@@ -89,25 +89,32 @@ impl Control {
             } => {
                 let (value, min, max, step) = (*value, *min, *max, *step);
                 let input = cx.new(|cx| NumberInput::new(value, min, max, step, cx));
-                let sub = cx.subscribe(&input, move |this, _, event: &NumberEvent, cx| {
-                    let NumberEvent::Changed(value) = *event;
-                    this.apply(id, Edit::SetNumber(value), cx);
-                });
+                // steps apply live; saved once editing ends
+                let sub = cx.subscribe(
+                    &input,
+                    move |this, _, event: &NumberEvent, cx| match *event {
+                        NumberEvent::Changed(value) => this.edit(id, Edit::SetNumber(value), cx),
+                        NumberEvent::Done => this.save(cx, false),
+                    },
+                );
                 (Self::Number(input), sub)
             }
             SettingValue::Text(text) => {
                 let text = text.clone();
                 let input = cx.new(|cx| TinyInput::new(cx).with_text(text));
                 let focus = input.read(cx).focus_handle(cx);
-                // typed text applies live; ↵ / Esc leave the field (back to the list)
+                // ↵ applies and saves the typed text, Esc restores the value; both leave the field
                 let sub = cx.subscribe(&input, move |this, input, event: &TextEvent, cx| {
-                    if let TextEvent::Changed = event {
-                        let text = SharedString::from(input.read(cx).text().to_string());
-                        this.apply(id, Edit::SetText(text), cx);
-                    } else {
-                        // events are delivered after the keystroke, when the window is free
-                        let _ = cx.with_window(cx.entity_id(), |window, _| window.blur());
+                    match event {
+                        TextEvent::Changed => return,
+                        TextEvent::Submit => {
+                            let text = SharedString::from(input.read(cx).text().to_string());
+                            this.apply(id, Edit::SetText(text), cx);
+                        }
+                        TextEvent::Cancel => this.restore(id, cx),
                     }
+                    // events are delivered after the keystroke, when the window is free
+                    let _ = cx.with_window(cx.entity_id(), |window, _| window.blur());
                 });
                 (Self::Text(input, focus), sub)
             }
@@ -128,7 +135,6 @@ impl Control {
 
     /// Shows `value` again after a change from outside the editor (reset, reload). Doesn't emit,
     /// so it doesn't come back as an edit.
-    #[allow(dead_code)] // used once settings can be reset / reloaded
     pub(super) fn sync(&self, value: &SettingValue, cx: &mut App) {
         match (self, value) {
             (Self::Color(item), SettingValue::Color(color)) => {

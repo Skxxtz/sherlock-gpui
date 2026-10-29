@@ -322,12 +322,12 @@ fn edits_reach_the_config_and_mark_modified(cx: &mut TestAppContext) {
     let view = view(cx);
     view.update(cx, |v, cx| {
         let before = v.config.behavior.animate;
-        assert_eq!(v.unsaved(), 0);
+        assert!(!v.is_modified("behavior.animate"));
         v.apply("behavior.animate", Edit::Toggle, cx);
         assert_eq!(v.config.behavior.animate, !before);
         assert!(v.is_modified("behavior.animate"));
         v.apply("behavior.animate", Edit::Toggle, cx);
-        assert_eq!(v.unsaved(), 0);
+        assert!(!v.is_modified("behavior.animate"));
     });
 }
 
