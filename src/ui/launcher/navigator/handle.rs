@@ -19,6 +19,7 @@ use crate::{
             QueryResult,
             ShellCtx,
             SherlockView,
+            credits::CreditView,
             emoji::EmojiView,
             file::view::FileView,
             home::HomeView,
@@ -62,6 +63,7 @@ macro_rules! views {
 
 // Adding a view = one line here (plus `impl SherlockView` on the view).
 views! { $;
+    Credit(CreditView),
     Home(HomeView),
     Emoji(EmojiView),
     Files(FileView),

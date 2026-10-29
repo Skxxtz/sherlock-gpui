@@ -1,8 +1,3 @@
-//! Key bindings of one action. An action can have several chords (`"ctrl-j"` and `"down"`), so a
-//! settings row shows a compact [`keybind_summary`] and the chords are edited in a floating
-//! [`KeymapInput`](super::keymap_input::KeymapInput). Chords are stored the way the config
-//! writes them, see [`gpui::Keystroke::unparse`].
-
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{

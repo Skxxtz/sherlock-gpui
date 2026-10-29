@@ -1,5 +1,3 @@
-//! What the shell needs from items of any data type, and their type-erased identity.
-
 use std::{
     any::TypeId,
     hash::{DefaultHasher, Hash, Hasher},

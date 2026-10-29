@@ -1,4 +1,4 @@
-use gpui::{App, ClipboardItem, Context, SharedString, Window};
+use gpui::{App, AppContext, ClipboardItem, Context, SharedString, Window};
 
 use crate::{
     QUERY_MEMORY,
@@ -7,9 +7,10 @@ use crate::{
     loader::utils::CounterReader,
     sherlock_msg,
     ui::{
-        launcher::{LauncherView, context_menu::ContextMenuAction},
+        launcher::{LauncherView, context_menu::ContextMenuAction, navigator::views::NavView},
         model::item::ShellItem,
         traits::RenderableChildDelegate,
+        views::credits::CreditView,
     },
     utils::{
         command_launch::spawn_detached,
@@ -43,6 +44,19 @@ pub struct ExecRequest {
     /// Query at the time of execution; picks are learned under it.
     pub query: SharedString,
     pub exit: bool,
+}
+
+impl Default for ExecRequest {
+    fn default() -> Self {
+        Self {
+            mode: ExecMode::None,
+            source: ExecSource::Bind,
+            key: None,
+            keyword: SharedString::default(),
+            query: SharedString::default(),
+            exit: false,
+        }
+    }
 }
 
 pub enum Outcome {
@@ -205,6 +219,11 @@ impl LauncherView {
             },
             ExecMode::ShowMessages => {
                 self.navigation.show_messages();
+                Outcome::Navigated
+            }
+            ExecMode::ShowCredits => {
+                self.navigation
+                    .push(NavView::new(cx.new(|_| CreditView), cx));
                 Outcome::Navigated
             }
             ExecMode::OpenContextMenu => {

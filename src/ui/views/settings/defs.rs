@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     app::bindings::split_scope,
-    ui::actions::UIFunction,
+    ui::{actions::UIFunction, views::settings::model::SectionKind},
     utils::config::{
         ConfigAppearance,
         ConfigBackdrop,
@@ -76,6 +76,7 @@ impl SectionDef {
             title: self.title,
             description: self.description,
             settings: self.settings.iter().map(|d| d.read(config)).collect(),
+            kind: SectionKind::Settings,
         }
     }
 }

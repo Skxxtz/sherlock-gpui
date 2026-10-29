@@ -1,5 +1,3 @@
-//! Emoji picker over the static `EMOJIS` table: no per-emoji `RenderableChild`s are built.
-
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, AppContext, Context, Window, px};

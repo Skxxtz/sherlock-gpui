@@ -60,6 +60,7 @@ pub enum ExecMode {
     },
     Info,
     ShowMessages,
+    ShowCredits,
     OpenContextMenu,
     Web {
         engine: Option<SharedString>,
@@ -91,6 +92,7 @@ impl ExecMode {
             Self::Category { .. }              // step into a submenu
             | Self::CreateView { .. }          // step into a view
             | Self::ShowMessages               // navigation
+            | Self::ShowCredits                // navigation 
             | Self::Info                       // sidebar
             | Self::Hide { .. }                // config edit
             | Self::DynamicContextMenuFunc { .. }

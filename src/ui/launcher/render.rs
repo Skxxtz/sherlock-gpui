@@ -34,11 +34,11 @@ use crate::{
         bindings::ShortcutKeyMod,
         theme::{ActiveTheme, ThemeData},
     },
-    launcher::LauncherValues,
+    launcher::{LauncherValues, utils::exec_mode::ExecMode},
     loader::resolve_icon_path,
     ui::{
         actions::UIFunction,
-        launcher::{Execute, LauncherMode, LauncherView},
+        launcher::{Execute, LauncherMode, LauncherView, execute::ExecRequest},
         model::ItemIdx,
         traits::RenderableChildDelegate,
         utils::{ease::Ease, render::ListItemBorder, selection::Selection},
@@ -366,6 +366,7 @@ impl LauncherView {
             .w_full()
             .flex()
             .bg(theme.bg_status_bar)
+            .rounded_b(px(10.))
             .border_t_1()
             .border_color(theme.border)
             .px_5()
@@ -373,7 +374,24 @@ impl LauncherView {
             .font_family(theme.font_family.clone())
             .items_center()
             .text_color(theme.text_status_bar)
-            .child("Sherlock")
+            .child(
+                div()
+                    .child("Sherlock")
+                    .on_mouse_down(
+                        gpui::MouseButton::Left,
+                        cx.listener(|this, _, win, cx| {
+                            this.run(
+                                ExecRequest {
+                                    mode: ExecMode::ShowCredits,
+                                    ..Default::default()
+                                },
+                                win,
+                                cx,
+                            );
+                        }),
+                    )
+                    .cursor_pointer(),
+            )
             .when(message_count > 0, |this| {
                 this.child(self.render_error_indicator(message_count, theme.clone(), cx))
             })

@@ -19,9 +19,12 @@ use gpui::{
 
 use super::{
     SettingsView,
-    model::{Edit, Setting, SettingValue},
+    model::{Edit, SectionKind, Setting, SettingValue},
 };
-use crate::{app::theme::ThemeData, ui::components::toggle::toggle};
+use crate::{
+    app::theme::ThemeData,
+    ui::{components::toggle::toggle, views::credits},
+};
 
 const NAV_WIDTH: f32 = 208.;
 /// Left/right padding of the content; rows reach `ROW_PAD` further out so their selection
@@ -30,6 +33,15 @@ const CONTENT_PAD: f32 = 36.;
 const ROW_PAD: f32 = 12.;
 
 impl SettingsView {
+    /// Whether the credits page is showing (search results take precedence).
+    fn on_credits(&self) -> bool {
+        !self.searching()
+            && self
+                .sections
+                .get(self.active)
+                .is_some_and(|s| s.kind == SectionKind::Credits)
+    }
+
     /// The whole page: section nav | title + rows.
     pub(super) fn render_page(
         &self,
@@ -72,19 +84,58 @@ impl SettingsView {
         })
     }
 
+    /// One nav entry; `count` is the mono figure on the right.
+    fn nav_item(
+        &self,
+        i: usize,
+        title: SharedString,
+        count: Option<String>,
+        active: bool,
+        theme: &ThemeData,
+    ) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id(("settings-section", i))
+            .flex()
+            .items_center()
+            .gap(px(10.))
+            .h(px(34.))
+            .px(px(10.))
+            .rounded(px(7.))
+            .cursor_pointer()
+            .text_size(px(13.))
+            .map(|this| {
+                if active {
+                    this.bg(theme.bg_selected)
+                        .text_color(theme.primary_text)
+                        .font_weight(FontWeight::MEDIUM)
+                } else {
+                    this.text_color(theme.secondary_text)
+                        .hover(|s| s.bg(theme.bg_selected))
+                }
+            })
+            .child(
+                div()
+                    .flex_1()
+                    .child(title)
+                    .when(active, |this| this.text_color(theme.accent())),
+            )
+            .when_some(count, |this, count| {
+                this.child(
+                    div()
+                        .font_family(theme.monospace.clone())
+                        .text_size(px(11.))
+                        .text_color(theme.tertiary_text)
+                        .child(count),
+                )
+            })
+    }
+
     fn render_nav(
         &self,
         current: usize,
         theme: &ThemeData,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let mono = |text: String, color: Hsla| {
-            div()
-                .font_family(theme.monospace.clone())
-                .text_size(px(11.))
-                .text_color(color)
-                .child(text)
-        };
         div()
             .id("settings-nav")
             .flex_none()
@@ -98,41 +149,20 @@ impl SettingsView {
             .border_r_1()
             .border_color(theme.border)
             .children(self.sections.iter().enumerate().map(|(i, section)| {
-                let active = i == current;
-                div()
-                    .id(("settings-section", i))
-                    .flex()
-                    .items_center()
-                    .gap(px(10.))
-                    .h(px(34.))
-                    .px(px(10.))
-                    .rounded(px(7.))
-                    .cursor_pointer()
-                    .text_size(px(13.))
-                    .map(|this| {
-                        if active {
-                            this.bg(theme.bg_selected)
-                                .text_color(theme.primary_text)
-                                .font_weight(FontWeight::MEDIUM)
-                        } else {
-                            this.text_color(theme.secondary_text)
-                                .hover(|s| s.bg(theme.bg_selected))
-                        }
-                    })
-                    .child(
-                        div()
-                            .flex_1()
-                            .child(section.title)
-                            .when(active, |this| this.text_color(theme.accent())),
-                    )
-                    .child(mono(
-                        section.settings.len().to_string(),
-                        theme.tertiary_text,
-                    ))
-                    .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
-                        this.select_section(i);
-                        cx.notify();
-                    }))
+                let page = section.kind != SectionKind::Settings;
+                self.nav_item(
+                    i,
+                    section.title.into(),
+                    (!page).then(|| section.settings.len().to_string()),
+                    i == current,
+                    theme,
+                )
+                // pages (credits) sit apart at the bottom; `mt_auto` only moves the first one
+                .when(page, |this| this.mt_auto())
+                .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                    this.select_section(i);
+                    cx.notify();
+                }))
             }))
     }
 
@@ -260,6 +290,7 @@ impl SettingsView {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let unsaved = self.unsaved();
+        let on_credits = self.on_credits();
         let (title, description): (SharedString, SharedString) = if self.searching() {
             let n = visible.len();
             (
@@ -273,26 +304,48 @@ impl SettingsView {
                 .unwrap_or_default()
         };
 
-        // `// group`, or `// section · group` while results come from several sections
-        let mut last: Option<(usize, &str)> = None;
-        let rows: Vec<AnyElement> = visible
-            .iter()
-            .enumerate()
-            .map(|(pos, &(si, ri))| {
-                let group = self.sections[si].settings[ri].group;
-                let heading = (last != Some((si, group))).then(|| {
-                    if self.searching() {
-                        format!("// {} · {group}", self.sections[si].title.to_lowercase())
-                    } else {
-                        format!("// {group}")
-                    }
-                    .into()
-                });
-                last = Some((si, group));
-                self.render_row(pos, (si, ri), heading, theme, cx)
-                    .into_any_element()
-            })
-            .collect();
+        let body = if on_credits {
+            div()
+                .flex_1()
+                .min_h_0()
+                .pb(px(24.))
+                .child(credits::Credits)
+                .into_any_element()
+        } else {
+            // `// group`, or `// section · group` while results come from several sections
+            let mut last: Option<(usize, &str)> = None;
+            let rows: Vec<AnyElement> = visible
+                .iter()
+                .enumerate()
+                .map(|(pos, &(si, ri))| {
+                    let group = self.sections[si].settings[ri].group;
+                    let heading = (last != Some((si, group))).then(|| {
+                        if self.searching() {
+                            format!("// {} · {group}", self.sections[si].title.to_lowercase())
+                        } else {
+                            format!("// {group}")
+                        }
+                        .into()
+                    });
+                    last = Some((si, group));
+                    self.render_row(pos, (si, ri), heading, theme, cx)
+                        .into_any_element()
+                })
+                .collect();
+
+            div()
+                .id("settings-rows")
+                .flex_1()
+                .min_h_0()
+                .overflow_y_scroll()
+                .track_scroll(&self.scroll)
+                .flex()
+                .flex_col()
+                .px(px(CONTENT_PAD - ROW_PAD))
+                .pb(px(24.))
+                .children(rows)
+                .into_any_element()
+        };
 
         div()
             .flex_1()
@@ -300,56 +353,46 @@ impl SettingsView {
             .h_full()
             .flex()
             .flex_col()
-            .child(
-                div()
-                    .px(px(CONTENT_PAD))
-                    .pt(px(26.))
-                    .pb(px(22.))
-                    .flex()
-                    .flex_col()
-                    .gap(px(6.))
-                    .child(
-                        div()
-                            .flex()
-                            .items_baseline()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .text_size(px(26.))
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(theme.primary_text)
-                                    .child(title),
-                            )
-                            .when(unsaved > 0, |this| {
-                                this.child(
-                                    div().text_size(px(12.)).text_color(theme.accent()).child(
-                                        format!(
-                                            "{unsaved} unsaved change{}",
-                                            if unsaved == 1 { "" } else { "s" }
-                                        ),
-                                    ),
+            .when(!on_credits, |this| {
+                this.child(
+                    div()
+                        .px(px(CONTENT_PAD))
+                        .pt(px(26.))
+                        .pb(px(22.))
+                        .flex()
+                        .flex_col()
+                        .gap(px(6.))
+                        .child(
+                            div()
+                                .flex()
+                                .items_baseline()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .text_size(px(26.))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(theme.primary_text)
+                                        .child(title),
                                 )
-                            }),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(13.))
-                            .text_color(theme.secondary_text)
-                            .child(description),
-                    ),
-            )
-            .child(
-                div()
-                    .id("settings-rows")
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .track_scroll(&self.scroll)
-                    .flex()
-                    .flex_col()
-                    .px(px(CONTENT_PAD - ROW_PAD))
-                    .pb(px(24.))
-                    .children(rows),
-            )
+                                .when(unsaved > 0, |this| {
+                                    this.child(
+                                        div().text_size(px(12.)).text_color(theme.accent()).child(
+                                            format!(
+                                                "{unsaved} unsaved change{}",
+                                                if unsaved == 1 { "" } else { "s" }
+                                            ),
+                                        ),
+                                    )
+                                }),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(13.))
+                                .text_color(theme.secondary_text)
+                                .child(description),
+                        ),
+                )
+            })
+            .child(body)
     }
 }

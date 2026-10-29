@@ -5,7 +5,7 @@ use gpui::{AnyElement, Context, IntoElement, ScrollHandle, SharedString, Subscri
 use crate::{
     ui::{
         model::data::NoData,
-        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView},
+        views::{Chrome, Query, QueryResult, ShellCtx, SherlockView, settings::model::SectionKind},
     },
     utils::config::{ConfigGuard, SherlockConfig},
 };
@@ -91,7 +91,17 @@ impl SettingsView {
             .map(|c| c.clone())
             .unwrap_or_else(|_| default_config());
         let defs = defs::sections();
-        let sections: Vec<_> = defs.iter().map(|d| d.read(&config)).collect();
+        let credit_section = SettingsSection {
+            title: "Credits",
+            description: "The people behind Sherlock.",
+            settings: vec![],
+            kind: SectionKind::Credits,
+        };
+        let sections: Vec<_> = defs
+            .iter()
+            .map(|d| d.read(&config))
+            .chain(std::iter::once(credit_section))
+            .collect();
 
         let mut controls = HashMap::new();
         let mut subs = Vec::new();

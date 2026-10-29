@@ -1,13 +1,3 @@
-//! Every bindable action, declared once. `sherlock_actions!` turns the list into:
-//! - the action structs, in their modules (`actions::launcher::ItemDown`, re-exported as
-//!   `actions::ItemDown`);
-//! - `UIFunction`: each action's name in `[keybinds]` (`"item_down"`), with `binding` to make
-//!   its key binding and `ALL` to list them.
-//!
-//! A new action is one line in its module's list.
-
-/// See the module docs. `module as namespace: [Actions] { extra items }`; `special` are
-/// `UIFunction`s without a generated struct (actions with data, bound by hand).
 #[macro_export]
 macro_rules! sherlock_actions {
     (

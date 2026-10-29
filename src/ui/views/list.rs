@@ -1,8 +1,3 @@
-//! Reusable bodies for views over any `ModelData`: a row list and a grid.
-//!
-//! Each item draws its own row (`RowRender`); the bodies handle scrolling, selection and
-//! shortcut numbers.
-
 use std::sync::Arc;
 
 use gpui::{

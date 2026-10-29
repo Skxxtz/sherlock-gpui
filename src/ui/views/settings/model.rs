@@ -1,5 +1,3 @@
-//! The settings data: values, settings, sections, and the edits that change them.
-
 use gpui::{Hsla, SharedString};
 
 /// The value of one setting; decides which control is shown.
@@ -48,6 +46,14 @@ pub struct SettingsSection {
     /// One line under the section's title.
     pub description: &'static str,
     pub settings: Vec<Setting>,
+    pub kind: SectionKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SectionKind {
+    #[default]
+    Settings,
+    Credits,
 }
 
 /// A change to a value, from a click, Enter, or an editor (color, choice, keybind).

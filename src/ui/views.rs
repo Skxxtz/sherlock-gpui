@@ -11,6 +11,7 @@ use crate::{
     },
 };
 
+pub mod credits;
 pub mod emoji;
 pub mod events;
 pub mod file;
