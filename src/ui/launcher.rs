@@ -7,13 +7,11 @@ use gpui::{
     FocusHandle,
     Focusable,
     IntoElement,
-    SharedString,
     Subscription,
     WindowHandle,
 };
 
 use crate::{
-    launcher::LauncherConfig,
     tokio_utils::SizedMessageObj,
     ui::{
         actions::launcher::*,
@@ -33,10 +31,13 @@ pub mod actions;
 pub mod context_menu;
 mod execute;
 pub mod filter_and_sort;
+mod mode;
 pub mod navigator;
 pub mod render;
 pub mod sidebar;
 pub mod sidebar_controller;
+
+pub use mode::{LauncherMode, Route};
 
 #[derive(Clone, Debug)]
 pub enum VariableInput {
@@ -122,72 +123,5 @@ impl LauncherView {
 
             let _ = stream.write_sized(response);
         }
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Default)]
-pub enum LauncherMode {
-    #[default]
-    Home,
-    Search,
-    Alias {
-        short: SharedString,
-        name: SharedString,
-        launcher: Arc<LauncherConfig>,
-    },
-}
-
-pub enum ModeTransition {
-    None,
-    PushStack(Arc<LauncherConfig>),
-    ClearInput,
-}
-
-impl LauncherMode {
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::Home | Self::Search => "all",
-            Self::Alias { short, .. } => short.as_ref(),
-        }
-    }
-    pub fn display_str(&self) -> SharedString {
-        match self {
-            // "".into() uses static literals (no allocation) → efficient
-            Self::Home => "All".into(),
-            Self::Search => "Search".into(),
-            Self::Alias { name, .. } => name.clone(),
-        }
-    }
-    pub fn transition_for_query(&mut self, query: &str, modes: &[Self]) -> ModeTransition {
-        match (self, query.is_empty()) {
-            (m @ Self::Search, true) => *m = Self::Home,
-            (m @ Self::Home, false) => *m = Self::Search,
-            (m @ Self::Search, false) | (m @ Self::Alias { .. }, false) => {
-                if let Some(alias_input) = query.strip_suffix(' ') {
-                    let found_mode = modes.iter().find(|mode| {
-                        if let Self::Alias { short, .. } = mode {
-                            short.eq_ignore_ascii_case(alias_input)
-                        } else {
-                            false
-                        }
-                    });
-
-                    if let Some(new_mode) = found_mode {
-                        *m = new_mode.clone();
-                        if let Self::Alias { launcher, .. } = new_mode
-                            && launcher.needs_stack_push()
-                        {
-                            return ModeTransition::PushStack(launcher.clone());
-                        }
-                        // should clear search bar
-                        return ModeTransition::ClearInput;
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        // only minor change
-        ModeTransition::None
     }
 }

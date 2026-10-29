@@ -2,7 +2,7 @@ use gpui::{Context, SharedString};
 
 pub use crate::ui::model::pipeline::FilterPolicy;
 use crate::ui::{
-    launcher::{LauncherView, ModeTransition, navigator::handle::ViewKind},
+    launcher::{LauncherView, Route, navigator::handle::ViewKind},
     model::ResultsChange,
     views::{Query, QueryResult},
 };
@@ -64,27 +64,25 @@ impl LauncherView {
         let mut query: SharedString = self.text_input.read(cx).content.to_lowercase().into();
 
         // handle mode change
-        {
-            let nav_mut = self.navigation.current_mut();
-            match nav_mut.mode.transition_for_query(&query, &self.modes) {
-                ModeTransition::None => {}
-                ModeTransition::ClearInput => {
-                    self.text_input.update(cx, |this, _cx| {
-                        this.reset();
-                    });
-                    query = "".into();
-                }
-                ModeTransition::PushStack(launcher) => {
-                    let Some(view) = ViewKind::try_from(&launcher.launcher_type)
-                        .ok()
-                        .and_then(|kind| kind.build(launcher, cx))
-                    else {
-                        return;
-                    };
-                    self.text_input.update(cx, |this, _| this.reset());
-                    self.navigation.push(view);
-                    query = "".into();
-                }
+        match self.navigation.current().mode.route(&query, &self.modes) {
+            Route::Stay => {}
+            Route::Switch(mode) => {
+                self.navigation.current_mut().mode = mode;
+                self.text_input.update(cx, |this, _| this.reset());
+                query = "".into()
+            }
+            Route::Push(mode) => {
+                let Some(mut view) = mode
+                    .launcher()
+                    .and_then(|l| Some((ViewKind::try_from(&l.launcher_type).ok()?, l.clone())))
+                    .and_then(|(kind, launcher)| kind.build(launcher, cx))
+                else {
+                    return;
+                };
+                view.mode = mode;
+                self.text_input.update(cx, |this, _| this.reset());
+                self.navigation.push(view);
+                query = "".into()
             }
         }
 

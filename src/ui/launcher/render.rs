@@ -68,6 +68,9 @@ impl Render for LauncherView {
         self.sidebar_controller.check_validity(&self.navigation, cx);
 
         let chrome = self.navigation.current().handle.chrome(cx);
+        // home mode with a query is a search
+        let searching = *self.navigation.current_mode() == LauncherMode::Home
+            && !self.text_input.read(cx).content.is_empty();
         self.ensure_focus(chrome, win, cx);
         let sidebar = self.render_sidebar(chrome, &theme, cx);
 
@@ -99,7 +102,7 @@ impl Render for LauncherView {
             .on_key_down(cx.listener(Self::context_menu_binds_listener))
             .on_key_up(cx.listener(Self::inner_bind_listener))
             .when(chrome.search_bar, |this| {
-                this.child(self.render_search_bar(theme.clone()))
+                this.child(self.render_search_bar(theme.clone(), searching))
             })
             // main area: content column | sidebar (full height between search and status bar)
             .child(
@@ -119,7 +122,7 @@ impl Render for LauncherView {
                                 this.child(self.render_config_banner(theme.clone()))
                             })
                             .when(chrome.mode_label, |this| {
-                                this.child(self.render_mode_label(theme.clone()))
+                                this.child(self.render_mode_label(theme.clone(), searching))
                             })
                             .child(div().flex_1().min_h_0().child(self.render_body(
                                 chrome,
@@ -175,9 +178,8 @@ impl LauncherView {
         }
     }
 
-    fn render_search_bar(&self, theme: Arc<ThemeData>) -> impl IntoElement {
+    fn render_search_bar(&self, theme: Arc<ThemeData>, searching: bool) -> impl IntoElement {
         let search_icon = ConfigGuard::read().ok().map(|c| c.search_bar_icon.clone());
-        let is_search_mode = self.navigation.current_mode() == &LauncherMode::Search;
 
         // Extract everything upfront — avoid repeated unwraps inside closures
         let icon_enabled = search_icon.as_ref().is_some_and(|i| i.enable);
@@ -207,7 +209,7 @@ impl LauncherView {
                         .size(px(24.))
                         .items_center()
                         .justify_center()
-                        .when(!is_search_mode, |this| {
+                        .when(!searching, |this| {
                             this.when_some(
                                 icon_path.as_deref().and_then(resolve_icon_path),
                                 |this, icon| {
@@ -221,7 +223,7 @@ impl LauncherView {
                                 },
                             )
                         })
-                        .when(is_search_mode, |this| {
+                        .when(searching, |this| {
                             this.when_some(
                                 icon_back_path.as_deref().and_then(resolve_icon_path),
                                 |this, icon| {
@@ -279,7 +281,7 @@ impl LauncherView {
             )
     }
 
-    fn render_mode_label(&self, theme: Arc<ThemeData>) -> impl IntoElement {
+    fn render_mode_label(&self, theme: Arc<ThemeData>, searching: bool) -> impl IntoElement {
         div()
             .px(px(14.))
             .py(px(4.))
@@ -287,7 +289,7 @@ impl LauncherView {
             .font_weight(FontWeight::BOLD)
             .text_color(theme.text_mode_label)
             .font_family(theme.font_family.clone())
-            .child(self.navigation.current().mode.display_str())
+            .child(self.navigation.current().mode.display_str(searching))
     }
 
     /// The selected item's sidebar, if the view shows one and the item has one. Rendered next to

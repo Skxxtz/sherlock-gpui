@@ -19,11 +19,11 @@ use crate::{
             search_bar::{EmptyBackspace, TextInput},
         },
         launcher::{
-            LauncherMode,
             LauncherView,
             VariableInput,
             context_menu::{ContextMenuAction, wrapper::Move},
             execute::{ExecRequest, ExecSource},
+            mode::LauncherMode,
             navigator::views::MoveDirection,
         },
         runtime_arguments::RuntimeArgument,
@@ -526,16 +526,18 @@ impl LauncherView {
         }
         if !self.navigation.is_home() {
             self.navigation.back(cx);
-            if let Some(c) = self.navigation.last_query(cx) {
-                self.text_input.update(cx, |ipt, _| ipt.set_text(c));
-            }
+            let text = self.navigation.last_query(cx).unwrap_or_default();
+            self.text_input.update(cx, |ipt, cx| {
+                ipt.set_text(text);
+                cx.notify();
+            });
             self.force_filter_and_sort(cx);
-            cx.notify();
-        } else if self.navigation.current().mode != LauncherMode::Home {
+        } else if *self.navigation.current_mode() != LauncherMode::Home {
             self.navigation.current_mut().mode = LauncherMode::Home;
             self.navigation.clear_last_query(cx);
             self.filter_and_sort(cx);
         }
+        cx.notify();
     }
 
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
