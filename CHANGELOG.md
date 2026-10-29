@@ -40,6 +40,53 @@ run `git log main..dev` for all changes
 
 ## [Unreleased]
 
+* as of **78a2b1a**
+
+### Added
+
+* **Settings View**: Config-backed settings view with keybind editing, number
+  inputs, saving and on-the-fly application (`1ccd71f`, `95e89e1`, `5bc9743`)
+* **Components**: Added colour picker, keymap input and stepper chevrons
+  (`ef23aa2`)
+* **Credits View**: Added credits view with bundled contributors (`c7c2705`)
+* **Emoji View**: Emoji picker now renders from the static emoji set; picks
+  are learned per emoji (`1f8d197`)
+* **Message View**: Added empty state (`c7e8cec`)
+* **Keybinds**: Added default binds for `CursorLeft` and `CursorRight`
+  (`4c920d6`)
+
+### Improved
+
+* **UI**: Redesigned main view, search bar and settings view (`5aebc2f`)
+* **Mode Switching**: Improved mode changing (`dce043a`)
+* **Pixel Art**: Improved Sherlock pixel art (`31e9df2`)
+* **Reload**: `reload_async` now actually uses `AsyncApp` (`3c92cf9`)
+* **Views**: Internal rework – views own their queries, search sources and
+  rendering; generic list/grid rendering; type-erased models and items;
+  central action handling (`2bfa7df`, `a2d5112`, `95a3b58`, `9480652`,
+  `46b8d65`, `b15aac3`, `538e850`, `01f5253`, `15da724`, `a56c6cd`, `4afeaa3`)
+* **Launchers**: Each launcher in its own module, children stored in a
+  slotmap, new `FilterPolicy` (`b1811d5`, `91f71fa`, `16bab43`, `193fcbd`)
+
+### Performance
+
+* **Filtering**: Filtering and sorting run in the background on a
+  thread-safe search index (`97d4bf4`, `ad5eb21`, `286f630`)
+
+### Fixed
+
+* **Search Ranking**: Learned picks now rank above unlearned matches, even
+  across match bands (`6d0f234`)
+* **Context Menu**: Context-action picks are learned under the typed query
+  (`5393fd0`)
+* **Category Launcher**: Fixed invalid exec mode (`92747e2`)
+* **Navigation**: Going back to views without a model now triggers a redraw
+  (`bebc8a8`)
+* **List Items**: Uniform height for list items (`5270fa9`)
+* **Input**: Fixed event propagation on caret left/right (`7fde47e`)
+* **Settings View**: Fixed scroll padding (`004bddf`)
+
+
 ## [0.2.4] - 23.10.26
 
 ### Added
