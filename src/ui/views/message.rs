@@ -1,9 +1,9 @@
 use std::{cell::Cell, collections::HashMap, sync::Arc};
 
-use gpui::{AnyElement, App, Context, WeakEntity, Window, px};
+use gpui::{AnyElement, App, Context, IntoElement, WeakEntity, Window, px};
 
 use crate::{
-    app::data::LauncherData,
+    app::{data::LauncherData, theme::ActiveTheme},
     features::message::MessageLauncher,
     launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     ui::{
@@ -11,6 +11,7 @@ use crate::{
         model::{ItemIdx, Model},
         traits::HandleActions,
         views::{
+            Chrome,
             Propagation,
             Query,
             QueryResult,
@@ -23,6 +24,8 @@ use crate::{
     },
     utils::{config::HomeType, errors::SherlockMessage},
 };
+
+mod render;
 
 pub struct MessageView {
     pub launcher_config: Arc<LauncherConfig>,
@@ -152,6 +155,15 @@ impl HandleActions for MessageView {
 impl SherlockView for MessageView {
     type Data = LauncherData;
 
+    fn chrome(&self) -> Chrome {
+        Chrome {
+            sidebar: false,
+            mode_label: false,
+            inset: false,
+            ..Default::default()
+        }
+    }
+
     fn model(&self) -> Option<&Model<LauncherData>> {
         Some(&self.model)
     }
@@ -170,7 +182,12 @@ impl SherlockView for MessageView {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        list_body(&self.model, shell, cx)
+        if self.model.filtered_indices().is_empty() {
+            let theme = cx.global::<ActiveTheme>().0.clone();
+            render::empty_state(&theme).into_any_element()
+        } else {
+            list_body(&self.model, shell, cx)
+        }
     }
 
     fn on_query(&mut self, query: &Query, cx: &mut Context<Self>) -> QueryResult {

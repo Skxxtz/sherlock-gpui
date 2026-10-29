@@ -7,5 +7,6 @@ pub mod keymap_item;
 pub mod number_input;
 pub mod search_bar;
 pub mod select;
+pub mod sherlock_pixel;
 pub mod tiny_input;
 pub mod toggle;
