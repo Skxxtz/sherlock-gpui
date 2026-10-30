@@ -6,11 +6,12 @@ use crate::{
     loader::application_loader::ApplicationLoader,
     sherlock_msg,
     utils::{
-        config::ConfigGuard,
+        config::{ConfigGuard, writer::config_sources},
         errors::{
             SherlockMessage,
             types::{DirAction, SherlockErrorType},
         },
+        files::modified_since,
     },
 };
 
@@ -40,7 +41,13 @@ impl ConfigWatcher {
         let app_change =
             (!ApplicationLoader::get_new_apps(since).is_empty()).then_some(ConfigFileChange::Apps);
 
-        // get entries
+        // if nix has rebuilt since last audit
+        #[cfg(feature = "nixos")]
+        let nix_rebuilt =
+            application_loader::nixos::system_creation_time().is_some_and(|t| t > since);
+        #[cfg(not(feature = "nixos"))]
+        let nix_rebuilt = false;
+
         let entries = std::fs::read_dir(&self.root_dir).map_err(|e| {
             sherlock_msg!(
                 Warning,
@@ -61,39 +68,33 @@ impl ConfigWatcher {
                 )
             })?;
 
+        // all files pulled in via [[source]], wherever they live
+        let sources = config_sources(&config_file);
+        let source_change = sources
+            .iter()
+            .any(|p| nix_rebuilt || modified_since(p, since))
+            .then_some(ConfigFileChange::Config);
+
         // collect out-of-date entries
         entries
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| {
-                #[cfg(feature = "nixos")]
-                if application_loader::nixos::system_creation_time().is_some_and(|t| t > since) {
-                    return true;
-                }
-
-                entry
-                    .metadata()
-                    .and_then(|m| m.modified())
-                    // TODO: make nixos-home-manager compatible
-                    .map(|modified| entry.path().is_file() && modified > since)
-                    .unwrap_or(false)
-            })
-            .map(|entry| {
-                let path_buf = entry.path().to_path_buf();
-                match path_buf {
-                    _ if path_buf == config_file.as_ref() => ConfigFileChange::Config,
-                    _ if path_buf == fallback_file.as_ref() => ConfigFileChange::Fallback,
-                    _ if path_buf == alias_file.as_ref() => ConfigFileChange::Alias,
-                    _ if path_buf == ignore_file.as_ref() => ConfigFileChange::Ignore,
-                    _ if path_buf == actions_file.as_ref() => ConfigFileChange::Actions,
-                    _ if path_buf == cache_file.as_ref() => ConfigFileChange::Cache,
-                    _ => ConfigFileChange::Other,
-                }
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.is_file() && (nix_rebuilt || modified_since(path, since)))
+            .map(|path| match path {
+                _ if path == config_file.as_ref() => ConfigFileChange::Config,
+                _ if path == fallback_file.as_ref() => ConfigFileChange::Fallback,
+                _ if path == alias_file.as_ref() => ConfigFileChange::Alias,
+                _ if path == ignore_file.as_ref() => ConfigFileChange::Ignore,
+                _ if path == actions_file.as_ref() => ConfigFileChange::Actions,
+                _ if path == cache_file.as_ref() => ConfigFileChange::Cache,
+                _ if sources.contains(&path) => ConfigFileChange::Config,
+                _ => ConfigFileChange::Other,
             })
             .chain(app_change)
+            .chain(source_change)
             .for_each(|change| self.last_audit_result |= change);
 
         self.latest_audit = current_audit_time;
-
         Ok(self.last_audit_result)
     }
 }

@@ -11,6 +11,7 @@ mod write;
 mod tests;
 
 use diff::changed_keys;
+pub use locate::config_sources;
 use locate::locate_keys;
 use utils::ser_err;
 use write::write_keys;

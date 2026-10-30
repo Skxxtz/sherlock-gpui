@@ -4,6 +4,7 @@ use std::{
     io::{self, BufRead},
     path::{Path, PathBuf},
     sync::OnceLock,
+    time::SystemTime,
 };
 
 use super::errors::SherlockMessage;
@@ -75,4 +76,11 @@ fn is_executable(p: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
     p.metadata()
         .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+}
+
+#[inline(always)]
+pub fn modified_since(path: &Path, since: SystemTime) -> bool {
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .is_ok_and(|t| t > since)
 }

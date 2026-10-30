@@ -135,3 +135,20 @@ fn take_sources(table: &mut toml::Table, path: &Path) -> Result<Vec<PathBuf>, Sh
         })
         .collect())
 }
+
+/// All files reachable via `[[source]]` from `start` (excluding `start`).
+pub fn config_sources(start: &Path) -> HashSet<PathBuf> {
+    let mut seen = HashSet::new();
+    let mut stack = vec![start.to_path_buf()];
+    while let Some(file) = stack.pop() {
+        let Ok(mut table) = read_table(&file) else {
+            continue;
+        };
+        for src in take_sources(&mut table, &file).unwrap_or_default() {
+            if seen.insert(src.clone()) {
+                stack.push(src);
+            }
+        }
+    }
+    seen
+}
