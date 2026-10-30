@@ -25,10 +25,14 @@ use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
-    features::weather::WeatherData,
+    features::weather::{
+        WeatherData,
+        launcher::{WeatherClass, WeatherIconTheme},
+    },
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     sherlock_msg,
     ui::{
+        components::weather_icons::weather_icon,
         utils::{
             async_update::{AsyncUpdate, AsyncUpdateEntity, Fetchable},
             ease::Ease,
@@ -38,7 +42,10 @@ use crate::{
         },
         widgets::RenderableChildImpl,
     },
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::{
+        config::ConfigGuard,
+        errors::{SherlockMessage, types::SherlockErrorType},
+    },
 };
 
 impl Fetchable for WeatherData {
@@ -87,11 +94,14 @@ impl RenderableChildImpl for WeatherWidget {
         theme: Arc<ThemeData>,
         cx: &mut App,
     ) -> AnyElement {
-        let show_datetime = if let LauncherType::Weather(wttr) = launcher.launcher_type.as_ref() {
-            wttr.show_datetime
-        } else {
-            false
-        };
+        let (show_datetime, use_pixel, icon_size) =
+            if let LauncherType::Weather(wttr) = launcher.launcher_type.as_ref() {
+                let use_pixel = wttr.icon_theme == WeatherIconTheme::Pixel;
+                let icon_size = wttr.icon_size.unwrap_or(if use_pixel { 43 } else { 36 });
+                (wttr.show_datetime, use_pixel, icon_size)
+            } else {
+                (false, false, 35)
+            };
 
         let now = Local::now();
         let time = now.time();
@@ -183,19 +193,25 @@ impl RenderableChildImpl for WeatherWidget {
                         div()
                             .flex()
                             .items_center()
-                            .gap(px(8.))
-                            .child(if let Some(icon) = data.icon.as_ref() {
-                                if let Some(svg) = icon.svg() {
-                                    svg.size(px(36.))
-                                        .text_color(theme.primary_text)
-                                        .into_any_element()
+                            .gap(px(10.))
+                            .map(|this| {
+                                if use_pixel {
+                                    this.child(weather_icon(&data.css, px(icon_size as f32)))
                                 } else {
-                                    img(icon.clone()).size(px(36.)).into_any_element()
+                                    this.child(if let Some(icon) = data.icon.as_ref() {
+                                        if let Some(svg) = icon.svg() {
+                                            svg.size(px(icon_size as f32))
+                                                .text_color(theme.primary_text)
+                                                .into_any_element()
+                                        } else {
+                                            img(icon.clone()).size(px(36.)).into_any_element()
+                                        }
+                                    } else {
+                                        img(ImageSource::Image(Arc::new(Image::empty())))
+                                            .size(px(36.))
+                                            .into_any_element()
+                                    })
                                 }
-                            } else {
-                                img(ImageSource::Image(Arc::new(Image::empty())))
-                                    .size(px(36.))
-                                    .into_any_element()
                             })
                             .child(
                                 div()

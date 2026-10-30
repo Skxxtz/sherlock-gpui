@@ -25,9 +25,10 @@ use crate::{
     },
 };
 
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Deserialize, Default, PartialEq)]
 pub enum WeatherIconTheme {
     Sherlock,
+    Pixel,
     #[default]
     None,
 }
@@ -45,6 +46,9 @@ pub struct WeatherLauncher {
 
     #[serde(default)]
     pub icon_theme: WeatherIconTheme,
+
+    #[serde(default)]
+    pub icon_size: Option<u32>,
 
     #[serde(default)]
     pub show_datetime: bool,
@@ -320,7 +324,14 @@ mod docs {
                         ty: "string",
                         required: false,
                         default: None,
-                        description: "The weather icon theme. Can be either `None` or `Sherlock`",
+                        description: "The weather icon theme. Can be either `None`, `Sherlock`, or `Pixel",
+                    },
+                    FieldDoc {
+                        name: "icon_size",
+                        ty: "u32",
+                        required: false,
+                        default: Some("36 if (icon_theme != Pixel) else 43"),
+                        description: "The weather icon size.",
                     },
                     FieldDoc {
                         name: "show_datetime",
@@ -339,6 +350,7 @@ mod docs {
                         "args": {
                             "location": "berlin",
                             "update_interval": 120,
+                            "icon_size": 36,
                             "show_datetime": true,
                             "icon_theme": "Sherlock"
                         },
