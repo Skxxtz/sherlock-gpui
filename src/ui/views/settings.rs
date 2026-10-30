@@ -25,7 +25,7 @@ use crate::{
             settings::{model::SectionKind, render::ROW_PAD},
         },
     },
-    utils::config::{ConfigFileChange, ConfigGuard, SherlockConfig, reload_async, write_changes},
+    utils::config::{ConfigFileChange, ConfigGuard, SherlockConfig, reload_async, save_changes},
 };
 
 mod actions;
@@ -297,7 +297,7 @@ impl SettingsView {
     /// the global one.
     fn save(&mut self, cx: &mut Context<Self>, refresh_binds: bool) {
         let Ok(written) = ConfigGuard::read_with(|global| {
-            write_changes(&global.files.config, global, &self.config)
+            save_changes(&global.files.config, global, &self.config)
         }) else {
             return;
         };

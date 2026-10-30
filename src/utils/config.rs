@@ -21,10 +21,10 @@ mod guard;
 mod ignore;
 mod imp;
 mod keys;
-mod persist;
 mod reload;
 mod transformer;
 mod watcher;
+mod writer;
 
 pub use alias::SherlockAlias;
 pub use defaults::{
@@ -37,10 +37,10 @@ pub use defaults::{
 pub use flags::SherlockFlags;
 pub use guard::ConfigGuard;
 pub use ignore::SherlockIgnore;
-pub use persist::write_changes;
 pub use reload::{reload, reload_async};
 pub use transformer::repair_config;
 pub use watcher::{ConfigFileChange, ConfigWatcher};
+pub use writer::save_changes;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct SherlockConfig {
