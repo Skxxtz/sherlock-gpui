@@ -9,6 +9,9 @@ pub struct Assets;
 
 impl AssetSource for Assets {
     fn load(&self, path: &str) -> Result<Option<std::borrow::Cow<'static, [u8]>>> {
+        if let Some(file) = Self::get(path) {
+            return Ok(Some(file.data));
+        }
         std::fs::read(path)
             .map(Into::into)
             .map_err(Into::into)

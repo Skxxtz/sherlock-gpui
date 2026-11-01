@@ -58,8 +58,8 @@ impl super::NumberInput {
             .justify_center()
             .children(
                 resolve_icon_path(icon)
-                    .and_then(|i| i.svg())
-                    .map(|svg| svg.size(px(ICON)).text_color(color)),
+                    .and_then(|i| i.svg(px(ICON)))
+                    .map(|svg| svg.text_color(color)),
             )
             .when(enabled, |this| {
                 this.cursor_pointer()

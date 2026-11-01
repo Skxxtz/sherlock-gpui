@@ -22,7 +22,6 @@ use gpui::{
     Window,
     deferred,
     div,
-    img,
     prelude::FluentBuilder,
     px,
     relative,
@@ -213,13 +212,7 @@ impl LauncherView {
                             this.when_some(
                                 icon_path.as_deref().and_then(resolve_icon_path),
                                 |this, icon| {
-                                    this.child(if let Some(svg) = icon.svg() {
-                                        svg.size(px(icon_size))
-                                            .text_color(theme.secondary_text)
-                                            .into_any_element()
-                                    } else {
-                                        img(icon).size(px(icon_size)).into_any_element()
-                                    })
+                                    this.child(icon.element(px(icon_size), theme.secondary_text))
                                 },
                             )
                         })
@@ -227,13 +220,9 @@ impl LauncherView {
                             this.when_some(
                                 icon_back_path.as_deref().and_then(resolve_icon_path),
                                 |this, icon| {
-                                    this.child(if let Some(svg) = icon.svg() {
-                                        svg.size(px(icon_back_size))
-                                            .text_color(theme.secondary_text)
-                                            .into_any_element()
-                                    } else {
-                                        img(icon).size(px(icon_back_size)).into_any_element()
-                                    })
+                                    this.child(
+                                        icon.element(px(icon_back_size), theme.secondary_text),
+                                    )
                                 },
                             )
                         }),

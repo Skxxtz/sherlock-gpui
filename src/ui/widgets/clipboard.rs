@@ -5,18 +5,14 @@ use gpui::{
     App,
     AppContext,
     Entity,
-    Image,
-    ImageSource,
     IntoElement,
     ParentElement,
     SharedString,
     Styled,
     div,
-    img,
     prelude::FluentBuilder,
     px,
     rgb,
-    svg,
 };
 use sherlock_derive::Hideable;
 
@@ -305,18 +301,9 @@ fn url_show(url: SharedString, selection: Selection, theme: Arc<ThemeData>) -> g
         .gap_5()
         .items_center()
         .child(if let Some(icon) = resolve_icon_path("sherlock-link") {
-            match icon {
-                crate::loader::IconType::Png(png) => img(png).size(px(24.)).into_any_element(),
-                crate::loader::IconType::Symbolic(sym) => svg()
-                    .path(sym.to_string_lossy().into_owned())
-                    .text_color(theme.secondary_text)
-                    .size(px(24.))
-                    .into_any_element(),
-            }
+            icon.element(px(24.), theme.secondary_text)
         } else {
-            img(ImageSource::Image(Arc::new(Image::empty())))
-                .size(px(24.))
-                .into_any_element()
+            div().size(px(24.)).into_any_element()
         })
         .child(
             div()

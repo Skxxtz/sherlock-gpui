@@ -9,13 +9,10 @@ use gpui::{
     AppContext,
     FontWeight,
     Hsla,
-    Image,
-    ImageSource,
     IntoElement,
     ParentElement,
     Styled,
     div,
-    img,
     linear_gradient,
     prelude::FluentBuilder,
     px,
@@ -25,10 +22,7 @@ use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
-    features::weather::{
-        WeatherData,
-        launcher::{WeatherClass, WeatherIconTheme},
-    },
+    features::weather::{WeatherData, launcher::WeatherIconTheme},
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     sherlock_msg,
     ui::{
@@ -42,10 +36,7 @@ use crate::{
         },
         widgets::RenderableChildImpl,
     },
-    utils::{
-        config::ConfigGuard,
-        errors::{SherlockMessage, types::SherlockErrorType},
-    },
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
 impl Fetchable for WeatherData {
@@ -193,23 +184,14 @@ impl RenderableChildImpl for WeatherWidget {
                         div()
                             .flex()
                             .items_center()
-                            .gap(px(10.))
+                            .gap(px(8.))
                             .map(|this| {
                                 if use_pixel {
                                     this.child(weather_icon(&data.css, px(icon_size as f32)))
                                 } else {
-                                    this.child(if let Some(icon) = data.icon.as_ref() {
-                                        if let Some(svg) = icon.svg() {
-                                            svg.size(px(icon_size as f32))
-                                                .text_color(theme.primary_text)
-                                                .into_any_element()
-                                        } else {
-                                            img(icon.clone()).size(px(36.)).into_any_element()
-                                        }
-                                    } else {
-                                        img(ImageSource::Image(Arc::new(Image::empty())))
-                                            .size(px(36.))
-                                            .into_any_element()
+                                    this.child(match data.icon.as_ref() {
+                                        Some(icon) => icon.element(px(36.), theme.primary_text),
+                                        None => div().size(px(36.)).into_any_element(),
                                     })
                                 }
                             })

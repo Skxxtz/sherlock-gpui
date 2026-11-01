@@ -1,6 +1,10 @@
-use std::{fs, path::PathBuf, sync::OnceLock};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
-use crate::{loader::icon::ICON_SIZE, utils::paths::get_config_dir_raw};
+use crate::utils::paths::get_config_dir_raw;
 
 static ICON_THEME: OnceLock<Option<String>> = OnceLock::new();
 
@@ -68,28 +72,41 @@ fn read_gsettings_icon_theme() -> Option<String> {
     Some(raw.trim().trim_matches('\'').to_string())
 }
 
-pub fn resolve_icon_internal(icon_name: &str) -> Option<PathBuf> {
-    // Absolute path - use directly
-    if icon_name.starts_with('/') {
-        let path = PathBuf::from(icon_name);
-        if path.exists() {
-            return Some(path);
-        }
-        return None;
+/// Look up a themed icon for a specific logical size and scale.
+/// Falls back to the closest size, then to an unthemed lookup.
+///
+/// For full-color icons (`symbolic == false`), monochrome artwork is skipped:
+/// themes like Breeze ship `currentColor` variants at small sizes (e.g. a
+/// 16/22/24px `folder`), so we step up to the next size with real colors.
+pub fn lookup_themed(name: &str, size: u16, scale: u16, symbolic: bool) -> Option<PathBuf> {
+    let theme = get_current_theme();
+    let find = |size: u16| {
+        let l = freedesktop_icons::lookup(name)
+            .with_size(size)
+            .with_scale(scale)
+            .with_cache();
+        let l = if symbolic { l.force_svg() } else { l };
+        l.with_theme(&theme).find().or_else(|| {
+            let l = freedesktop_icons::lookup(name)
+                .with_size(size)
+                .with_scale(scale);
+            if symbolic { l.force_svg() } else { l }.find()
+        })
+    };
+
+    let found = find(size)?;
+    if symbolic || !is_monochrome(&found) {
+        return Some(found);
     }
+    [32, 48, 64, 128, 256]
+        .into_iter()
+        .filter(|s| *s > size)
+        .filter_map(find)
+        .find(|p| !is_monochrome(p))
+        .or(Some(found))
+}
 
-    // Try configured theme first
-    let icon = freedesktop_icons::lookup(icon_name)
-        .with_size(ICON_SIZE)
-        .with_theme(&get_current_theme())
-        .find();
-
-    if icon.is_some() {
-        return icon;
-    }
-
-    // Last resort: no theme specified
-    freedesktop_icons::lookup(icon_name)
-        .with_size(ICON_SIZE)
-        .find()
+fn is_monochrome(path: &Path) -> bool {
+    path.extension().is_some_and(|e| e == "svg")
+        && fs::read(path).is_ok_and(|d| d.windows(12).any(|w| w == b"currentColor"))
 }

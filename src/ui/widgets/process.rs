@@ -3,14 +3,11 @@ use std::sync::Arc;
 use gpui::{
     AnyElement,
     App,
-    Image,
-    ImageSource,
     IntoElement,
     ParentElement,
     SharedString,
     Styled,
     div,
-    img,
     prelude::FluentBuilder,
     px,
 };
@@ -71,24 +68,13 @@ impl RenderableChildImpl for ProcessData {
             .flex()
             .gap_5()
             .items_center()
-            .child(if let Some(icon) = self.icon.as_ref() {
-                if let Some(svg) = icon.svg() {
-                    svg.size(px(24.))
-                        .flex_shrink_0()
-                        .text_color(theme.primary_text)
-                        .into_any_element()
-                } else {
-                    img(icon.clone())
-                        .size(px(24.))
-                        .flex_shrink_0()
-                        .into_any_element()
-                }
-            } else {
-                img(ImageSource::Image(Arc::new(Image::empty())))
-                    .size(px(24.))
-                    .flex_shrink_0()
-                    .into_any_element()
-            })
+            .child(
+                div().flex_shrink_0().size(px(24.)).children(
+                    self.icon
+                        .as_ref()
+                        .map(|i| i.element(px(24.), theme.primary_text)),
+                ),
+            )
             .child(
                 div()
                     .flex_col()

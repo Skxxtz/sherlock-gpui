@@ -425,14 +425,17 @@ fn render_node(node: &PluginUiNode, ctx: &NodeCtx) -> AnyElement {
             style,
             on_click,
         } => {
+            // Lookup/raster size follows the plugin's declared size.
+            let size = px(style.width.or(style.height).unwrap_or(24.));
             let icon = if let Some(icon) = resolve_icon_path(name) {
-                if let Some(mut svg) = icon.svg() {
+                if let Some(mut svg) = icon.svg(size) {
                     style.apply_to_style_refinement(svg.style(), &ctx.theme);
                     svg.into_any_element()
-                } else {
-                    let mut el = img(icon.clone());
+                } else if let Some(mut el) = icon.img(size) {
                     style.apply_to_style_refinement(el.style(), &ctx.theme);
                     el.into_any_element()
+                } else {
+                    div().into_any_element()
                 }
             } else {
                 let mut el = img(ImageSource::Image(Arc::new(gpui::Image::empty())));

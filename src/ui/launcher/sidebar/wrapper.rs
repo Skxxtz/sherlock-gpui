@@ -9,7 +9,6 @@ use gpui::{
     StyleRefinement,
     Styled,
     div,
-    img,
     px,
 };
 
@@ -104,13 +103,7 @@ impl Sidebar {
     ) -> Self {
         let t = self.theme.clone();
         let icon_el = match icon {
-            Some(icon) => match icon.svg() {
-                Some(svg) => svg
-                    .size(px(32.))
-                    .text_color(t.tertiary_text)
-                    .into_any_element(),
-                None => img(icon.clone()).size(px(32.)).into_any_element(),
-            },
+            Some(icon) => icon.element(px(32.), t.tertiary_text),
             None => div().into_any_element(),
         };
         let badges: Vec<_> = badges.into_iter().map(|b| self.badge(b)).collect();

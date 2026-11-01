@@ -7,7 +7,6 @@ use gpui::{
     SharedString,
     Styled,
     div,
-    img,
     prelude::FluentBuilder,
     px,
 };
@@ -26,7 +25,7 @@ use crate::{
         traits::RenderableChildImpl,
         utils::render::substitute,
     },
-    utils::config::{ConfigGuard, SherlockAlias},
+    utils::config::{AppearanceDefaults, ConfigGuard, SherlockAlias},
 };
 
 pub mod app;
@@ -110,17 +109,12 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
         theme: Arc<crate::app::theme::ThemeData>,
         _cx: &mut gpui::App,
     ) -> AnyElement {
-        const ICON: f32 = 24.;
+        let icon_size = ConfigGuard::read_with(|c| c.appearance.icon_size)
+            .unwrap_or_else(|_| AppearanceDefaults::icon_size()) as f32;
 
         let icon = match self.meta.icon.as_ref().or(launcher.icon.as_ref()) {
-            Some(icon) => match icon.svg() {
-                Some(svg) => svg
-                    .size(px(ICON))
-                    .text_color(theme.primary_text)
-                    .into_any_element(),
-                None => img(icon.clone()).size(px(ICON)).into_any_element(),
-            },
-            None => div().size(px(ICON)).into_any_element(),
+            Some(icon) => icon.element(px(icon_size), theme.primary_text),
+            None => div().size(px(icon_size)).into_any_element(),
         };
 
         div()

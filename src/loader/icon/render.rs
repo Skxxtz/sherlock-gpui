@@ -1,111 +1,119 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{path::Path, sync::Arc};
 
-use resvg::usvg;
+use gpui::{App, Asset, ImageCacheError, RenderImage, SharedString};
+use image::{Frame, RgbaImage, imageops::FilterType};
+use resvg::{tiny_skia, usvg};
 
-use crate::{loader::icon::cache::IconType, utils::paths::get_cache_dir};
+use crate::loader::icon::cache::IconType;
 
-pub fn handle_symblic(name: &str, svg_data: &[u8]) -> Option<IconType> {
-    let is_symbolic =
-        name.ends_with("-symbolic") || svg_data.windows(12).any(|w| w == b"currentColor");
-    if is_symbolic {
-        copy_svg_to_cache(name, svg_data).map(IconType::Symbolic)
-    } else {
-        None
-    }
+fn is_symbolic_svg(name: &str, data: &[u8]) -> bool {
+    name.ends_with("-symbolic") || data.windows(12).any(|w| w == b"currentColor")
 }
 
-pub fn render_svg_to_cache(key: &str, path: PathBuf) -> Option<IconType> {
-    if !path.exists() {
-        return None;
-    }
-
-    let ext = path.extension().and_then(|e| e.to_str());
-
-    match ext {
+/// Classify an icon file on disk into `IconType`.
+pub fn classify(path: &Path) -> Option<IconType> {
+    let key = SharedString::from(path.to_string_lossy().into_owned());
+    match path.extension().and_then(|e| e.to_str()) {
         Some("svg") => {
-            let svg_data = std::fs::read(&path).ok()?;
+            let data = std::fs::read(path).ok()?;
             let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-            let is_symbolic = stem.ends_with("-symbolic")
-                || path.components().any(|c| c.as_os_str() == "symbolic")
-                || svg_data.windows(12).any(|w| w == b"currentColor");
-            if is_symbolic {
-                copy_svg_to_cache(key, &svg_data).map(IconType::Symbolic)
+            let symbolic = is_symbolic_svg(stem, &data)
+                || path.components().any(|c| c.as_os_str() == "symbolic");
+            Some(if symbolic {
+                IconType::Symbolic(key)
             } else {
-                render_to_png_cache(key, &svg_data).map(IconType::Png)
-            }
+                IconType::Image(key)
+            })
         }
-        Some("png") => Some(IconType::Png(Arc::from(path.into_boxed_path()))),
+        Some("png" | "jpg" | "jpeg") if path.exists() => Some(IconType::Image(key)),
         _ => None,
     }
 }
 
-pub fn render_to_png_cache(key: &str, svg_data: &[u8]) -> Option<Arc<Path>> {
-    let mut out = get_cache_dir().ok()?.join("icons");
-    std::fs::create_dir_all(&out).ok()?;
-    out.push(format!("{}.png", key.replace('/', "_")));
-
-    if out.exists() {
-        return Some(Arc::from(out.into_boxed_path()));
+/// Classify an embedded asset (`icons/<name>.svg|png`).
+pub fn classify_embedded(name: &str, key: String, data: &[u8]) -> IconType {
+    if key.ends_with(".svg") && is_symbolic_svg(name, data) {
+        IconType::Symbolic(key.into())
+    } else {
+        IconType::Image(key.into())
     }
+}
 
-    let opt = usvg::Options {
-        text_rendering: usvg::TextRendering::OptimizeLegibility,
-        image_rendering: usvg::ImageRendering::OptimizeQuality,
-        ..Default::default()
-    };
+/// gpui asset: rasterizes an icon at a given device-pixel size.
+/// Cached by gpui per `(path, size)` and loaded on the background executor.
+pub enum IconRaster {}
 
-    let tree = usvg::Tree::from_data(svg_data, &opt)
-        .map_err(|e| eprintln!("Failed to parse SVG {key}: {e}"))
-        .ok()?;
+impl Asset for IconRaster {
+    type Source = (SharedString, u32);
+    type Output = Result<Arc<RenderImage>, ImageCacheError>;
 
-    let svg_w = tree.size().width();
-    let svg_h = tree.size().height();
-    let render_size = (48.0_f32 * 2.0).max(64.0);
-    let zoom = render_size / svg_w.max(svg_h);
-    let width = (svg_w * zoom).round() as u32;
-    let height = (svg_h * zoom).round() as u32;
+    fn load(
+        (path, size): Self::Source,
+        cx: &mut App,
+    ) -> impl Future<Output = Self::Output> + Send + 'static {
+        let assets = cx.asset_source().clone();
+        async move {
+            let err = |m: &str| ImageCacheError::Asset(format!("{path}: {m}").into());
+            let bytes = assets
+                .load(&path)
+                .ok()
+                .flatten()
+                .ok_or_else(|| err("not found"))?;
 
-    let mut pixmap = tiny_skia::Pixmap::new(width, height).or_else(|| {
-        eprintln!("Failed to create pixmap for {key}");
-        None
-    })?;
+            let mut rgba = if path.ends_with(".svg") {
+                render_svg(&bytes, size).ok_or_else(|| err("invalid svg"))?
+            } else {
+                let img = image::load_from_memory(&bytes)
+                    .map_err(|e| err(&e.to_string()))?
+                    .into_rgba8();
+                downscale(img, size)
+            };
 
+            // gpui expects BGRA
+            for px in rgba.chunks_exact_mut(4) {
+                px.swap(0, 2);
+            }
+            Ok(Arc::new(RenderImage::new(vec![Frame::new(rgba)])))
+        }
+    }
+}
+
+fn render_svg(data: &[u8], size: u32) -> Option<RgbaImage> {
+    let tree = usvg::Tree::from_data(data, &usvg::Options::default()).ok()?;
+    let (w, h) = (tree.size().width(), tree.size().height());
+    let zoom = size as f32 / w.max(h);
+    let (pw, ph) = ((w * zoom).round() as u32, (h * zoom).round() as u32);
+
+    let mut pixmap = tiny_skia::Pixmap::new(pw.max(1), ph.max(1))?;
     resvg::render(
         &tree,
         tiny_skia::Transform::from_scale(zoom, zoom),
         &mut pixmap.as_mut(),
     );
 
-    pixmap
-        .save_png(&out)
-        .map_err(|e| eprintln!("Failed to cache {key}: {e}"))
-        .ok()?;
-
-    Some(Arc::from(out.into_boxed_path()))
+    // tiny-skia is premultiplied; gpui wants straight alpha
+    let mut buf = pixmap.take();
+    for px in buf.chunks_exact_mut(4) {
+        let a = px[3] as u32;
+        if a != 0 && a != 255 {
+            for c in &mut px[..3] {
+                *c = ((*c as u32 * 255 + a / 2) / a).min(255) as u8;
+            }
+        }
+    }
+    RgbaImage::from_raw(pw.max(1), ph.max(1), buf)
 }
 
-pub fn copy_png_to_cache(name: &str, png_data: &[u8]) -> Option<Arc<Path>> {
-    let mut out = get_cache_dir().ok()?.join("icons");
-    std::fs::create_dir_all(&out).ok()?;
-    out.push(format!("{}.png", name.replace('/', "_")));
-    if !out.exists() {
-        fs::write(&out, png_data).ok()?;
+fn downscale(img: RgbaImage, size: u32) -> RgbaImage {
+    let (w, h) = img.dimensions();
+    if w.max(h) <= size {
+        return img;
     }
-
-    Some(out.into_boxed_path().into())
-}
-
-pub fn copy_svg_to_cache(name: &str, svg_data: &[u8]) -> Option<Arc<Path>> {
-    let mut out = get_cache_dir().ok()?.join("icons");
-    std::fs::create_dir_all(&out).ok()?;
-    out.push(format!("{}.svg", name.replace('/', "_")));
-    if !out.exists() {
-        fs::write(&out, svg_data).ok()?;
-    }
-
-    Some(out.into_boxed_path().into())
+    let scale = size as f32 / w.max(h) as f32;
+    image::imageops::resize(
+        &img,
+        ((w as f32 * scale).round() as u32).max(1),
+        ((h as f32 * scale).round() as u32).max(1),
+        FilterType::Triangle,
+    )
 }

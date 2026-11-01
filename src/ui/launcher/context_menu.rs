@@ -2,14 +2,12 @@ use std::{borrow::Cow, fmt::Debug, sync::Arc};
 
 use gpui::{
     Context,
-    ImageSource,
     InteractiveElement,
     IntoElement,
     ParentElement,
     SharedString,
     Styled,
     div,
-    img,
     prelude::FluentBuilder,
     px,
     relative,
@@ -144,18 +142,9 @@ impl ContextMenuAction {
                     s.bg(theme.bg_selected)
                 }
             })
-            .child(if let Some(icon) = icon {
-                if let Some(svg) = icon.svg() {
-                    svg.size(px(16.))
-                        .text_color(theme.secondary_text)
-                        .into_any_element()
-                } else {
-                    img(icon.into_owned()).size(px(16.)).into_any_element()
-                }
-            } else {
-                img(ImageSource::Image(Arc::new(gpui::Image::empty())))
-                    .size(px(16.))
-                    .into_any_element()
+            .child(match icon {
+                Some(icon) => icon.element(px(16.), theme.secondary_text),
+                None => div().size(px(16.)).into_any_element(),
             })
             .child(
                 div()
