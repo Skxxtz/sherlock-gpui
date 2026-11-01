@@ -163,7 +163,7 @@ impl WeatherData {
                 )
             })?;
 
-        let raw: WttrResponse = simd_json::from_slice(&mut bytes.to_vec()).map_err(|e| {
+        let raw: WttrResponse = pluck::from_slice(&bytes).map_err(|e| {
             sherlock_msg!(
                 Warning,
                 SherlockErrorType::DeserializationError("Weather Data".into()),
