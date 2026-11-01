@@ -5,7 +5,11 @@ use super::{
 use crate::{
     launcher::utils::to_title_case,
     loader::{IconType, resolve_icon_path},
-    utils::{config::ConfigGuard, errors::SherlockMessage},
+    sherlock_msg,
+    utils::{
+        config::ConfigGuard,
+        errors::{SherlockMessage, types::SherlockErrorType},
+    },
 };
 
 fn format_temp(current: &CurrentCondition, unit_pref: &str) -> String {
@@ -43,7 +47,19 @@ pub(super) fn transform_weather(
     raw: WttrResponse,
     launcher: &WeatherLauncher,
 ) -> Result<WeatherData, SherlockMessage> {
-    let WttrResponse { current, astronomy } = raw;
+    let WttrResponse {
+        current,
+        area,
+        days,
+    } = raw;
+    let today = days.first().ok_or_else(|| {
+        sherlock_msg!(
+            Warning,
+            SherlockErrorType::DeserializationError("Weather Data".into()),
+            "wttr.in response has no forecast (use ?format=j1)"
+        )
+    })?;
+    let (sunrise, sunset) = (today.astronomy.sunrise, today.astronomy.sunset);
     let config = ConfigGuard::read()?;
 
     Ok(WeatherData {
@@ -58,8 +74,10 @@ pub(super) fn transform_weather(
         condition: current.desc.into(),
         location: launcher.location.clone().into(),
         css: current.class,
-        sunset: astronomy.sunset,
-        sunrise: astronomy.sunrise,
+        sunset,
+        sunrise,
+        forecast: days,
+        area,
         init: true,
     })
 }

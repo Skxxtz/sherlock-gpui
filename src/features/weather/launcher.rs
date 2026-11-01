@@ -12,6 +12,7 @@ use strum::Display;
 
 use super::{display::transform_weather, wttr_serde::WttrResponse};
 use crate::{
+    features::weather::wttr_serde::{Area, Day},
     launcher::{LauncherConfig, LauncherProvider, LauncherType},
     loader::{IconType, resolve_icon_path, utils::RawLauncher},
     sherlock_msg,
@@ -85,6 +86,8 @@ pub struct WeatherData {
     pub css: WeatherClass,
     pub sunset: chrono::NaiveTime,
     pub sunrise: chrono::NaiveTime,
+    pub forecast: Vec<Day>,
+    pub area: Option<Area>,
     pub init: bool,
 }
 impl WeatherData {
@@ -143,7 +146,7 @@ impl WeatherData {
         }
 
         // Get from wttr.in
-        let url = format!("https://de.wttr.in/{}?format=j2", launcher.location);
+        let url = format!("https://de.wttr.in/{}?format=j1", launcher.location);
         let bytes = reqwest::get(url)
             .await
             .map_err(|e| {
@@ -178,7 +181,7 @@ impl WeatherData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default, Display)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, Display, PartialEq)]
 #[strum(serialize_all = "kebab-case")]
 pub enum WeatherClass {
     #[serde(rename = "weather-clear")]
