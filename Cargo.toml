@@ -4,6 +4,7 @@ members = [
     "crates/md-rs",
     "crates/elementary",
     "crates/sherlock-wayland",
+    "crates/pluck",
     "sherlock-derive"
 ]
 
@@ -14,6 +15,7 @@ edition = "2024"
 
 [dependencies]
 md-rs = { path = "./crates/md-rs", features = ["github"], optional = true }
+pluck = { path = "./crates/pluck" }
 elementary = { path = "./crates/elementary"}
 sherlock-wayland = { path = "./crates/sherlock-wayland", default-features = false, features = ["clipboard", "outputs"]}
 sherlock-derive = { path = "sherlock-derive" }

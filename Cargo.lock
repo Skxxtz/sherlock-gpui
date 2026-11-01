@@ -4583,6 +4583,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pluck"
+version = "0.1.0"
+dependencies = [
+ "pluck-derive",
+ "serde_json",
+]
+
+[[package]]
+name = "pluck-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "png"
 version = "0.17.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5826,6 +5843,7 @@ dependencies = [
  "mupdf",
  "nix 0.31.2",
  "paste",
+ "pluck",
  "procfs",
  "rayon",
  "regex",
