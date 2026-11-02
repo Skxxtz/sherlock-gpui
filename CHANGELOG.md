@@ -40,12 +40,13 @@ run `git log main..dev` for all changes
 
 ## [Unreleased]
 
-* as of **78a2b1a**
+* as of **eebcc5e**
 
 ### Added
 
 * **Settings View**: Config-backed settings view with keybind editing, number
   inputs, saving and on-the-fly application (`1ccd71f`, `95e89e1`, `5bc9743`)
+  * Automatic detection of where to put edited keys (source file support) (`927b054a`)
 * **Components**: Added colour picker, keymap input and stepper chevrons
   (`ef23aa2`)
 * **Credits View**: Added credits view with bundled contributors (`c7c2705`)
@@ -54,6 +55,9 @@ run `git log main..dev` for all changes
 * **Message View**: Added empty state (`c7e8cec`)
 * **Keybinds**: Added default binds for `CursorLeft` and `CursorRight`
   (`4c920d6`)
+* **Weather Launcher**:
+  * New `Pixel` icon theme (`1a73a65c`)
+  * New sidebar for weather launcher, showing a temperature graph (`ad283de1`, `281c5797`).
 
 ### Improved
 
@@ -67,11 +71,15 @@ run `git log main..dev` for all changes
   `46b8d65`, `b15aac3`, `538e850`, `01f5253`, `15da724`, `a56c6cd`, `4afeaa3`)
 * **Launchers**: Each launcher in its own module, children stored in a
   slotmap, new `FilterPolicy` (`b1811d5`, `91f71fa`, `16bab43`, `193fcbd`)
+* **Config**: Added support for watching config source files (`a9717fdc`)
+* **Themes**: Improved theme handling and parameters (`109bd994`, `eebcc5e`)
 
 ### Performance
 
 * **Filtering**: Filtering and sorting run in the background on a
   thread-safe search index (`97d4bf4`, `ad5eb21`, `286f630`)
+* **Cache**: Removed necessity of rendered icon cache. Icons are now rendered
+  lazily. (`1da35bc4`)
 
 ### Fixed
 
