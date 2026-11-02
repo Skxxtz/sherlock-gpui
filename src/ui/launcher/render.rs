@@ -178,20 +178,14 @@ impl LauncherView {
     }
 
     fn render_search_bar(&self, theme: Arc<ThemeData>, searching: bool) -> impl IntoElement {
-        let search_icon = ConfigGuard::read().ok().map(|c| c.search_bar_icon.clone());
+        let search_icon = ConfigGuard::read_with(|c| c.search_bar_icon.clone()).unwrap_or_default();
 
         // Extract everything upfront — avoid repeated unwraps inside closures
-        let icon_enabled = search_icon.as_ref().is_some_and(|i| i.enable);
-        let icon_path = search_icon.as_ref().map(|i| i.icon.clone());
-        let icon_size = search_icon
-            .as_ref()
-            .map(|i| i.icon_size as f32)
-            .unwrap_or(24.);
-        let icon_back_path = search_icon.as_ref().map(|i| i.icon_back.clone());
-        let icon_back_size = search_icon
-            .as_ref()
-            .map(|i| i.icon_back_size as f32)
-            .unwrap_or(24.);
+        let icon_enabled = search_icon.enable;
+        let icon_path = search_icon.icon.clone();
+        let icon_size = search_icon.icon_size as f32;
+        let icon_back_path = search_icon.icon_back.clone();
+        let icon_back_size = search_icon.icon_back_size as f32;
 
         div()
             .flex()
@@ -209,22 +203,14 @@ impl LauncherView {
                         .items_center()
                         .justify_center()
                         .when(!searching, |this| {
-                            this.when_some(
-                                icon_path.as_deref().and_then(resolve_icon_path),
-                                |this, icon| {
-                                    this.child(icon.element(px(icon_size), theme.secondary_text))
-                                },
-                            )
+                            this.when_some(resolve_icon_path(&icon_path), |this, icon| {
+                                this.child(icon.element(px(icon_size), theme.secondary_text))
+                            })
                         })
                         .when(searching, |this| {
-                            this.when_some(
-                                icon_back_path.as_deref().and_then(resolve_icon_path),
-                                |this, icon| {
-                                    this.child(
-                                        icon.element(px(icon_back_size), theme.secondary_text),
-                                    )
-                                },
-                            )
+                            this.when_some(resolve_icon_path(&icon_back_path), |this, icon| {
+                                this.child(icon.element(px(icon_back_size), theme.secondary_text))
+                            })
                         }),
                 )
             })

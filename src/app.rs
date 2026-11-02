@@ -44,7 +44,7 @@ use crate::{
         },
     },
     utils::{
-        config::{ConfigGuard, ConfigWatcher},
+        config::{AppearanceDefaults, ConfigGuard, ConfigWatcher},
         errors::SherlockMessage,
         preview_lru::PreviewCache,
     },
@@ -151,7 +151,8 @@ fn spawn_launcher(
         });
 
     cx.open_window(get_window_options(), move |win, cx| {
-        let text_input = cx.new(|cx| TextInput::builder().placeholder("Search").build(cx));
+        let placeholder = ConfigGuard::read_with(|c| c.appearance.placeholder.clone()).unwrap_or(AppearanceDefaults::placeholder());
+        let text_input = cx.new(|cx| TextInput::builder().placeholder(placeholder).build(cx));
 
         // cleanup hook for preview cachge
         win.on_window_should_close(cx, |window, cx| {
