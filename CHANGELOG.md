@@ -73,6 +73,7 @@ run `git log main..dev` for all changes
   slotmap, new `FilterPolicy` (`b1811d5`, `91f71fa`, `16bab43`, `193fcbd`)
 * **Config**: Added support for watching config source files (`a9717fdc`)
 * **Themes**: Improved theme handling and parameters (`109bd994`, `eebcc5e`)
+* **Search Bar**: Added auto-selection of default variable input content (`4e165ca`)
 
 ### Performance
 
@@ -93,6 +94,7 @@ run `git log main..dev` for all changes
 * **List Items**: Uniform height for list items (`5270fa9`)
 * **Input**: Fixed event propagation on caret left/right (`7fde47e`)
 * **Settings View**: Fixed scroll padding (`004bddf`)
+* **Search Bar**: Fixed search bar placeholder config key application (`5fda67c`)
 
 
 ## [0.2.4] - 23.10.26
