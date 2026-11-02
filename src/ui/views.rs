@@ -117,7 +117,7 @@ pub trait SherlockView: HandleActions + 'static + Sized {
     }
 
     fn layout(&self) -> Layout {
-        Layout::row(self.model().map_or(0, |m| m.len()), px(50.))
+        Layout::row(self.model().map_or(0, |m| m.len()), px(56.))
     }
 
     fn render_body(
