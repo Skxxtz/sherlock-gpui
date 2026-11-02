@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 use pluck::Extract;
 use serde::{Deserialize, Serialize};
 
@@ -213,6 +213,18 @@ pub struct Chances {
     /// Chance of staying dry.
     #[at("chanceofremdry")]
     pub dry: u8,
+}
+
+/// The next `n` forecast slots, starting with the one `now` falls into.
+///
+/// wttr.in gives 8 slots per day (00:00, 03:00 … 21:00, local to the
+/// location); a slot covers the 3 hours from its start time.
+pub fn upcoming(days: &[Day], now: NaiveDateTime, n: usize) -> Vec<(NaiveDateTime, &Hour)> {
+    days.iter()
+        .flat_map(|d| d.hourly.iter().map(move |h| (d.date.and_time(h.time), h)))
+        .filter(|(at, _)| *at + TimeDelta::hours(3) > now)
+        .take(n)
+        .collect()
 }
 
 /// `"07:23 AM"` → 07:23

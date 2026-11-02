@@ -36,8 +36,14 @@ use crate::{
         },
         widgets::RenderableChildImpl,
     },
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::{
+        config::ConfigGuard,
+        errors::{SherlockMessage, types::SherlockErrorType},
+    },
 };
+
+mod sidebar;
+use sidebar::WeatherSidebar;
 
 impl Fetchable for WeatherData {
     type Error = SherlockMessage;
@@ -249,6 +255,21 @@ impl RenderableChildImpl for WeatherWidget {
             })
             .into_any_element()
     }
+    fn sidebar(&self, _launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<AnyElement> {
+        let Ok(Some(data)) = self.entity.read(cx) else {
+            return None;
+        };
+        let (temps, lengths) =
+            ConfigGuard::read_with(|c| (c.units.temperatures.clone(), c.units.lengths.clone()))
+                .unwrap_or_default();
+        Some(WeatherSidebar::new(data.clone(), &temps, &lengths).into_any_element())
+    }
+
+    #[inline(always)]
+    fn has_sidebar(&self) -> bool {
+        true
+    }
+
     #[inline(always)]
     fn build_exec(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<ExecMode> {
         None

@@ -12,7 +12,7 @@ use strum::Display;
 
 use super::{display::transform_weather, wttr_serde::WttrResponse};
 use crate::{
-    features::weather::wttr_serde::{Area, Day},
+    features::weather::wttr_serde::{Area, CurrentCondition, Day},
     launcher::{LauncherConfig, LauncherProvider, LauncherType},
     loader::{IconType, resolve_icon_path, utils::RawLauncher},
     sherlock_msg,
@@ -86,10 +86,15 @@ pub struct WeatherData {
     pub css: WeatherClass,
     pub sunset: chrono::NaiveTime,
     pub sunrise: chrono::NaiveTime,
+    #[serde(default)]
     pub forecast: Vec<Day>,
+    #[serde(default)]
     pub area: Option<Area>,
+    #[serde(default)]
+    pub current: Option<CurrentCondition>,
     pub init: bool,
 }
+
 impl WeatherData {
     pub fn from_cache(launcher: &WeatherLauncher) -> Option<Self> {
         let mut path = home_dir_owned().ok()?;

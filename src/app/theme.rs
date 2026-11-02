@@ -272,4 +272,22 @@ impl ThemeData {
     pub fn accent(&self) -> Hsla {
         self.color_warn
     }
+
+    pub fn companion(&self, c: Hsla) -> Hsla {
+        const DL: f32 = 0.25;
+        // lightness: away from the background if there's room, otherwise the other way
+        let away = if self.bg_app.l < 0.5 { DL } else { -DL };
+        let l = if (0.08..=0.92).contains(&(c.l + away)) {
+            c.l + away
+        } else {
+            c.l - away
+        };
+        // hue: complement, but only where hue is visible at all
+        let h = if c.s < 0.15 { c.h } else { (c.h + 0.5).fract() };
+        Hsla {
+            h,
+            l: l.clamp(0., 1.),
+            ..c
+        }
+    }
 }

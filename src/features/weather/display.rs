@@ -71,13 +71,14 @@ pub(super) fn transform_weather(
             format_wind(&current, &config.units.lengths)
         )
         .into(),
-        condition: current.desc.into(),
+        condition: current.desc.clone().into(),
         location: launcher.location.clone().into(),
-        css: current.class,
+        css: current.class.clone(),
         sunset,
         sunrise,
         forecast: days,
         area,
+        current: Some(current),
         init: true,
     })
 }

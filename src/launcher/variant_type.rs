@@ -335,7 +335,7 @@ create_variants! {
         Theme(ThemePicker, ThemePickerFunctions): pickable,
         Timer(TimerLauncher, TimerLauncherFunctions),
         Translator(Translator),
-        Weather(WeatherLauncher),
+        Weather(WeatherLauncher): hasinfo,
         Web(WebLauncher): pickable,
     }
 }
