@@ -28,7 +28,7 @@ pub fn toggle(
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> impl IntoElement {
     let (track, knob) = if on {
-        (theme.accent(), theme.bg_app)
+        (theme.accent, theme.bg_app)
     } else {
         (theme.border, theme.secondary_text)
     };

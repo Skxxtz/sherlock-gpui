@@ -19,7 +19,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{DirAction, FileAction, SherlockErrorType},
+            types::{DirAction, SherlockErrorType},
         },
         files::{expand_path, home_dir},
         format::make_title_case,
@@ -60,14 +60,7 @@ impl LauncherProvider for ThemePicker {
         let home = home_dir()?;
         let path = expand_path(path_str, home);
 
-        let builtin = [
-            ("Default", ThemeData::dark()),
-            ("Nord", ThemeData::nord()),
-            ("Libre", ThemeData::libre()),
-            ("Catppuccin Mocha", ThemeData::catppuccin_mocha()),
-        ]
-        .into_iter()
-        .map(|(name, data)| {
+        let builtin = ThemeData::builtins().map(|(name, data)| {
             RenderableChild::new(
                 launcher.clone(),
                 ThemeWidget::new(name, Arc::new(data), true),
@@ -86,16 +79,7 @@ impl LauncherProvider for ThemePicker {
                 .flatten()
                 .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("toml"))
                 .filter_map(|file| {
-                    let content = std::fs::read_to_string(file.path())
-                        .map_err(|e| {
-                            messages.push(sherlock_msg!(
-                                Warning,
-                                SherlockErrorType::FileError(FileAction::Read, file.path()),
-                                e
-                            ));
-                        })
-                        .ok()?;
-                    let data = toml::from_str::<ThemeData>(&content)
+                    let data = ThemeData::from_file(&file.path())
                         .map_err(|e| {
                             messages.push(sherlock_msg!(
                                 Warning,

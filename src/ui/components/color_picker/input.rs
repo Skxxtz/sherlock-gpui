@@ -372,7 +372,7 @@ impl ColorInput {
                             .rounded(px(6.))
                             .border_1()
                             .border_color(if self.editing.is_some() {
-                                theme.accent()
+                                theme.accent
                             } else {
                                 theme.border
                             })

@@ -69,7 +69,7 @@ pub struct Credits;
 impl RenderOnce for Credits {
     fn render(self, _win: &mut gpui::Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
-        let accent = theme.accent();
+        let accent = theme.accent;
         let muted = theme.tertiary_text;
 
         // `git shortlog -sn`-style rows: count, name, @login.

@@ -11,6 +11,7 @@ impl ThemeData {
                 // Cursor and Selection - Sophisticated Indigo/Slate
                 cursor: hsla(220.0 / 360.0, 0.20, 0.30, 1.0),
                 selection: hsla(220.0 / 360.0, 0.40, 0.50, 0.12),
+                accent: hsla(220. / 360., 0.55, 0.45, 1.),
 
                 // Backgrounds - Warm Paper & Alabaster
                 bg_app: hsla(40.0 / 360.0, 0.10, 0.98, 1.0), // Off-white/Bone 0xFCFAF8

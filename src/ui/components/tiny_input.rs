@@ -224,7 +224,7 @@ impl Render for TinyInput {
                 })
                 .child(SharedString::from(before.to_string()))
                 .when(focused, |this| {
-                    this.child(div().w(px(1.)).h(px(14.)).bg(theme.accent()))
+                    this.child(div().w(px(1.)).h(px(14.)).bg(theme.accent))
                 })
                 .child(SharedString::from(after.to_string()))
             })

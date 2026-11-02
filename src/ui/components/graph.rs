@@ -201,7 +201,7 @@ impl Graph {
 
     fn colors(&self, theme: &ThemeData) -> Vec<Hsla> {
         let palette = [
-            theme.accent(),
+            theme.accent,
             theme.color_info,
             theme.color_succ,
             theme.color_err,

@@ -289,7 +289,7 @@ impl KeymapInput {
         div()
             .flex_1()
             .text_size(px(12.))
-            .text_color(theme.accent())
+            .text_color(theme.accent)
             .child("Press a key combination…")
     }
 

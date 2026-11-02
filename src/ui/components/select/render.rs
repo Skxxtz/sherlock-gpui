@@ -47,7 +47,7 @@ impl Select {
                     .child(
                         div()
                             .w(px(12.))
-                            .text_color(theme.accent())
+                            .text_color(theme.accent)
                             .when(chosen, |this| this.child("✓")),
                     )
                     .child(
@@ -127,7 +127,7 @@ impl Render for Select {
                     .border_1()
                     .bg(theme.bg_app)
                     .border_color(if self.open {
-                        theme.accent()
+                        theme.accent
                     } else {
                         theme.border
                     })

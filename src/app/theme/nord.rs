@@ -10,6 +10,7 @@ impl ThemeData {
             colors: ThemeColors {
                 cursor: hsla(213.0 / 360.0, 0.32, 0.52, 1.0),
                 selection: hsla(213.0 / 360.0, 0.32, 0.52, 0.25),
+                accent: hsla(193.0 / 360.0, 0.43, 0.67, 1.),
                 bg_app: hsla(220.0 / 360.0, 0.17, 0.14, 1.0),
                 bg_overlay: hsla(220.0 / 360.0, 0.17, 0.12, 1.0),
                 bg_selected: hsla(220.0 / 360.0, 0.17, 0.28, 1.0),

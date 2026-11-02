@@ -131,11 +131,7 @@ impl Render for super::NumberInput {
             .h(px(H))
             .rounded(px(7.))
             .border_1()
-            .border_color(if focused {
-                theme.accent()
-            } else {
-                theme.border
-            })
+            .border_color(if focused { theme.accent } else { theme.border })
             .when(focused, |this| this.bg(theme.bg_selected))
             .overflow_hidden()
             .font_family(theme.typography.monospace.clone())

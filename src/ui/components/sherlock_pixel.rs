@@ -42,7 +42,7 @@ fn pixel_art(rows: &[&str], color: impl Fn(char) -> Option<Hsla>) -> impl IntoEl
 }
 
 pub fn sherlock_pixel_art(theme: &ThemeData) -> impl IntoElement {
-    let accent = theme.accent();
+    let accent = theme.accent;
     let coat = Hsla {
         h: accent.h * 0.8,
         s: accent.s * 0.6,

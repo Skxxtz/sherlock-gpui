@@ -79,8 +79,8 @@ impl RenderOnce for WeatherSidebar {
                 .collect::<Vec<_>>(),
         );
 
-        let accent = theme.accent();
-        let feels_like = theme.companion(theme.accent());
+        let accent = theme.accent;
+        let feels_like = theme.companion(theme.accent);
 
         let temps = Graph::new(GraphKind::Area)
             .id("weather-temps")
@@ -182,7 +182,7 @@ impl RenderOnce for WeatherSidebar {
                         div()
                             .id("weather-link")
                             .underline()
-                            .text_color(theme.accent())
+                            .text_color(theme.accent)
                             .child("wttr.in")
                             .cursor_pointer()
                             .on_click(|_, _, _| {

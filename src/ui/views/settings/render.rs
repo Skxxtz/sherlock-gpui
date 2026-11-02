@@ -117,7 +117,7 @@ impl SettingsView {
                 div()
                     .flex_1()
                     .child(title)
-                    .when(active, |this| this.text_color(theme.accent())),
+                    .when(active, |this| this.text_color(theme.accent)),
             )
             .when_some(count, |this, count| {
                 this.child(
@@ -248,7 +248,7 @@ impl SettingsView {
                                     .child(setting.label),
                             )
                             .when(self.is_modified(setting.id), |this| {
-                                this.child(mono("modified".into(), 10., theme.accent()))
+                                this.child(mono("modified".into(), 10., theme.accent))
                             }),
                     )
                     .child(match self.conflict_note(setting.id) {
@@ -378,7 +378,7 @@ impl SettingsView {
                                     this.child(
                                         div()
                                             .text_size(px(12.))
-                                            .text_color(theme.accent())
+                                            .text_color(theme.accent)
                                             .child(format!("not saved: {err}")),
                                     )
                                 }),

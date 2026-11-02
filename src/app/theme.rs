@@ -8,9 +8,15 @@ mod catppuccin_mocha;
 mod libre;
 mod nord;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone)]
 pub struct ActiveTheme(pub Arc<ThemeData>);
 
+/// A full theme. Colors, typography and metrics are flattened, so theme files stay flat
+/// TOML. Typography and metrics are optional and fall back to their defaults.
+/// `ThemeData` derefs to [`ThemeColors`], so `theme.bg_app` keeps working.
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct ThemeData {
     #[serde(flatten)]
@@ -88,6 +94,8 @@ pub struct ThemeColors {
     pub cursor: Hsla,
     #[serde(deserialize_with = "hsla_from_hex")]
     pub selection: Hsla,
+    #[serde(deserialize_with = "hsla_from_hex")]
+    pub accent: Hsla,
     // Backgrounds
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_app: Hsla,
@@ -177,6 +185,7 @@ impl ThemeData {
                 // Cursor and Selection
                 cursor: hsla(0.0, 0.0, 0.8, 1.0),
                 selection: hsla(0.639, 1.0, 0.53, 0.19),
+                accent: hsla(45. / 360., 0.85, 0.65, 1.),
                 // Backgrounds
                 bg_app: hsla(0.0, 0.0, 0.059, 1.0), // 0x0F0F0F
                 bg_overlay: hsla(0.0, 0.0, 0.078, 1.0),
@@ -214,20 +223,119 @@ impl ThemeData {
     }
 }
 
+/// Accepts `#rgb`, `#rrggbb` or `#rrggbbaa`.
 fn hsla_from_hex<'de, D: Deserializer<'de>>(d: D) -> Result<Hsla, D::Error> {
     let hex = String::deserialize(d)?;
-    let hex = hex.trim_start_matches('#');
-    let n = u32::from_str_radix(&hex[..6], 16).map_err(serde::de::Error::custom)?;
-    Ok(gpui::rgb(n).into())
+    parse_hex_color(&hex)
+        .ok_or_else(|| serde::de::Error::custom(format!("invalid color \"{hex}\"")))
+}
+
+/// Parses `#rgb`, `#rrggbb` or `#rrggbbaa` (the `#` is optional), keeping the alpha.
+pub fn parse_hex_color(text: &str) -> Option<Hsla> {
+    let hex = text.trim().trim_start_matches('#');
+    if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    let rgba = match hex.len() {
+        3 => {
+            let n = u32::from_str_radix(hex, 16).ok()?;
+            let (r, g, b) = ((n >> 8) & 0xf, (n >> 4) & 0xf, n & 0xf);
+            ((r * 0x11) << 24) | ((g * 0x11) << 16) | ((b * 0x11) << 8) | 0xff
+        }
+        6 => (u32::from_str_radix(hex, 16).ok()? << 8) | 0xff,
+        8 => u32::from_str_radix(hex, 16).ok()?,
+        _ => return None,
+    };
+    Some(gpui::rgba(rgba).into())
+}
+
+const BUILTIN_THEMES: [(&str, fn() -> ThemeData); 4] = [
+    ("Default", ThemeData::dark),
+    ("Nord", ThemeData::nord),
+    ("Libre", ThemeData::libre),
+    ("Catppuccin Mocha", ThemeData::catppuccin_mocha),
+];
+
+impl ThemeData {
+    pub fn builtins() -> impl Iterator<Item = (&'static str, ThemeData)> {
+        BUILTIN_THEMES.iter().map(|(name, f)| (*name, f()))
+    }
+
+    /// Looks up a built-in theme by name, ignoring case and `_`/`-`/space differences.
+    pub fn builtin(name: &str) -> Option<Self> {
+        let norm = |s: &str| s.to_lowercase().replace(['_', '-', ' '], "");
+        let wanted = norm(name);
+        if wanted == "dark" {
+            return Some(Self::dark());
+        }
+        BUILTIN_THEMES
+            .iter()
+            .find(|(n, _)| norm(n) == wanted)
+            .map(|(_, f)| f())
+    }
+
+    /// Loads a theme file. A top-level `extends = "<name>"` names the base: a built-in
+    /// theme or another `<name>.toml` next to this file. Every key the file sets
+    /// overrides the base; without `extends`, the default theme is the base.
+    pub fn from_file(path: &std::path::Path) -> Result<Self, String> {
+        let mut seen = Vec::new();
+        let table = Self::resolve(path, &mut seen)?;
+        toml::Value::Table(table)
+            .try_into()
+            .map_err(|e| format!("{}: {e}", path.display()))
+    }
+
+    fn resolve(
+        path: &std::path::Path,
+        seen: &mut Vec<std::path::PathBuf>,
+    ) -> Result<toml::Table, String> {
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        if seen.contains(&canonical) {
+            return Err(format!("{}: circular `extends`", path.display()));
+        }
+        seen.push(canonical);
+
+        let content =
+            std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let mut own: toml::Table =
+            toml::from_str(&content).map_err(|e| format!("{}: {e}", path.display()))?;
+
+        let mut base = match own.remove("extends") {
+            None => Self::to_table(&Self::dark())?,
+            Some(toml::Value::String(name)) => match Self::builtin(&name) {
+                Some(theme) => Self::to_table(&theme)?,
+                None => {
+                    let file = path.with_file_name(format!("{name}.toml"));
+                    if !file.is_file() {
+                        return Err(format!(
+                            "{}: `extends = \"{name}\"` is neither a built-in theme nor {}",
+                            path.display(),
+                            file.display()
+                        ));
+                    }
+                    Self::resolve(&file, seen)?
+                }
+            },
+            Some(other) => {
+                return Err(format!(
+                    "{}: `extends` must be a string, got {}",
+                    path.display(),
+                    other.type_str()
+                ));
+            }
+        };
+        base.extend(own);
+        Ok(base)
+    }
+
+    /// Colors serialize as 8-bit hex (gpui's `Hsla` format), so a base theme passes
+    /// through `extends` at hex precision, which is what's rendered anyway.
+    fn to_table(theme: &ThemeData) -> Result<toml::Table, String> {
+        toml::Table::try_from(theme).map_err(|e| e.to_string())
+    }
 }
 
 impl ThemeData {
-    /// The one highlight color (active numbers, modified tags, switches that are on). Themes
-    /// have no own accent yet, so this is the warning color: amber in the default theme.
-    pub fn accent(&self) -> Hsla {
-        self.color_warn
-    }
-
     pub fn companion(&self, c: Hsla) -> Hsla {
         const DL: f32 = 0.25;
         // lightness: away from the background if there's room, otherwise the other way
