@@ -124,7 +124,7 @@ impl RenderableChildImpl for MusicPlayerWidget {
                             this.child(
                                 div()
                                     .text_sm()
-                                    .font_family(theme.font_family.clone())
+                                    .font_family(theme.typography.font_family.clone())
                                     .overflow_hidden()
                                     .text_ellipsis()
                                     .whitespace_nowrap()

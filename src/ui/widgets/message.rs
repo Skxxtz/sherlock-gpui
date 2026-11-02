@@ -78,7 +78,7 @@ impl RenderableChildImpl for MessageChild {
                 .py(px(1.))
                 .rounded_sm()
                 .text_size(px(10.))
-                .font_family(theme.font_family.clone())
+                .font_family(theme.typography.font_family.clone())
                 .text_color(text)
                 .cursor_pointer()
                 .on_mouse_down(MouseButton::Left, move |_, _, cx| f(cx, selection.data_idx))
@@ -113,7 +113,7 @@ impl RenderableChildImpl for MessageChild {
             .border_color(border)
             .text_size(px(12.0))
             .text_color(text)
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .relative()
             .child(
                 div()
@@ -140,7 +140,7 @@ impl RenderableChildImpl for MessageChild {
                             .mt_1()
                             .text_size(px(11.))
                             .line_height(px(12.))
-                            .font_family(theme.font_family.clone())
+                            .font_family(theme.typography.font_family.clone())
                             .text_color(text)
                             .opacity(0.8)
                             .child(self.message.location.clone()),
@@ -160,7 +160,7 @@ impl RenderableChildImpl for MessageChild {
                             .mt_1()
                             .text_size(px(12.))
                             .line_height(px(16.))
-                            .font_family(theme.monospace.clone())
+                            .font_family(theme.typography.monospace.clone())
                             .child(self.message.traceback.clone()),
                     ),
             )

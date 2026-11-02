@@ -334,7 +334,7 @@ impl ColorInput {
             .border_color(theme.border)
             .bg(theme.bg_app)
             .shadow_lg()
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .on_mouse_down_out(cx.listener(|this, e: &MouseDownEvent, window, cx| {
                 // the owner's swatch toggles the picker itself
                 if !this.anchor.get().is_some_and(|b| b.contains(&e.position)) {
@@ -377,7 +377,7 @@ impl ColorInput {
                                 theme.border
                             })
                             .cursor_text()
-                            .font_family(theme.monospace.clone())
+                            .font_family(theme.typography.monospace.clone())
                             .text_size(px(13.))
                             .child(self.hex.clone())
                             .on_click(cx.listener(|this, _, win, cx| this.start_editing(win, cx))),

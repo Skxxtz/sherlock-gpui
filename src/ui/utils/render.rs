@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{SharedString, Styled, prelude::FluentBuilder};
+use gpui::{SharedString, Styled, prelude::FluentBuilder, px};
 
 use crate::{app::theme::ThemeData, ui::utils::selection::Selection};
 
@@ -11,8 +11,8 @@ pub trait ListItemBorder: Styled + FluentBuilder + Sized {
     }
     fn list_item_border_for(self, theme: &Arc<ThemeData>, selected: bool) -> Self {
         self.bg(theme.bg_idle)
-            .rounded_lg()
-            .border_1()
+            .rounded(px(theme.metrics.radius))
+            .border(px(theme.metrics.border_width))
             .when(selected, |this| {
                 this.bg(theme.bg_selected)
                     .border_color(theme.border_selected)

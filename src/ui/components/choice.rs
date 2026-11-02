@@ -78,7 +78,7 @@ impl Choice {
                     .line_height(px(12.))
                     .text_size(px(12.))
                     .text_color(theme.tertiary_text)
-                    .font_family(theme.font_family.clone())
+                    .font_family(theme.typography.font_family.clone())
                     // sizes
                     .py(px(3.))
                     .h(px(20. + 3. * 2.)) // 26px
@@ -137,7 +137,7 @@ impl Choice {
                                 .line_height(px(12.))
                                 .text_size(px(12.))
                                 .text_color(theme.secondary_text)
-                                .font_family(theme.font_family.clone())
+                                .font_family(theme.typography.font_family.clone())
                                 .child(option.label.clone().prepared(&theme))
                         })),
                 )

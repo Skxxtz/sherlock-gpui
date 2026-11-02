@@ -69,7 +69,7 @@ pub fn color_swatch(
         .child(div().size(px(14.)).rounded(px(4.)).bg(color))
         .child(
             div()
-                .font_family(theme.monospace.clone())
+                .font_family(theme.typography.monospace.clone())
                 .text_size(px(12.))
                 .text_color(theme.primary_text)
                 .child(hex(color)),

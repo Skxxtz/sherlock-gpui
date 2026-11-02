@@ -98,7 +98,7 @@ impl RenderableChildImpl for ThemeWidget {
                                     .flex()
                                     .items_center()
                                     .gap_2()
-                                    .font_family(theme.font_family.clone())
+                                    .font_family(theme.typography.font_family.clone())
                                     .text_sm()
                                     .w_full()
                                     .text_color(theme.secondary_text)
@@ -131,7 +131,7 @@ impl RenderableChildImpl for ThemeWidget {
                             )
                             .child(
                                 div()
-                                    .font_family(theme.font_family.clone())
+                                    .font_family(theme.typography.font_family.clone())
                                     .text_xs()
                                     .w_full()
                                     .overflow_hidden()

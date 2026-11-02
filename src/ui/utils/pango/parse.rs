@@ -233,7 +233,7 @@ fn push_run(
             == ctx
                 .state
                 .and_then(|s| s.family())
-                .unwrap_or(&theme.font_family);
+                .unwrap_or(&theme.typography.font_family);
         let same_color = last.color == target_color;
 
         if same_bold && same_italic && same_family && same_color {
@@ -249,7 +249,7 @@ fn push_run(
             family: ctx
                 .state
                 .and_then(|s| s.family())
-                .unwrap_or(&theme.font_family)
+                .unwrap_or(&theme.typography.font_family)
                 .clone(),
             weight: target_weight,
             style: target_style,

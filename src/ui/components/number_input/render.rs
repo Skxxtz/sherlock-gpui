@@ -138,7 +138,7 @@ impl Render for super::NumberInput {
             })
             .when(focused, |this| this.bg(theme.bg_selected))
             .overflow_hidden()
-            .font_family(theme.monospace.clone())
+            .font_family(theme.typography.monospace.clone())
             .on_mouse_down_out(cx.listener(|this, _: &MouseDownEvent, window, cx| {
                 if this.entry.is_some() {
                     this.leave(window, cx);

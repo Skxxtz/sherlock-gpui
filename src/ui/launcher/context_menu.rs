@@ -125,7 +125,7 @@ impl ContextMenuAction {
                 theme.secondary_text
             })
             .text_size(px(13.))
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .line_height(relative(1.0))
             .items_center()
             .bg(if is_selected && is_flashing {

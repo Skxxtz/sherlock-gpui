@@ -4,7 +4,7 @@ use crate::{app::theme::ThemeData, ui::components::sherlock_pixel};
 
 /// Nothing to report: a pixel smiley and a status in the terminal's voice, centred.
 pub fn empty_state(theme: &ThemeData) -> impl IntoElement {
-    let mono = theme.monospace.clone();
+    let mono = theme.typography.monospace.clone();
     let accent = theme.accent();
 
     let sherlock = sherlock_pixel::sherlock_pixel_art(theme);

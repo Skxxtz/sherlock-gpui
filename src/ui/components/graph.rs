@@ -342,7 +342,7 @@ impl RenderOnce for Graph {
             div()
                 .flex_none()
                 .whitespace_nowrap()
-                .font_family(theme.monospace.clone())
+                .font_family(theme.typography.monospace.clone())
                 .text_size(px(LABEL_SIZE))
                 .text_color(theme.tertiary_text)
                 .child(text)

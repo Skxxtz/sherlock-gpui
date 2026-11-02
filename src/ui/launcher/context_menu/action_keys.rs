@@ -61,7 +61,7 @@ impl ContextActionBinds {
             .items_center()
             .gap(px(3.))
             .text_size(px(10.))
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .text_color(theme.secondary_text)
             .child(Self::keycap(
                 div().relative().top(nudge).child(symbol),

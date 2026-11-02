@@ -75,7 +75,7 @@ fn cap(text: SharedString, theme: &ThemeData) -> impl IntoElement {
         .justify_center()
         .rounded(px(4.))
         .bg(theme.bg_keybind)
-        .font_family(theme.monospace.clone())
+        .font_family(theme.typography.monospace.clone())
         .text_size(px(12.))
         .line_height(relative(1.0))
         .text_color(theme.primary_text)

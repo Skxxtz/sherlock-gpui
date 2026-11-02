@@ -453,7 +453,7 @@ impl KeymapInput {
             .border_color(theme.border)
             .bg(theme.bg_app)
             .shadow_lg()
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .on_mouse_down_out(cx.listener(|this, e: &MouseDownEvent, win, cx| {
                 // clicks on the summary toggle it themselves
                 if !this.anchor.get().is_some_and(|b| b.contains(&e.position)) {

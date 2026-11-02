@@ -163,7 +163,7 @@ pub(super) fn render_timer(
                 .gap(px(2.0))
                 .child(
                     div()
-                        .font_family(theme.monospace.clone())
+                        .font_family(theme.typography.monospace.clone())
                         .text_size(px(25.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.primary_text)
@@ -171,7 +171,7 @@ pub(super) fn render_timer(
                 )
                 .child(
                     div()
-                        .font_family(theme.monospace.clone())
+                        .font_family(theme.typography.monospace.clone())
                         .text_size(px(25.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.primary_text.opacity(0.3))
@@ -179,7 +179,7 @@ pub(super) fn render_timer(
                 )
                 .child(
                     div()
-                        .font_family(theme.monospace.clone())
+                        .font_family(theme.typography.monospace.clone())
                         .text_size(px(25.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.primary_text)
@@ -221,7 +221,7 @@ pub(super) fn render_new_timer_pill(duration: Duration, theme: &Arc<ThemeData>) 
                 .child(
                     div()
                         .text_color(theme.secondary_text)
-                        .font_family(theme.font_family.clone())
+                        .font_family(theme.typography.font_family.clone())
                         .text_size(px(20.))
                         .mb(px(1.))
                         .child("+"),
@@ -240,7 +240,7 @@ pub(super) fn render_new_timer_pill(duration: Duration, theme: &Arc<ThemeData>) 
                 .child(div().child("⏰"))
                 .child(
                     div()
-                        .font_family(theme.font_family.clone())
+                        .font_family(theme.typography.font_family.clone())
                         .text_color(theme.primary_text)
                         .font_weight(FontWeight::BOLD)
                         .child(format_duration(duration)),

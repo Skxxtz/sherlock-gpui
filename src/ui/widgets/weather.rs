@@ -120,7 +120,7 @@ impl RenderableChildImpl for WeatherWidget {
                     .list_item_border(&theme, &selection)
                     .bg(theme.bg_muted)
                     .text_xs()
-                    .font_family(theme.font_family.clone())
+                    .font_family(theme.typography.font_family.clone())
                     .text_color(theme.tertiary_text)
                     .child("Weather currently unavailable")
                     .into_any_element();
@@ -174,14 +174,14 @@ impl RenderableChildImpl for WeatherWidget {
                                     .text_color(text_color.opacity(0.6))
                                     .text_size(px(10.))
                                     .font_weight(FontWeight::MEDIUM)
-                                    .font_family(theme.font_family.clone())
+                                    .font_family(theme.typography.font_family.clone())
                                     .child(data.format_str.clone()),
                             )
                             .child(
                                 div()
                                     .text_color(text_color)
                                     .text_size(px(11.))
-                                    .font_family(theme.font_family.clone())
+                                    .font_family(theme.typography.font_family.clone())
                                     .child(data.condition.clone()),
                             ),
                     )
@@ -207,7 +207,7 @@ impl RenderableChildImpl for WeatherWidget {
                                     .text_size(px(40.))
                                     .line_height(relative(1.))
                                     .font_weight(FontWeight::NORMAL)
-                                    .font_family(theme.font_family.clone())
+                                    .font_family(theme.typography.font_family.clone())
                                     .child(data.temperature.clone()),
                             )
                             .with_animation(
@@ -239,7 +239,7 @@ impl RenderableChildImpl for WeatherWidget {
                                 .text_size(px(22.))
                                 .line_height(relative(1.))
                                 .font_weight(FontWeight::NORMAL)
-                                .font_family(theme.font_family.clone())
+                                .font_family(theme.typography.font_family.clone())
                                 .child(time.format("%H:%M").to_string()),
                         )
                         .child(
@@ -248,7 +248,7 @@ impl RenderableChildImpl for WeatherWidget {
                                 .text_size(px(9.))
                                 .line_height(relative(1.))
                                 .font_weight(FontWeight::MEDIUM)
-                                .font_family(theme.font_family.clone())
+                                .font_family(theme.typography.font_family.clone())
                                 .child(now.format("%a %d").to_string()),
                         ),
                 )

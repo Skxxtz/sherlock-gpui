@@ -84,7 +84,7 @@ impl RenderableChildImpl for ProcessData {
                     .w_full()
                     .child(
                         div()
-                            .font_family(theme.font_family.clone())
+                            .font_family(theme.typography.font_family.clone())
                             .text_sm()
                             .w_full()
                             .text_color(theme.secondary_text)
@@ -99,7 +99,7 @@ impl RenderableChildImpl for ProcessData {
                     .child(
                         div()
                             .text_xs()
-                            .font_family(theme.font_family.clone())
+                            .font_family(theme.typography.font_family.clone())
                             .text_color(theme.secondary_text)
                             .child(if self.ppid == self.pid {
                                 self.pid.to_string()

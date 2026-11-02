@@ -127,7 +127,7 @@ impl RenderOnce for Credits {
             .items_center()
             .justify_center()
             .gap_4()
-            .font_family(theme.monospace.clone())
+            .font_family(theme.typography.monospace.clone())
             .text_sm()
             .child(sherlock_pixel::sherlock_pixel_art(&theme))
             .child(

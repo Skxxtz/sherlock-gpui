@@ -184,7 +184,7 @@ impl Control {
                     .border_1()
                     .border_color(theme.border)
                     .cursor_text()
-                    .font_family(theme.monospace.clone())
+                    .font_family(theme.typography.monospace.clone())
                     .text_size(px(12.))
                     .child(input.clone())
                     .on_click(move |_, window, cx| focus.focus(window, cx))

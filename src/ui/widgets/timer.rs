@@ -125,7 +125,7 @@ impl RenderableChildImpl for TimerChild {
                 .flex()
                 .items_center()
                 .justify_center()
-                .font_family(theme.font_family.clone())
+                .font_family(theme.typography.font_family.clone())
                 .text_color(theme.secondary_text)
                 .child("No timers yet")
                 .into_any_element();
@@ -138,7 +138,7 @@ impl RenderableChildImpl for TimerChild {
             .flex()
             .items_center()
             .justify_center()
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .children(children)
             .into_any_element()
     }

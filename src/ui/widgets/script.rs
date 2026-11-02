@@ -133,7 +133,7 @@ impl RenderableChildImpl for ScriptData {
                         .overflow_hidden()
                         .child(
                             div()
-                                .font_family(theme.font_family.clone())
+                                .font_family(theme.typography.font_family.clone())
                                 .text_sm()
                                 .text_color(if is_loading {
                                     theme.secondary_text

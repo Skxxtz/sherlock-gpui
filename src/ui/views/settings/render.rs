@@ -60,7 +60,7 @@ impl SettingsView {
             .flex()
             .flex_col()
             .bg(theme.bg_app)
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .child(
                 div()
                     .flex_1()
@@ -122,7 +122,7 @@ impl SettingsView {
             .when_some(count, |this, count| {
                 this.child(
                     div()
-                        .font_family(theme.monospace.clone())
+                        .font_family(theme.typography.monospace.clone())
                         .text_size(px(11.))
                         .text_color(theme.tertiary_text)
                         .child(count),
@@ -201,7 +201,7 @@ impl SettingsView {
         let selected = pos == self.row;
         let mono = |text: SharedString, size: f32, color: Hsla| {
             div()
-                .font_family(theme.monospace.clone())
+                .font_family(theme.typography.monospace.clone())
                 .text_size(px(size))
                 .text_color(color)
                 .child(text)

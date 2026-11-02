@@ -275,7 +275,7 @@ impl RenderableChildImpl for EventWidget {
                                     .child(
                                         div()
                                             .text_size(px(14.0))
-                                            .font_family(theme.font_family.clone())
+                                            .font_family(theme.typography.font_family.clone())
                                             .text_color(theme.primary_text)
                                             .child(event.title.clone()),
                                     )
@@ -290,7 +290,9 @@ impl RenderableChildImpl for EventWidget {
                                             .child(
                                                 div()
                                                     .text_size(px(12.0))
-                                                    .font_family(theme.font_family.clone())
+                                                    .font_family(
+                                                        theme.typography.font_family.clone(),
+                                                    )
                                                     .text_color(theme.secondary_text)
                                                     .child(loc),
                                             )
@@ -304,7 +306,7 @@ impl RenderableChildImpl for EventWidget {
                                     .child(
                                         div()
                                             .text_size(px(12.0))
-                                            .font_family(theme.font_family.clone())
+                                            .font_family(theme.typography.font_family.clone())
                                             .font_weight(FontWeight::MEDIUM)
                                             .text_color(theme.secondary_text)
                                             .children(event_data.time.clone()),
@@ -316,7 +318,7 @@ impl RenderableChildImpl for EventWidget {
                                             .rounded_sm()
                                             .bg(theme.bg_badge)
                                             .text_size(px(10.0))
-                                            .font_family(theme.font_family.clone())
+                                            .font_family(theme.typography.font_family.clone())
                                             .text_color(theme.secondary_text)
                                             .child(event.calendar_info.name.clone()),
                                     ),
@@ -347,7 +349,7 @@ impl RenderableChildImpl for EventWidget {
                                     .child(
                                         div()
                                             .text_size(px(10.))
-                                            .font_family(theme.font_family.clone())
+                                            .font_family(theme.typography.font_family.clone())
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(theme.secondary_text)
                                             .child("ATTENDEES"),
@@ -358,7 +360,7 @@ impl RenderableChildImpl for EventWidget {
                                             .rounded_sm()
                                             .bg(theme.bg_selected)
                                             .text_size(px(9.))
-                                            .font_family(theme.font_family.clone())
+                                            .font_family(theme.typography.font_family.clone())
                                             .text_color(theme.primary_text)
                                             .child(event.attendees.len().to_string()),
                                     ),
@@ -542,7 +544,7 @@ fn render_attendee(attendee: &Attendee, theme: &ThemeData) -> impl IntoElement {
                 .child(
                     div()
                         .text_size(px(12.0))
-                        .font_family(theme.font_family.clone())
+                        .font_family(theme.typography.font_family.clone())
                         .text_color(theme.primary_text)
                         .child(name.unwrap_or(email.unwrap_or("Unknown")).to_string()),
                 )
@@ -550,7 +552,7 @@ fn render_attendee(attendee: &Attendee, theme: &ThemeData) -> impl IntoElement {
                     this.child(
                         div()
                             .text_size(px(12.0))
-                            .font_family(theme.font_family.clone())
+                            .font_family(theme.typography.font_family.clone())
                             .text_color(theme.secondary_text.opacity(0.7))
                             .child(format!("({})", email.unwrap())),
                     )

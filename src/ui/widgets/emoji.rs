@@ -120,7 +120,7 @@ pub fn render_emoji_cell(entry: &EmojiEntry, selected: bool, theme: &Arc<ThemeDa
                 .text_ellipsis()
                 .whitespace_nowrap()
                 .text_size(px(10.))
-                .font_family(theme.font_family.clone())
+                .font_family(theme.typography.font_family.clone())
                 .text_center()
                 .text_color(if selected {
                     theme.primary_text

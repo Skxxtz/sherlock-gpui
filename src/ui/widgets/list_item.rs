@@ -124,7 +124,7 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
             .flex()
             .items_center()
             .gap(px(14.))
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .child(icon)
             .child(
                 div()

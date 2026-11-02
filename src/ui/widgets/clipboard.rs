@@ -313,7 +313,7 @@ fn url_show(url: SharedString, selection: Selection, theme: Arc<ThemeData>) -> g
                 .child(
                     div()
                         .text_sm()
-                        .font_family(theme.font_family.clone())
+                        .font_family(theme.typography.font_family.clone())
                         .text_color(theme.secondary_text)
                         .when(selection.is_selected, |this| {
                             this.text_color(theme.primary_text)
@@ -326,7 +326,7 @@ fn url_show(url: SharedString, selection: Selection, theme: Arc<ThemeData>) -> g
                 .child(
                     div()
                         .text_xs()
-                        .font_family(theme.font_family.clone())
+                        .font_family(theme.typography.font_family.clone())
                         .text_color(theme.secondary_text)
                         .child("From Clipboard"),
                 ),

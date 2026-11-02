@@ -134,7 +134,7 @@ impl Render for Select {
                     .cursor_pointer()
                     .when(self.open, |this| this.bg(theme.bg_selected))
                     .hover(|s| s.bg(theme.bg_selected))
-                    .font_family(theme.monospace.clone())
+                    .font_family(theme.typography.monospace.clone())
                     .text_size(px(12.))
                     .text_color(theme.primary_text)
                     .child(label)
@@ -158,7 +158,7 @@ impl Render for Select {
                                 .offset(point(px(0.), px(6.)))
                                 .child(
                                     div()
-                                        .font_family(theme.monospace.clone())
+                                        .font_family(theme.typography.monospace.clone())
                                         .text_size(px(12.))
                                         .child(list),
                                 ),

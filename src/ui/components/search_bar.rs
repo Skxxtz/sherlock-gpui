@@ -546,7 +546,7 @@ impl Render for TextInput {
                         .bg(theme.bg_muted)
                         .text_color(theme.secondary_text)
                     })
-                    .font_family(theme.font_family.clone())
+                    .font_family(theme.typography.font_family.clone())
                     .child(TextElement::new(cx))
             } else {
                 div()
@@ -559,7 +559,7 @@ impl Render for TextInput {
                     .flex_none()
                     .items_center()
                     .min_w(px(20.))
-                    .font_family(theme.font_family.clone())
+                    .font_family(theme.typography.font_family.clone())
                     .child(TextElement::new(cx))
             })
     }

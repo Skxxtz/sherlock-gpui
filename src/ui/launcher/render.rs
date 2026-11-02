@@ -277,7 +277,7 @@ impl LauncherView {
             .text_size(px(14.))
             .font_weight(FontWeight::BOLD)
             .text_color(theme.text_mode_label)
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .child(self.navigation.current().mode.display_str(searching))
     }
 
@@ -362,7 +362,7 @@ impl LauncherView {
             .border_color(theme.border)
             .px_5()
             .text_size(px(13.))
-            .font_family(theme.font_family.clone())
+            .font_family(theme.typography.font_family.clone())
             .items_center()
             .text_color(theme.text_status_bar)
             .child(
@@ -426,7 +426,7 @@ impl LauncherView {
                         .text_color(theme.color_err)
                         .bg(theme.color_err.alpha(0.4))
                         .text_xs()
-                        .font_family(theme.font_family.clone())
+                        .font_family(theme.typography.font_family.clone())
                         .child(count.to_string()),
                 )
             })

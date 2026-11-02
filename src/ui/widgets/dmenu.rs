@@ -43,7 +43,7 @@ impl RenderableChildImpl for DmenuData {
                 div().flex_col().justify_between().items_center().child(
                     div()
                         .text_sm()
-                        .font_family(theme.font_family.clone())
+                        .font_family(theme.typography.font_family.clone())
                         .text_color(theme.secondary_text)
                         .when(selection.is_selected, |this| {
                             this.text_color(theme.primary_text)
