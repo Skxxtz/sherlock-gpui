@@ -1,6 +1,7 @@
 pub mod choice;
 pub mod color_picker;
 pub mod color_swatch;
+pub mod graph;
 pub mod keybind;
 pub mod keymap_input;
 pub mod keymap_item;
