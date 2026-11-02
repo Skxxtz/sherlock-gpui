@@ -12,7 +12,7 @@ use crate::{
     ui::{
         actions::{
             launcher::*,
-            search_bar::{Backspace as SearchBackspace, ShortcutAction},
+            search_bar::{Backspace as SearchBackspace, SelectAll, ShortcutAction},
         },
         components::{
             choice::Choice,
@@ -133,7 +133,8 @@ impl LauncherView {
                                 cx.dispatch_action(&PrevVar);
                             },
                         ));
-                        ent.update(cx, |var_input, _| {
+                        ent.update(cx, |var_input, cx| {
+                            var_input.select_all(&SelectAll, win, cx);
                             var_input._sub = sub;
                         });
                     }
@@ -164,7 +165,13 @@ impl LauncherView {
                 self.text_input.focus_handle(cx).focus(win, cx);
             } else {
                 let var_idx = self.active_bar - 1;
-                self.variable_input[var_idx].focus_handle(cx).focus(win, cx);
+                let input = &self.variable_input[var_idx];
+                input.focus_handle(cx).focus(win, cx);
+                if let VariableInput::Text(ent) = input {
+                    ent.update(cx, |this, cx| {
+                        this.select_all(&SelectAll, win, cx);
+                    });
+                }
             }
 
             cx.notify();

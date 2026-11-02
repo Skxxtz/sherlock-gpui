@@ -48,7 +48,7 @@ impl TextInput {
         self.select_to(self.next_boundary(self.cursor_offset()), cx);
     }
 
-    pub(super) fn select_all(&mut self, _: &SelectAll, _: &mut Window, cx: &mut Context<Self>) {
+    pub fn select_all(&mut self, _: &SelectAll, _: &mut Window, cx: &mut Context<Self>) {
         self.move_to(0, cx);
         self.select_to(self.content.len(), cx)
     }
