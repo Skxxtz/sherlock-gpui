@@ -70,6 +70,7 @@ pub struct TextInput {
     pub focus_handle: FocusHandle,
     pub content: SharedString,
     pub placeholder: SharedString,
+    pub placeholder_override: Option<SharedString>,
     pub selected_range: Range<usize>,
     pub selection_reversed: bool,
     pub marked_range: Option<Range<usize>>,
@@ -281,7 +282,13 @@ impl Element for TextElement {
         let theme = cx.global::<ActiveTheme>().0.clone();
 
         let (mut display_text, text_color) = if content.is_empty() {
-            (input.placeholder.clone(), theme.text_placeholder)
+            (
+                input
+                    .placeholder_override
+                    .clone()
+                    .unwrap_or(input.placeholder.clone()),
+                theme.text_placeholder,
+            )
         } else {
             (content.clone(), style.color)
         };
@@ -504,7 +511,7 @@ impl Render for TextInput {
             .on_action(cx.listener(Self::right))
             .on_action(cx.listener(Self::select_left))
             .on_action(cx.listener(Self::select_right))
-            .on_action(cx.listener(Self::select_all))
+            .on_action(cx.listener(Self::select_all_internal))
             .on_action(cx.listener(Self::home))
             .on_action(cx.listener(Self::end))
             .on_action(cx.listener(Self::show_character_palette))

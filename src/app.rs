@@ -73,6 +73,27 @@ impl Global for LauncherEntityGlobal {}
 pub struct LauncherViewGlobal(pub WeakEntity<LauncherView>);
 impl gpui::Global for LauncherViewGlobal {}
 
+/// A closed launcher kept alive for `remember_query`: a strong handle, so the view (search text,
+/// view stack, selection, a running AI answer…) survives its window and is reopened as is.
+#[derive(Clone, Default)]
+pub struct RetainedLauncher(pub Option<Entity<LauncherView>>);
+impl Global for RetainedLauncher {}
+
+impl RetainedLauncher {
+    /// Takes the retained view out, if there is one.
+    pub fn take(cx: &mut App) -> Option<Entity<LauncherView>> {
+        cx.try_global::<Self>()?;
+        cx.global_mut::<Self>().0.take()
+    }
+
+    /// Drops the retained view (e.g. when the config changed under it).
+    pub fn clear(cx: &mut App) {
+        if cx.try_global::<Self>().is_some() {
+            cx.global_mut::<Self>().0 = None;
+        }
+    }
+}
+
 pub fn run_app(cx: &mut App, result: SetupResult) {
     LuaRuntimeHandle::spawn(cx);
 
@@ -139,26 +160,13 @@ fn spawn_launcher(
     initial_messages: Vec<SherlockMessage>,
     response_socket: Option<Arc<UnixStream>>,
 ) -> WindowHandle<LauncherView> {
-    // Create backdrop if enabled
-    let backdrop = ConfigGuard::read()
-        .ok()
-        .filter(|c| c.backdrop.enable)
-        .and_then(|c| {
-            cx.open_window(Backdrop::window_options(), |_, cx| {
-                cx.new(|_| Backdrop::new(c.backdrop.opacity, c.backdrop.animation_duration))
-            })
-            .ok()
-        });
+    let backdrop = spawn_backdrop(cx);
 
     cx.open_window(get_window_options(), move |win, cx| {
         let placeholder = ConfigGuard::read_with(|c| c.appearance.placeholder.clone()).unwrap_or(AppearanceDefaults::placeholder());
         let text_input = cx.new(|cx| TextInput::builder().placeholder(placeholder).build(cx));
 
-        // cleanup hook for preview cachge
-        win.on_window_should_close(cx, |window, cx| {
-            cx.default_global::<PreviewCache>().clear(window);
-            true
-        });
+        attach_window_hooks(win, cx);
 
         cx.new(|cx| {
 
@@ -224,6 +232,49 @@ fn spawn_launcher(
         })
     })
     .unwrap()
+}
+
+/// Opens a new window for a retained launcher view (`RetainedLauncher`), with its state as it
+/// was. The view's subscriptions belong to the entity, not the window, so only the window's own
+/// hooks and the backdrop are set up again.
+pub fn reopen_launcher(
+    cx: &mut App,
+    view: Entity<LauncherView>,
+) -> Option<WindowHandle<LauncherView>> {
+    let backdrop = spawn_backdrop(cx);
+    view.update(cx, |v, cx| {
+        v.text_input
+            .update(cx, |this, cx| this.select_all(cx));
+        v.backdrop = backdrop;
+        v.navigation.evict_unretained(cx);
+    });
+    cx.open_window(get_window_options(), move |win, cx| {
+        attach_window_hooks(win, cx);
+        view
+    })
+    .ok()
+}
+
+/// The backdrop window, if enabled.
+fn spawn_backdrop(cx: &mut App) -> Option<WindowHandle<Backdrop>> {
+    ConfigGuard::read()
+        .ok()
+        .filter(|c| c.backdrop.enable)
+        .and_then(|c| {
+            cx.open_window(Backdrop::window_options(), |_, cx| {
+                cx.new(|_| Backdrop::new(c.backdrop.opacity, c.backdrop.animation_duration))
+            })
+            .ok()
+        })
+}
+
+/// Hooks that belong to a launcher window rather than its view.
+fn attach_window_hooks(win: &mut gpui::Window, cx: &mut App) {
+    // cleanup hook for the preview cache
+    win.on_window_should_close(cx, |window, cx| {
+        cx.default_global::<PreviewCache>().clear(window);
+        true
+    });
 }
 
 fn get_window_options() -> WindowOptions {

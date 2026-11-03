@@ -98,6 +98,7 @@ impl Render for LauncherView {
             .on_action(cx.listener(Self::error_page))
             .on_action(cx.listener(Self::back))
             .on_action(cx.listener(Self::backspace))
+            .on_action(cx.listener(Self::copy_listener))
             .on_key_down(cx.listener(Self::context_menu_binds_listener))
             .on_key_up(cx.listener(Self::inner_bind_listener))
             .when(chrome.search_bar, |this| {

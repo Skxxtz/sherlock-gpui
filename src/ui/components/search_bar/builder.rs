@@ -56,6 +56,7 @@ impl TextInputBuilder {
             focus_handle: cx.focus_handle(),
             content: self.content,
             placeholder: self.placeholder,
+            placeholder_override: None,
             selected_range: 0..0,
             selection_reversed: false,
             marked_range: None,

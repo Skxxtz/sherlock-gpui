@@ -203,6 +203,16 @@ impl ViewHandle {
         dispatch!(self, e => e.read(cx).chrome())
     }
 
+    /// The search bar placeholder, if any
+    pub fn placeholder(&self, cx: &App) -> Option<SharedString> {
+        dispatch!(self, e => e.read(cx).placeholder(cx))
+    }
+
+    /// Wether this view should be retained on the stack after Sherlock closes.
+    pub fn retain(&self, cx: &App) -> bool {
+        dispatch!(self, e => e.read(cx).retain())
+    }
+
     /// Where keyboard focus should go while this view is shown (see `SherlockView::focus_target`).
     pub fn focus_target(&self, cx: &App) -> Option<FocusHandle> {
         dispatch!(self, e => e.read(cx).focus_target(cx))

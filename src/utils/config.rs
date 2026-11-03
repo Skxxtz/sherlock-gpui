@@ -216,10 +216,10 @@ pub struct ConfigBehavior {
     #[setting(label = "Clicks to run", range(0, 3))]
     #[serde(default)]
     pub n_clicks: Option<u8>,
-    /// Keep the search text the next time Sherlock opens.
-    #[setting(label = "Remember query", group = "search")]
+    /// Keeps Sherlock's last state, including the search bar text, and last used views.
+    #[setting(label = "Remember last state.", group = "window")]
     #[serde(default)]
-    pub remember_query: bool,
+    pub keep_state: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

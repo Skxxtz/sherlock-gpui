@@ -123,6 +123,10 @@ impl Navigator {
         self.showing_messages = false;
     }
 
+    pub fn evict_unretained(&mut self, cx: &App) {
+        self.stack.retain(|i| i.handle.retain(cx));
+    }
+
     /// Pops the currently active view and moves back to the view before. Also moves out of the
     /// message view to the home view
     pub fn back(&mut self, cx: &mut App) {

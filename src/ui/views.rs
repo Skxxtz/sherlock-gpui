@@ -108,6 +108,18 @@ pub trait SherlockView: HandleActions + 'static + Sized {
     fn chrome(&self) -> Chrome {
         Chrome::DEFAULT
     }
+
+    /// Search bar placeholder while this view is shown. `None`: the configured default.
+    fn placeholder(&self, _cx: &App) -> Option<SharedString> {
+        None
+    }
+
+    /// Whether this view should be retained on the stack after sherlock closes. (Only when config
+    /// key for this is set.)
+    fn retain(&self) -> bool {
+        false
+    }
+
     /// The view's content
     /// Initial scroll layout when the view is pushed: a row list by default.
     /// Where keyboard focus goes while this view is shown, e.g. a text field of a page.

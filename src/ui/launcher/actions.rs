@@ -6,13 +6,13 @@ use smallvec::SmallVec;
 
 use super::execute;
 use crate::{
-    app::reset_generation,
+    app::{RetainedLauncher, reset_generation},
     launcher::{LauncherValues, utils::exec_mode::ExecMode, variant_type::QuickActionCapabilities},
     sherlock_msg,
     ui::{
         actions::{
             launcher::*,
-            search_bar::{Backspace as SearchBackspace, SelectAll, ShortcutAction},
+            search_bar::{Backspace as SearchBackspace, ShortcutAction},
         },
         components::{
             choice::Choice,
@@ -30,7 +30,7 @@ use crate::{
         traits::{InputAction, RenderableChildDelegate},
         views::Propagation,
     },
-    utils::errors::types::SherlockErrorType,
+    utils::{config::ConfigGuard, errors::types::SherlockErrorType},
 };
 
 // Selection and focus
@@ -134,7 +134,7 @@ impl LauncherView {
                             },
                         ));
                         ent.update(cx, |var_input, cx| {
-                            var_input.select_all(&SelectAll, win, cx);
+                            var_input.select_all(cx);
                             var_input._sub = sub;
                         });
                     }
@@ -169,7 +169,7 @@ impl LauncherView {
                 input.focus_handle(cx).focus(win, cx);
                 if let VariableInput::Text(ent) = input {
                     ent.update(cx, |this, cx| {
-                        this.select_all(&SelectAll, win, cx);
+                        this.select_all(cx);
                     });
                 }
             }
@@ -365,6 +365,16 @@ impl LauncherView {
         self.dispatch(action, win, cx, Self::close_window);
     }
 
+    /// Ctrl+C the search bar passed on (it had no selection): the view may copy its own.
+    pub(super) fn copy_listener(
+        &mut self,
+        action: &crate::ui::actions::Copy,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.dispatch(action, win, cx, |_, _, _| {});
+    }
+
     /// `Back`, from an empty search bar.
     pub(super) fn back(&mut self, action: &Back, win: &mut Window, cx: &mut Context<Self>) {
         self.dispatch(action, win, cx, Self::go_back);
@@ -548,9 +558,16 @@ impl LauncherView {
     }
 
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
-        // Cleanup
-        self.variable_input.clear();
-        self.navigation.clear();
+        if ConfigGuard::read_with(|c| c.behavior.keep_state).unwrap_or_default() {
+            // Keep the whole view alive, state included, for the next open (the window was its
+            // only strong owner).
+            let this = cx.entity();
+            cx.set_global(RetainedLauncher(Some(this)));
+        } else {
+            self.variable_input.clear();
+            self.navigation.clear();
+            RetainedLauncher::clear(cx);
+        }
 
         // Close window
         win.remove_window();

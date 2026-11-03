@@ -18,7 +18,9 @@ use crate::{
     app::{
         LauncherEntity,
         LauncherViewGlobal,
+        RetainedLauncher,
         data::LauncherData,
+        reopen_launcher,
         run_async_updates,
         spawn_launcher,
     },
@@ -149,6 +151,8 @@ pub(super) async fn run_event_loop(
                     reload_async(&mut cx, &data, &mut initial_messages, audit).await
             {
                 modes = new_modes;
+                // A kept launcher was built for the old config.
+                cx.update(RetainedLauncher::clear);
             }
 
             // prepare new window / launcher
@@ -156,14 +160,30 @@ pub(super) async fn run_event_loop(
                 win.update(&mut cx, |_, win, _| win.is_window_active()) // this call is just dummy
                     .is_ok()
             }) {
-                refresh_launcher_view(
-                    data.clone(),
-                    Arc::clone(&modes),
-                    &initial_messages,
-                    response_socket,
-                    &mut win,
-                    &mut cx,
-                );
+                // With `remember_query`, reopen the launcher that was closed, state and all.
+                // Piped dmenu input always gets a fresh launcher.
+                let retained = if matches!(msg, ClientMessage::Dmenu(_)) {
+                    cx.update(RetainedLauncher::clear);
+                    None
+                } else {
+                    cx.update(RetainedLauncher::take)
+                };
+                match retained.and_then(|view| cx.update(|cx| reopen_launcher(cx, view))) {
+                    Some(reopened) => {
+                        if let Ok(e) = reopened.entity(&cx) {
+                            cx.update(|cx| cx.set_global(LauncherViewGlobal(e.downgrade())));
+                        }
+                        win = Some(reopened);
+                    }
+                    None => refresh_launcher_view(
+                        data.clone(),
+                        Arc::clone(&modes),
+                        &initial_messages,
+                        response_socket,
+                        &mut win,
+                        &mut cx,
+                    ),
+                }
             };
 
             // Parse potential initial data such as dmenu piped input
