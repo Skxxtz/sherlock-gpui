@@ -43,7 +43,7 @@ use crate::{
 /// - `Next`: Skips to next song
 #[derive(Debug, Clone, Default)]
 pub struct MusicPlayerLauncher {
-    binds: Option<Arc<Vec<Bind>>>,
+    binds: Option<Arc<[Bind]>>,
 }
 
 define_inner_functions! {
@@ -56,10 +56,19 @@ define_inner_functions! {
 
 impl LauncherProvider for MusicPlayerLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
-        let binds = raw
+        let binds: Option<Arc<[Bind]>> = raw
             .binds
             .as_ref()
-            .map(|vec| Arc::new(vec.iter().filter_map(|b| Bind::try_from(b).ok()).collect()));
+            .map(|vec| {
+                vec.iter()
+                    .map(|b| {
+                        Bind::try_from(b).map_err(|e| {
+                            sherlock_msg!(Error, SherlockErrorType::InvalidLauncher, e)
+                        })
+                    })
+                    .collect::<Result<Arc<[Bind]>, _>>()
+            })
+            .transpose()?;
         Ok(LauncherType::MusicPlayer(MusicPlayerLauncher { binds }))
     }
     fn objects(
@@ -75,7 +84,7 @@ impl LauncherProvider for MusicPlayerLauncher {
             MusicPlayerWidget::new(cx),
         )])
     }
-    fn binds(&self) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self) -> Option<Arc<[Bind]>> {
         self.binds.clone()
     }
     fn execute_function(

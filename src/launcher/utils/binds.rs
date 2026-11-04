@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use gpui::{InvalidKeystrokeError, Keystroke};
 use serde::{Deserialize, Serialize};
 
@@ -5,18 +7,20 @@ use serde::{Deserialize, Serialize};
 pub struct Bind {
     pub exit: bool,
     pub bind: Keystroke,
-    pub callback: String,
+    pub callback: Arc<String>,
 }
 impl Bind {
+    #[inline]
     pub fn matches(&self, stroke: &Keystroke) -> bool {
-        &self.bind == stroke
+        self.bind.modifiers == stroke.modifiers && self.bind.key == stroke.key
     }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BindSerde {
     pub bind: String,
-    callback: String,
+    callback: Arc<String>,
+    #[serde(default)]
     pub exit: bool,
 }
 

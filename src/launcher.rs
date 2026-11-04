@@ -38,7 +38,7 @@ pub trait LauncherProvider {
         messages: &mut Vec<SherlockMessage>,
         cx: &mut App,
     ) -> Result<Vec<RenderableChild>, SherlockMessage>;
-    fn binds(&self) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self) -> Option<Arc<[Bind]>> {
         None
     }
     fn execute_function(

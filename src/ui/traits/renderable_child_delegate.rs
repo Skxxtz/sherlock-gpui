@@ -48,7 +48,7 @@ pub trait RenderableChildDelegate {
 
     /// Whether this widget owns any context menu actions. (This gets called only on the selected
     /// item)
-    fn binds(&self, _cx: &mut App) -> Option<Arc<Vec<Bind>>>;
+    fn binds(&self, _cx: &mut App) -> Option<Arc<[Bind]>>;
 
     /// Execute inner functions
     fn execute_function(

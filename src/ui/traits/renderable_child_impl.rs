@@ -45,7 +45,7 @@ pub trait RenderableChildImpl {
     fn has_actions(&self, _cx: &mut App) -> bool {
         false
     }
-    fn binds(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<Arc<[Bind]>> {
         None
     }
     fn execute_function(

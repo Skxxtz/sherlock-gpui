@@ -44,15 +44,24 @@ define_inner_functions! {
 #[derive(Clone, Debug)]
 pub struct ScriptLauncher {
     pub r#async: bool,
-    binds: Option<Arc<Vec<Bind>>>,
+    binds: Option<Arc<[Bind]>>,
 }
 
 impl LauncherProvider for ScriptLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
-        let binds = raw
+        let binds: Option<Arc<[Bind]>> = raw
             .binds
             .as_ref()
-            .map(|vec| Arc::new(vec.iter().filter_map(|b| Bind::try_from(b).ok()).collect()));
+            .map(|vec| {
+                vec.iter()
+                    .map(|b| {
+                        Bind::try_from(b).map_err(|e| {
+                            sherlock_msg!(Error, SherlockErrorType::InvalidLauncher, e)
+                        })
+                    })
+                    .collect::<Result<Arc<[Bind]>, _>>()
+            })
+            .transpose()?;
 
         let r#async = raw
             .args
@@ -115,7 +124,7 @@ impl LauncherProvider for ScriptLauncher {
         }
         Ok(ExecEffect::None)
     }
-    fn binds(&self) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self) -> Option<Arc<[Bind]>> {
         self.binds.clone()
     }
 }

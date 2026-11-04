@@ -213,7 +213,7 @@ impl RenderableChildDelegate for RenderableChild {
             || dispatch!(&self.kind, i => i.has_actions(cx))
     }
 
-    fn binds(&self, cx: &mut App) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self, cx: &mut App) -> Option<Arc<[Bind]>> {
         dispatch!(&self.kind, i => i.binds(&self.launcher, cx))
     }
 

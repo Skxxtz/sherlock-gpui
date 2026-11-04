@@ -175,7 +175,7 @@ impl RenderableChildImpl for MusicPlayerWidget {
         true
     }
     #[inline(always)]
-    fn binds(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<Arc<Vec<Bind>>> {
+    fn binds(&self, launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<Arc<[Bind]>> {
         launcher.launcher_type.binds()
     }
     #[inline(always)]

@@ -156,7 +156,7 @@ macro_rules! create_variants {
                     Self::Empty => Ok(vec![]),
                 }
             }
-            pub fn binds(&self) -> Option<Arc<Vec<Bind>>> {
+            pub fn binds(&self) -> Option<Arc<[Bind]>> {
                 match self {
                     $(
                         Self::$variant(inner) => <$inner as LauncherProvider>::binds(inner),
