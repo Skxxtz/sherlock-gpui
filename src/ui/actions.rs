@@ -68,7 +68,7 @@ macro_rules! sherlock_actions {
 sherlock_actions! {
     launcher: [
         Quit, ItemUp, ItemDown, ItemLeft, ItemRight, NextVar, PrevVar,
-        Execute, ExecuteInplace, ToggleContext, Back, ErrorPage,
+        Execute, ExecuteInplace, ToggleContext, Back, ErrorPage, MinimizeView, MaximizeView,
     ],
     search_bar as text_input: [
         Backspace, Complete, DeleteForward, DeleteAll, CursorLeft, CursorRight,

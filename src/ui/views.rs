@@ -1,16 +1,30 @@
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, Context, Entity, FocusHandle, SharedString, WeakEntity, Window, px};
+use gpui::{
+    AnyElement,
+    App,
+    Context,
+    Entity,
+    FocusHandle,
+    Keystroke,
+    SharedString,
+    WeakEntity,
+    Window,
+    px,
+};
 
 use crate::{
     app::theme::ThemeData,
     ui::{
+        components::status_bar::StatusBar,
         launcher::{LauncherView, navigator::views::Layout},
         model::{Model, ResultsChange, data::ModelData},
         traits::HandleActions,
     },
 };
 
+#[cfg(feature = "ai")]
+pub mod ask;
 pub mod credits;
 pub mod emoji;
 pub mod events;
@@ -101,6 +115,21 @@ pub enum QueryResult {
     Ignored,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BusyStatus {
+    Ok,
+    Err,
+    Busy,
+}
+
+/// What a minimized view shows in the status bar (see `SherlockView::background`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Background {
+    pub label: SharedString,
+    /// Still working (pulses); otherwise finished and waiting to be looked at.
+    pub busy: BusyStatus,
+}
+
 pub trait SherlockView: HandleActions + 'static + Sized {
     /// The data this view's model filters; `NoData` for views without items.
     type Data: ModelData;
@@ -114,10 +143,27 @@ pub trait SherlockView: HandleActions + 'static + Sized {
         None
     }
 
+    /// `Some` if leaving this view should minimize it instead of dropping it: it keeps running
+    /// and shows this status in the status bar until restored.
+    fn background(&self, _cx: &App) -> Option<Background> {
+        None
+    }
+
     /// Whether this view should be retained on the stack after sherlock closes. (Only when config
     /// key for this is set.)
     fn retain(&self) -> bool {
         false
+    }
+
+    /// `Some()` will overwrite the default status bar. `None` leaves the default status bar in place.
+    fn status_bar(&self, _cx: &App) -> Option<StatusBar> {
+        None
+    }
+
+    /// The key of this view's bind whose callback runs `name` (e.g. "stop"), for status-bar
+    /// hints (`KeySpec::Bind`). `None`: not bound, the hint is hidden.
+    fn bind_key(&self, _name: &str) -> Option<Keystroke> {
+        None
     }
 
     /// The view's content

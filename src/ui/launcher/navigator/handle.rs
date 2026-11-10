@@ -1,18 +1,33 @@
 use std::sync::Arc;
 
-use gpui::{AnyElement, AnyEntity, App, AppContext, Entity, FocusHandle, SharedString, Window, px};
+use gpui::{
+    AnyElement,
+    AnyEntity,
+    App,
+    AppContext,
+    Entity,
+    FocusHandle,
+    Keystroke,
+    SharedString,
+    Window,
+    px,
+};
 
+#[cfg(feature = "ai")]
+use crate::ui::views::ask::AskView;
 use crate::{
     app::LauncherEntity,
     launcher::{LauncherConfig, variant_type::LauncherType},
     ui::{
+        components::status_bar::StatusBar,
         launcher::navigator::views::{Layout, NavView},
         model::{
             data::ModelData,
             item::{SelectionKey, ShellItem},
         },
-        traits::InputAction,
+        traits::{HandleActions, InputAction},
         views::{
+            Background,
             Chrome,
             Propagation,
             Query,
@@ -35,23 +50,24 @@ use crate::{
 /// The leading `$` is passed through so the generated `dispatch!` can use its own
 /// metavariables (`macro_rules!` can't write a literal `$` itself on stable).
 macro_rules! views {
-    ($d:tt ; $($variant:ident($view:ty)),* $(,)?) => {
+    ($d:tt ; $( $(#[$meta:meta])* $variant:ident($view:ty) ),* $(,)?) => {
         /// Typed handle to a view entity (static dispatch).
         #[derive(Clone)]
         pub enum ViewHandle {
-            $($variant(Entity<$view>),)*
+            $( $(#[$meta])* $variant(Entity<$view>), )*
         }
 
         /// Runs `$body` with `$e` bound to the inner `&Entity<_>`, whatever the variant.
         macro_rules! dispatch {
             ($d handle:expr, $d e:ident => $d body:expr) => {
                 match $d handle {
-                    $(ViewHandle::$variant($d e) => $d body,)*
+                    $( $(#[$meta])* ViewHandle::$variant($d e) => $d body, )*
                 }
             };
         }
 
         $(
+            $(#[$meta])*
             impl From<Entity<$view>> for ViewHandle {
                 fn from(entity: Entity<$view>) -> Self {
                     Self::$variant(entity)
@@ -63,6 +79,8 @@ macro_rules! views {
 
 // Adding a view = one line here (plus `impl SherlockView` on the view).
 views! { $;
+    #[cfg(feature = "ai")]
+    Ask(AskView),
     Credit(CreditView),
     Home(HomeView),
     Emoji(EmojiView),
@@ -208,9 +226,24 @@ impl ViewHandle {
         dispatch!(self, e => e.read(cx).placeholder(cx))
     }
 
+    /// The status bar this view wants (`SherlockView::status_bar`); the default if none.
+    pub fn status_bar(&self, cx: &App) -> StatusBar {
+        dispatch!(self, e => e.read(cx).status_bar(cx)).unwrap_or_default()
+    }
+
+    /// Status to show while minimized, if this view wants to be kept (`SherlockView::background`).
+    pub fn background(&self, cx: &App) -> Option<Background> {
+        dispatch!(self, e => e.read(cx).background(cx))
+    }
+
     /// Wether this view should be retained on the stack after Sherlock closes.
     pub fn retain(&self, cx: &App) -> bool {
         dispatch!(self, e => e.read(cx).retain())
+    }
+
+    /// Same kind of view (variant), regardless of state.
+    pub fn same_kind(&self, other: &ViewHandle) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
     }
 
     /// Where keyboard focus should go while this view is shown (see `SherlockView::focus_target`).
@@ -243,6 +276,16 @@ impl ViewHandle {
         dispatch!(self, e => e.update(cx, |v, cx| action.route(v, window, cx)))
     }
 
+    /// Offers a keystroke to the view's binds (`HandleActions::bind`). Updates the view entity.
+    pub fn bind(&self, key: &Keystroke, window: &mut Window, cx: &mut App) -> Propagation {
+        dispatch!(self, e => e.update(cx, |v, cx| v.bind(key, window, cx)))
+    }
+
+    /// The key of the view's bind that runs `name` (`SherlockView::bind_key`).
+    pub fn bind_key(&self, name: &str, cx: &App) -> Option<Keystroke> {
+        dispatch!(self, e => e.read(cx).bind_key(name))
+    }
+
     /// Type-erased entity, for rendering
     pub fn entity(&self) -> AnyEntity {
         dispatch!(self, e => e.clone().into())
@@ -262,6 +305,9 @@ impl NavView {
 /// Which kind of a view a `NavView` is, plis the data needed to build it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ViewKind {
+    /// AI view
+    #[cfg(feature = "ai")]
+    Ask,
     /// The permanent root view.
     Home,
     /// The error/warning/info overlay.
@@ -283,6 +329,13 @@ impl ViewKind {
     /// they return `None`
     pub fn build(&self, launcher: Arc<LauncherConfig>, cx: &mut App) -> Option<NavView> {
         Some(match self {
+            #[cfg(feature = "ai")]
+            Self::Ask => {
+                let LauncherType::Ask(ask) = &launcher.launcher_type else {
+                    return None;
+                };
+                NavView::new(cx.new(|cx| AskView::new(ask, cx)), cx)
+            }
             Self::Emoji => NavView::new(cx.new(|cx| EmojiView::new(launcher, cx)), cx),
             Self::Process => NavView::new(cx.new(|cx| ProcessView::new(launcher, cx)), cx),
             Self::Files { dir } => {
@@ -303,6 +356,8 @@ impl TryFrom<&LauncherType> for ViewKind {
     type Error = NoView;
     fn try_from(value: &LauncherType) -> Result<Self, Self::Error> {
         match value {
+            #[cfg(feature = "ai")]
+            LauncherType::Ask(_) => Ok(Self::Ask),
             LauncherType::Emoji(_) => Ok(Self::Emoji),
             LauncherType::Process(_) => Ok(Self::Process),
             LauncherType::Files(fs) => Ok(Self::Files {

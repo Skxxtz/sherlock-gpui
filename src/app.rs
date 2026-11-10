@@ -32,16 +32,9 @@ use crate::{
     features::plugin::runtime::LuaRuntimeHandle,
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
-        actions::Back,
         backdrop::Backdrop,
-        components::search_bar::{EmptyBackspace, TextInput},
-        launcher::{
-            LauncherMode,
-            LauncherView,
-            context_menu::wrapper::ContextMenu,
-            navigator::{Navigator, handle::ViewKind},
-            sidebar_controller::SidebarController,
-        },
+        components::search_bar::TextInput,
+        launcher::{LauncherMode, LauncherView},
     },
     utils::{
         config::{AppearanceDefaults, ConfigGuard, ConfigWatcher},
@@ -95,6 +88,8 @@ impl RetainedLauncher {
 }
 
 pub fn run_app(cx: &mut App, result: SetupResult) {
+    super::fonts::register(cx);
+
     LuaRuntimeHandle::spawn(cx);
 
     let SetupResult {
@@ -163,72 +158,22 @@ fn spawn_launcher(
     let backdrop = spawn_backdrop(cx);
 
     cx.open_window(get_window_options(), move |win, cx| {
-        let placeholder = ConfigGuard::read_with(|c| c.appearance.placeholder.clone()).unwrap_or(AppearanceDefaults::placeholder());
+        let placeholder = ConfigGuard::read_with(|c| c.appearance.placeholder.clone())
+            .unwrap_or(AppearanceDefaults::placeholder());
         let text_input = cx.new(|cx| TextInput::builder().placeholder(placeholder).build(cx));
 
         attach_window_hooks(win, cx);
 
         cx.new(|cx| {
-
-            // Re-run the filter when launcher data changes (e.g. plugin tiles
-            // arriving asynchronously).
-            let data_sub = cx.observe(&data, |this: &mut LauncherView, _, cx| {
-                this.force_filter_and_sort(cx);
-            });
-
-            let sub = cx.observe(&text_input, |this: &mut LauncherView, _, cx| {
-                this.context_menu.close();
-                this.navigation.reset_selection(cx);
-                this.filter_and_sort(cx);
-            });
-
-            // routed through `Back`, so the current view can override it
-            let backspace_sub = cx.subscribe(&text_input, |_, _, _: &EmptyBackspace, cx| {
-                cx.dispatch_action(&Back);
-            });
-
-            text_input.update(cx, |this, _| this._sub = Some(backspace_sub));
-
-            let mut navigation = Navigator::new(data, initial_messages, cx);
-
-            let mode = ConfigGuard::read_with(|c| {
-                c.runtime
-                    .sub_menu
-                    .as_deref()
-                    .and_then(|submenu| {
-                        modes.iter().find(|m| {
-                            matches!(
-                                m,
-                                LauncherMode::Alias { short, .. } if short.eq_ignore_ascii_case(submenu)
-                            )
-                        })
-                    })
-                    .cloned()
-                    .unwrap_or(LauncherMode::Home)
-            })
-            .unwrap_or(LauncherMode::Home);
-
-            if let LauncherMode::Alias { launcher, .. } = &mode
-                && let Some(view) = ViewKind::try_from(&launcher.launcher_type).ok().and_then(|kind| kind.build(launcher.clone(), cx))
-            {
-                navigation.push(view);
-            }
-
-            LauncherView {
+            LauncherView::new(
                 text_input,
-                focus_handle: cx.focus_handle(),
-                _subs: vec![sub, data_sub],
-                modes,
-                context_menu: ContextMenu::default(),
-                sidebar_controller: SidebarController::default(),
-                variable_input: Vec::new(),
-                active_bar: 0,
-                navigation,
-                config_initialized: ConfigGuard::is_initialized(),
-                response_socket,
                 backdrop,
-                last_selected: None,
-            }
+                data,
+                modes,
+                initial_messages,
+                response_socket,
+                cx,
+            )
         })
     })
     .unwrap()
@@ -243,8 +188,7 @@ pub fn reopen_launcher(
 ) -> Option<WindowHandle<LauncherView>> {
     let backdrop = spawn_backdrop(cx);
     view.update(cx, |v, cx| {
-        v.text_input
-            .update(cx, |this, cx| this.select_all(cx));
+        v.text_input.update(cx, |this, cx| this.select_all(cx));
         v.backdrop = backdrop;
         v.navigation.evict_unretained(cx);
     });

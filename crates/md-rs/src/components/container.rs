@@ -20,6 +20,13 @@ impl Container {
         if cond { f(self) } else { self }
     }
 
+    pub fn when_some<T>(self, opt: Option<T>, f: impl FnOnce(Self, T) -> Self) -> Self
+    where
+        T: Sized,
+    {
+        if let Some(t) = opt { f(self, t) } else { self }
+    }
+
     pub fn list(self, f: impl FnOnce(List) -> List) -> Self {
         self.child(f(List::default()))
     }

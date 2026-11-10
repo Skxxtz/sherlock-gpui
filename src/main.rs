@@ -20,6 +20,7 @@ mod app;
 #[cfg(feature = "docs")]
 mod docs;
 mod features;
+mod fonts;
 mod launcher;
 mod loader;
 mod prelude;

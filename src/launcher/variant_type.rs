@@ -4,6 +4,8 @@ use gpui::{App, SharedString};
 use serde::{Deserialize, Serialize};
 use strum::{Display, IntoStaticStr};
 
+#[cfg(feature = "ai")]
+use crate::features::ask::AskLauncher;
 use crate::{
     features::{
         app::AppLauncher,
@@ -50,16 +52,20 @@ macro_rules! create_variants {
 
     (@pickable pickable) => { true };
     (@pickable $_:ident) => { false };
+
+    // The function type of a launcher; one without functions gets an uninhabited one.
+    (@extra) => { std::convert::Infallible };
+    (@extra $extra:ty) => { $extra };
     (
         enum $name:ident {
-            $( $variant:ident( $inner:ty $(, $extra:ty)* )
+            $( $(#[$meta:meta])* $variant:ident( $inner:ty $(, $extra:ty)* )
                $(: $first:ident $(+ $rest:ident)*)? ),* $(,)?
         }
     ) => {
 
         #[derive(Clone, Debug, Default)]
         pub enum $name {
-            $($variant($inner),)*
+            $( $(#[$meta])* $variant($inner), )*
             #[default]
             Empty,
         }
@@ -68,15 +74,18 @@ macro_rules! create_variants {
         #[serde(rename_all = "snake_case")]
         #[strum(serialize_all = "snake_case")]
         pub enum LauncherVariant {
-            $($variant,)*
+            $( $(#[$meta])* $variant, )*
             #[default]
             Empty,
         }
 
         #[derive(Clone, Debug, PartialEq)]
         pub enum InnerFunction {
+            // One variant per launcher (attributes such as `#[cfg]` can't be repeated inside
+            // the optional `$extra`); launchers without functions hold `Infallible`.
             $(
-                $( $variant($extra), )?
+                $(#[$meta])*
+                $variant(create_variants!(@extra $($extra)*)),
             )*
 
             #[allow(dead_code)]
@@ -97,6 +106,7 @@ macro_rules! create_variants {
 
                 match variant {
                     $(
+                        $(#[$meta])*
                         $name::$variant(_) => {
                             $(
                                 use std::str::FromStr;
@@ -123,6 +133,7 @@ macro_rules! create_variants {
                 match self {
                     Self::Empty => QuickActionCapabilities::empty(),
                     $(
+                        $(#[$meta])*
                         Self::$variant(..) => QuickActionCapabilities::from_bits_retain(
                             0 $(
                                 | create_variants!(@quick $first).bits()
@@ -151,6 +162,7 @@ macro_rules! create_variants {
             ) -> Result<Vec<RenderableChild>, SherlockMessage> {
                 match self {
                     $(
+                        $(#[$meta])*
                         Self::$variant(inner) => <$inner as LauncherProvider>::objects(inner, launcher, ctx, opts, messages, cx),
                     )*
                     Self::Empty => Ok(vec![]),
@@ -159,6 +171,7 @@ macro_rules! create_variants {
             pub fn binds(&self) -> Option<Arc<[Bind]>> {
                 match self {
                     $(
+                        $(#[$meta])*
                         Self::$variant(inner) => <$inner as LauncherProvider>::binds(inner),
                     )*
                     Self::Empty => None
@@ -173,6 +186,7 @@ macro_rules! create_variants {
             ) -> Result<ExecEffect, SherlockMessage> {
                 match self {
                     $(
+                        $(#[$meta])*
                         Self::$variant(inner) => <$inner as LauncherProvider>::execute_function(inner, func, child, variables, cx),
                     )*
                     Self::Empty => unimplemented!(),
@@ -185,6 +199,7 @@ macro_rules! create_variants {
             pub fn supports_functions(&self) -> bool {
                 match self {
                     $(
+                        $(#[$meta])*
                         Self::$variant => {
                             let _has_extra = false;
                             $( let _has_extra = { let _ = std::marker::PhantomData::<$extra>::default(); true }; )?
@@ -197,6 +212,7 @@ macro_rules! create_variants {
             pub fn try_into_launcher_type(self, raw: &RawLauncher) -> Result<$name, SherlockMessage> {
                 match self {
                     $(
+                        $(#[$meta])*
                         Self::$variant => <$inner as LauncherProvider>::try_parse(raw),
                     )*
                     Self::Empty => Ok($name::Empty)
@@ -207,7 +223,7 @@ macro_rules! create_variants {
             }
             pub const fn is_pickable(self) -> bool {
                 match self {
-                    $( Self::$variant => false
+                    $( $(#[$meta])* Self::$variant => false
                         $( || create_variants!(@pickable $first)
                            $( || create_variants!(@pickable $rest) )* )?, )*
                     Self::Empty => false,
@@ -219,6 +235,7 @@ macro_rules! create_variants {
             fn from(t: &$name) -> Self {
                 match t {
                     $(
+                        $(#[$meta])*
                         $name::$variant(_) => Self::$variant,
                     )*
                     $name::Empty => Self::Empty,
@@ -249,6 +266,7 @@ macro_rules! create_variants {
             fn _assert_launcher_docs() {
                 fn assert_launcher_doc<T: LauncherDoc>() {}
                 $(
+                    $(#[$meta])*
                     assert_launcher_doc::<$inner>();
                 )*
             }
@@ -257,7 +275,7 @@ macro_rules! create_variants {
                 type Docs = Container;
                 fn docs() -> Self::Docs {
                     Container::default().children(
-                        [ $( <$inner>::doc(),)* ].iter().map(Container::from)
+                        [ $( $(#[$meta])* <$inner>::doc(), )* ].iter().map(Container::from)
                     )
                 }
             }
@@ -271,6 +289,7 @@ macro_rules! create_variants {
                 fn test_all_docs_valid() {
                     let pairs: &[(LauncherVariant, fn() -> LauncherDocEntry)] = &[
                         $(
+                            $(#[$meta])*
                             (LauncherVariant::$variant, <$inner>::doc),
                         )*
                     ];
@@ -316,6 +335,8 @@ macro_rules! create_variants {
 create_variants! {
     enum LauncherType {
         Apps(AppLauncher): hideable + hasinfo + pickable,
+        #[cfg(feature = "ai")]
+        Ask(AskLauncher),
         Bookmarks(BookmarkLauncher): pickable,
         Calculator(CalculatorLauncher),
         Categories(CategoryLauncher): pickable,

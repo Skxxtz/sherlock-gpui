@@ -110,7 +110,7 @@ impl LauncherView {
         })
     }
 
-    pub(super) fn run(&mut self, req: ExecRequest, win: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn run(&mut self, req: ExecRequest, win: &mut Window, cx: &mut Context<Self>) {
         let picked = req.mode.is_pick();
         let (key, source) = (req.key.clone(), req.source);
         let query = req.query.clone();
@@ -212,7 +212,7 @@ impl LauncherView {
             }
             ExecMode::CreateView { mode, launcher } => match mode.build(launcher, cx) {
                 Some(view) => {
-                    self.navigation.push(view);
+                    self.navigation.push_or_restore(view);
                     Outcome::Navigated
                 }
                 None => Outcome::Stay,

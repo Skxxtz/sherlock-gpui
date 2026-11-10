@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use gpui::{Context, InteractiveElement, KeyDownEvent, Window};
+use gpui::{Context, InteractiveElement, KeyDownEvent, Keystroke, Window};
 
 use crate::ui::{actions::*, views::Propagation};
 
@@ -26,6 +26,17 @@ macro_rules! input_actions {
 
             /// A key down no action took (typed text). Default: swallowed, so the launcher's
             /// raw key listeners don't see it either.
+            /// A keystroke offered to the view's own binds, before any keybinding runs
+            /// (see `LauncherView::run_bind`). `Stop`: handled, swallow the key.
+            fn bind(
+                &mut self,
+                _key: &Keystroke,
+                _win: &mut Window,
+                _cx: &mut Context<Self>,
+            ) -> Propagation {
+                Propagation::Continue
+            }
+
             fn key_down(
                 &mut self,
                 _event: &KeyDownEvent,

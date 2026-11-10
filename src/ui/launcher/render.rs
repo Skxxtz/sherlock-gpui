@@ -7,12 +7,13 @@ use gpui::{
     App,
     ClickEvent,
     Context,
-    Element,
+    Div,
     ElementId,
     Focusable,
     FontWeight,
     InteractiveElement,
     IntoElement,
+    Keystroke,
     MouseDownEvent,
     ParentElement,
     Render,
@@ -24,7 +25,6 @@ use gpui::{
     div,
     prelude::FluentBuilder,
     px,
-    relative,
 };
 
 use crate::{
@@ -37,11 +37,12 @@ use crate::{
     loader::resolve_icon_path,
     ui::{
         actions::UIFunction,
+        components::status_bar::{self, KeySpec, StatusItem, StatusKind},
         launcher::{Execute, LauncherMode, LauncherView, execute::ExecRequest},
         model::ItemIdx,
         traits::RenderableChildDelegate,
         utils::{ease::Ease, render::ListItemBorder, selection::Selection},
-        views::{Chrome, ShellCtx, list::RowCtx},
+        views::{Background, Chrome, ShellCtx, list::RowCtx},
         widgets::RenderableChild,
     },
     utils::config::ConfigGuard,
@@ -90,6 +91,8 @@ impl Render for LauncherView {
             .on_action(cx.listener(Self::selection_right))
             .on_action(cx.listener(Self::next_var))
             .on_action(cx.listener(Self::prev_var))
+            .on_action(cx.listener(Self::maximize_listener))
+            .on_action(cx.listener(Self::minimize_listener))
             .on_action(cx.listener(Self::execute_listener))
             .on_action(cx.listener(Self::execute_inplace_listener))
             .on_action(cx.listener(Self::shortcut_listener))
@@ -100,7 +103,6 @@ impl Render for LauncherView {
             .on_action(cx.listener(Self::backspace))
             .on_action(cx.listener(Self::copy_listener))
             .on_key_down(cx.listener(Self::context_menu_binds_listener))
-            .on_key_up(cx.listener(Self::inner_bind_listener))
             .when(chrome.search_bar, |this| {
                 this.child(self.render_search_bar(theme.clone(), searching))
             })
@@ -135,7 +137,7 @@ impl Render for LauncherView {
                     .child(self.context_menu.render(theme.clone())),
             )
             .when(chrome.status_bar, |this| {
-                this.child(self.render_status_bar(theme, cx))
+                this.child(self.render_status_bar(theme, win, cx))
             })
     }
 }
@@ -336,13 +338,23 @@ impl LauncherView {
             .child(body)
     }
 
-    fn render_status_bar(&self, theme: Arc<ThemeData>, cx: &mut Context<Self>) -> impl IntoElement {
-        let message_count = self.navigation.message_count(cx);
+    /// The active view's status bar (`SherlockView::status_bar`), shell items filled in.
+    fn render_status_bar(
+        &self,
+        theme: Arc<ThemeData>,
+        win: &Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let bar = self.navigation.current().handle.status_bar(cx);
+        let n = bar.left.len();
+
         div()
-            .h(px(30.))
-            .line_height(px(30.))
+            .h(px(status_bar::HEIGHT))
+            .line_height(px(status_bar::HEIGHT))
             .w_full()
             .flex()
+            .items_center()
+            .gap(px(status_bar::GAP))
             .bg(theme.bg_status_bar)
             .rounded_b(px(10.))
             .border_t_1()
@@ -350,41 +362,156 @@ impl LauncherView {
             .px_5()
             .text_size(px(13.))
             .font_family(theme.typography.font_family.clone())
-            .items_center()
             .text_color(theme.text_status_bar)
-            .child(
-                div()
-                    .child("Sherlock")
-                    .on_mouse_down(
-                        gpui::MouseButton::Left,
-                        cx.listener(|this, _, win, cx| {
-                            this.run(
-                                ExecRequest {
-                                    mode: ExecMode::ShowCredits,
-                                    ..Default::default()
-                                },
-                                win,
-                                cx,
-                            );
-                        }),
-                    )
-                    .cursor_pointer(),
+            .children(
+                (bar.left.iter().enumerate())
+                    .filter_map(|(i, item)| self.render_status_item(item, i, &theme, win, cx)),
             )
-            .when(message_count > 0, |this| {
-                this.child(self.render_error_indicator(message_count, theme.clone(), cx))
-            })
             .child(div().flex_1())
-            .child(self.render_context_hint(cx, theme.clone()))
+            .children(
+                (bar.right.iter().enumerate())
+                    .filter_map(|(i, item)| self.render_status_item(item, n + i, &theme, win, cx)),
+            )
+    }
+
+    /// One item; `None` when a shell item has nothing to show.
+    fn render_status_item(
+        &self,
+        item: &StatusItem,
+        id: usize,
+        theme: &Arc<ThemeData>,
+        win: &Window,
+        cx: &mut Context<Self>,
+    ) -> Option<Div> {
+        let el = match &item.kind {
+            StatusKind::Keys { keys, label } => {
+                let (caps, press) = self.resolve_keys(*keys, win, cx)?;
+                let el = status_bar::keys(caps, label.clone(), theme);
+                // A bind's hint without its own handler presses the bind's key.
+                if let (None, Some(stroke)) = (item.on_click, press) {
+                    return Some(el.cursor_pointer().on_mouse_down(
+                        gpui::MouseButton::Left,
+                        move |_, win, cx| {
+                            win.dispatch_keystroke(stroke.clone(), cx);
+                        },
+                    ));
+                }
+                el
+            }
+            StatusKind::Brand => self.render_brand(cx),
+            StatusKind::Messages => match self.navigation.message_count(cx) {
+                0 => return None,
+                count => self.render_error_indicator(count, theme, cx),
+            },
+            StatusKind::Minimized => {
+                let status = self.navigation.minimized_status(cx)?;
+                self.render_minimized_indicator(status, theme, cx)
+            }
+            StatusKind::ContextActions => {
+                if !self.context_menu.has_actions {
+                    return None;
+                }
+                status_bar::keys(
+                    context_key_parts().iter().cloned(),
+                    SharedString::new_static("Additional Actions"),
+                    theme,
+                )
+            }
+            kind => status_bar::view_item(kind, id, theme)?,
+        };
+        Some(match item.on_click {
+            Some(f) => el
+                .cursor_pointer()
+                .on_mouse_down(gpui::MouseButton::Left, move |_, win, cx| f(win, cx)),
+            None => el,
+        })
+    }
+
+    /// A hint's caps, looked up in the keymap or the view's binds; `None` when unbound. A bind
+    /// also returns its keystroke, so clicking the hint can press it.
+    fn resolve_keys(
+        &self,
+        spec: KeySpec,
+        win: &Window,
+        cx: &App,
+    ) -> Option<(Vec<SharedString>, Option<Keystroke>)> {
+        match spec {
+            KeySpec::Fixed(keys) => Some((
+                keys.iter().map(|k| SharedString::new_static(k)).collect(),
+                None,
+            )),
+            KeySpec::Action(action) => {
+                let binding = win.highest_precedence_binding_for_action(&*action())?;
+                let stroke = binding.keystrokes().first()?;
+                Some((status_bar::key_caps(stroke.modifiers(), stroke.key()), None))
+            }
+            KeySpec::Bind(name) => {
+                let stroke = self.navigation.current().handle.bind_key(name, cx)?;
+                Some((
+                    status_bar::key_caps(&stroke.modifiers, &stroke.key),
+                    Some(stroke),
+                ))
+            }
+        }
+    }
+
+    /// "Sherlock"; click shows the credits.
+    fn render_brand(&self, cx: &mut Context<Self>) -> Div {
+        div()
+            .child("Sherlock")
+            .on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener(|this, _, win, cx| {
+                    this.run(
+                        ExecRequest {
+                            mode: ExecMode::ShowCredits,
+                            ..Default::default()
+                        },
+                        win,
+                        cx,
+                    );
+                }),
+            )
+            .cursor_pointer()
+    }
+
+    /// A minimized view (e.g. an AI answer still streaming): its status, click to bring it back.
+    fn render_minimized_indicator(
+        &self,
+        status: Background,
+        theme: &ThemeData,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        div()
+            .h(px(20.))
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .px(px(8.))
+            .rounded(px(10.))
+            .bg(theme.bg_badge)
+            .cursor_pointer()
+            .child(status_bar::status_dot(&status.busy, "minimized-dot", theme))
+            .child(status.label)
+            .on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                    if this.navigation.restore_minimized() {
+                        this.text_input.update(cx, |input, _| input.reset());
+                        this.filter_and_sort(cx);
+                        cx.notify();
+                    }
+                }),
+            )
     }
 
     fn render_error_indicator(
         &self,
         count: usize,
-        theme: Arc<ThemeData>,
+        theme: &ThemeData,
         cx: &mut Context<Self>,
-    ) -> impl IntoElement {
+    ) -> Div {
         div()
-            .ml(px(10.))
             .h_full()
             .flex()
             .items_center()
@@ -399,45 +526,22 @@ impl LauncherView {
                     this.filter_and_sort(cx);
                 }),
             )
-            .when(count > 0, |this| {
-                this.child(
-                    div()
-                        .h_full()
-                        .px(px(5.))
-                        .flex()
-                        .items_center()
-                        .gap(px(4.))
-                        .rounded_sm()
-                        .border_1()
-                        .border_color(theme.color_err)
-                        .text_color(theme.color_err)
-                        .bg(theme.color_err.alpha(0.4))
-                        .text_xs()
-                        .font_family(theme.typography.font_family.clone())
-                        .child(count.to_string()),
-                )
-            })
-    }
-
-    fn render_context_hint(
-        &self,
-        _cx: &mut Context<Self>,
-        theme: Arc<ThemeData>,
-    ) -> impl IntoElement {
-        if self.context_menu.has_actions {
-            div()
-                .flex()
-                .items_center()
-                .gap(px(5.))
-                .child(div().mr_1().child(SharedString::from("Additional Actions")))
-                .children(
-                    get_context_key_parts()
-                        .into_iter()
-                        .map(|p| keybind_box(p, &theme)),
-                )
-        } else {
-            div()
-        }
+            .child(
+                div()
+                    .h_full()
+                    .px(px(5.))
+                    .flex()
+                    .items_center()
+                    .gap(px(4.))
+                    .rounded_sm()
+                    .border_1()
+                    .border_color(theme.color_err)
+                    .text_color(theme.color_err)
+                    .bg(theme.color_err.alpha(0.4))
+                    .text_xs()
+                    .font_family(theme.typography.font_family.clone())
+                    .child(count.to_string()),
+            )
     }
 
     /// A launcher item's row: its own content inside the shared row frame.
@@ -567,40 +671,35 @@ impl LauncherView {
     }
 }
 
-fn get_context_key_parts() -> Vec<String> {
-    CONTEXT_MENU_BIND
-        .get_or_init(|| {
-            ConfigGuard::read()
-                .ok()
-                .and_then(|config| {
-                    config
-                        .keybinds
-                        .0
-                        .iter()
-                        .find(|(_, func)| **func == UIFunction::ToggleContext)
-                        .map(|(name, _)| name.clone())
+/// The context menu's key as caps (`⌃`, `L`), read from the config once.
+fn context_key_parts() -> &'static [SharedString] {
+    static PARTS: std::sync::OnceLock<Vec<SharedString>> = std::sync::OnceLock::new();
+    PARTS.get_or_init(|| {
+        CONTEXT_MENU_BIND
+            .get_or_init(|| {
+                ConfigGuard::read()
+                    .ok()
+                    .and_then(|config| {
+                        config
+                            .keybinds
+                            .0
+                            .iter()
+                            .find(|(_, func)| **func == UIFunction::ToggleContext)
+                            .map(|(name, _)| name.clone())
+                    })
+                    .unwrap_or_else(|| "ctrl-l".to_string())
+            })
+            .split('-')
+            .map(|part| {
+                SharedString::from(match part {
+                    "ctrl" => "⌃".to_string(),
+                    "cmd" => "⌘".to_string(),
+                    "shift" => "⇧".to_string(),
+                    "alt" => "⌥".to_string(),
+                    other if other.len() == 1 => other.to_uppercase(),
+                    other => other.to_string(),
                 })
-                .unwrap_or_else(|| "ctrl-l".to_string())
-        })
-        .split('-')
-        .map(|part| match part {
-            "ctrl" => "⌃".to_string(),
-            "cmd" => "⌘".to_string(),
-            "shift" => "⇧".to_string(),
-            "alt" => "⌥".to_string(),
-            other if other.len() == 1 => other.to_uppercase(),
-            other => other.to_string(),
-        })
-        .collect()
-}
-
-fn keybind_box(text: String, theme: &Arc<ThemeData>) -> impl Element {
-    div()
-        .flex_none()
-        .p(px(5.))
-        .bg(theme.bg_keybind)
-        .rounded_sm()
-        .text_size(px(11.))
-        .line_height(relative(1.0))
-        .child(text)
+            })
+            .collect()
+    })
 }

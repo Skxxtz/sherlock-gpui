@@ -259,8 +259,13 @@ impl LauncherConfig {
         }
     }
     pub fn needs_stack_push(&self) -> bool {
+        let variant: LauncherVariant = (&self.launcher_type).into();
+        #[cfg(feature = "ai")]
+        if variant == LauncherVariant::Ask {
+            return true;
+        }
         matches!(
-            (&self.launcher_type).into(),
+            variant,
             LauncherVariant::Emoji | LauncherVariant::Process | LauncherVariant::Files
         )
     }

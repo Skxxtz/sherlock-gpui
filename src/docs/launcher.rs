@@ -148,6 +148,7 @@ pub trait LauncherDoc {
 
 pub struct LauncherDocEntry {
     pub name: &'static str,
+    pub feature: Option<&'static str>,
     pub variant_name: &'static str,
     pub description: &'static str,
     pub args: &'static [FieldDoc],
@@ -161,6 +162,7 @@ impl LauncherDocEntry {
     pub fn new() -> Self {
         Self {
             name: "",
+            feature: None,
             variant_name: "",
             description: "",
             args: &[],
@@ -215,6 +217,13 @@ impl From<&LauncherDocEntry> for Container {
             format!("`type = {}`", value.variant_name),
             value.description,
         )
+        .when_some(value.feature, |this, opt| {
+            this.child(h3("Feature Flags")).child(p!(
+                "This launcher requires the feature flag",
+                code(opt),
+                "to be set at build time."
+            ))
+        })
         .when(!value.args.is_empty(), |this| {
             this.child(h3("Args")).child(field_table(value.args))
         })

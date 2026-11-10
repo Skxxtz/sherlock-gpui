@@ -1,6 +1,6 @@
 use std::{borrow::Cow, sync::Arc, time::Duration};
 
-use gpui::{App, AppContext, Context, Focusable, KeyDownEvent, KeyUpEvent, SharedString, Window};
+use gpui::{App, AppContext, Context, Focusable, KeyDownEvent, Keystroke, SharedString, Window};
 use simd_json::prelude::{ArrayTrait, Indexed};
 use smallvec::SmallVec;
 
@@ -207,6 +207,20 @@ impl LauncherView {
             cx.notify();
         }
         handled
+    }
+
+    /// The current view's own binds (e.g. the Ask view's `stop`, `new_chat`).
+    fn view_bind(
+        &mut self,
+        key: &Keystroke,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Propagation {
+        let propagation = self.navigation.current().handle.bind(key, win, cx);
+        if propagation == Propagation::Stop {
+            cx.notify();
+        }
+        propagation
     }
 
     /// Arrow keys: an open context menu takes them, otherwise the view, otherwise the list.
@@ -423,28 +437,35 @@ impl LauncherView {
         .detach();
     }
 
-    pub(super) fn inner_bind_listener(
+    pub(super) fn run_bind(
         &mut self,
-        ev: &KeyUpEvent,
+        key: &Keystroke,
         win: &mut Window,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
+        // 1. The active view's binds (Ask: stop, new_chat, …).
+        match self.view_bind(key, win, cx) {
+            Propagation::Stop => return true,
+            Propagation::Continue => {}
+        }
+
+        // 2. The selected item's binds.
         let Some(binds) = self
             .navigation
             .with_selected_item(cx, |item, cx| item.binds(cx))
             .flatten()
         else {
-            return;
+            return false;
         };
-        let Some(pressed) = binds.iter().find(|bind| bind.matches(&ev.keystroke)) else {
-            return;
+        let Some(pressed) = binds.iter().find(|bind| bind.matches(key)) else {
+            return false;
         };
-
-        if let Some(req) = self.request_with(ExecSource::Bind, true, cx, |item, cx| {
+        if let Some(req) = self.request_with(ExecSource::Bind, pressed.exit, cx, |item, cx| {
             ExecMode::from_bind(pressed, item.as_launcher_item()?, cx)
         }) {
             self.run(req, win, cx);
         }
+        !pressed.callback.split(';').any(|a| a.trim() == "continue")
     }
 }
 
@@ -555,6 +576,35 @@ impl LauncherView {
             self.filter_and_sort(cx);
         }
         cx.notify();
+    }
+
+    fn reset_query(&mut self, cx: &mut Context<Self>) {
+        self.text_input.update(cx, |input, _| input.reset());
+        self.variable_input.clear();
+        self.filter_and_sort(cx);
+        cx.notify();
+    }
+
+    pub(super) fn maximize_listener(
+        &mut self,
+        _: &MaximizeView,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.navigation.restore_minimized() {
+            self.reset_query(cx);
+        }
+    }
+
+    pub(super) fn minimize_listener(
+        &mut self,
+        _: &MinimizeView,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.navigation.minimize_current(cx) {
+            self.reset_query(cx);
+        }
     }
 
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {

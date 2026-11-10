@@ -1,4 +1,6 @@
 pub mod app;
+#[cfg(feature = "ai")]
+pub mod ask;
 pub mod audio;
 pub mod bookmark;
 pub mod calc;

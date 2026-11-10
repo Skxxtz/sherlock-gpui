@@ -10,6 +10,7 @@ pub mod pixel_art;
 pub mod search_bar;
 pub mod select;
 pub mod sherlock_pixel;
+pub mod status_bar;
 pub mod tiny_input;
 pub mod toggle;
 pub mod weather_icons;

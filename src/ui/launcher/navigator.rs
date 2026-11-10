@@ -7,7 +7,7 @@ use crate::{
     ui::{
         launcher::{LauncherMode, context_menu::ContextMenuAction, navigator::views::NavView},
         model::item::{SelectionKey, ShellItem},
-        views::{home::HomeView, message::MessageView},
+        views::{Background, home::HomeView, message::MessageView},
         widgets::RenderableChild,
     },
     utils::errors::SherlockMessage,
@@ -50,6 +50,8 @@ pub struct Navigator {
     stack: Vec<NavView>,
     // When true, `current()` returns `messages` instead of the stack top.
     showing_messages: bool,
+    /// A view left with work in progress (e.g. a streaming AI answer), kept alive off-stack.
+    minimized: Option<NavView>,
 }
 
 impl Navigator {
@@ -72,6 +74,7 @@ impl Navigator {
             message_entity,
             stack: Vec::new(),
             showing_messages: false,
+            minimized: None,
         }
     }
 }
@@ -129,11 +132,63 @@ impl Navigator {
 
     /// Pops the currently active view and moves back to the view before. Also moves out of the
     /// message view to the home view
+    ///
+    /// A view that wants to keep running (`SherlockView::background`) is minimized instead of
+    /// dropped; it replaces any earlier minimized view.
     pub fn back(&mut self, cx: &mut App) {
-        if !std::mem::take(&mut self.showing_messages) {
+        if !std::mem::take(&mut self.showing_messages)
+            && let Some(view) = self.stack.pop()
+            && view.handle.background(cx).is_some()
+        {
             self.stack.pop();
+            self.minimized = Some(view);
         }
         self.reset_selection(cx);
+    }
+
+    /// Minimizes a view if possible. No-op if ther's no active view on the stack or it doesn's
+    /// support the minimize action.
+    ///
+    /// Returns true if the view was minimized, false otherwise.
+    pub fn minimize_current(&mut self, cx: &mut App) -> bool {
+        if let Some(last) = self.stack.last()
+            && last.handle.background(cx).is_some()
+        {
+            self.minimized = self.stack.pop();
+            self.reset_selection(cx);
+            return true;
+        }
+        false
+    }
+
+    /// Status of the minimized view, for the status bar.
+    pub fn minimized_status(&self, cx: &App) -> Option<Background> {
+        self.minimized
+            .as_ref()
+            .and_then(|v| v.handle.background(cx))
+    }
+
+    /// Brings the minimized view back on top. Returns whether there was one.
+    pub fn restore_minimized(&mut self) -> bool {
+        match self.minimized.take() {
+            Some(view) => {
+                self.push(view);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Pushes `view`, unless a minimized view of the same kind exists: then that one comes back
+    /// instead (opening the AI launcher again resumes the running conversation).
+    pub fn push_or_restore(&mut self, view: NavView) {
+        match self.minimized.take() {
+            Some(m) if m.handle.same_kind(&view.handle) => self.push(m),
+            other => {
+                self.minimized = other;
+                self.push(view);
+            }
+        }
     }
 
     /// Sets the message view the active view

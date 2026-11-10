@@ -68,10 +68,12 @@ memmap2 = "0.9.11"
 mupdf = {version = "0.8.0", default-features = false}
 slotmap = "1.1.1"
 toml_edit = "0.25.17"
+pulldown-cmark = {version = "0.13.6", default-features = false, optional = true}
 
 [features]
-default = ["wayland"]
+default = ["wayland", "ai"]
 wayland = ["gpui/wayland", "gpui_platform/wayland"]
+ai = ["dep:pulldown-cmark"]
 nixos = []
 bench = []
 docs = ["md-rs"]

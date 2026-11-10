@@ -39,6 +39,7 @@ impl std::ops::Deref for ThemeData {
 pub struct Typography {
     pub font_family: SharedString,
     pub monospace: SharedString,
+    pub serif: SharedString,
     /// Base text size in px.
     pub font_size: f32,
     pub font_size_sm: f32,
@@ -50,6 +51,7 @@ impl Default for Typography {
         Self {
             font_family: "Inter".into(),
             monospace: "Noto Sans Mono".into(),
+            serif: "Newsreader".into(),
             font_size: 14.0,
             font_size_sm: 12.0,
             font_size_lg: 16.0,
