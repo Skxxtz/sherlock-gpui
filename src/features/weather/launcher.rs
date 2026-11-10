@@ -302,12 +302,16 @@ mod docs {
     use super::WeatherLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for WeatherLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for WeatherLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(WeatherLauncher),
                 variant_name: variant_name!(Weather),

@@ -49,12 +49,13 @@ mod docs {
     use super::MessageLauncher;
     use crate::{
         display_name,
-        docs::launcher::{LauncherDoc, LauncherDocEntry},
+        docs::{Documentation, launcher::LauncherDocEntry},
         variant_name,
     };
 
-    impl LauncherDoc for MessageLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for MessageLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry::new_hidden(
                 display_name!(MessageLauncher),
                 variant_name!(Message),

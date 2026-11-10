@@ -3,6 +3,7 @@ use md_rs::{
     cached_component,
     components::{
         Component,
+        IntoComponent,
         ParentComponentExt,
         code_block::codeblock,
         container::Container,
@@ -19,7 +20,7 @@ use md_rs::{
 };
 
 use crate::{
-    docs::Documentation,
+    docs::book::TopLevelEntry,
     launcher::{LauncherConfig, variant_type::LauncherType},
     utils::intent::CAPABILITY_DOCS,
 };
@@ -142,8 +143,11 @@ pub const BASE_FIELDS: &[FieldDoc] = &[
     },
 ];
 
-pub trait LauncherDoc {
-    fn doc() -> LauncherDocEntry;
+impl IntoComponent for LauncherDocEntry {
+    type Comp = Container;
+    fn into_component(self) -> Self::Comp {
+        Self::Comp::from(&self)
+    }
 }
 
 pub struct LauncherDocEntry {
@@ -273,9 +277,9 @@ fn function_table(functions: &[InnerFunctionDoc]) -> Table {
     )
 }
 
-impl Documentation for LauncherConfig {
-    type Docs = Container;
-    fn docs() -> Self::Docs {
+impl TopLevelEntry for LauncherConfig {
+    type Summary = Container;
+    fn summary() -> Self::Summary {
         fn get_intro() -> Paragraph {
             p!(
                 "Sherlock separates",
@@ -313,9 +317,10 @@ impl Documentation for LauncherConfig {
             h2("Shared Launcher Configuration"),
             h3("Fields"),
             field_table(BASE_FIELDS),
-            hr(),
-            LauncherType::docs()
         )
+    }
+    fn children() -> impl Iterator<Item = super::book::BookEntry> + 'static {
+        LauncherType::children()
     }
 }
 

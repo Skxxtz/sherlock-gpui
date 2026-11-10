@@ -35,12 +35,13 @@ mod docs {
     use super::DmenuLauncher;
     use crate::{
         display_name,
-        docs::launcher::{LauncherDoc, LauncherDocEntry},
+        docs::{Documentation, launcher::LauncherDocEntry},
         variant_name,
     };
 
-    impl LauncherDoc for DmenuLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for DmenuLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry::new_hidden(
                 display_name!(DmenuLauncher),
                 variant_name!(Dmenu),

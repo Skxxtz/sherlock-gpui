@@ -411,11 +411,15 @@ mod docs {
     use super::BookmarkLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
-    impl LauncherDoc for BookmarkLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for BookmarkLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(BookmarkLauncher),
                 variant_name: variant_name!(Bookmarks),

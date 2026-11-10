@@ -66,12 +66,16 @@ mod docs {
     use super::WebLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for WebLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for WebLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(WebLauncher),
                 variant_name: variant_name!(Web),

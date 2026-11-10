@@ -137,12 +137,16 @@ mod docs {
     use super::ScriptLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for ScriptLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for ScriptLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(ScriptLauncher),
                 variant_name: variant_name!(Script),

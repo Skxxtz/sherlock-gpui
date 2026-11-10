@@ -121,12 +121,16 @@ mod docs {
     use super::FileLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for FileLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for FileLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(FileLauncher),
                 variant_name: variant_name!(Files),

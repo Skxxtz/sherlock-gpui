@@ -58,7 +58,7 @@ macro_rules! create_variants {
     (@extra $extra:ty) => { $extra };
     (
         enum $name:ident {
-            $( $(#[$meta:meta])* $variant:ident( $inner:ty $(, $extra:ty)* )
+            $( $(#[$meta:meta])* $variant:ident( $inner:ident $(, $extra:ty)* )
                $(: $first:ident $(+ $rest:ident)*)? ),* $(,)?
         }
     ) => {
@@ -258,25 +258,36 @@ macro_rules! create_variants {
         #[cfg(feature = "docs")]
         mod docs {
             use super::*;
-            use crate::docs::{Documentation, launcher::LauncherDoc};
-            use md_rs::components::{ParentComponentExt, container::Container};
+            use crate::docs::{
+                Documentation,
+                book::{BookEntry, BookEntryBuilder, TopLevelEntry},
+            };
+            use crate::snake_file;
 
             //trait enforced
             #[allow(dead_code)]
             fn _assert_launcher_docs() {
-                fn assert_launcher_doc<T: LauncherDoc>() {}
+                fn assert_launcher_doc<T: Documentation>() {}
                 $(
                     $(#[$meta])*
                     assert_launcher_doc::<$inner>();
                 )*
             }
 
-            impl Documentation for LauncherType {
-                type Docs = Container;
-                fn docs() -> Self::Docs {
-                    Container::default().children(
-                        [ $( $(#[$meta])* <$inner>::doc(), )* ].iter().map(Container::from)
-                    )
+            impl TopLevelEntry for LauncherType {
+                type Summary = md_rs::components::hr::Hr;
+                fn summary() -> Self::Summary {
+                    unimplemented!()
+                }
+                fn children() -> impl Iterator<Item = BookEntry> + 'static {
+                    [ $(
+                        $(#[$meta])*
+                        BookEntryBuilder::new_generic::<$inner>()
+                            .title(stringify!($inner))
+                            .file(snake_file!($inner))
+                            .render_fn(<$inner>::docs_md)
+                            .build(),
+                    )* ].into_iter()
                 }
             }
 
@@ -290,7 +301,7 @@ macro_rules! create_variants {
                     let pairs: &[(LauncherVariant, fn() -> LauncherDocEntry)] = &[
                         $(
                             $(#[$meta])*
-                            (LauncherVariant::$variant, <$inner>::doc),
+                            (LauncherVariant::$variant, <$inner>::docs),
                         )*
                     ];
 

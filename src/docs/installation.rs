@@ -19,7 +19,7 @@ use md_rs::{
 
 use crate::docs::{
     Documentation,
-    book::{BookEntry, TopLevelEntry},
+    book::{BookEntry, BookEntryBuilder, TopLevelEntry},
 };
 
 pub(super) struct Installation;
@@ -56,18 +56,22 @@ impl TopLevelEntry for Installation {
     }
     fn children() -> impl Iterator<Item = BookEntry> + 'static {
         [
-            BookEntry::of::<ArchLinux>()
-                .with_title("Arch Linux")
-                .with_file("arch-linux.md"),
-            BookEntry::of::<Debian>()
-                .with_title("Debian / Ubuntu")
-                .with_file("debian.md"),
-            BookEntry::of::<NixOS>()
-                .with_title("NixOs")
-                .with_file("nixos.md"),
-            BookEntry::of::<Source>()
-                .with_title("Build from Source")
-                .with_file("source.md"),
+            BookEntryBuilder::new::<ArchLinux>()
+                .title("Arch Linux")
+                .file("arch-linux.md")
+                .build(),
+            BookEntryBuilder::new::<Debian>()
+                .title("Debian / Ubuntu")
+                .file("debian.md")
+                .build(),
+            BookEntryBuilder::new::<NixOS>()
+                .title("NixOs")
+                .file("nixos.md")
+                .build(),
+            BookEntryBuilder::new::<Source>()
+                .title("Build from Source")
+                .file("source.md")
+                .build(),
         ]
         .into_iter()
     }
@@ -75,12 +79,10 @@ impl TopLevelEntry for Installation {
 
 impl From<Installation> for BookEntry {
     fn from(_: Installation) -> Self {
-        BookEntry {
-            title: "Installation",
-            file: Some("installation.md"),
-            render_fn: Some(Installation::summary_md),
-            children: Installation::children().collect(),
-        }
+        BookEntryBuilder::new_toplevel::<Installation>()
+            .title("Installation")
+            .file("installation.md")
+            .build()
     }
 }
 

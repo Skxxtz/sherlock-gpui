@@ -351,12 +351,16 @@ mod docs {
     use super::MusicPlayerLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, InnerFunctionDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for MusicPlayerLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for MusicPlayerLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(MusicPlayerLauncher),
                 variant_name: variant_name!(MusicPlayer),

@@ -14,7 +14,7 @@ use md_rs::{
 };
 
 use crate::{
-    docs::book::{BookEntry, TopLevelEntry},
+    docs::book::{BookEntry, BookEntryBuilder, TopLevelEntry},
     launcher::LauncherConfig,
     ui::runtime_arguments::RuntimeArgument,
 };
@@ -39,12 +39,14 @@ impl TopLevelEntry for Configuration {
     }
     fn children() -> impl Iterator<Item = BookEntry> + 'static {
         [
-            BookEntry::of::<LauncherConfig>()
-                .with_title("Launchers")
-                .with_file("launchers.md"),
-            BookEntry::of::<RuntimeArgument>()
-                .with_title("Runtime Arguments")
-                .with_file("runtime_arguments.md"),
+            BookEntryBuilder::new_toplevel::<LauncherConfig>()
+                .title("Launchers")
+                .file("launchers.md")
+                .build(),
+            BookEntryBuilder::new::<RuntimeArgument>()
+                .title("Runtime Arguments")
+                .file("runtime_arguments.md")
+                .build(),
         ]
         .into_iter()
     }
@@ -52,11 +54,10 @@ impl TopLevelEntry for Configuration {
 
 impl From<Configuration> for BookEntry {
     fn from(_: Configuration) -> Self {
-        Self {
-            title: "Configuration",
-            file: Some("configuration.md"),
-            render_fn: Some(Configuration::summary_md),
-            children: Configuration::children().collect(),
-        }
+        BookEntryBuilder::new_toplevel::<Configuration>()
+            .title("Configuration")
+            .file("configuration.md")
+            .children(Configuration::children())
+            .build()
     }
 }

@@ -96,12 +96,16 @@ mod docs {
     use super::TimerLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for TimerLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for TimerLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(TimerLauncher),
                 variant_name: variant_name!(Timer),

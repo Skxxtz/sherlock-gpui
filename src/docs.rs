@@ -29,6 +29,7 @@ pub mod plugins;
 mod readme;
 pub mod runtime_args;
 mod test;
+pub mod utils;
 
 pub trait Documentation {
     type Docs: IntoComponent;

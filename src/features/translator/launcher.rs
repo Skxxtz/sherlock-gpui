@@ -41,12 +41,16 @@ mod docs {
     use super::Translator;
     use crate::{
         display_name,
-        docs::launcher::{Example, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for Translator {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for Translator {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(Translator),
                 variant_name: variant_name!(Translator),

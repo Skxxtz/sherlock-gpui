@@ -46,12 +46,16 @@ mod docs {
     use super::SettingsLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for SettingsLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for SettingsLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(SettingsLauncher),
                 variant_name: variant_name!(Settings),

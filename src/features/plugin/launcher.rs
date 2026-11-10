@@ -466,11 +466,11 @@ mod docs {
     use crate::{
         display_name,
         docs::{
+            Documentation,
             launcher::{
                 Example,
                 FieldDoc,
                 InnerFunctionDoc,
-                LauncherDoc,
                 LauncherDocEntry,
                 plugin_launcher::plugin_capabilities_section,
             },
@@ -479,8 +479,9 @@ mod docs {
         variant_name,
     };
 
-    impl LauncherDoc for PluginLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for PluginLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(PluginLauncher),
                 variant_name: variant_name!(Plugin),

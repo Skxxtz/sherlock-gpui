@@ -60,12 +60,16 @@ mod docs {
     use super::CategoryLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for CategoryLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for CategoryLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(CategoryLauncher),
                 variant_name: variant_name!(Categories),

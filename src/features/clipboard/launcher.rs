@@ -48,12 +48,16 @@ mod docs {
     use super::ClipboardLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry, capabilities_section},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry, capabilities_section},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for ClipboardLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for ClipboardLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(ClipboardLauncher),
                 variant_name: variant_name!(Clipboard),

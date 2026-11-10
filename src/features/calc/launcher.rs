@@ -77,11 +77,15 @@ mod docs {
     use super::CalculatorLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry, capabilities_section},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry, capabilities_section},
+        },
         variant_name,
     };
-    impl LauncherDoc for CalculatorLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for CalculatorLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(CalculatorLauncher),
                 variant_name: variant_name!(Calculator),

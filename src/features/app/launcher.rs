@@ -50,12 +50,16 @@ mod docs {
     use super::AppLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for AppLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for AppLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(AppLauncher),
                 variant_name: variant_name!(Apps),

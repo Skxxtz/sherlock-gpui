@@ -122,12 +122,16 @@ mod docs {
     use super::ProcessLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for ProcessLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for ProcessLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(ProcessLauncher),
                 variant_name: variant_name!(Process),

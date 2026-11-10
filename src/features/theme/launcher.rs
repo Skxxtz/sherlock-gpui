@@ -133,12 +133,16 @@ mod docs {
     use super::ThemePicker;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for ThemePicker {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for ThemePicker {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(ThemePicker),
                 variant_name: variant_name!(Theme),

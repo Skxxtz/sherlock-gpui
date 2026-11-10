@@ -58,12 +58,16 @@ mod docs {
     use super::CommandLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for CommandLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for CommandLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(CommandLauncher),
                 variant_name: variant_name!(Commands),

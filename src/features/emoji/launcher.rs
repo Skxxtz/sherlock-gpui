@@ -130,12 +130,16 @@ mod docs {
     use super::EmojiPicker;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for EmojiPicker {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for EmojiPicker {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(EmojiPicker),
                 variant_name: variant_name!(Emoji),

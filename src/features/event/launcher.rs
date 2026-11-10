@@ -214,12 +214,16 @@ mod docs {
     use super::EventLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, FieldDoc, InnerFunctionDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for EventLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for EventLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(EventLauncher),
                 variant_name: variant_name!(Event),

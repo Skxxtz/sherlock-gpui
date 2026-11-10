@@ -201,12 +201,16 @@ mod docs {
     use super::DebugLauncher;
     use crate::{
         display_name,
-        docs::launcher::{Example, InnerFunctionDoc, LauncherDoc, LauncherDocEntry},
+        docs::{
+            Documentation,
+            launcher::{Example, InnerFunctionDoc, LauncherDocEntry},
+        },
         variant_name,
     };
 
-    impl LauncherDoc for DebugLauncher {
-        fn doc() -> LauncherDocEntry {
+    impl Documentation for DebugLauncher {
+        type Docs = LauncherDocEntry;
+        fn docs() -> LauncherDocEntry {
             LauncherDocEntry {
                 name: display_name!(DebugLauncher),
                 variant_name: variant_name!(Debug),
