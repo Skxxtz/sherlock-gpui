@@ -7,7 +7,7 @@ use md_rs::{
         container::Container,
         details::details,
         heading::{h1, h2, h3, h4},
-        span::{bold, code, italic},
+        span::{bold, code, italic, link},
         span_nodes::Paragraph,
     },
     github::components::alert::tip,
@@ -20,6 +20,7 @@ use md_rs::{
 use crate::{
     docs::{
         Documentation,
+        book::{BookEntry, TopLevelEntry},
         launcher::{FieldDoc, field_table},
     },
     ui::runtime_arguments::{
@@ -51,6 +52,41 @@ impl IntoComponent for RuntimeArgumentDoc {
             codeblock().lang("json").content(self.example),
             field_table(self.args)
         )
+    }
+}
+
+impl TopLevelEntry for RuntimeArgument {
+    type Summary = Container;
+    fn summary() -> Self::Summary {
+        md!(
+            h1("Runtime Arguments"),
+            ReplacementVariables::docs(),
+            p!(
+                "In Sherlock",
+                bold("Runtime Arguments"),
+                "are dynamic placeholders that allow you \
+                to inject real-time arguments into your applications, scripts, \
+                and commands right at the moment you launch them. Instead of \
+                relying on hardcoded shortcuts,",
+                italic("Runtime Arguments"),
+                "turn your launcher into an interactive CLI shell."
+            ),
+            list_iter!(
+                Dash,
+                Self::children().map(|child| link(child.title, child.file.unwrap_or("#"))),
+            )
+        )
+    }
+    fn children() -> impl Iterator<Item = super::book::BookEntry> + 'static {
+        [
+            BookEntry::new::<StringVar>(),
+            BookEntry::new::<NumberVar>(),
+            BookEntry::new::<PathVar>(),
+            BookEntry::new::<CommandVar>(),
+            BookEntry::new::<ChoiceVar>(),
+            BookEntry::new::<PasswordVar>(),
+        ]
+        .into_iter()
     }
 }
 

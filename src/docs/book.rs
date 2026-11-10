@@ -1,16 +1,13 @@
 use std::{
     any::TypeId,
+    collections::HashMap,
     fmt::{Result, Write},
     path::Path,
 };
 
 use md_rs::components::Component;
 
-use crate::{
-    docs::{Documentation, Installation},
-    features::ask::AskLauncher,
-    utils::string::TrimInPlace,
-};
+use crate::{docs::Documentation, snake_file, utils::string::TrimInPlace};
 
 pub trait TopLevelEntry {
     type Summary: Component;
@@ -103,6 +100,12 @@ pub struct BookEntry {
 }
 
 impl BookEntry {
+    pub fn new<T: Documentation + 'static>() -> Self {
+        BookEntryBuilder::new::<T>()
+            .title(stringify!(T))
+            .file(snake_file!(T))
+            .build()
+    }
     #[cfg(all(test, feature = "docs"))]
     pub fn render(self) -> Vec<String> {
         let mut out = Vec::new();
@@ -130,20 +133,18 @@ impl BookEntry {
 
 pub struct Book(pub Vec<BookEntry>);
 impl Book {
-    fn search<'a>(id: TypeId, entries: &'a [BookEntry]) -> Option<&'a BookEntry> {
-        entries.iter().find_map(|e| {
-            if e.of == id {
-                Some(e)
-            } else {
-                Self::search(id, &e.children)
+    pub(super) fn index(&self) -> HashMap<TypeId, &'static str> {
+        fn walk(entries: &[BookEntry], map: &mut HashMap<TypeId, &'static str>) {
+            for e in entries {
+                if let Some(file) = e.file {
+                    map.entry(e.of).or_insert(file);
+                }
+                walk(&e.children, map);
             }
-        })
-    }
-
-    #[allow(unused)]
-    fn build_link_for<D: 'static>(&self) -> Option<String> {
-        let entry = Self::search(TypeId::of::<D>(), &self.0)?;
-        entry.file.map(|f| f.to_string())
+        }
+        let mut map = HashMap::new();
+        walk(&self.0, &mut map);
+        map
     }
 
     fn summary(&self) -> String {

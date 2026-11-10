@@ -25,6 +25,7 @@ mod configuration;
 mod contributing;
 mod installation;
 pub mod launcher;
+pub mod link_scope;
 pub mod plugins;
 mod readme;
 pub mod runtime_args;
@@ -48,12 +49,17 @@ pub struct SherlockDocumentation {
     contributing: String,
 }
 impl SherlockDocumentation {
+    /// Structure only. Must not render anything (see `LINKS`).
+    pub(super) fn book() -> Book {
+        Book(vec![
+            BookEntry::from(Installation),
+            BookEntry::from(Configuration),
+        ])
+    }
+
     fn new() -> Self {
         Self {
-            book: Book(vec![
-                BookEntry::from(Installation),
-                BookEntry::from(Configuration),
-            ]),
+            book: Self::book(),
             readme: Readme::docs_md(),
             contributing: Contributing::docs_md(),
         }

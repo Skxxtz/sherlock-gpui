@@ -11,10 +11,11 @@ use md_rs::{
         heading::{h1, h2, h3},
         hr::hr,
         raw::{Raw, raw},
-        span::{bold, code, html_strong, italic},
+        span::{bold, code, html_strong, italic, link},
         span_nodes::Paragraph,
         table::{Table, table},
     },
+    list_iter,
     md,
     p,
 };
@@ -317,6 +318,10 @@ impl TopLevelEntry for LauncherConfig {
             h2("Shared Launcher Configuration"),
             h3("Fields"),
             field_table(BASE_FIELDS),
+            list_iter!(
+                Dash,
+                Self::children().map(|child| link(child.title, child.file.unwrap_or("#"))),
+            )
         )
     }
     fn children() -> impl Iterator<Item = super::book::BookEntry> + 'static {
