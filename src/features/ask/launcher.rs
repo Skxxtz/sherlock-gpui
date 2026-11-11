@@ -74,7 +74,7 @@ impl LauncherProvider for AskLauncher {
         _cx: &mut gpui::App,
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
         let item = ListItem {
-            meta: ItemMeta::new("Ask AI").icon_name("ai"),
+            meta: ItemMeta::new("Ask AI").icon_name("sherlock-ai"),
             payload: FixedPayload(|launcher| ExecMode::CreateView {
                 mode: ViewKind::Ask,
                 launcher: launcher.clone(),
