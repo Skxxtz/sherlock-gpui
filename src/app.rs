@@ -88,6 +88,7 @@ impl RetainedLauncher {
 }
 
 pub fn run_app(cx: &mut App, result: SetupResult) {
+    #[cfg(feature = "ai")]
     super::fonts::register(cx);
 
     LuaRuntimeHandle::spawn(cx);
