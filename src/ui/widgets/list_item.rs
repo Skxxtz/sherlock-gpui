@@ -34,11 +34,39 @@ pub mod command;
 pub mod fixed;
 pub mod web;
 
+/// Wrapper struct ensuring the search string for an item is always lowercased.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(transparent)]
+pub struct SearchString(SharedString);
+
+impl SearchString {
+    pub fn new(s: &str) -> Self {
+        Self(s.to_lowercase().into())
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl<D: AsRef<str>> From<D> for SearchString {
+    fn from(value: D) -> Self {
+        Self::new(value.as_ref())
+    }
+}
+
+impl<'de> Deserialize<'de> for SearchString {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Self(String::deserialize(d)?.into()))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemMeta {
     pub name: SharedString,
-    /// Prebuilt (and pre-processed: lowercase) once at loadtime.
-    pub search: SharedString,
+    pub search: SearchString,
     pub icon: Option<IconType>,
     pub actions: Arc<[Arc<ContextMenuAction>]>,
     pub vars: Arc<[RuntimeArgument]>,
@@ -170,7 +198,7 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
     }
 
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
-        &self.meta.search
+        self.meta.search.as_str()
     }
 
     fn actions(
