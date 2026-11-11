@@ -51,6 +51,7 @@ use crate::{
 
 pub mod actions;
 mod builder;
+pub mod commands;
 
 #[derive(Default)]
 pub enum ValidityState {

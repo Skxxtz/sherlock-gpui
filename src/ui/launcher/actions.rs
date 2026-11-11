@@ -443,6 +443,11 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
+        // 0. Commands: view → search bar → launcher.
+        if self.command_key(key, win, cx) {
+            return true;
+        }
+
         // 1. The active view's binds (Ask: stop, new_chat, …).
         match self.view_bind(key, win, cx) {
             Propagation::Stop => return true,

@@ -25,6 +25,7 @@ use crate::{
             data::ModelData,
             item::{SelectionKey, ShellItem},
         },
+        commands::{self, ActionCommands, Command, Hint},
         traits::{HandleActions, InputAction},
         views::{
             Background,
@@ -121,6 +122,11 @@ fn item_ref<'a, V: SherlockView>(
         .read(cx)
         .get(id)
         .map(|item| item as &dyn ShellItem)
+}
+
+/// A view's own commands, then its `HandleActions` methods (by id only, see `commands::adapter`).
+fn view_commands<V: SherlockView>() -> impl Iterator<Item = &'static Command<V>> {
+    V::commands().iter().chain(V::ACTION_COMMANDS)
 }
 
 fn with_item<V: SherlockView, R>(
@@ -279,6 +285,25 @@ impl ViewHandle {
     /// Offers a keystroke to the view's binds (`HandleActions::bind`). Updates the view entity.
     pub fn bind(&self, key: &Keystroke, window: &mut Window, cx: &mut App) -> Propagation {
         dispatch!(self, e => e.update(cx, |v, cx| v.bind(key, window, cx)))
+    }
+
+    /// Offers `key` to the view's commands. Updates the view entity.
+    pub fn command_key(&self, key: &Keystroke, window: &mut Window, cx: &mut App) -> Propagation {
+        dispatch!(self, e => e.update(cx, |v, cx| {
+            commands::dispatch_key(view_commands(), v, key, window, cx)
+        }))
+    }
+
+    /// Runs the view's command `id` if available. Updates the view entity.
+    pub fn run_command(&self, id: &str, window: &mut Window, cx: &mut App) -> Propagation {
+        dispatch!(self, e => e.update(cx, |v, cx| {
+            commands::run_id(view_commands(), v, id, window, cx)
+        }))
+    }
+
+    /// The view's available commands to hint in the status bar.
+    pub fn hints(&self, cx: &App) -> Vec<Hint> {
+        dispatch!(self, e => commands::hints(view_commands(), e.read(cx), cx))
     }
 
     /// The key of the view's bind that runs `name` (`SherlockView::bind_key`).

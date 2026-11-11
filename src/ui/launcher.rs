@@ -38,6 +38,7 @@ use crate::{
 };
 
 pub mod actions;
+mod commands;
 pub mod context_menu;
 mod execute;
 pub mod filter_and_sort;

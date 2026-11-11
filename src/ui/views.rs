@@ -19,6 +19,7 @@ use crate::{
         components::status_bar::StatusBar,
         launcher::{LauncherView, navigator::views::Layout},
         model::{Model, ResultsChange, data::ModelData},
+        commands::Command,
         traits::HandleActions,
     },
 };
@@ -136,6 +137,11 @@ pub trait SherlockView: HandleActions + 'static + Sized {
 
     fn chrome(&self) -> Chrome {
         Chrome::DEFAULT
+    }
+
+    /// This view's commands, the first layer keys are offered to.
+    fn commands() -> &'static [Command<Self>] {
+        &[]
     }
 
     /// Search bar placeholder while this view is shown. `None`: the configured default.
