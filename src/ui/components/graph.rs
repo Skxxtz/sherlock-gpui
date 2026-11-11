@@ -303,7 +303,7 @@ impl RenderOnce for Graph {
             .as_ref()
             .and_then(|s| *s.read(cx))
             .and_then(|i| xs.get(i).copied())
-            .and_then(|xv| {
+            .map(|xv| {
                 let values: Vec<_> = self
                     .series
                     .iter()
@@ -318,7 +318,7 @@ impl RenderOnce for Graph {
                         ))
                     })
                     .collect();
-                Some((x.norm(xv) as f32, fmt(&self.x_format, xv, x_step), values))
+                (x.norm(xv) as f32, fmt(&self.x_format, xv, x_step), values)
             });
 
         let n = self.series.len().max(1) as f64;

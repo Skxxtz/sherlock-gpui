@@ -14,9 +14,6 @@ mod tests;
 #[derive(Clone)]
 pub struct ActiveTheme(pub Arc<ThemeData>);
 
-/// A full theme. Colors, typography and metrics are flattened, so theme files stay flat
-/// TOML. Typography and metrics are optional and fall back to their defaults.
-/// `ThemeData` derefs to [`ThemeColors`], so `theme.bg_app` keeps working.
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct ThemeData {
     #[serde(flatten)]
@@ -251,7 +248,8 @@ pub fn parse_hex_color(text: &str) -> Option<Hsla> {
     Some(gpui::rgba(rgba).into())
 }
 
-const BUILTIN_THEMES: [(&str, fn() -> ThemeData); 4] = [
+type ThemeCtor = fn() -> ThemeData;
+const BUILTIN_THEMES: [(&str, ThemeCtor); 4] = [
     ("Default", ThemeData::dark),
     ("Nord", ThemeData::nord),
     ("Libre", ThemeData::libre),

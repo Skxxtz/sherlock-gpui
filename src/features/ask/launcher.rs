@@ -33,7 +33,7 @@ fn default_chats() -> usize {
 #[derive(Clone, Debug, Deserialize)]
 pub struct AskLauncher {
     #[serde(flatten)]
-    pub provider: Provider,
+    pub provider: Box<Provider>,
     #[serde(default)]
     pub system_prompt: Option<String>,
     #[serde(default)]
