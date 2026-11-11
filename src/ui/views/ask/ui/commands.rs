@@ -38,12 +38,21 @@ impl AskView {
     pub(super) const COMMANDS: &[Command<Self>] = &[
         // Esc
         Command {
-            id: "ask.stop_run",
-            label: "stop command",
+            id: "ask.stop",
+            label: "stop",
             keys: ESC,
-            when: |v, _| v.is_running(),
-            run: |v, _, cx| done(|| v.stop_run(cx)),
-            hint: false,
+            when: |v, _| v.is_running() || v.conv.is_live(),
+            run: |v, _, cx| {
+                done(|| {
+                    if v.is_running() {
+                        v.stop_run(cx);
+                    } else {
+                        v.stop(cx);
+                        v.repaint(cx);
+                    }
+                })
+            },
+            hint: true,
         },
         Command {
             id: "ask.clear_selection",
@@ -83,7 +92,7 @@ impl AskView {
                 Some(i) => done(|| v.open_chat(i, cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.ask_suggestion",
@@ -94,7 +103,18 @@ impl AskView {
                 Some(i) => done(|| v.ask_suggestion(i, cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
+        },
+        Command {
+            id: "ask.open_terminal",
+            label: "open in terminal",
+            keys: ENTER,
+            when: |v, _| v.unsent_failure().is_some_and(|(_, terminal)| terminal),
+            run: |v, _, cx| match v.unsent_failure() {
+                Some((item, _)) => done(|| v.fix_run(item, cx)),
+                None => Propagation::Continue,
+            },
+            hint: true,
         },
         Command {
             id: "ask.fix",
@@ -102,10 +122,10 @@ impl AskView {
             keys: ENTER,
             when: |v, _| v.unsent_failure().is_some(),
             run: |v, _, cx| match v.unsent_failure() {
-                Some(item) => done(|| v.fix_run(item, cx)),
+                Some((item, _)) => done(|| v.fix_run(item, cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.run",
@@ -116,7 +136,7 @@ impl AskView {
                 Some(item) => done(|| v.run_item(item, false, win, cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         // Ctrl+Enter
         Command {
@@ -128,7 +148,7 @@ impl AskView {
                 Some(item) => done(|| v.run_item(item, true, win, cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.copy_answer",
@@ -139,7 +159,7 @@ impl AskView {
                 Some(text) => done(|| v.copy_to_clipboard(text, "Copied answer", cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         // Ctrl+C: chat selection, focused output, selected command; else the search bar's copy.
         Command {
@@ -151,7 +171,7 @@ impl AskView {
                 Some(text) => done(|| v.copy_to_clipboard(text, "Copied", cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.copy_output",
@@ -162,7 +182,7 @@ impl AskView {
                 Some(text) => done(|| v.copy_to_clipboard(text, "Copied output", cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.copy_command",
@@ -173,7 +193,7 @@ impl AskView {
                 Some(text) => done(|| v.copy_to_clipboard(text, "Copied command", cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         // ⌫ in an empty search bar
         Command {
@@ -188,7 +208,7 @@ impl AskView {
                 }),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.delete_chat",
@@ -199,7 +219,7 @@ impl AskView {
                 Some(chat) => done(|| v.delete_chat(chat, cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         // Tab / Shift+Tab
         Command {
@@ -211,7 +231,7 @@ impl AskView {
                 Some(text) => done(|| v.fill_input(text, cx)),
                 None => Propagation::Continue,
             },
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.next",
@@ -219,7 +239,7 @@ impl AskView {
             keys: TAB,
             when: |v, _| v.input.is_empty(),
             run: |v, _, cx| done(|| v.cycle(true, cx)),
-            hint: false,
+            hint: true,
         },
         Command {
             id: "ask.prev",
@@ -246,39 +266,23 @@ impl AskView {
             run: |v, _, cx| done(|| v.move_down(cx)),
             hint: false,
         },
-        // By id only (launcher binds: `"stop"`, `"new_chat"`)
-        Command {
-            id: "ask.stop",
-            label: "stop",
-            keys: &[],
-            when: |v, _| v.is_running() || v.conv.is_live(),
-            run: |v, _, cx| {
-                done(|| {
-                    if v.is_running() {
-                        v.stop_run(cx);
-                    } else {
-                        v.stop(cx);
-                        v.repaint(cx);
-                    }
-                })
-            },
-            hint: false,
-        },
+        // By id only (launcher binds: `"new_chat"`)
         Command {
             id: "ask.new_chat",
             label: "new",
             keys: &[],
             when: |v, _| !v.conv.is_empty(),
             run: |v, _, cx| done(|| v.new_conversation(cx)),
-            hint: false,
+            hint: true,
         },
     ];
 
-    /// The item of a focused failed run not yet sent back to the model.
-    fn unsent_failure(&self) -> Option<usize> {
+    /// The item of a focused failed run not yet sent back to the model, and whether it wants a
+    /// terminal.
+    fn unsent_failure(&self) -> Option<(usize, bool)> {
         self.focused_output()
             .filter(|r| r.failed() && !r.sent)
-            .map(|r| r.item)
+            .map(|r| (r.item, r.wants_terminal()))
     }
 
     /// The shown answer's text.

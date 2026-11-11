@@ -1,17 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{
-    AnyElement,
-    AnyEntity,
-    App,
-    AppContext,
-    Entity,
-    FocusHandle,
-    Keystroke,
-    SharedString,
-    Window,
-    px,
-};
+use gpui::{AnyElement, AnyEntity, App, AppContext, Entity, FocusHandle, SharedString, Window, px};
 
 #[cfg(feature = "ai")]
 use crate::ui::views::ask::AskView;
@@ -304,11 +293,6 @@ impl ViewHandle {
     /// The view's available commands to hint in the status bar.
     pub fn hints(&self, cx: &App) -> Vec<Hint> {
         dispatch!(self, e => commands::hints(view_commands(), e.read(cx), cx))
-    }
-
-    /// The key of the view's bind that runs `name` (`SherlockView::bind_key`).
-    pub fn bind_key(&self, name: &str, cx: &App) -> Option<Keystroke> {
-        dispatch!(self, e => e.read(cx).bind_key(name))
     }
 
     /// Type-erased entity, for rendering

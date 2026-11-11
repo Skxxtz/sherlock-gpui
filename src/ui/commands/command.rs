@@ -24,10 +24,21 @@ pub fn always<V>(_: &V, _: &App) -> bool {
 }
 
 impl<V> Command<V> {
+    /// Whether `name` means this command: the full id, or the part after the dot (`"stop"` →
+    /// `"ask.stop"`)
+    pub fn named(&self, name: &str) -> bool {
+        named(self.id, name)
+    }
+
     /// Whether one of the keys is what was pressed.
     pub fn matches(&self, pressed: &Pressed) -> bool {
         self.keys.iter().any(|k| k.matches(pressed))
     }
+}
+
+/// See `Command::named`.
+pub fn named(id: &str, name: &str) -> bool {
+    id == name || id.rsplit_once('.').is_some_and(|(_, short)| short == name)
 }
 
 /// A command's key.
@@ -54,6 +65,16 @@ impl Key {
                 .action
                 .as_ref()
                 .is_some_and(|action| action.partial_eq(&*make())),
+        }
+    }
+}
+
+impl PartialEq for Key {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Stroke(a), Self::Stroke(b)) => a == b,
+            (Self::Action(a), Self::Action(b)) => a().partial_eq(&*b()),
+            _ => false,
         }
     }
 }

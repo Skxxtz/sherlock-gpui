@@ -1,6 +1,6 @@
 use gpui::{App, Context, Window};
 
-use super::{Command, Hint, Pressed};
+use super::{Command, Hint, Key, Pressed};
 use crate::ui::views::Propagation;
 
 /// Runs the first available command of one layer bound to what was pressed. `Continue`: none
@@ -23,9 +23,8 @@ pub fn dispatch<V: 'static>(
     Propagation::Continue
 }
 
-/// Runs the command `id` of one layer if it's available. A short name matches the part after
-/// the dot (`"stop"` → `"ask.stop"`), so launcher binds written before commands keep working.
-/// `Continue`: unknown, unavailable or declined.
+/// Runs the command `id` of one layer if it's available (`Command::named`). `Continue`: unknown,
+/// unavailable or declined.
 pub fn run_id<V: 'static>(
     commands: impl IntoIterator<Item = &'static Command<V>>,
     this: &mut V,
@@ -33,9 +32,7 @@ pub fn run_id<V: 'static>(
     win: &mut Window,
     cx: &mut Context<V>,
 ) -> Propagation {
-    let named =
-        |c: &&Command<V>| c.id == id || c.id.rsplit_once('.').is_some_and(|(_, name)| name == id);
-    match commands.into_iter().find(named) {
+    match commands.into_iter().find(|c| c.named(id)) {
         Some(cmd) if (cmd.when)(this, cx) => (cmd.run)(this, win, cx),
         _ => Propagation::Continue,
     }
@@ -47,15 +44,20 @@ pub fn hints<V: 'static>(
     this: &V,
     cx: &App,
 ) -> Vec<Hint> {
-    commands
-        .into_iter()
-        .filter(|c| c.hint && (c.when)(this, cx))
-        .map(|c| Hint {
-            id: c.id,
-            label: c.label.into(),
-            keys: c.keys,
-        })
-        .collect()
+    let mut taken: Vec<Key> = Vec::new();
+    let mut hints = Vec::new();
+    for cmd in commands.into_iter().filter(|c| (c.when)(this, cx)) {
+        let reachable = cmd.keys.is_empty() || cmd.keys.iter().any(|k| !taken.contains(k));
+        if cmd.hint && reachable {
+            hints.push(Hint {
+                id: cmd.id,
+                label: cmd.label.into(),
+                keys: cmd.keys,
+            });
+        }
+        taken.extend(cmd.keys.iter().copied());
+    }
+    hints
 }
 
 #[cfg(test)]
@@ -159,5 +161,43 @@ mod tests {
         });
         assert!(enter.matches(&Pressed::action(&Execute)));
         assert!(!enter.matches(&Pressed::action(&Quit)));
+    }
+
+    #[gpui::test]
+    fn hints_skip_commands_their_keys_dont_reach(cx: &mut TestAppContext) {
+        const SHADOWED: &[Command<V>] = &[
+            Command {
+                id: "t.first",
+                label: "first",
+                keys: &[Key::Stroke("enter")],
+                when: always,
+                run: |_, _, _| Propagation::Stop,
+                hint: false,
+            },
+            Command {
+                id: "t.second",
+                label: "second",
+                keys: &[Key::Stroke("enter")],
+                when: always,
+                run: |_, _, _| Propagation::Stop,
+                hint: true,
+            },
+            Command {
+                id: "t.bound",
+                label: "bound",
+                keys: &[],
+                when: always,
+                run: |_, _, _| Propagation::Stop,
+                hint: true,
+            },
+        ];
+        let (view, cx): (_, &mut VisualTestContext) = cx.add_window_view(|_, _| V::default());
+        cx.update(|_, cx| {
+            let ids: Vec<_> = hints(SHADOWED, view.read(cx), cx)
+                .into_iter()
+                .map(|h| h.id)
+                .collect();
+            assert_eq!(ids, ["t.bound"]);
+        });
     }
 }

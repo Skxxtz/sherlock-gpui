@@ -1,17 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{
-    AnyElement,
-    App,
-    Context,
-    Entity,
-    FocusHandle,
-    Keystroke,
-    SharedString,
-    WeakEntity,
-    Window,
-    px,
-};
+use gpui::{AnyElement, App, Context, Entity, FocusHandle, SharedString, WeakEntity, Window, px};
 
 use crate::{
     app::theme::ThemeData,
@@ -169,12 +158,6 @@ pub trait SherlockView: HandleActions + 'static + Sized {
 
     /// `Some()` will overwrite the default status bar. `None` leaves the default status bar in place.
     fn status_bar(&self, _cx: &App) -> Option<StatusBar> {
-        None
-    }
-
-    /// The key of this view's bind whose callback runs `name` (e.g. "stop"), for status-bar
-    /// hints (`KeySpec::Bind`). `None`: not bound, the hint is hidden.
-    fn bind_key(&self, _name: &str) -> Option<Keystroke> {
         None
     }
 

@@ -36,7 +36,8 @@ use crate::{
     launcher::{LauncherValues, utils::exec_mode::ExecMode},
     loader::resolve_icon_path,
     ui::{
-        actions::UIFunction,
+        actions::{UIFunction, launcher::Back, search_bar::Backspace as SearchBackspace},
+        commands::{self, Hint, Key},
         components::status_bar::{self, KeySpec, StatusItem, StatusKind},
         launcher::{Execute, LauncherMode, LauncherView, execute::ExecRequest},
         model::ItemIdx,
@@ -365,13 +366,60 @@ impl LauncherView {
             .text_color(theme.text_status_bar)
             .children(
                 (bar.left.iter().enumerate())
-                    .filter_map(|(i, item)| self.render_status_item(item, i, &theme, win, cx)),
+                    .flat_map(|(i, item)| self.render_status_items(item, i, &theme, win, cx)),
             )
             .child(div().flex_1())
             .children(
                 (bar.right.iter().enumerate())
-                    .filter_map(|(i, item)| self.render_status_item(item, n + i, &theme, win, cx)),
+                    .flat_map(|(i, item)| self.render_status_items(item, n + i, &theme, win, cx)),
             )
+    }
+
+    /// One bar item as elements: `Hints` expands to one per hint, the rest to at most one.
+    fn render_status_items(
+        &self,
+        item: &StatusItem,
+        id: usize,
+        theme: &Arc<ThemeData>,
+        win: &Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<Div> {
+        match item.kind {
+            StatusKind::Hints => self.render_hints(theme, win, cx),
+            _ => self
+                .render_status_item(item, id, theme, win, cx)
+                .into_iter()
+                .collect(),
+        }
+    }
+
+    /// The current view's command hints; click runs the command.
+    fn render_hints(
+        &self,
+        theme: &Arc<ThemeData>,
+        win: &Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<Div> {
+        let handle = &self.navigation.current().handle;
+        let binds = handle.binds(cx);
+        handle
+            .hints(cx)
+            .into_iter()
+            .filter_map(|hint| {
+                let caps = hint_caps(&hint, binds.as_deref(), win)?;
+                let id = hint.id;
+                Some(
+                    status_bar::keys(caps, hint.label, theme)
+                        .cursor_pointer()
+                        .on_mouse_down(
+                            gpui::MouseButton::Left,
+                            cx.listener(move |this, _, win, cx| {
+                                this.run_command(id, win, cx);
+                            }),
+                        ),
+                )
+            })
+            .collect()
     }
 
     /// One item; `None` when a shell item has nothing to show.
@@ -385,18 +433,7 @@ impl LauncherView {
     ) -> Option<Div> {
         let el = match &item.kind {
             StatusKind::Keys { keys, label } => {
-                let (caps, press) = self.resolve_keys(*keys, win, cx)?;
-                let el = status_bar::keys(caps, label.clone(), theme);
-                // A bind's hint without its own handler presses the bind's key.
-                if let (None, Some(stroke)) = (item.on_click, press) {
-                    return Some(el.cursor_pointer().on_mouse_down(
-                        gpui::MouseButton::Left,
-                        move |_, win, cx| {
-                            win.dispatch_keystroke(stroke.clone(), cx);
-                        },
-                    ));
-                }
-                el
+                status_bar::keys(resolve_keys(*keys, win)?, label.clone(), theme)
             }
             StatusKind::Brand => self.render_brand(cx),
             StatusKind::Messages => match self.navigation.message_count(cx) {
@@ -425,34 +462,6 @@ impl LauncherView {
                 .on_mouse_down(gpui::MouseButton::Left, move |_, win, cx| f(win, cx)),
             None => el,
         })
-    }
-
-    /// A hint's caps, looked up in the keymap or the view's binds; `None` when unbound. A bind
-    /// also returns its keystroke, so clicking the hint can press it.
-    fn resolve_keys(
-        &self,
-        spec: KeySpec,
-        win: &Window,
-        cx: &App,
-    ) -> Option<(Vec<SharedString>, Option<Keystroke>)> {
-        match spec {
-            KeySpec::Fixed(keys) => Some((
-                keys.iter().map(|k| SharedString::new_static(k)).collect(),
-                None,
-            )),
-            KeySpec::Action(action) => {
-                let binding = win.highest_precedence_binding_for_action(&*action())?;
-                let stroke = binding.keystrokes().first()?;
-                Some((status_bar::key_caps(stroke.modifiers(), stroke.key()), None))
-            }
-            KeySpec::Bind(name) => {
-                let stroke = self.navigation.current().handle.bind_key(name, cx)?;
-                Some((
-                    status_bar::key_caps(&stroke.modifiers, &stroke.key),
-                    Some(stroke),
-                ))
-            }
-        }
     }
 
     /// "Sherlock"; click shows the credits.
@@ -701,5 +710,45 @@ fn context_key_parts() -> &'static [SharedString] {
                 })
             })
             .collect()
+    })
+}
+
+/// A `KeySpec`'s caps, looked up in the keymap; `None` when unbound.
+fn resolve_keys(spec: KeySpec, win: &Window) -> Option<Vec<SharedString>> {
+    match spec {
+        KeySpec::Fixed(keys) => Some(keys.iter().map(|k| SharedString::new_static(k)).collect()),
+        KeySpec::Action(action) => action_caps(&*action(), win),
+    }
+}
+
+/// The caps of the keymap's key for `action` in the focused context.
+fn action_caps(action: &dyn gpui::Action, win: &Window) -> Option<Vec<SharedString>> {
+    if action.partial_eq(&Back) {
+        return action_caps(&SearchBackspace, win);
+    }
+    let binding = win.highest_precedence_binding_for_action(action)?;
+    let stroke = binding.keystrokes().first()?;
+    Some(status_bar::key_caps(stroke.modifiers(), stroke.key()))
+}
+
+/// A hint's caps. `None`: no key reaches it, the hint is hidden.
+fn hint_caps(
+    hint: &Hint,
+    binds: Option<&[crate::launcher::utils::binds::Bind]>,
+    win: &Window,
+) -> Option<Vec<SharedString>> {
+    let bound = binds.into_iter().flatten().find(|b| {
+        b.callback
+            .split(';')
+            .any(|name| commands::named(hint.id, name.trim()))
+    });
+    if let Some(bind) = bound {
+        return Some(status_bar::key_caps(&bind.bind.modifiers, &bind.bind.key));
+    }
+    hint.keys.iter().find_map(|key| match key {
+        Key::Stroke(s) => Keystroke::parse(s)
+            .ok()
+            .map(|k| status_bar::key_caps(&k.modifiers, &k.key)),
+        Key::Action(action) => action_caps(&*action(), win),
     })
 }

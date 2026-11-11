@@ -4,12 +4,15 @@
 //! the bar follows the view's state. `None` gives `StatusBar::default()`.
 //!
 //! Items are either shell items, filled in by the shell when drawn (`Brand`, `Messages`,
-//! `Minimized`, `ContextActions`; hidden when there's nothing to show), or the view's own
-//! (`text`, `keys`, `status`), optionally clickable.
+//! `Minimized`, `ContextActions`, `Hints`; hidden when there's nothing to show), or the view's
+//! own (`text`, `keys`, `status`), optionally clickable.
 //!
-//! Key hints name *what* they press (`KeySpec`), not the keys: the shell looks the keys up when
-//! drawing, in the keymap or the view's binds, so hints follow the user's config. A hint whose
-//! key isn't bound is hidden.
+//! `Hints` are the view's available commands marked `hint` (see `ui::commands`), with the keys
+//! the view's binds or the keymap give them; clicking one runs the command.
+//!
+//! Key hints name *what* they press (`KeySpec`), not the keys: the shell looks the keys up in
+//! the keymap when drawing, so hints follow the user's config. A hint whose key isn't bound is
+//! hidden.
 //!
 //! Cheap per frame: the default bar and fixed bars are statics (`Cow::Borrowed`), click
 //! handlers are plain `fn` pointers, labels are `SharedString`s (static or ref-counted).
@@ -17,7 +20,7 @@
 //! ```ignore
 //! static ASK_BAR: [StatusItem; 2] = [
 //!     StatusItem::keys(KeySpec::action::<Execute>(), "run").on_click(dispatch::<Execute>),
-//!     StatusItem::keys(KeySpec::Bind("stop"), "stop"),
+//!     StatusItem::HINTS,
 //! ];
 //!
 //! fn status_bar(&self, _cx: &App) -> Option<StatusBar> {
@@ -143,6 +146,8 @@ pub enum StatusKind {
     Minimized,
     /// "Additional Actions" and the context menu key, when the selection has actions.
     ContextActions,
+    /// The view's available commands marked `hint`; click runs one. Hidden without any.
+    Hints,
 
     // The view's own.
     /// Plain text.
@@ -163,9 +168,6 @@ pub enum KeySpec {
     Fixed(&'static [&'static str]),
     /// Whatever the keymap binds to this action (a `fn`, so hints can live in statics).
     Action(fn() -> Box<dyn Action>),
-    /// The view's bind whose callback runs this name (`SherlockView::bind_key`). Clicking the
-    /// hint presses that key.
-    Bind(&'static str),
 }
 
 impl KeySpec {
@@ -184,7 +186,6 @@ impl PartialEq for KeySpec {
         match (self, other) {
             (Self::Fixed(a), Self::Fixed(b)) => a == b,
             (Self::Action(a), Self::Action(b)) => a().partial_eq(&*b()),
-            (Self::Bind(a), Self::Bind(b)) => a == b,
             _ => false,
         }
     }
@@ -197,7 +198,6 @@ impl std::fmt::Debug for KeySpec {
         match self {
             Self::Fixed(k) => write!(f, "Fixed({k:?})"),
             Self::Action(a) => write!(f, "Action({})", a().name()),
-            Self::Bind(name) => write!(f, "Bind({name})"),
         }
     }
 }
@@ -236,6 +236,7 @@ impl StatusItem {
     pub const MESSAGES: Self = Self::new(StatusKind::Messages);
     pub const MINIMIZED: Self = Self::new(StatusKind::Minimized);
     pub const CONTEXT_ACTIONS: Self = Self::new(StatusKind::ContextActions);
+    pub const HINTS: Self = Self::new(StatusKind::Hints);
 
     const fn new(kind: StatusKind) -> Self {
         Self {
@@ -341,7 +342,8 @@ pub fn view_item(kind: &StatusKind, id: usize, theme: &ThemeData) -> Option<Div>
         | StatusKind::Brand
         | StatusKind::Messages
         | StatusKind::Minimized
-        | StatusKind::ContextActions => return None,
+        | StatusKind::ContextActions
+        | StatusKind::Hints => return None,
     })
 }
 
@@ -360,7 +362,6 @@ mod tests {
         use crate::ui::actions::{Execute, Quit};
         assert_eq!(KeySpec::action::<Execute>(), KeySpec::action::<Execute>());
         assert_ne!(KeySpec::action::<Execute>(), KeySpec::action::<Quit>());
-        assert_eq!(KeySpec::Bind("stop"), KeySpec::Bind("stop"));
     }
 
     #[test]
