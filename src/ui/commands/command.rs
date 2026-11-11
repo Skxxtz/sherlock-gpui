@@ -1,4 +1,4 @@
-use gpui::{App, Context, Keystroke, SharedString, Window};
+use gpui::{Action, App, Context, Keystroke, SharedString, Window};
 
 use crate::ui::views::Propagation;
 
@@ -8,8 +8,8 @@ pub struct Command<V> {
     pub id: &'static str,
     /// Status bar / context menu text.
     pub label: &'static str,
-    /// Default keys (`"ctrl-c"`). Empty: reachable by id only.
-    pub keys: &'static [&'static str],
+    /// Default keys. Empty: reachable by id only.
+    pub keys: &'static [Key],
     /// Whether the command is available right now.
     pub when: fn(&V, &App) -> bool,
     /// `Continue`: did nothing after all, the next layer gets the key.
@@ -24,22 +24,76 @@ pub fn always<V>(_: &V, _: &App) -> bool {
 }
 
 impl<V> Command<V> {
-    /// Whether one of the default keys is `key`.
-    pub fn matches(&self, key: &Keystroke) -> bool {
-        self.keystrokes()
-            .any(|k| k.modifiers == key.modifiers && k.key == key.key)
+    /// Whether one of the keys is what was pressed.
+    pub fn matches(&self, pressed: &Pressed) -> bool {
+        self.keys.iter().any(|k| k.matches(pressed))
+    }
+}
+
+/// A command's key.
+#[derive(Clone, Copy)]
+pub enum Key {
+    /// A fixed keystroke: `"ctrl-n"`.
+    Stroke(&'static str),
+    /// Whatever the keymap binds to this action (so `[keybinds]` in the config still applies),
+    /// and the action itself when dispatched (status-bar clicks).
+    Action(fn() -> Box<dyn Action>),
+}
+
+impl Key {
+    pub const fn action<A: Action + Default>() -> Self {
+        Self::Action(|| Box::new(A::default()))
     }
 
-    /// The default keys, parsed. Invalid ones are skipped.
-    pub fn keystrokes(&self) -> impl Iterator<Item = Keystroke> + '_ {
-        self.keys.iter().filter_map(|k| Keystroke::parse(k).ok())
+    pub fn matches(&self, pressed: &Pressed) -> bool {
+        match self {
+            Self::Stroke(s) => pressed.key.as_ref().is_some_and(|key| {
+                Keystroke::parse(s).is_ok_and(|k| k.modifiers == key.modifiers && k.key == key.key)
+            }),
+            Self::Action(make) => pressed
+                .action
+                .as_ref()
+                .is_some_and(|action| action.partial_eq(&*make())),
+        }
+    }
+}
+
+/// What a command is offered: a keystroke (with the action the keymap binds it to), or a
+/// dispatched action.
+pub struct Pressed {
+    pub key: Option<Keystroke>,
+    pub action: Option<Box<dyn Action>>,
+}
+
+impl Pressed {
+    /// `key`, resolved against the keymap in the focused context like GPUI would.
+    pub fn key(key: &Keystroke, win: &Window, cx: &App) -> Self {
+        let action = cx
+            .key_bindings()
+            .borrow()
+            .bindings_for_input(std::slice::from_ref(key), &win.context_stack())
+            .0
+            .first()
+            .map(|b| b.action().boxed_clone());
+        Self {
+            key: Some(key.clone()),
+            action,
+        }
+    }
+
+    /// An action dispatched without a key (a click, an event).
+    pub fn action(action: &dyn Action) -> Self {
+        Self {
+            key: None,
+            action: Some(action.boxed_clone()),
+        }
     }
 }
 
 /// An available command, as the status bar shows it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Hint {
     pub id: &'static str,
     pub label: SharedString,
-    pub keys: Vec<Keystroke>,
+    pub keys: &'static [Key],
 }

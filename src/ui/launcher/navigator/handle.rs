@@ -17,16 +17,16 @@ use gpui::{
 use crate::ui::views::ask::AskView;
 use crate::{
     app::LauncherEntity,
-    launcher::{LauncherConfig, variant_type::LauncherType},
+    launcher::{LauncherConfig, utils::binds::Bind, variant_type::LauncherType},
     ui::{
+        commands::{self, ActionCommands, Command, Hint, Pressed},
         components::status_bar::StatusBar,
         launcher::navigator::views::{Layout, NavView},
         model::{
             data::ModelData,
             item::{SelectionKey, ShellItem},
         },
-        commands::{self, ActionCommands, Command, Hint},
-        traits::{HandleActions, InputAction},
+        traits::InputAction,
         views::{
             Background,
             Chrome,
@@ -282,15 +282,15 @@ impl ViewHandle {
         dispatch!(self, e => e.update(cx, |v, cx| action.route(v, window, cx)))
     }
 
-    /// Offers a keystroke to the view's binds (`HandleActions::bind`). Updates the view entity.
-    pub fn bind(&self, key: &Keystroke, window: &mut Window, cx: &mut App) -> Propagation {
-        dispatch!(self, e => e.update(cx, |v, cx| v.bind(key, window, cx)))
+    /// The view's own binds (`SherlockView::binds`).
+    pub fn binds(&self, cx: &App) -> Option<Arc<[Bind]>> {
+        dispatch!(self, e => e.read(cx).binds())
     }
 
-    /// Offers `key` to the view's commands. Updates the view entity.
-    pub fn command_key(&self, key: &Keystroke, window: &mut Window, cx: &mut App) -> Propagation {
+    /// Offers a keystroke or action to the view's commands. Updates the view entity.
+    pub fn command(&self, pressed: &Pressed, window: &mut Window, cx: &mut App) -> Propagation {
         dispatch!(self, e => e.update(cx, |v, cx| {
-            commands::dispatch_key(view_commands(), v, key, window, cx)
+            commands::dispatch(view_commands(), v, pressed, window, cx)
         }))
     }
 

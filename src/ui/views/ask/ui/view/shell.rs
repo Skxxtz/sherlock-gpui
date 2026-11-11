@@ -1,7 +1,7 @@
 use gpui::list;
 
 use super::*;
-use crate::ui::components::status_bar::StatusBar;
+use crate::ui::{commands::Command, components::status_bar::StatusBar};
 
 impl SherlockView for AskView {
     type Data = NoData;
@@ -32,6 +32,14 @@ impl SherlockView for AskView {
             (format!("{q}{more}").into(), BusyStatus::Ok)
         };
         Some(Background { label, busy })
+    }
+
+    fn commands() -> &'static [Command<Self>] {
+        Self::COMMANDS
+    }
+
+    fn binds(&self) -> Option<Arc<[Bind]>> {
+        self.binds.clone()
     }
 
     fn retain(&self) -> bool {

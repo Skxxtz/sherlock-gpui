@@ -1,7 +1,7 @@
-use gpui::{Context, Keystroke, Window};
+use gpui::{Action, Context, Keystroke, Window};
 
 use crate::ui::{
-    commands::{self, Command},
+    commands::{self, Command, Pressed},
     components::search_bar,
     launcher::LauncherView,
     views::Propagation,
@@ -11,23 +11,43 @@ use crate::ui::{
 pub const COMMANDS: &[Command<LauncherView>] = &[];
 
 impl LauncherView {
-    /// Offers `key` to the layers: view → search bar → launcher. `true`: a command took it.
+    /// Offers a keystroke or action to the layers: view → search bar → launcher. `true`: a
+    /// command took it.
+    fn command(&mut self, pressed: &Pressed, win: &mut Window, cx: &mut Context<Self>) -> bool {
+        let handle = self.navigation.current().handle.clone();
+        let handled = handle.command(pressed, win, cx) == Propagation::Stop
+            || self.text_input.update(cx, |input, cx| {
+                commands::dispatch(search_bar::commands::COMMANDS, input, pressed, win, cx)
+            }) == Propagation::Stop
+            || commands::dispatch(COMMANDS, self, pressed, win, cx) == Propagation::Stop;
+        if handled {
+            cx.notify();
+        }
+        handled
+    }
+
+    /// A keystroke, before GPUI dispatches it. An open context menu keeps its keys.
     pub(super) fn command_key(
         &mut self,
         key: &Keystroke,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        let handle = self.navigation.current().handle.clone();
-        let handled = handle.command_key(key, win, cx) == Propagation::Stop
-            || self.text_input.update(cx, |input, cx| {
-                commands::dispatch_key(search_bar::commands::COMMANDS, input, key, win, cx)
-            }) == Propagation::Stop
-            || commands::dispatch_key(COMMANDS, self, key, win, cx) == Propagation::Stop;
-        if handled {
-            cx.notify();
+        if self.context_menu.is_open() {
+            return false;
         }
-        handled
+        let pressed = Pressed::key(key, win, cx);
+        self.command(&pressed, win, cx)
+    }
+
+    /// An action that reached the launcher without a key (status-bar click, `EmptyBackspace`).
+    pub(super) fn command_action(
+        &mut self,
+        action: &dyn Action,
+        win: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        self.command(&Pressed::action(action), win, cx)
     }
 
     /// Runs command `id` in the first layer that has it available. `true`: a command took it.

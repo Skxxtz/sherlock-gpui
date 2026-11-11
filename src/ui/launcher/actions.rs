@@ -195,13 +195,16 @@ impl LauncherView {
         }
     }
 
-    /// Offers `action` to the current view. `true`: the view handled it, skip the default.
+    /// Offers `action` to the commands, then the current view. `true`: taken, skip the default.
     fn view_handled<A: InputAction>(
         &mut self,
         action: &A,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
+        if self.command_action(action, win, cx) {
+            return true;
+        }
         let handled = self.navigation.current().handle.route(action, win, cx) == Propagation::Stop;
         if handled {
             cx.notify();
@@ -209,18 +212,35 @@ impl LauncherView {
         handled
     }
 
-    /// The current view's own binds (e.g. the Ask view's `stop`, `new_chat`).
+    /// The current view's binds (Ask: `"ctrl-n" → "new_chat"`): runs the bound command chain.
+    /// `Continue` only if the chain says `continue`.
     fn view_bind(
         &mut self,
         key: &Keystroke,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> Propagation {
-        let propagation = self.navigation.current().handle.bind(key, win, cx);
-        if propagation == Propagation::Stop {
-            cx.notify();
+        let Some(chain) = self
+            .navigation
+            .current()
+            .handle
+            .binds(cx)
+            .and_then(|binds| {
+                binds
+                    .iter()
+                    .find(|b| b.matches(key))
+                    .map(|b| b.callback.clone())
+            })
+        else {
+            return Propagation::Continue;
+        };
+        self.run_commands(&chain, win, cx);
+        cx.notify();
+        if chain.split(';').any(|c| c.trim() == "continue") {
+            Propagation::Continue
+        } else {
+            Propagation::Stop
         }
-        propagation
     }
 
     /// Arrow keys: an open context menu takes them, otherwise the view, otherwise the list.
@@ -443,18 +463,18 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        // 0. Commands: view → search bar → launcher.
-        if self.command_key(key, win, cx) {
-            return true;
-        }
-
-        // 1. The active view's binds (Ask: stop, new_chat, …).
+        // 1. The active view's binds (Ask: stop, new_chat, …): user config wins over defaults.
         match self.view_bind(key, win, cx) {
             Propagation::Stop => return true,
             Propagation::Continue => {}
         }
 
-        // 2. The selected item's binds.
+        // 2. Commands: view → search bar → launcher.
+        if self.command_key(key, win, cx) {
+            return true;
+        }
+
+        // 3. The selected item's binds.
         let Some(binds) = self
             .navigation
             .with_selected_item(cx, |item, cx| item.binds(cx))

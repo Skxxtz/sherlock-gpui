@@ -15,11 +15,12 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
+    launcher::utils::binds::Bind,
     ui::{
+        commands::Command,
         components::status_bar::StatusBar,
         launcher::{LauncherView, navigator::views::Layout},
         model::{Model, ResultsChange, data::ModelData},
-        commands::Command,
         traits::HandleActions,
     },
 };
@@ -142,6 +143,11 @@ pub trait SherlockView: HandleActions + 'static + Sized {
     /// This view's commands, the first layer keys are offered to.
     fn commands() -> &'static [Command<Self>] {
         &[]
+    }
+
+    /// Binds from this view's launcher config (`"ctrl-n" → "new_chat"`): keys to command chains.
+    fn binds(&self) -> Option<Arc<[Bind]>> {
+        None
     }
 
     /// Search bar placeholder while this view is shown. `None`: the configured default.

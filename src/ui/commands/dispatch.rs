@@ -1,18 +1,21 @@
-use gpui::{App, Context, Keystroke, Window};
+use gpui::{App, Context, Window};
 
-use super::{Command, Hint};
+use super::{Command, Hint, Pressed};
 use crate::ui::views::Propagation;
 
-/// Runs the first available command of one layer bound to `key`. `Continue`: none took it.
-pub fn dispatch_key<V: 'static>(
+/// Runs the first available command of one layer bound to what was pressed. `Continue`: none
+/// took it.
+pub fn dispatch<V: 'static>(
     commands: impl IntoIterator<Item = &'static Command<V>>,
     this: &mut V,
-    key: &Keystroke,
+    pressed: &Pressed,
     win: &mut Window,
     cx: &mut Context<V>,
 ) -> Propagation {
     for cmd in commands {
-        if cmd.matches(key) && (cmd.when)(this, cx) && (cmd.run)(this, win, cx) == Propagation::Stop
+        if cmd.matches(pressed)
+            && (cmd.when)(this, cx)
+            && (cmd.run)(this, win, cx) == Propagation::Stop
         {
             return Propagation::Stop;
         }
@@ -20,8 +23,9 @@ pub fn dispatch_key<V: 'static>(
     Propagation::Continue
 }
 
-/// Runs the command `id` of one layer if it's available. `Continue`: unknown, unavailable or
-/// declined.
+/// Runs the command `id` of one layer if it's available. A short name matches the part after
+/// the dot (`"stop"` → `"ask.stop"`), so launcher binds written before commands keep working.
+/// `Continue`: unknown, unavailable or declined.
 pub fn run_id<V: 'static>(
     commands: impl IntoIterator<Item = &'static Command<V>>,
     this: &mut V,
@@ -29,7 +33,9 @@ pub fn run_id<V: 'static>(
     win: &mut Window,
     cx: &mut Context<V>,
 ) -> Propagation {
-    match commands.into_iter().find(|c| c.id == id) {
+    let named =
+        |c: &&Command<V>| c.id == id || c.id.rsplit_once('.').is_some_and(|(_, name)| name == id);
+    match commands.into_iter().find(named) {
         Some(cmd) if (cmd.when)(this, cx) => (cmd.run)(this, win, cx),
         _ => Propagation::Continue,
     }
@@ -47,17 +53,17 @@ pub fn hints<V: 'static>(
         .map(|c| Hint {
             id: c.id,
             label: c.label.into(),
-            keys: c.keystrokes().collect(),
+            keys: c.keys,
         })
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use gpui::{IntoElement, Render, TestAppContext, VisualTestContext, div};
+    use gpui::{IntoElement, Keystroke, Render, TestAppContext, VisualTestContext, div};
 
     use super::*;
-    use crate::ui::commands::always;
+    use crate::ui::commands::{Key, always};
 
     #[derive(Default)]
     struct V {
@@ -75,7 +81,7 @@ mod tests {
         Command {
             id: "t.armed",
             label: "Armed",
-            keys: &["ctrl-c"],
+            keys: &[Key::Stroke("ctrl-c")],
             when: |v, _| v.armed,
             run: |v, _, _| {
                 v.log.push("armed");
@@ -86,7 +92,7 @@ mod tests {
         Command {
             id: "t.declines",
             label: "Declines",
-            keys: &["ctrl-c"],
+            keys: &[Key::Stroke("ctrl-c")],
             when: always,
             run: |v, _, _| {
                 v.log.push("declines");
@@ -97,7 +103,7 @@ mod tests {
         Command {
             id: "t.fallback",
             label: "Fallback",
-            keys: &["ctrl-c", "backspace"],
+            keys: &[Key::Stroke("ctrl-c"), Key::Stroke("backspace")],
             when: always,
             run: |v, _, _| {
                 v.log.push("fallback");
@@ -110,30 +116,48 @@ mod tests {
     #[gpui::test]
     fn first_available_wins_and_continue_falls_through(cx: &mut TestAppContext) {
         let (view, cx): (_, &mut VisualTestContext) = cx.add_window_view(|_, _| V::default());
-        let ctrl_c = Keystroke::parse("ctrl-c").unwrap();
-        let ctrl_x = Keystroke::parse("ctrl-x").unwrap();
+        let stroke = |s| Pressed {
+            key: Some(Keystroke::parse(s).unwrap()),
+            action: None,
+        };
+        let (ctrl_c, ctrl_x) = (stroke("ctrl-c"), stroke("ctrl-x"));
 
         cx.update(|win, cx| {
             view.update(cx, |v, cx| {
                 // not armed: `declines` runs but passes on, `fallback` takes it
-                assert_eq!(dispatch_key(CMDS, v, &ctrl_c, win, cx), Propagation::Stop);
+                assert_eq!(dispatch(CMDS, v, &ctrl_c, win, cx), Propagation::Stop);
                 assert_eq!(v.log, ["declines", "fallback"]);
                 assert_eq!(hints(CMDS, v, cx).len(), 1);
 
                 v.log.clear();
                 v.armed = true;
-                dispatch_key(CMDS, v, &ctrl_c, win, cx);
+                dispatch(CMDS, v, &ctrl_c, win, cx);
                 assert_eq!(v.log, ["armed"]);
                 assert_eq!(hints(CMDS, v, cx).len(), 2);
 
-                assert_eq!(
-                    dispatch_key(CMDS, v, &ctrl_x, win, cx),
-                    Propagation::Continue
-                );
+                assert_eq!(dispatch(CMDS, v, &ctrl_x, win, cx), Propagation::Continue);
                 assert_eq!(run_id(CMDS, v, "t.nope", win, cx), Propagation::Continue);
                 v.armed = false;
                 assert_eq!(run_id(CMDS, v, "t.armed", win, cx), Propagation::Continue);
             })
         });
+    }
+
+    #[gpui::test]
+    fn action_keys_follow_the_keymap(cx: &mut TestAppContext) {
+        use crate::ui::actions::{Execute, Quit};
+
+        cx.update(|cx| cx.bind_keys([gpui::KeyBinding::new("enter", Execute, None)]));
+        let (_view, cx): (_, &mut VisualTestContext) = cx.add_window_view(|_, _| V::default());
+        let enter = Key::action::<Execute>();
+
+        cx.update(|win, cx| {
+            let pressed = Pressed::key(&Keystroke::parse("enter").unwrap(), win, cx);
+            assert!(enter.matches(&pressed));
+            assert!(!Key::action::<Quit>().matches(&pressed));
+            assert!(!enter.matches(&Pressed::key(&Keystroke::parse("escape").unwrap(), win, cx)));
+        });
+        assert!(enter.matches(&Pressed::action(&Execute)));
+        assert!(!enter.matches(&Pressed::action(&Quit)));
     }
 }
