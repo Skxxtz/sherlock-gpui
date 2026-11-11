@@ -67,6 +67,7 @@ impl Render for LauncherView {
 
         self.check_actions(cx);
         self.sidebar_controller.check_validity(&self.navigation, cx);
+        self.sync_placeholder(cx);
 
         let chrome = self.navigation.current().handle.chrome(cx);
         // home mode with a query is a search
@@ -337,6 +338,17 @@ impl LauncherView {
             .size_full()
             .when(chrome.inset, |this| this.px(px(10.)))
             .child(body)
+    }
+
+    /// Shows the current view's placeholder in the search bar. `None` falls back to the default.
+    fn sync_placeholder(&mut self, cx: &mut Context<Self>) {
+        let placeholder = self.navigation.current().handle.placeholder(cx);
+        if self.text_input.read(cx).placeholder_override != placeholder {
+            self.text_input.update(cx, |input, cx| {
+                input.placeholder_override = placeholder;
+                cx.notify();
+            });
+        }
     }
 
     /// The active view's status bar (`SherlockView::status_bar`), shell items filled in.
