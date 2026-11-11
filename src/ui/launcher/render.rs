@@ -36,7 +36,25 @@ use crate::{
     launcher::{LauncherValues, utils::exec_mode::ExecMode},
     loader::resolve_icon_path,
     ui::{
-        actions::{UIFunction, launcher::Back, search_bar::Backspace as SearchBackspace},
+        actions::{
+            UIFunction,
+            launcher::{
+                Back,
+                ErrorPage,
+                ExecuteInplace,
+                ItemDown,
+                ItemLeft,
+                ItemRight,
+                ItemUp,
+                MaximizeView,
+                MinimizeView,
+                NextVar,
+                PrevVar,
+                Quit,
+                ToggleContext,
+            },
+            search_bar::{Backspace as SearchBackspace, Copy, ShortcutAction},
+        },
         commands::{self, Hint, Key},
         components::status_bar::{self, KeySpec, StatusItem, StatusKind},
         launcher::{Execute, LauncherMode, LauncherView, execute::ExecRequest},
@@ -87,23 +105,25 @@ impl Render for LauncherView {
             .border_color(theme.border)
             .rounded_xl()
             .overflow_hidden()
-            .on_action(cx.listener(Self::selection_up))
-            .on_action(cx.listener(Self::selection_down))
-            .on_action(cx.listener(Self::selection_left))
-            .on_action(cx.listener(Self::selection_right))
-            .on_action(cx.listener(Self::next_var))
-            .on_action(cx.listener(Self::prev_var))
-            .on_action(cx.listener(Self::maximize_listener))
-            .on_action(cx.listener(Self::minimize_listener))
-            .on_action(cx.listener(Self::execute_listener))
-            .on_action(cx.listener(Self::execute_inplace_listener))
-            .on_action(cx.listener(Self::shortcut_listener))
-            .on_action(cx.listener(Self::quit))
-            .on_action(cx.listener(Self::open_context))
-            .on_action(cx.listener(Self::error_page))
-            .on_action(cx.listener(Self::back))
-            .on_action(cx.listener(Self::backspace))
-            .on_action(cx.listener(Self::copy_listener))
+            // Actions that reach the launcher (from a focused component, a click, `Back`) go
+            // through the command layers like keys do.
+            .on_action(cx.listener(Self::route_action::<ItemUp>))
+            .on_action(cx.listener(Self::route_action::<ItemDown>))
+            .on_action(cx.listener(Self::route_action::<ItemLeft>))
+            .on_action(cx.listener(Self::route_action::<ItemRight>))
+            .on_action(cx.listener(Self::route_action::<NextVar>))
+            .on_action(cx.listener(Self::route_action::<PrevVar>))
+            .on_action(cx.listener(Self::route_action::<MaximizeView>))
+            .on_action(cx.listener(Self::route_action::<MinimizeView>))
+            .on_action(cx.listener(Self::route_action::<Execute>))
+            .on_action(cx.listener(Self::route_action::<ExecuteInplace>))
+            .on_action(cx.listener(Self::route_action::<ShortcutAction>))
+            .on_action(cx.listener(Self::route_action::<Quit>))
+            .on_action(cx.listener(Self::route_action::<ToggleContext>))
+            .on_action(cx.listener(Self::route_action::<ErrorPage>))
+            .on_action(cx.listener(Self::route_action::<Back>))
+            .on_action(cx.listener(Self::route_action::<SearchBackspace>))
+            .on_action(cx.listener(Self::route_action::<Copy>))
             .on_key_down(cx.listener(Self::context_menu_binds_listener))
             .when(chrome.search_bar, |this| {
                 this.child(self.render_search_bar(theme.clone(), searching))
@@ -340,7 +360,9 @@ impl LauncherView {
             .child(body)
     }
 
-    /// Shows the current view's placeholder in the search bar. `None` falls back to the default.
+    /// Shows the current view's placeholder in the search bar (`SherlockView::placeholder`, e.g.
+    /// the Ask view's "Ask a follow-up…"); `None` falls back to the configured one. Every frame,
+    /// since it can follow the view's state; the input is only touched when it changes.
     fn sync_placeholder(&mut self, cx: &mut Context<Self>) {
         let placeholder = self.navigation.current().handle.placeholder(cx);
         if self.text_input.read(cx).placeholder_override != placeholder {
@@ -606,7 +628,7 @@ impl LauncherView {
                     handle.update(cx, move |this, cx| {
                         this.navigation.select_key(key, cx);
                         if !this.context_menu.is_open() {
-                            this.execute_listener(&Execute {}, win, cx);
+                            this.command_action(&Execute, win, cx);
                         }
                     })
                 } else {

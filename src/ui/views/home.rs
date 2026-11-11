@@ -5,9 +5,7 @@ use crate::{
     ui::{
         launcher::navigator::views::Layout,
         model::Model,
-        traits::HandleActions,
         views::{
-            Propagation,
             Query,
             QueryResult,
             ShellCtx,
@@ -28,10 +26,6 @@ impl HomeView {
             model: Model::standard_with_entity(entity, cx),
         }
     }
-}
-
-impl HandleActions for HomeView {
-    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for HomeView {

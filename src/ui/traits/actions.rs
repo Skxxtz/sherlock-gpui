@@ -36,22 +36,6 @@ macro_rules! input_actions {
             }
         }
 
-        /// An input action that knows which `HandleActions` method handles it.
-        pub trait InputAction: gpui::Action {
-            fn route<T: HandleActions>(&self, this: &mut T, window: &mut Window, cx: &mut Context<T>)
-                -> Propagation;
-        }
-
-        $(
-            impl InputAction for $action {
-                #[inline]
-                fn route<T: HandleActions>(&self, this: &mut T, window: &mut Window, cx: &mut Context<T>)
-                    -> Propagation
-                {
-                    this.$method(self, window, cx)
-                }
-            }
-        )*
 
         /// Routes every input action (and raw key downs) on `element` to `T`'s
         /// [`HandleActions`] methods; key ups are swallowed. Call it on the element that tracks

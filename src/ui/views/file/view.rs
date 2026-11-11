@@ -7,9 +7,7 @@ use crate::{
     launcher::{LauncherConfig, variant_type::LauncherType},
     ui::{
         model::Model,
-        traits::HandleActions,
         views::{
-            Propagation,
             Query,
             QueryResult,
             ShellCtx,
@@ -38,10 +36,6 @@ impl FileView {
             search: FileSearchModel::new(launcher, dir),
         }
     }
-}
-
-impl HandleActions for FileView {
-    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for FileView {

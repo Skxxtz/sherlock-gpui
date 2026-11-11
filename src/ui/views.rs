@@ -10,7 +10,6 @@ use crate::{
         components::status_bar::StatusBar,
         launcher::{LauncherView, navigator::views::Layout},
         model::{Model, ResultsChange, data::ModelData},
-        traits::HandleActions,
     },
 };
 
@@ -121,7 +120,7 @@ pub struct Background {
     pub busy: BusyStatus,
 }
 
-pub trait SherlockView: HandleActions + 'static + Sized {
+pub trait SherlockView: 'static + Sized {
     /// The data this view's model filters; `NoData` for views without items.
     type Data: ModelData;
 

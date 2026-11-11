@@ -8,14 +8,13 @@ use crate::{
     app::LauncherEntity,
     launcher::{LauncherConfig, utils::binds::Bind, variant_type::LauncherType},
     ui::{
-        commands::{self, ActionCommands, Command, Hint, Pressed},
+        commands::{self, Command, Hint, Pressed},
         components::status_bar::StatusBar,
         launcher::navigator::views::{Layout, NavView},
         model::{
             data::ModelData,
             item::{SelectionKey, ShellItem},
         },
-        traits::InputAction,
         views::{
             Background,
             Chrome,
@@ -113,9 +112,9 @@ fn item_ref<'a, V: SherlockView>(
         .map(|item| item as &dyn ShellItem)
 }
 
-/// A view's own commands, then its `HandleActions` methods (by id only, see `commands::adapter`).
-fn view_commands<V: SherlockView>() -> impl Iterator<Item = &'static Command<V>> {
-    V::commands().iter().chain(V::ACTION_COMMANDS)
+/// `V::commands()`, with `V` inferred from the entity at the call site.
+fn view_commands<V: SherlockView>() -> &'static [Command<V>] {
+    V::commands()
 }
 
 fn with_item<V: SherlockView, R>(
@@ -259,16 +258,6 @@ impl ViewHandle {
     /// Hands `query` to the view. Updates the view entity, so don't call it from inside that view.
     pub fn on_query(&self, query: &Query, cx: &mut App) -> QueryResult {
         dispatch!(self, e => e.update(cx, |v, cx| v.on_query(query, cx)))
-    }
-
-    /// Offers `action` to the view. Updates the view entity.
-    pub fn route<A: InputAction>(
-        &self,
-        action: &A,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Propagation {
-        dispatch!(self, e => e.update(cx, |v, cx| action.route(v, window, cx)))
     }
 
     /// The view's own binds (`SherlockView::binds`).

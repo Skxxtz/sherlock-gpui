@@ -15,6 +15,7 @@ use gpui::{
 use crate::{
     app::{LauncherEntityGlobal, bindings::reload_bindings},
     ui::{
+        commands::Command,
         model::data::NoData,
         views::{
             Chrome,
@@ -76,6 +77,10 @@ fn default_config() -> SherlockConfig {
 
 impl SherlockView for SettingsView {
     type Data = NoData;
+
+    fn commands() -> &'static [Command<Self>] {
+        Self::COMMANDS
+    }
 
     /// The shell's search bar (it filters the settings); everything below it is drawn here.
     fn chrome(&self) -> Chrome {

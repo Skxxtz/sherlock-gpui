@@ -3,7 +3,6 @@ use gpui::{App, Context, SharedString};
 use crate::ui::{
     actions::{Back, Copy, Execute, ExecuteInplace, ItemDown, ItemUp, NextVar, PrevVar, Quit},
     commands::{Command, Key},
-    traits::HandleActions,
     views::{
         Propagation,
         ask::{
@@ -12,10 +11,6 @@ use crate::ui::{
         },
     },
 };
-
-impl HandleActions for AskView {
-    const UNHANDLED: Propagation = Propagation::Continue;
-}
 
 const ENTER: &[Key] = &[Key::action::<Execute>()];
 const CTRL_ENTER: &[Key] = &[Key::action::<ExecuteInplace>()];

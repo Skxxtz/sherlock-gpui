@@ -18,6 +18,15 @@ pub struct Command<V> {
     pub hint: bool,
 }
 
+// Plain data (`fn` pointers, statics): copyable whatever `V` is.
+impl<V> Clone for Command<V> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<V> Copy for Command<V> {}
+
 /// `when` for commands that are always available.
 pub fn always<V>(_: &V, _: &App) -> bool {
     true
