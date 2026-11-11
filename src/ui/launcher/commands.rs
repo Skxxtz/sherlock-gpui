@@ -15,10 +15,13 @@ impl LauncherView {
     /// command took it.
     fn command(&mut self, pressed: &Pressed, win: &mut Window, cx: &mut Context<Self>) -> bool {
         let handle = self.navigation.current().handle.clone();
+        // The search bar's editing only while it has focus (not a variable input's or a page's).
+        let search_focused = self.text_input.read(cx).focus_handle.is_focused(win);
         let handled = handle.command(pressed, win, cx) == Propagation::Stop
-            || self.text_input.update(cx, |input, cx| {
-                commands::dispatch(search_bar::commands::COMMANDS, input, pressed, win, cx)
-            }) == Propagation::Stop
+            || (search_focused
+                && self.text_input.update(cx, |input, cx| {
+                    commands::dispatch(search_bar::commands::COMMANDS, input, pressed, win, cx)
+                }) == Propagation::Stop)
             || commands::dispatch(COMMANDS, self, pressed, win, cx) == Propagation::Stop;
         if handled {
             cx.notify();

@@ -15,37 +15,177 @@ use gpui::{
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::{EmptyBackspace, TextInput};
-use crate::ui::actions::search_bar::*;
+use crate::ui::{actions::search_bar::*, views::Propagation};
 
+/// `Continue` from an edit: let the action bubble on.
+fn pass(propagation: Propagation, cx: &mut Context<TextInput>) {
+    if propagation == Propagation::Continue {
+        cx.propagate();
+    }
+}
+
+// Editing. Each edit is a plain method returning `Propagation`, used by the main search bar's
+// commands (`search_bar::commands`) and by the GPUI action listeners below (variable inputs).
 impl TextInput {
-    pub(super) fn left(&mut self, _: &CursorLeft, _: &mut Window, cx: &mut Context<Self>) {
+    /// One left, or to the start of the selection. `Continue` at the start.
+    pub(super) fn cursor_left(&mut self, cx: &mut Context<Self>) -> Propagation {
         if !self.selected_range.is_empty() {
-            return self.move_to(self.selected_range.start, cx);
+            self.move_to(self.selected_range.start, cx);
+            return Propagation::Stop;
         }
         let offset = self.cursor_offset();
         if offset == 0 {
-            return cx.propagate();
+            return Propagation::Continue;
         }
         self.move_to(self.previous_boundary(offset), cx);
+        Propagation::Stop
     }
 
-    pub(super) fn right(&mut self, _: &CursorRight, _: &mut Window, cx: &mut Context<Self>) {
+    /// One right, or to the end of the selection. `Continue` at the end.
+    pub(super) fn cursor_right(&mut self, cx: &mut Context<Self>) -> Propagation {
         if !self.selected_range.is_empty() {
-            return self.move_to(self.selected_range.end, cx);
+            self.move_to(self.selected_range.end, cx);
+            return Propagation::Stop;
         }
         let offset = self.cursor_offset();
         if offset == self.content.len() {
-            return cx.propagate();
+            return Propagation::Continue;
         }
         self.move_to(self.next_boundary(offset), cx);
+        Propagation::Stop
+    }
+
+    pub(super) fn extend_left(&mut self, cx: &mut Context<Self>) -> Propagation {
+        self.select_to(self.previous_boundary(self.cursor_offset()), cx);
+        Propagation::Stop
+    }
+
+    pub(super) fn extend_right(&mut self, cx: &mut Context<Self>) -> Propagation {
+        self.select_to(self.next_boundary(self.cursor_offset()), cx);
+        Propagation::Stop
+    }
+
+    pub fn select_all(&mut self, cx: &mut Context<Self>) {
+        self.move_to(0, cx);
+        self.select_to(self.content.len(), cx)
+    }
+
+    pub(super) fn move_home(&mut self, cx: &mut Context<Self>) -> Propagation {
+        self.move_to(0, cx);
+        Propagation::Stop
+    }
+
+    pub(super) fn move_end(&mut self, cx: &mut Context<Self>) -> Propagation {
+        self.move_to(self.content.len(), cx);
+        Propagation::Stop
+    }
+
+    /// Deletes the selection or the character before the cursor. `Continue` when empty.
+    pub(super) fn delete_back(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Propagation {
+        if self.content.is_empty() {
+            return Propagation::Continue;
+        }
+        if self.selected_range.is_empty() {
+            self.select_to(self.previous_boundary(self.cursor_offset()), cx)
+        }
+        self.replace_text_in_range(None, "", window, cx);
+        Propagation::Stop
+    }
+
+    /// Deletes the selection or the character after the cursor.
+    pub(super) fn delete_forward(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Propagation {
+        if self.selected_range.is_empty() {
+            self.select_to(self.next_boundary(self.cursor_offset()), cx)
+        }
+        self.replace_text_in_range(None, "", window, cx);
+        Propagation::Stop
+    }
+
+    pub(super) fn clear(&mut self, cx: &mut Context<Self>) -> Propagation {
+        self.reset();
+        cx.notify();
+        Propagation::Stop
+    }
+
+    /// Accepts the ghost text. `Continue` without one.
+    pub(super) fn accept_ghost(&mut self, cx: &mut Context<Self>) -> Propagation {
+        let Some(ghost) = self.ghost_text.as_deref() else {
+            return Propagation::Continue;
+        };
+        let new_content = format!("{}{}", self.content, ghost);
+        if new_content.as_str() == self.content.as_str() {
+            return Propagation::Continue;
+        }
+        let new_len = new_content.len();
+        self.content = SharedString::from(new_content);
+        self.selected_range = new_len..new_len;
+        self.refresh_ghost_text();
+        cx.notify();
+        Propagation::Stop
+    }
+
+    /// Pastes the clipboard's text, newlines as spaces.
+    pub(super) fn paste_clipboard(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Propagation {
+        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+            self.replace_text_in_range(None, &text.replace("\n", " "), window, cx);
+        }
+        Propagation::Stop
+    }
+
+    /// Copies the selection. `Continue` without one.
+    pub(super) fn copy_selection(&mut self, cx: &mut Context<Self>) -> Propagation {
+        if self.selected_range.is_empty() {
+            return Propagation::Continue;
+        }
+        cx.write_to_clipboard(ClipboardItem::new_string(
+            self.content[self.selected_range.clone()].to_string(),
+        ));
+        Propagation::Stop
+    }
+
+    /// Cuts the selection.
+    pub(super) fn cut_selection(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Propagation {
+        if self.copy_selection(cx) == Propagation::Stop {
+            self.replace_text_in_range(None, "", window, cx)
+        }
+        Propagation::Stop
+    }
+}
+
+// GPUI action listeners.
+impl TextInput {
+    pub(super) fn left(&mut self, _: &CursorLeft, _: &mut Window, cx: &mut Context<Self>) {
+        let p = self.cursor_left(cx);
+        pass(p, cx);
+    }
+
+    pub(super) fn right(&mut self, _: &CursorRight, _: &mut Window, cx: &mut Context<Self>) {
+        let p = self.cursor_right(cx);
+        pass(p, cx);
     }
 
     pub(super) fn select_left(&mut self, _: &SelectLeft, _: &mut Window, cx: &mut Context<Self>) {
-        self.select_to(self.previous_boundary(self.cursor_offset()), cx);
+        self.extend_left(cx);
     }
 
     pub(super) fn select_right(&mut self, _: &SelectRight, _: &mut Window, cx: &mut Context<Self>) {
-        self.select_to(self.next_boundary(self.cursor_offset()), cx);
+        self.extend_right(cx);
     }
 
     pub(super) fn select_all_internal(
@@ -54,56 +194,27 @@ impl TextInput {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.move_to(0, cx);
-        self.select_to(self.content.len(), cx)
-    }
-
-    pub fn select_all(&mut self, cx: &mut Context<Self>) {
-        self.move_to(0, cx);
-        {}
-        self.select_to(self.content.len(), cx)
+        self.select_all(cx);
     }
 
     pub(super) fn home(&mut self, _: &Home, _: &mut Window, cx: &mut Context<Self>) {
-        self.move_to(0, cx);
+        self.move_home(cx);
     }
 
     pub(super) fn end(&mut self, _: &End, _: &mut Window, cx: &mut Context<Self>) {
-        self.move_to(self.content.len(), cx);
+        self.move_end(cx);
     }
 
+    /// In an empty input: `EmptyBackspace`, the launcher turns it into `Back`.
     pub(super) fn backspace(&mut self, _: &Backspace, window: &mut Window, cx: &mut Context<Self>) {
-        if self.content.is_empty() {
+        if self.delete_back(window, cx) == Propagation::Continue {
             cx.emit(EmptyBackspace);
-            return;
         }
-
-        if self.selected_range.is_empty() {
-            self.select_to(self.previous_boundary(self.cursor_offset()), cx)
-        }
-        self.replace_text_in_range(None, "", window, cx);
     }
 
     pub(super) fn complete(&mut self, _: &Complete, _win: &mut Window, cx: &mut Context<Self>) {
-        if let Some(ghost) = self.ghost_text.as_deref() {
-            let new_content = format!("{}{}", self.content, ghost);
-            let new_len = new_content.len();
-
-            // if the content is the same, return and propagate
-            if new_content.as_str() == self.content.as_str() {
-                cx.propagate();
-                return;
-            }
-
-            self.content = SharedString::from(new_content);
-            self.selected_range = new_len..new_len;
-            self.refresh_ghost_text();
-
-            cx.notify();
-            cx.stop_propagation();
-        } else {
-            cx.propagate();
-        }
+        let p = self.accept_ghost(cx);
+        pass(p, cx);
     }
 
     pub(super) fn delete(
@@ -112,19 +223,16 @@ impl TextInput {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.selected_range.is_empty() {
-            self.select_to(self.next_boundary(self.cursor_offset()), cx)
-        }
-        self.replace_text_in_range(None, "", window, cx)
+        self.delete_forward(window, cx);
     }
+
     pub(super) fn delete_all(
         &mut self,
         _: &DeleteAll,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.reset();
-        cx.notify();
+        self.clear(cx);
     }
 
     pub(super) fn on_mouse_down(
@@ -172,27 +280,16 @@ impl TextInput {
     }
 
     pub(super) fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
-        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-            self.replace_text_in_range(None, &text.replace("\n", " "), window, cx);
-        }
+        self.paste_clipboard(window, cx);
     }
 
     pub(super) fn copy(&mut self, _: &Copy, _: &mut Window, cx: &mut Context<Self>) {
-        if !self.selected_range.is_empty() {
-            cx.write_to_clipboard(ClipboardItem::new_string(
-                self.content[self.selected_range.clone()].to_string(),
-            ));
-        } else {
-            cx.propagate();
-        }
+        let p = self.copy_selection(cx);
+        pass(p, cx);
     }
+
     pub(super) fn cut(&mut self, _: &Cut, window: &mut Window, cx: &mut Context<Self>) {
-        if !self.selected_range.is_empty() {
-            cx.write_to_clipboard(ClipboardItem::new_string(
-                self.content[self.selected_range.clone()].to_string(),
-            ));
-            self.replace_text_in_range(None, "", window, cx)
-        }
+        self.cut_selection(window, cx);
     }
 
     pub(super) fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
