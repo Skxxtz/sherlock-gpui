@@ -9,7 +9,7 @@ use crate::{
     loader::{Loader, RawLaunchers},
     ui::{launcher::LauncherMode, widgets::ChildKind},
     utils::{
-        config::{ConfigGuard, SherlockAlias},
+        config::{AppearanceDefaults, ConfigAppearance, ConfigGuard, SherlockAlias},
         errors::SherlockMessage,
     },
 };
@@ -97,6 +97,9 @@ fn finish(
         }
     }
 
+    let placeholder = ConfigGuard::read_with(|c| c.appearance.placeholder.clone())
+        .unwrap_or(AppearanceDefaults::placeholder());
+
     // Reload launchers
     let modes =
         raw.and_then(
@@ -108,6 +111,8 @@ fn finish(
                         .and_then(|g| g.0.upgrade())
                     {
                         view.update(cx, |view, cx| {
+                            view.text_input
+                                .update(cx, |this, _| this.placeholder = placeholder);
                             view.modes = result.modes.clone();
                             cx.notify();
                         });
