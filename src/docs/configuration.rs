@@ -14,7 +14,10 @@ use md_rs::{
 };
 
 use crate::{
-    docs::book::{BookEntry, BookEntryBuilder, TopLevelEntry},
+    docs::{
+        book::{BookEntry, BookEntryBuilder, TopLevelEntry},
+        commands::Commands,
+    },
     launcher::LauncherConfig,
     ui::runtime_arguments::RuntimeArgument,
 };
@@ -47,6 +50,7 @@ impl TopLevelEntry for Configuration {
                 .title("Runtime Arguments")
                 .file("runtime_arguments.md")
                 .build(),
+            BookEntry::from(Commands),
         ]
         .into_iter()
     }

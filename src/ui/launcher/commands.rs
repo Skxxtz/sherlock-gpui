@@ -223,7 +223,7 @@ pub const COMMANDS: &[Command<LauncherView>] = &[
     ),
     cmd(
         "launcher.page_back",
-        "back",
+        "back (page without a search bar)",
         &[Key::action::<SearchBackspace>()],
         |l, cx| !l.navigation.current().handle.chrome(cx).search_bar,
         |l, win, cx| done(|| l.go_back(win, cx)),
@@ -254,6 +254,13 @@ pub const COMMANDS: &[Command<LauncherView>] = &[
 ];
 
 impl LauncherView {
+    /// The context menu's commands (for the docs).
+    #[cfg(feature = "docs")]
+    pub(crate) const MENU_COMMANDS: &'static [Command<Self>] = MENU;
+    /// The launcher's own commands (for the docs).
+    #[cfg(feature = "docs")]
+    pub(crate) const DEFAULT_COMMANDS: &'static [Command<Self>] = COMMANDS;
+
     /// Offers a keystroke or action to the layers: context menu → view → search bar →
     /// launcher. `true`: a command took it.
     fn command(&mut self, pressed: &Pressed, win: &mut Window, cx: &mut Context<Self>) -> bool {

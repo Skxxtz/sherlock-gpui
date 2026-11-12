@@ -48,8 +48,10 @@ mod docs {
         display_name,
         docs::{
             Documentation,
+            commands::launcher_commands,
             launcher::{Example, LauncherDocEntry},
         },
+        ui::views::settings::SettingsView,
         variant_name,
     };
 
@@ -74,6 +76,7 @@ mod docs {
                     }"#
                     },
                 }],
+                commands: Some(launcher_commands::<SettingsView>),
                 ..LauncherDocEntry::new()
             }
         }

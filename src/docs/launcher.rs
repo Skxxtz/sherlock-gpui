@@ -160,6 +160,8 @@ pub struct LauncherDocEntry {
     pub args_explanations: &'static [fn() -> Raw],
     pub inner_functions: &'static [InnerFunctionDoc],
     pub examples: &'static [Example],
+    /// The launcher's view's commands, e.g. `Some(launcher_commands::<AskView>)`.
+    pub commands: Option<fn() -> Container>,
     pub hidden: bool,
 }
 
@@ -174,6 +176,7 @@ impl LauncherDocEntry {
             args_explanations: &[],
             inner_functions: &[],
             examples: &[],
+            commands: None,
             hidden: false,
         }
     }
@@ -239,6 +242,7 @@ impl From<&LauncherDocEntry> for Container {
             this.child(h3("Inner Functions"))
                 .child(function_table(value.inner_functions))
         })
+        .when_some(value.commands, |this, commands| this.child(commands()))
         .when(!value.examples.is_empty(), |this| {
             this.child(h3("Examples"))
                 .children(value.examples.iter().map(|ex| {

@@ -24,6 +24,7 @@ use crate::{
 };
 
 pub mod book;
+pub mod commands;
 mod configuration;
 mod contributing;
 mod installation;
@@ -46,7 +47,7 @@ pub trait Documentation {
     }
 
     /// `docs()` embedded in another page: registers `Self` there, so `link_to::<Self>` lands
-    /// on this section.
+    /// on this section (its first heading's id). Use it instead of `docs()` when composing.
     fn section() -> Container
     where
         Self: Sized + 'static,
@@ -58,6 +59,7 @@ pub trait Documentation {
 
 /// Everything rendered, links resolved.
 pub struct SherlockDocumentation {
+    /// `(file, markdown)`; pages without a file aren't written.
     pages: Vec<(Option<&'static str>, String)>,
     summary: String,
     readme: String,
@@ -102,7 +104,10 @@ impl SherlockDocumentation {
         } else {
             missing.sort_unstable();
             missing.dedup();
-            Err(format!("links to undocumented types: {}", missing.join(", ")))
+            Err(format!(
+                "links to undocumented types: {}",
+                missing.join(", ")
+            ))
         }
     }
 
@@ -132,7 +137,11 @@ impl SherlockDocumentation {
             )
         };
         std::fs::write(book_dir.join("SUMMARY.md"), &docs.summary).map_err(write_err)?;
-        for (file, text) in docs.pages.iter().filter_map(|(f, t)| Some((f.as_ref()?, t))) {
+        for (file, text) in docs
+            .pages
+            .iter()
+            .filter_map(|(f, t)| Some((f.as_ref()?, t)))
+        {
             std::fs::write(book_dir.join(file), text).map_err(write_err)?;
         }
 

@@ -1,3 +1,11 @@
+//! Links between pages, resolved after everything is rendered.
+//!
+//! While the docs render, every book page registers its own type for its file, and
+//! `Documentation::section` registers the embedded type on the page being rendered, at its
+//! first heading (mdBook gives every heading an id). `link_to::<T>` only writes a placeholder.
+//! Once all pages are rendered, `resolve` turns each placeholder into `file.md#heading`. No
+//! list of "what's on which page" to keep up, nothing extra in the output.
+
 use std::{
     any::{TypeId, type_name},
     cell::RefCell,
@@ -19,10 +27,17 @@ thread_local! {
 struct Scope {
     /// The book page being rendered; `None` outside the book (README, CONTRIBUTING).
     page: Option<&'static str>,
-    /// Where each type is documented.
-    targets: HashMap<TypeId, Target>,
-    /// Placeholder id → type, to resolve and to name it in errors.
-    refs: HashMap<u64, (TypeId, &'static str)>,
+    /// Where each type or named item is documented.
+    targets: HashMap<Ref, Target>,
+    /// Placeholder id → what it links to, and its name for errors.
+    refs: HashMap<u64, (Ref, &'static str)>,
+}
+
+/// Something a link can point at: a documented type, or a named item on a page (a command).
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Ref {
+    Type(TypeId),
+    Name(&'static str),
 }
 
 struct Target {
@@ -32,12 +47,25 @@ struct Target {
 
 /// Markdown link to where `T` is documented. Resolved when the book is written.
 pub fn link_to<T: 'static>(text: impl Into<std::borrow::Cow<'static, str>>) -> Span {
-    let id = ref_id(TypeId::of::<T>());
-    SCOPE.with_borrow_mut(|s| s.refs.insert(id, (TypeId::of::<T>(), type_name::<T>())));
+    placeholder(Ref::Type(TypeId::of::<T>()), type_name::<T>(), text)
+}
+
+/// Markdown link to the item registered as `name` (`register_name_here`), e.g. a command id.
+pub fn link_to_name(name: &'static str, text: impl Into<std::borrow::Cow<'static, str>>) -> Span {
+    placeholder(Ref::Name(name), name, text)
+}
+
+fn placeholder(
+    target: Ref,
+    name: &'static str,
+    text: impl Into<std::borrow::Cow<'static, str>>,
+) -> Span {
+    let id = ref_id(target);
+    SCOPE.with_borrow_mut(|s| s.refs.insert(id, (target, name)));
     link(text, format!("{REF}{id:016x}"))
 }
 
-/// Starts a fresh render. Forgets every page, anchor and link.
+/// Starts a fresh render: forgets every page, anchor and link.
 pub(super) fn reset() {
     SCOPE.with_borrow_mut(|s| *s = Scope::default());
 }
@@ -45,7 +73,8 @@ pub(super) fn reset() {
 /// `id` is the page `file` itself. Wins over sections that embed the same type.
 pub(super) fn register_page(id: TypeId, file: &'static str) {
     SCOPE.with_borrow_mut(|s| {
-        s.targets.insert(id, Target { file, anchor: None });
+        s.targets
+            .insert(Ref::Type(id), Target { file, anchor: None });
     });
 }
 
@@ -57,10 +86,11 @@ pub(super) fn in_page<R>(file: &'static str, render: impl FnOnce() -> R) -> R {
     out
 }
 
-/// Registers `T` as documented on the current page, at the first heading of its `markdown`. Does
-/// nothing outside the book, or if `T` is registered already.
+/// Registers `T` as documented on the current page, at the first heading of its `markdown`
+/// (only rendered when needed). Does nothing outside the book, or if `T` is registered already
+/// (the first place wins; a page registered with `register_page` always does).
 pub(super) fn register_here<T: 'static>(markdown: impl FnOnce() -> String) {
-    let id = TypeId::of::<T>();
+    let id = Ref::Type(TypeId::of::<T>());
     let Some(page) = SCOPE.with_borrow(|s| s.page.filter(|_| !s.targets.contains_key(&id))) else {
         return;
     };
@@ -71,8 +101,21 @@ pub(super) fn register_here<T: 'static>(markdown: impl FnOnce() -> String) {
     });
 }
 
-/// Replaces every placeholder in `text` with its target, `prefix` before the file. `Err`: the types
-/// linked to but documented nowhere.
+/// Registers `name` on the current page at the heading `heading` (markdown, `### …`), for
+/// `link_to_name`. Does nothing outside the book; the first registration wins.
+pub(super) fn register_name_here(name: &'static str, heading: &str) {
+    SCOPE.with_borrow_mut(|s| {
+        if let Some(file) = s.page {
+            s.targets.entry(Ref::Name(name)).or_insert(Target {
+                file,
+                anchor: heading_id(heading),
+            });
+        }
+    });
+}
+
+/// Replaces every placeholder in `text` with its target, `prefix` before the file (for
+/// output outside the book: `docs/src/`). `Err`: the types linked to but documented nowhere.
 pub(super) fn resolve(text: &str, prefix: &str) -> Result<String, Vec<&'static str>> {
     SCOPE.with_borrow(|s| {
         let mut out = String::with_capacity(text.len());
@@ -84,7 +127,7 @@ pub(super) fn resolve(text: &str, prefix: &str) -> Result<String, Vec<&'static s
             let target = u64::from_str_radix(&token[REF.len()..], 16)
                 .ok()
                 .and_then(|id| s.refs.get(&id))
-                .map(|&(ty, name)| (s.targets.get(&ty), name));
+                .map(|&(target, name)| (s.targets.get(&target), name));
             match target {
                 Some((Some(t), _)) => {
                     out.push_str(prefix);
@@ -98,6 +141,7 @@ pub(super) fn resolve(text: &str, prefix: &str) -> Result<String, Vec<&'static s
                     missing.push(name);
                     out.push('#');
                 }
+                // not one of ours: keep as written
                 None => out.push_str(token),
             }
             rest = &rest[at + token.len()..];
@@ -113,14 +157,14 @@ pub(super) fn resolve(text: &str, prefix: &str) -> Result<String, Vec<&'static s
     })
 }
 
-fn ref_id(id: TypeId) -> u64 {
+fn ref_id(id: Ref) -> u64 {
     let mut h = DefaultHasher::new();
     id.hash(&mut h);
     h.finish()
 }
 
 /// The id mdBook gives the first heading in `markdown`: its text, lowercased, spaces as `-`,
-/// other punctuation dropped. `None` without a heading.
+/// other punctuation dropped. `None` without a heading (links then go to the page).
 fn heading_id(markdown: &str) -> Option<String> {
     let line = markdown
         .lines()
@@ -178,6 +222,17 @@ mod tests {
         register_here::<Nowhere>(|| unreachable!());
 
         assert_eq!(resolve(&missing, "").unwrap_err(), [type_name::<Nowhere>()]);
+
+        in_page("cmds.md", || {
+            register_name_here("ask.new_chat", "### `ask.new_chat`")
+        });
+        let named = render(link_to_name("ask.new_chat", "new chat"));
+        assert_eq!(
+            resolve(&named, "").unwrap(),
+            "[new chat](cmds.md#asknew_chat)"
+        );
+        let typo = render(link_to_name("ask.new_caht", "x"));
+        assert_eq!(resolve(&typo, "").unwrap_err(), ["ask.new_caht"]);
         let ok = format!(
             "{} {}",
             render(link_to::<OnPage>("a")),
