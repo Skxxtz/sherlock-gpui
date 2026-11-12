@@ -434,13 +434,14 @@ impl LauncherView {
         win: &Window,
         cx: &mut Context<Self>,
     ) -> Vec<Div> {
-        let handle = &self.navigation.current().handle;
-        let binds = handle.binds(cx);
-        handle
+        let binds: Vec<_> = self.command_binds(cx).collect();
+        self.navigation
+            .current()
+            .handle
             .hints(cx)
             .into_iter()
             .filter_map(|hint| {
-                let caps = hint_caps(&hint, binds.as_deref(), win)?;
+                let caps = hint_caps(&hint, &binds, win)?;
                 let id = hint.id;
                 Some(
                     status_bar::keys(caps, hint.label, theme)
@@ -768,10 +769,10 @@ fn action_caps(action: &dyn gpui::Action, win: &Window) -> Option<Vec<SharedStri
 /// A hint's caps. `None`: no key reaches it, the hint is hidden.
 fn hint_caps(
     hint: &Hint,
-    binds: Option<&[crate::launcher::utils::binds::Bind]>,
+    binds: &[Arc<[crate::launcher::utils::binds::Bind]>],
     win: &Window,
 ) -> Option<Vec<SharedString>> {
-    let bound = binds.into_iter().flatten().find(|b| {
+    let bound = binds.iter().flat_map(|b| b.iter()).find(|b| {
         b.callback
             .split(';')
             .any(|name| commands::named(hint.id, name.trim()))

@@ -5,8 +5,12 @@ use simd_json::prelude::{ArrayTrait, Indexed};
 use smallvec::SmallVec;
 
 use crate::{
-    app::{RetainedLauncher, reset_generation},
-    launcher::{LauncherValues, utils::exec_mode::ExecMode, variant_type::QuickActionCapabilities},
+    app::{RetainedLauncher, bindings::CommandBinds, reset_generation},
+    launcher::{
+        LauncherValues,
+        utils::{binds::Bind, exec_mode::ExecMode},
+        variant_type::QuickActionCapabilities,
+    },
     sherlock_msg,
     ui::{
         actions::launcher::*,
@@ -177,26 +181,28 @@ impl LauncherView {
 
 // Binds. Keys and actions go through the command layers (`launcher::commands`).
 impl LauncherView {
-    /// The current view's binds (Ask: `"ctrl-n" → "new_chat"`): runs the bound command chain.
-    /// `Continue` only if the chain says `continue`.
+    /// Binds that run commands, first match wins: the current view's (its launcher's `binds`,
+    /// Ask: `"ctrl-n" → "new_chat"`), then `[commands]` from the config.
+    pub(super) fn command_binds(&self, cx: &App) -> impl Iterator<Item = Arc<[Bind]>> {
+        let view = self.navigation.current().handle.binds(cx);
+        let global = cx.try_global::<CommandBinds>().map(|b| b.0.clone());
+        view.into_iter().chain(global)
+    }
+
+    /// Runs the command chain bound to `key` (`command_binds`). `Continue` only if the chain
+    /// says `continue`, or nothing is bound.
     fn view_bind(
         &mut self,
         key: &Keystroke,
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> Propagation {
-        let Some(chain) = self
-            .navigation
-            .current()
-            .handle
-            .binds(cx)
-            .and_then(|binds| {
-                binds
-                    .iter()
-                    .find(|b| b.matches(key))
-                    .map(|b| b.callback.clone())
-            })
-        else {
+        let Some(chain) = self.command_binds(cx).find_map(|binds| {
+            binds
+                .iter()
+                .find(|b| b.matches(key))
+                .map(|b| b.callback.clone())
+        }) else {
             return Propagation::Continue;
         };
         self.run_commands(&chain, win, cx);
@@ -247,7 +253,7 @@ impl LauncherView {
         win: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        // 1. The active view's binds (Ask: stop, new_chat, …): user config wins over defaults.
+        // 1. Binds to commands (the view's, then `[commands]`): user config wins over defaults.
         match self.view_bind(key, win, cx) {
             Propagation::Stop => return true,
             Propagation::Continue => {}

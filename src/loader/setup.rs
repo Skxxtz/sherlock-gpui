@@ -56,6 +56,15 @@ impl Loader {
             }
         };
 
+        // `[commands]` entries that can't be bound
+        for e in config.commands.binds().1 {
+            messages.push(sherlock_msg!(
+                Warning,
+                SherlockErrorType::ConfigError(e),
+                ""
+            ));
+        }
+
         let _ = ICONS.set(RwLock::new(CustomIconTheme::new()));
         config.appearance.icon_paths.iter().for_each(|path| {
             if let Err(e) = IconThemeGuard::add_path(path) {

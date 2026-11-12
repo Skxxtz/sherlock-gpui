@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use gpui::{App, AsKeystroke, Global, KeyBinding, Keystroke, Modifiers};
 use smallvec::SmallVec;
 
 use crate::{
     SHORTCUT_MOD,
+    launcher::utils::binds::Bind,
     ui::{
         actions::{ShortcutAction, UIFunction},
         launcher::context_menu::action_keys::ContextActionBinds,
@@ -12,6 +15,11 @@ use crate::{
 
 pub struct ReservedKeys(pub Vec<ContextActionBinds>);
 impl Global for ReservedKeys {}
+
+/// `[commands]` from the config: keys that run commands in every view.
+#[derive(Default)]
+pub struct CommandBinds(pub Arc<[Bind]>);
+impl Global for CommandBinds {}
 
 /// `"variable.tab"` → `(Some("variable"), "tab")`; `"ctrl-n"` → `(None, "ctrl-n")`.
 pub fn split_scope(key: &str) -> (Option<&str>, &str) {
@@ -29,6 +37,9 @@ pub fn reload_bindings(cx: &mut App) {
 }
 
 pub(super) fn register_bindings(cx: &mut App) {
+    let command_binds = ConfigGuard::read_with(|c| c.commands.binds().0).unwrap_or_default();
+    cx.set_global(CommandBinds(command_binds.into()));
+
     // one config read: the binds and the symbols for the shortcut modifiers
     let (binds, mod_symbols) =
         ConfigGuard::read_with(|c| (c.keybinds.effective(), c.appearance.mod_key_ascii))
