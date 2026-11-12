@@ -170,8 +170,15 @@ fn ids_are_config_keys() {
         .enumerate()
     {
         if def.id.starts_with("keybinds.") {
-            let chord = format!("ctrl-alt-{i}").into();
-            (def.set)(&mut config, &SettingValue::Keybind(vec![chord]));
+            let value = match (def.get)(&config, def.meta) {
+                // the shortcut modifier: any choice but the built-in one
+                SettingValue::Choice { options, .. } => SettingValue::Choice {
+                    options,
+                    selected: 1,
+                },
+                _ => SettingValue::Keybind(vec![format!("ctrl-alt-{i}").into()]),
+            };
+            (def.set)(&mut config, &value);
         }
     }
     let file = toml::Value::try_from(&config).expect("config serializes");
@@ -446,4 +453,42 @@ fn only_changed_keys_are_written() {
         (down.get)(&config, Meta::None),
         SettingValue::Keybind(vec!["down".into()])
     );
+}
+
+/// "Run n-th result" writes only the difference from the built-in `ctrl-<digit>`.
+#[test]
+fn shortcut_modifier_writes_the_difference() {
+    let mut config = default_config();
+    let row = keybind_def("keybinds.shortcut");
+    let choose = |config: &mut crate::utils::config::SherlockConfig, option: &str| {
+        let SettingValue::Choice { options, .. } = (row.get)(config, row.meta) else {
+            panic!("a choice");
+        };
+        let selected = options.iter().position(|&o| o == option).unwrap();
+        (row.set)(config, &SettingValue::Choice { options, selected });
+    };
+    let selected = |config: &crate::utils::config::SherlockConfig| match (row.get)(config, row.meta)
+    {
+        SettingValue::Choice { options, selected } => options[selected],
+        _ => panic!("a choice"),
+    };
+    assert_eq!(selected(&config), "ctrl");
+
+    choose(&mut config, "alt");
+    assert_eq!(
+        config.keybinds.0.get("alt-<digit>"),
+        Some(&UIFunction::Shortcut)
+    );
+    assert_eq!(
+        config.keybinds.0.get("ctrl-<digit>"),
+        Some(&UIFunction::Unbind)
+    );
+    assert_eq!(selected(&config), "alt");
+
+    choose(&mut config, "off");
+    assert_eq!(config.keybinds.0.len(), 1, "{:?}", config.keybinds.0);
+    assert_eq!(selected(&config), "off");
+
+    choose(&mut config, "ctrl");
+    assert!(config.keybinds.0.is_empty(), "{:?}", config.keybinds.0);
 }

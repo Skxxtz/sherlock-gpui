@@ -50,6 +50,8 @@ pub(super) fn register_bindings(cx: &mut App) {
                 )
             });
 
+    // set again below if shortcut keys are still bound
+    ShortcutKeyMod::clear();
     let mut bindings: Vec<KeyBinding> = Vec::with_capacity(binds.len() + 8);
     for (key, function) in &binds {
         let (scope, keys) = split_scope(key);
@@ -96,18 +98,46 @@ pub struct ShortcutKeyMod {
 }
 
 impl ShortcutKeyMod {
-    /// Stores the symbols for `mods`; `symbols` are ⌘, ^, ⌥, ⇧ (from the config). Set once:
-    /// later calls are ignored.
+    /// Stores the symbols for `mods`; `symbols` are ⌘, ^, ⌥, ⇧ (from the config).
     fn set(mods: &Modifiers, symbols: &[char; 4]) {
         let buf = [mods.platform, mods.control, mods.alt, mods.shift]
             .into_iter()
             .zip(symbols)
             .filter_map(|(held, &symbol)| held.then_some(symbol))
             .collect();
-        let _ = SHORTCUT_MOD.set(Self { buf });
+        if let Ok(mut current) = SHORTCUT_MOD.write() {
+            *current = Some(Self { buf });
+        }
     }
 
-    pub fn get() -> Option<&'static SmallVec<[char; 4]>> {
-        SHORTCUT_MOD.get().map(|m| &m.buf)
+    /// No shortcut keys bound (`"ctrl-<digit>" = "unbind"`).
+    fn clear() {
+        if let Ok(mut current) = SHORTCUT_MOD.write() {
+            *current = None;
+        }
+    }
+
+    /// The symbols, or `None` while no shortcut keys are bound (then results show no badges).
+    pub fn get() -> Option<SmallVec<[char; 4]>> {
+        SHORTCUT_MOD.read().ok()?.as_ref().map(|m| m.buf.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The symbols follow the keymap: replaced on every registration, gone when unbound.
+    #[test]
+    fn shortcut_symbols_follow_the_keymap() {
+        let symbols = ['⌘', '^', '⎇', '⇧'];
+        ShortcutKeyMod::set(&shortcut_modifiers("ctrl-<digit>").unwrap(), &symbols);
+        assert_eq!(ShortcutKeyMod::get().as_deref(), Some(&['^'][..]));
+
+        ShortcutKeyMod::set(&shortcut_modifiers("alt-<digit>").unwrap(), &symbols);
+        assert_eq!(ShortcutKeyMod::get().as_deref(), Some(&['⎇'][..]));
+
+        ShortcutKeyMod::clear();
+        assert_eq!(ShortcutKeyMod::get(), None);
     }
 }

@@ -188,6 +188,66 @@ fn set_keybind_chords(
     }
 }
 
+/// The modifiers "Run n-th result" offers (`<modifier>-<digit>`), and turning it off.
+const SHORTCUT_MODS: &[&str] = &["ctrl", "alt", "super", "ctrl-shift", "ctrl-alt", "off"];
+/// The built-in shortcut keys, as `[keybinds]` writes them.
+const SHORTCUT_DEFAULT: &str = "ctrl-<digit>";
+
+/// "Run n-th result": `<modifier>-<digit>` runs the n-th result.
+fn shortcut_row() -> SettingDef {
+    SettingDef {
+        id: "keybinds.shortcut",
+        group: "actions",
+        label: "Run n-th result",
+        description: "This modifier and 1–9 run that result.",
+        meta: Meta::choices(SHORTCUT_MODS),
+        get: shortcut_choice,
+        set: set_shortcut,
+    }
+}
+
+/// The modifier of the shortcut keys now, or "off".
+fn shortcut_choice(config: &SherlockConfig, _: Meta) -> SettingValue {
+    let modifier = config
+        .keybinds
+        .effective()
+        .into_iter()
+        .find(|(_, f)| *f == UIFunction::Shortcut)
+        .and_then(|(key, _)| key.strip_suffix("-<digit>").map(str::to_string));
+    let off = SHORTCUT_MODS.len() - 1;
+    SettingValue::Choice {
+        options: SHORTCUT_MODS,
+        selected: modifier
+            .and_then(|m| SHORTCUT_MODS.iter().position(|&o| o == m))
+            .unwrap_or(off),
+    }
+}
+
+/// Writes the difference from the built-in `ctrl-<digit>`: nothing for "ctrl", an unbind for
+/// "off".
+fn set_shortcut(config: &mut SherlockConfig, value: &SettingValue) {
+    let SettingValue::Choice { options, selected } = value else {
+        return;
+    };
+    let Some(&choice) = options.get(*selected) else {
+        return;
+    };
+    let binds = &mut config.keybinds.0;
+    binds.retain(|key, f| {
+        *f != UIFunction::Shortcut && !(*f == UIFunction::Unbind && key == SHORTCUT_DEFAULT)
+    });
+    match choice {
+        "ctrl" => {}
+        "off" => {
+            binds.insert(SHORTCUT_DEFAULT.into(), UIFunction::Unbind);
+        }
+        modifier => {
+            binds.insert(format!("{modifier}-<digit>"), UIFunction::Shortcut);
+            binds.insert(SHORTCUT_DEFAULT.into(), UIFunction::Unbind);
+        }
+    }
+}
+
 /// Everything the settings page shows, in order.
 pub(super) fn sections() -> Vec<SectionDef> {
     vec![
@@ -233,6 +293,10 @@ pub(super) fn sections() -> Vec<SectionDef> {
                 keybind!("actions", execute_inplace: ExecuteInplace, "Run in place", "Run without closing the launcher."),
                 keybind!("actions", toggle_context: ToggleContext, "Context menu", "Open actions for the selected item."),
                 keybind!("actions", quit: Quit, "Quit", "Close the launcher."),
+                shortcut_row(),
+                keybind!("actions", error_page: ErrorPage, "Messages", "Show Sherlock's warnings and errors."),
+                keybind!("actions", minimize_view: MinimizeView, "Minimize view", "Put the current view aside; it keeps running."),
+                keybind!("actions", maximize_view: MaximizeView, "Restore view", "Bring a minimized view back."),
                 keybind!("arguments", next_var: NextVar, "Next argument", "Move to the next argument field."),
                 keybind!("arguments", prev_var: PrevVar, "Previous argument", "Move to the previous argument field."),
                 keybind!("arguments", complete: Complete in "variable", "Complete argument", "Complete a runtime variable if possible."),
@@ -242,6 +306,8 @@ pub(super) fn sections() -> Vec<SectionDef> {
                 keybind!("editing", select_all: SelectAll, "Select all", "Select the whole search text."),
                 keybind!("editing", cursor_left: CursorLeft in "search_bar", "Caret left", "Move the caret one character left."),
                 keybind!("editing", cursor_right: CursorRight in "search_bar", "Caret right", "Move the caret one character right."),
+                keybind!("editing", select_left: SelectLeft in "search_bar", "Select left", "Extend the selection one character left."),
+                keybind!("editing", select_right: SelectRight in "search_bar", "Select right", "Extend the selection one character right."),
                 keybind!("editing", home: Home, "Start of line", "Move the caret to the start."),
                 keybind!("editing", end: End, "End of line", "Move the caret to the end."),
                 keybind!("clipboard", copy: Copy, "Copy", "Copy the selected text."),

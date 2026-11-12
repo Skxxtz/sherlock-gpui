@@ -606,8 +606,11 @@ impl LauncherView {
         borderless: bool,
         content: AnyElement,
     ) -> AnyElement {
-        let shortcut_idx = row.shortcut;
         let selected = row.selected;
+
+        let shortcut_mod = ShortcutKeyMod::get();
+        let shortcut_idx = row.shortcut.filter(|_| shortcut_mod.is_some());
+
         let key = row.key;
         let theme = row.theme.clone();
         let handle = row.shell.clone();
@@ -680,20 +683,15 @@ impl LauncherView {
                                                 .child(div().child("↵").relative().top(px(1.)))
                                         })
                                         .when(!selected, |this| {
-                                            this.children(
-                                                ShortcutKeyMod::get()
-                                                    .map(|mods| {
-                                                        mods.iter().map(|c| {
-                                                            div()
-                                                                .flex()
-                                                                .justify_center()
-                                                                .min_w(px(10.))
-                                                                .child(c.to_string())
-                                                        })
-                                                    })
-                                                    .into_iter()
-                                                    .flatten(),
-                                            )
+                                            this.children(shortcut_mod.into_iter().flatten().map(
+                                                |c| {
+                                                    div()
+                                                        .flex()
+                                                        .justify_center()
+                                                        .min_w(px(10.))
+                                                        .child(c.to_string())
+                                                },
+                                            ))
                                             .child(
                                                 div()
                                                     .flex()

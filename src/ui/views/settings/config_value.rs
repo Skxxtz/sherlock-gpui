@@ -12,8 +12,7 @@ pub(crate) enum Meta {
         max: i64,
         step: i64,
     },
-    /// For strings with a fixed set of values.
-    #[allow(dead_code)] // no config string has a fixed set of values yet
+    /// For values with a fixed set of choices.
     Choices(&'static [&'static str]),
 }
 
@@ -27,7 +26,6 @@ impl Meta {
         Self::Range { min, max, step }
     }
 
-    #[allow(dead_code)] // see `Choices`
     pub(crate) const fn choices(options: &'static [&'static str]) -> Self {
         Self::Choices(options)
     }

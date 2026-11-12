@@ -34,8 +34,9 @@ static ICONS: OnceLock<RwLock<CustomIconTheme>> = OnceLock::new();
 static CONFIG: OnceLock<RwLock<SherlockConfig>> = OnceLock::new();
 /// Holds the string used to show and hide the context menu.
 static CONTEXT_MENU_BIND: OnceLock<String> = OnceLock::new();
-/// Holds the modifier key char
-static SHORTCUT_MOD: OnceLock<ShortcutKeyMod> = OnceLock::new();
+/// The modifier symbols of the shortcut keys (`⌃` for `ctrl-<digit>`); `None` while no shortcut
+/// keys are bound.
+static SHORTCUT_MOD: RwLock<Option<ShortcutKeyMod>> = RwLock::new(None);
 /// Holds the socket location for the sherlock socket
 static SOCKET_PATH: &str = "/tmp/sherlock.sock";
 /// Holds a limited number of executions to provide better predicion for search queries

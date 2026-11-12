@@ -266,7 +266,7 @@ impl SettingsView {
 
     /// A finished edit (clicks, Enter, editors): [`Self::edit`], then saves the config file.
     fn apply(&mut self, id: &'static str, edit: Edit, cx: &mut Context<Self>) {
-        let refresh_binds = matches!(edit, Edit::SetChords(_));
+        let refresh_binds = matches!(edit, Edit::SetChords(_)) || id == "keybinds.shortcut";
         self.edit(id, edit, cx);
         self.save(cx, refresh_binds);
     }
