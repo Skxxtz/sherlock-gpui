@@ -6,7 +6,7 @@ use crate::ui::{
         launcher::{Execute, ExecuteInplace, ItemLeft, ItemRight, Quit},
         search_bar::{Backspace, Copy, Cut, DeleteAll, DeleteForward, End, Home, Paste},
     },
-    traits::HandleActions,
+    commands::{Command, ComponentCommands, Key},
     views::Propagation,
 };
 
@@ -38,82 +38,117 @@ impl TinyInput {
     }
 }
 
-impl HandleActions for TinyInput {
+/// Clears the text
+fn clear(t: &mut TinyInput, cx: &mut Context<TinyInput>) -> Propagation {
+    let changed = !t.text.is_empty();
+    t.text.clear();
+    t.cursor = 0;
+    t.edited(changed, cx)
+}
+
+impl ComponentCommands for TinyInput {
     /// Nested in an owner: what the field doesn't use (↑↓, ctrl-l, …) goes to it.
     const UNHANDLED: Propagation = Propagation::Continue;
 
-    fn copy(&mut self, _: &Copy, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.copy_to_clipboard(cx);
-        Propagation::Stop
-    }
-    fn cut(&mut self, _: &Cut, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.copy_to_clipboard(cx);
-        let changed = !self.text.is_empty();
-        self.text.clear();
-        self.cursor = 0;
-        self.edited(changed, cx)
-    }
-    fn paste(&mut self, _: &Paste, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.paste_clipboard(cx); // emits + notifies itself
-        Propagation::Stop
-    }
-
-    fn backspace(&mut self, _: &Backspace, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        let changed = self.delete_back();
-        self.edited(changed, cx)
-    }
-    fn delete_forward(
-        &mut self,
-        _: &DeleteForward,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        let changed = self.delete_forward();
-        self.edited(changed, cx)
-    }
-    fn delete_all(&mut self, _: &DeleteAll, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        let changed = !self.text.is_empty();
-        self.text.clear();
-        self.cursor = 0;
-        self.edited(changed, cx)
-    }
-
-    // caret: `move_to` notifies when it moves
-    fn item_left(&mut self, _: &ItemLeft, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_to(self.prev(), cx);
-        Propagation::Stop
-    }
-    fn item_right(&mut self, _: &ItemRight, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_to(self.next(), cx);
-        Propagation::Stop
-    }
-    fn home(&mut self, _: &Home, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_to(0, cx);
-        Propagation::Stop
-    }
-    fn end(&mut self, _: &End, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_to(self.text.len(), cx);
-        Propagation::Stop
-    }
-
-    // ↵ / Esc: the owner decides what they mean
-    fn execute(&mut self, _: &Execute, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        cx.emit(TextEvent::Submit);
-        Propagation::Stop
-    }
-    fn execute_inplace(
-        &mut self,
-        _: &ExecuteInplace,
-        _: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        cx.emit(TextEvent::Submit);
-        Propagation::Stop
-    }
-    fn quit(&mut self, _: &Quit, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        cx.emit(TextEvent::Cancel);
-        Propagation::Stop
-    }
+    const COMMANDS: &'static [Command<Self>] = &[
+        Command::new(
+            "input.copy",
+            "copy",
+            &[Key::action::<Copy>()],
+            |t, _, cx| {
+                t.copy_to_clipboard(cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new("input.cut", "cut", &[Key::action::<Cut>()], |t, _, cx| {
+            t.copy_to_clipboard(cx);
+            clear(t, cx)
+        }),
+        Command::new(
+            "input.paste",
+            "paste",
+            &[Key::action::<Paste>()],
+            |t, _, cx| {
+                t.paste_clipboard(cx); // emits + notifies itself
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "input.delete_back",
+            "delete",
+            &[Key::action::<Backspace>()],
+            |t, _, cx| {
+                let changed = t.delete_back();
+                t.edited(changed, cx)
+            },
+        ),
+        Command::new(
+            "input.delete_forward",
+            "delete forward",
+            &[Key::action::<DeleteForward>()],
+            |t, _, cx| {
+                let changed = t.delete_forward();
+                t.edited(changed, cx)
+            },
+        ),
+        Command::new(
+            "input.clear",
+            "clear",
+            &[Key::action::<DeleteAll>()],
+            |t, _, cx| clear(t, cx),
+        ),
+        // caret: `move_to` notifies when it moves
+        Command::new(
+            "input.left",
+            "left",
+            &[Key::action::<ItemLeft>()],
+            |t, _, cx| {
+                t.move_to(t.prev(), cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "input.right",
+            "right",
+            &[Key::action::<ItemRight>()],
+            |t, _, cx| {
+                t.move_to(t.next(), cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "input.home",
+            "start",
+            &[Key::action::<Home>()],
+            |t, _, cx| {
+                t.move_to(0, cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new("input.end", "end", &[Key::action::<End>()], |t, _, cx| {
+            t.move_to(t.text.len(), cx);
+            Propagation::Stop
+        }),
+        // ↵ / Esc: the owner decides what they mean
+        Command::new(
+            "input.submit",
+            "submit",
+            &[Key::action::<Execute>(), Key::action::<ExecuteInplace>()],
+            |_, _, cx| {
+                cx.emit(TextEvent::Submit);
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "input.cancel",
+            "cancel",
+            &[Key::action::<Quit>()],
+            |_, _, cx| {
+                cx.emit(TextEvent::Cancel);
+                Propagation::Stop
+            },
+        ),
+    ];
 
     /// Typed text. Modified keys (ctrl-…, alt-…) aren't text: they go to the owner.
     fn key_down(

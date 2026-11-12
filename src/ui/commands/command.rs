@@ -33,6 +33,23 @@ pub fn always<V>(_: &V, _: &App) -> bool {
 }
 
 impl<V> Command<V> {
+    /// A command that's always available and not hinted, e.g. a component's.
+    pub const fn new(
+        id: &'static str,
+        label: &'static str,
+        keys: &'static [Key],
+        run: fn(&mut V, &mut Window, &mut Context<V>) -> Propagation,
+    ) -> Self {
+        Self {
+            id,
+            label,
+            keys,
+            when: always::<V>,
+            run,
+            hint: false,
+        }
+    }
+
     /// Whether `name` means this command: the full id, or the part after the dot (`"stop"` →
     /// `"ask.stop"`)
     pub fn named(&self, name: &str) -> bool {

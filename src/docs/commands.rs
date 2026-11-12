@@ -24,8 +24,14 @@ use crate::{
     },
     ui::{
         actions::{Back, ShortcutAction},
-        commands::{Command, Key},
-        components::search_bar::{self, TextInput},
+        commands::{Command, ComponentCommands, Key},
+        components::{
+            color_picker::ColorInput,
+            number_input::NumberInput,
+            search_bar::{self, TextInput},
+            select::Select,
+            tiny_input::TinyInput,
+        },
         launcher::{LauncherView, context_menu::wrapper::ContextMenu},
         views::{SherlockView, settings::SettingsView},
     },
@@ -143,6 +149,46 @@ impl<L: CommandLayer> CommandDocs<L> {
     }
 }
 
+impl CommandLayer for Select {
+    const TITLE: &'static str = "Dropdown";
+    const FILE: &'static str = "commands_select.md";
+    const INTRO: &'static str = "An open dropdown (Settings). Typing a letter jumps to the next \
+        option starting with it.";
+    fn commands() -> Vec<CommandDoc> {
+        command_docs(Self::COMMANDS)
+    }
+}
+
+impl CommandLayer for NumberInput {
+    const TITLE: &'static str = "Number Field";
+    const FILE: &'static str = "commands_number_field.md";
+    const INTRO: &'static str = "A focused number field (Settings). Typing a digit edits the \
+        value directly.";
+    fn commands() -> Vec<CommandDoc> {
+        command_docs(Self::COMMANDS)
+    }
+}
+
+impl CommandLayer for TinyInput {
+    const TITLE: &'static str = "Text Field";
+    const FILE: &'static str = "commands_text_field.md";
+    const INTRO: &'static str = "A focused small text field (Settings, the color picker's hex \
+        value). Keys it doesn't use go to the control around it.";
+    fn commands() -> Vec<CommandDoc> {
+        command_docs(Self::COMMANDS)
+    }
+}
+
+impl CommandLayer for ColorInput {
+    const TITLE: &'static str = "Color Picker";
+    const FILE: &'static str = "commands_color_picker.md";
+    const INTRO: &'static str = "An open color picker (Settings). Typing a hex digit starts \
+        editing the hex value.";
+    fn commands() -> Vec<CommandDoc> {
+        command_docs(Self::COMMANDS)
+    }
+}
+
 impl CommandLayer for ContextMenu {
     const TITLE: &'static str = "Context Menu";
     const FILE: &'static str = "commands_context_menu.md";
@@ -256,9 +302,10 @@ impl TopLevelEntry for Commands {
                 code("ask.stop"),
                 "or",
                 code("search.copy"),
-                ". A key goes to the context menu (while open), then the current view, then the \
-                search bar, then the launcher. The first available command bound to it runs; \
-                otherwise the next one gets the key."
+                ". A focused control (in Settings) gets a key first. Otherwise it goes to the \
+                context menu (while open), then the current view, then the search bar, then the \
+                launcher. The first available command bound to it runs; otherwise the next one \
+                gets the key."
             ),
             list_iter!(Dash, layer_items().into_iter().map(|p| item!(p))),
             p!(
@@ -304,6 +351,10 @@ impl TopLevelEntry for Commands {
 
     fn children() -> impl Iterator<Item = BookEntry> + 'static {
         [
+            Some(CommandDocs::<Select>::entry()),
+            Some(CommandDocs::<NumberInput>::entry()),
+            Some(CommandDocs::<TinyInput>::entry()),
+            Some(CommandDocs::<ColorInput>::entry()),
             Some(CommandDocs::<ContextMenu>::entry()),
             #[cfg(feature = "ai")]
             Some(CommandDocs::<crate::ui::views::ask::AskView>::entry()),
@@ -321,6 +372,10 @@ impl TopLevelEntry for Commands {
 /// The overview's list of command pages, in the order keys reach them.
 fn layer_items() -> Vec<md_rs::components::span_nodes::Paragraph> {
     vec![
+        CommandDocs::<Select>::overview_item(),
+        CommandDocs::<NumberInput>::overview_item(),
+        CommandDocs::<TinyInput>::overview_item(),
+        CommandDocs::<ColorInput>::overview_item(),
         CommandDocs::<ContextMenu>::overview_item(),
         #[cfg(feature = "ai")]
         CommandDocs::<crate::ui::views::ask::AskView>::overview_item(),

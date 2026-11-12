@@ -3,43 +3,66 @@ use gpui::{Context, KeyDownEvent, Window};
 use super::Select;
 use crate::ui::{
     actions::{End, Execute, ExecuteInplace, Home, ItemDown, ItemUp, Quit},
-    traits::HandleActions,
+    commands::{Command, ComponentCommands, Key},
     views::Propagation,
 };
 
-impl HandleActions for Select {
+impl ComponentCommands for Select {
+    /// Open, it owns the keyboard.
     const UNHANDLED: Propagation = Propagation::Stop;
 
-    fn item_up(&mut self, _: &ItemUp, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_cursor(self.cursor.saturating_sub(1), cx)
-    }
-    fn item_down(&mut self, _: &ItemDown, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_cursor(self.cursor + 1, cx)
-    }
-    fn home(&mut self, _: &Home, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_cursor(0, cx)
-    }
-    fn end(&mut self, _: &End, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.move_cursor(usize::MAX, cx)
-    }
-    fn execute(&mut self, _: &Execute, win: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.choose(self.cursor, win, cx);
-        self.close(win, cx);
-        Propagation::Stop
-    }
-    fn execute_inplace(
-        &mut self,
-        _: &ExecuteInplace,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        self.choose(self.cursor, win, cx);
-        Propagation::Stop
-    }
-    fn quit(&mut self, _: &Quit, win: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.close(win, cx);
-        Propagation::Stop
-    }
+    const COMMANDS: &'static [Command<Self>] = &[
+        Command::new("select.up", "up", &[Key::action::<ItemUp>()], |s, _, cx| {
+            s.move_cursor(s.cursor.saturating_sub(1), cx)
+        }),
+        Command::new(
+            "select.down",
+            "down",
+            &[Key::action::<ItemDown>()],
+            |s, _, cx| s.move_cursor(s.cursor + 1, cx),
+        ),
+        Command::new(
+            "select.first",
+            "first",
+            &[Key::action::<Home>()],
+            |s, _, cx| s.move_cursor(0, cx),
+        ),
+        Command::new(
+            "select.last",
+            "last",
+            &[Key::action::<End>()],
+            |s, _, cx| s.move_cursor(usize::MAX, cx),
+        ),
+        Command::new(
+            "select.choose",
+            "choose",
+            &[Key::action::<Execute>()],
+            |s, win, cx| {
+                s.choose(s.cursor, win, cx);
+                s.close(win, cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "select.preview",
+            "choose, keep open",
+            &[Key::action::<ExecuteInplace>()],
+            |s, win, cx| {
+                s.choose(s.cursor, win, cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "select.close",
+            "close",
+            &[Key::action::<Quit>()],
+            |s, win, cx| {
+                s.close(win, cx);
+                Propagation::Stop
+            },
+        ),
+    ];
+
     /// Type-ahead: a letter jumps to the next option starting with it.
     fn key_down(
         &mut self,

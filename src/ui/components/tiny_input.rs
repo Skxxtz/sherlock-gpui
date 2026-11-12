@@ -13,7 +13,7 @@ use gpui::{
     px,
 };
 
-use crate::{app::theme::ActiveTheme, ui::traits::HandleInputExt};
+use crate::{app::theme::ActiveTheme, ui::commands::HandleCommandsExt};
 
 mod actions;
 
@@ -210,7 +210,7 @@ impl Render for TinyInput {
 
         div()
             .track_focus(&self.focus)
-            .handle_input(cx)
+            .handle_commands(cx)
             .flex()
             .items_center()
             .text_color(theme.primary_text)
