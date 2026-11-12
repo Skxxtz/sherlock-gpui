@@ -119,7 +119,7 @@ pub const BASE_FIELDS: &[FieldDoc] = &[
         ty: "Bind[]",
         required: false,
         default: None,
-        description: "Key bindings attached to this launcher.",
+        description: "Keys bound to commands in this launcher's view, e.g. `new_chat` (see Commands).",
     },
     FieldDoc {
         name: "actions",

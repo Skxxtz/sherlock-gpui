@@ -47,11 +47,11 @@ impl Documentation for Readme {
                         .width("100%")
                         .alt("application screenshot"),
                 ),
-            Description::docs(),
+            Description::section(),
             h1("Getting Started"),
-            Installation::docs(),
-            ContributingShort::docs(),
-            License::docs()
+            Installation::section(),
+            ContributingShort::section(),
+            License::section()
         )
     }
 }
