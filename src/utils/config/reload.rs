@@ -9,7 +9,7 @@ use crate::{
     loader::{Loader, RawLaunchers},
     ui::{launcher::LauncherMode, widgets::ChildKind},
     utils::{
-        config::{AppearanceDefaults, ConfigAppearance, ConfigGuard, SherlockAlias},
+        config::{AppearanceDefaults, ConfigGuard, SherlockAlias},
         errors::SherlockMessage,
     },
 };
