@@ -609,7 +609,7 @@ impl LauncherView {
     }
 
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
-        if ConfigGuard::read_with(|c| c.behavior.keep_state).unwrap_or_default() {
+        if ConfigGuard::get(|c| c.behavior.keep_state) {
             // Keep the whole view alive, state included, for the next open (the window was its
             // only strong owner).
             let this = cx.entity();

@@ -296,12 +296,12 @@ impl SettingsView {
     /// Writes what differs from the global config to its file, then makes the edited config
     /// the global one.
     fn save(&mut self, cx: &mut Context<Self>, refresh_binds: bool) {
-        let Ok(written) = ConfigGuard::read_with(|global| {
+        let saved = ConfigGuard::read_with(|global| {
             save_changes(&global.files.config, global, &self.config)
-        }) else {
-            return;
-        };
-        let saved = written.and_then(|()| ConfigGuard::write_with(|g| *g = self.config.clone()));
+        })
+        .and_then(|written| written)
+        .and_then(|()| ConfigGuard::write_with(|g| *g = self.config.clone()));
+
         self.save_error = saved.as_ref().err().map(|e| format!("{e}").into());
         if saved.is_err() {
             return;

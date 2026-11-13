@@ -156,7 +156,7 @@ impl LauncherView {
 
         let mut navigation = Navigator::new(data, initial_messages, cx);
 
-        let mode = ConfigGuard::read_with(|c| {
+        let mode = ConfigGuard::get(|c| {
             c.runtime
                 .sub_menu
                 .as_deref()
@@ -170,8 +170,7 @@ impl LauncherView {
                 })
                 .cloned()
                 .unwrap_or(LauncherMode::Home)
-        })
-        .unwrap_or(LauncherMode::Home);
+        });
 
         if let LauncherMode::Alias { launcher, .. } = &mode
             && let Some(view) = ViewKind::try_from(&launcher.launcher_type)

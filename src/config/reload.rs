@@ -19,7 +19,7 @@ pub async fn reload_async(
     initial_messages: &mut Vec<SherlockMessage>,
     changes: ConfigFileChange,
 ) -> Option<Arc<[LauncherMode]>> {
-    let fallback = ConfigGuard::read_with(|c| c.files.fallback.arc()).ok();
+    let fallback = ConfigGuard::get(|c| c.files.fallback.arc());
     let (config, raw) = cx
         .background_spawn(async move { read_changes(changes, fallback) })
         .await;
@@ -33,7 +33,7 @@ pub fn reload(
     initial_messages: &mut Vec<SherlockMessage>,
     changes: ConfigFileChange,
 ) -> Option<Arc<[LauncherMode]>> {
-    let fallback = ConfigGuard::read_with(|c| c.files.fallback.arc()).ok();
+    let fallback = ConfigGuard::get(|c| c.files.fallback.arc());
     let (config, raw) = read_changes(changes, fallback);
     finish(cx, data, initial_messages, changes, config, raw)
 }
@@ -44,7 +44,7 @@ type LoadedConfig = (SherlockConfig, Vec<SherlockMessage>);
 /// launchers, if they need a reload. `fallback` is the current launcher file.
 fn read_changes(
     changes: ConfigFileChange,
-    fallback: Option<Arc<Path>>,
+    fallback: Arc<Path>,
 ) -> (Option<LoadedConfig>, Option<RawLaunchers>) {
     let config = changes.config().then(load_config).flatten();
     let needs_launchers =
@@ -55,7 +55,7 @@ fn read_changes(
             let path = config
                 .as_ref()
                 .map(|(c, _)| c.files.fallback.arc())
-                .or(fallback)?;
+                .unwrap_or(fallback);
             Some(Loader::read_launchers(&path))
         })
         .flatten();
@@ -129,7 +129,7 @@ fn finish(
 }
 
 fn reload_aliases<C: AppContext>(data: &LauncherEntity, cx: &mut C) -> Result<(), SherlockMessage> {
-    let alias_path = ConfigGuard::read_with(|cfg| cfg.files.alias.clone())?;
+    let alias_path = ConfigGuard::get(|c| c.files.alias.arc());
     let mut aliases = SherlockAlias::load(&alias_path)?;
     data.update(cx, |this, _cx| {
         for launcher in this.make_mut().values_mut() {

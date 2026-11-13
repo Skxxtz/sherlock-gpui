@@ -181,7 +181,7 @@ impl LauncherView {
     }
 
     fn render_search_bar(&self, theme: Arc<ThemeData>, searching: bool) -> impl IntoElement {
-        let search_icon = ConfigGuard::read_with(|c| c.search_bar_icon.clone()).unwrap_or_default();
+        let search_icon = ConfigGuard::get(|c| c.search_bar_icon.clone());
 
         // Extract everything upfront — avoid repeated unwraps inside closures
         let icon_enabled = search_icon.enable;

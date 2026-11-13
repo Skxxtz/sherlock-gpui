@@ -257,8 +257,7 @@ impl RenderableChildImpl for WeatherWidget {
         let Ok(Some(data)) = self.entity.read(cx) else {
             return None;
         };
-        let (temps, lengths) =
-            ConfigGuard::read_with(|c| (c.units.temperatures, c.units.lengths)).unwrap_or_default();
+        let (temps, lengths) = ConfigGuard::get(|c| (c.units.temperatures, c.units.lengths));
         Some(WeatherSidebar::new(data.clone(), temps, lengths).into_any_element())
     }
 

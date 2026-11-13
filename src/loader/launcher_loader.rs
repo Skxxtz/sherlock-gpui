@@ -67,7 +67,7 @@ impl Loader {
         data_handle: LauncherEntity,
         changes: Option<ConfigFileChange>,
     ) -> Result<LauncherLoadResult, SherlockMessage> {
-        let path = ConfigGuard::read_with(|c| c.files.fallback.clone())?;
+        let path = ConfigGuard::get(|c| c.files.fallback.arc());
         let raw = Self::read_launchers(&path);
         Self::build_launchers(cx, data_handle, changes, raw)
     }
