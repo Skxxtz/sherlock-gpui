@@ -4,6 +4,7 @@ use md_rs::{
         TextComponentExt,
         container::Container,
         heading::h1,
+        span::{bold, link},
         span_nodes::p,
     },
     github::components::{
@@ -13,9 +14,13 @@ use md_rs::{
         image::{image, source_dark, source_light},
     },
     md,
+    p,
 };
 
-use crate::docs::{Documentation, Installation, contributing::ContributingShort};
+use crate::{
+    docs::{Documentation, Installation, contributing::ContributingShort, link_scope::link_to},
+    features::{emoji::EmojiPicker, file::FileLauncher, translator::Translator},
+};
 
 pub(super) struct Readme;
 impl Documentation for Readme {
@@ -61,24 +66,25 @@ impl Documentation for Description {
     type Docs = Container;
     fn docs() -> Self::Docs {
         md!(
-            p().text("Sherlock is a")
-                .bold("fast")
-                .text(",")
-                .bold("extensible")
-                .text("application launcher for Wayland, build with")
-                .link(
+            p!(
+                "Sherlock is a",
+                bold("fast"),
+                ",",
+                bold("extensible"),
+                "application launcher for Wayland, build with",
+                link(
                     "GPUI",
-                    "https://github.com/zed-industries/zed/tree/main/crates/gpui",
-                )
-                .text(".")
-                .text("Sherlock's widgets inherit from launcher configurations.")
-                .text("There are several launcher types, inlclugin a")
-                .link("File Search", "") // TODO:
-                .text(",")
-                .link("Emoji Picker", "") // TODO:
-                .text(", and")
-                .link("Translator", "") // TODO:
-                .text("."),
+                    "https://github.com/zed-industries/zed/tree/main/crates/gpui"
+                ),
+                ". Sherlock's widget inherit from launcher configurations.",
+                "There are several launcher types, including a",
+                link_to::<FileLauncher>("File Search"),
+                ",",
+                link_to::<EmojiPicker>("Emoji Picker"),
+                ", and",
+                link_to::<Translator>("Translator"),
+                ".",
+            ),
             alert().text(
                 p().text("Sherlock has been rewritten entirely, to be compatible with")
                     .code("GPUI")
