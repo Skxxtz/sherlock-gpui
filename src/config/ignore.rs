@@ -1,4 +1,4 @@
-use std::io::{ErrorKind, Write};
+use std::io::{self, Write};
 
 use glob::Pattern;
 
@@ -7,7 +7,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         files::read_lines,
     },
@@ -23,10 +23,10 @@ impl SherlockIgnore {
                 .map_while(Result::ok)
                 .filter_map(|l| Pattern::new(&l.to_lowercase()).ok())
                 .collect()),
-            Err(e) if e.kind() == ErrorKind::NotFound => Ok(Vec::new()),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
             Err(e) => Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
+                ErrorKind::File(FileAction::Read, path.to_path_buf()),
                 e
             )),
         }
@@ -36,7 +36,7 @@ impl SherlockIgnore {
         let write_err = |e: std::io::Error| {
             sherlock_msg!(
                 Error,
-                SherlockErrorType::FileError(FileAction::Write, path.into()),
+                ErrorKind::File(FileAction::Write, path.into()),
                 e.to_string()
             )
         };

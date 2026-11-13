@@ -4,7 +4,7 @@ use crate::{
     sherlock_msg,
     utils::errors::{
         SherlockMessage,
-        types::{FileAction, SherlockErrorType},
+        types::{ErrorKind, FileAction},
     },
 };
 
@@ -23,15 +23,11 @@ pub fn read_or_empty(path: &Path) -> Result<String, SherlockMessage> {
 pub fn file_err(action: FileAction, path: &Path, e: &dyn Display) -> SherlockMessage {
     sherlock_msg!(
         Warning,
-        SherlockErrorType::FileError(action, path.to_path_buf()),
+        ErrorKind::File(action, path.to_path_buf()),
         e.to_string()
     )
 }
 
 pub fn ser_err(e: impl Display) -> SherlockMessage {
-    sherlock_msg!(
-        Warning,
-        SherlockErrorType::SerializationError,
-        e.to_string()
-    )
+    sherlock_msg!(Warning, ErrorKind::Serialize, e.to_string())
 }

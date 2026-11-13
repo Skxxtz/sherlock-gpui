@@ -8,7 +8,7 @@ use std::{
 };
 
 use super::errors::SherlockMessage;
-use crate::{sherlock_msg, utils::errors::types::SherlockErrorType};
+use crate::{sherlock_msg, utils::errors::types::ErrorKind};
 
 static HOME: OnceLock<PathBuf> = OnceLock::new();
 static HOME_STR: OnceLock<String> = OnceLock::new();
@@ -46,7 +46,7 @@ pub fn home_dir() -> Result<&'static Path, SherlockMessage> {
     let home = env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
         sherlock_msg!(
             Warning,
-            SherlockErrorType::EnvError("$HOME".into()),
+            ErrorKind::Env("$HOME".into()),
             "Variable `$HOME` is not set."
         )
     })?;

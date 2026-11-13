@@ -2,12 +2,10 @@ use serde::{Deserialize, Deserializer, de::IgnoredAny};
 use serde_json::json;
 
 use super::currency::{Currency, CurrencyCode};
-use crate::{
-    sherlock_msg,
-    utils::errors::{
-        SherlockMessage,
-        types::{NetworkAction, SherlockErrorType},
-    },
+use crate::utils::errors::{
+    ResultExt,
+    SherlockMessage,
+    types::{ErrorKind, NetworkAction},
 };
 
 pub(super) struct TradingViewApiRequest;
@@ -68,32 +66,14 @@ impl TradingViewApiRequest {
             .body(Self::build_body().to_string())
             .send()
             .await
-            .map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::NetworkError(
-                        NetworkAction::Get,
-                        "TradingView (Currencies)".into()
-                    ),
-                    e
-                )
+            .or_kind_with(|| {
+                ErrorKind::Network(NetworkAction::Get, "TradingView (Currencies)".into())
             })?;
 
-        let mut bytes = res
-            .bytes()
-            .await
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::IO, e))?
-            .to_vec();
+        let mut bytes = res.bytes().await.or_kind(ErrorKind::Io)?.to_vec();
 
-        simd_json::from_slice(&mut bytes).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DeserializationError(
-                    "TradingView Currency Response".to_string()
-                ),
-                e
-            )
-        })
+        simd_json::from_slice(&mut bytes)
+            .or_kind_with(|| ErrorKind::Parse("TradingView Currency Response".to_string()))
     }
 }
 

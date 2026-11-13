@@ -5,7 +5,7 @@ use crate::{
     loader::{named_items::deserialize_named_items, utils::RawLauncher},
     sherlock_msg,
     ui::widgets::{RenderableChild, list_item::command::CommandPayload},
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 /// The following arguments are available to users:
@@ -29,14 +29,14 @@ impl LauncherProvider for CommandLauncher {
         let cmds = opts.get("commands").ok_or_else(|| {
             sherlock_msg!(
                 Warning,
-                SherlockErrorType::ConfigError("Invalid launcher configuration.".into()),
+                ErrorKind::Config("Invalid launcher configuration.".into()),
                 "Command launcher does not contain any commands."
             )
         })?;
 
         let items =
             deserialize_named_items(cmds.into_deserializer(), |exec| CommandPayload { exec })
-                .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))?;
+                .or_kind(ErrorKind::InvalidData)?;
 
         let children: Vec<RenderableChild> = items
             .into_iter()

@@ -21,7 +21,7 @@ use crate::{
     features::plugin::api::protocol::PluginDeferFunction,
     sherlock_msg,
     ui::launcher::navigator::MessageViewGlobal,
-    utils::errors::types::SherlockErrorType,
+    utils::errors::types::ErrorKind,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -149,7 +149,7 @@ impl LuaRuntimeHandle {
                             cx.update(|cx| {
                                 let msg = sherlock_msg!(
                                     Warning,
-                                    SherlockErrorType::Plugin(action, plugin),
+                                    ErrorKind::Plugin(action, plugin),
                                     message
                                 );
                                 // The message view only exists once a window is open.

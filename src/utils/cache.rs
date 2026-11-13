@@ -1,7 +1,7 @@
 use std::{
     fmt::Debug,
     fs::{self, File},
-    io::ErrorKind,
+    io,
     path::{Path, PathBuf},
     time::{Duration, SystemTime},
 };
@@ -12,8 +12,9 @@ use serde::{Serialize, de::DeserializeOwned};
 use crate::{
     sherlock_msg,
     utils::errors::{
+        ResultExt,
         SherlockMessage,
-        types::{DirAction, FileAction, SherlockErrorType},
+        types::{DirAction, ErrorKind, FileAction},
     },
 };
 
@@ -29,8 +30,7 @@ impl BinaryCache {
     }
 
     pub fn encode<T: Serialize>(data: &T) -> Result<Vec<u8>, SherlockMessage> {
-        bincode::serde::encode_to_vec(data, Self::config())
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::SerializationError, e))
+        bincode::serde::encode_to_vec(data, Self::config()).or_kind(ErrorKind::Serialize)
     }
 
     pub fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, SherlockMessage> {
@@ -38,7 +38,7 @@ impl BinaryCache {
             Ok((value, read)) if read == bytes.len() => Ok(value),
             Ok((_, read)) => Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::DeserializationError(format!(
+                ErrorKind::Parse(format!(
                     "{} trailing bytes after decoding",
                     bytes.len() - read
                 )),
@@ -46,7 +46,7 @@ impl BinaryCache {
             )),
             Err(e) => Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::DeserializationError("binary cache".into()),
+                ErrorKind::Parse("binary cache".into()),
                 e
             )),
         }
@@ -58,13 +58,8 @@ impl BinaryCache {
     ) -> Result<(), SherlockMessage> {
         let cache = path.as_ref();
         let encoded = Self::encode(data)?;
-        std::fs::write(cache, encoded).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Write, cache.to_path_buf()),
-                e
-            )
-        })
+        std::fs::write(cache, encoded)
+            .or_kind_with(|| ErrorKind::File(FileAction::Write, cache.to_path_buf()))
     }
 
     pub fn read<T: DeserializeOwned + Default + Debug, P: AsRef<Path>>(
@@ -72,20 +67,15 @@ impl BinaryCache {
     ) -> Result<T, SherlockMessage> {
         let cache = path.as_ref();
         let bytes = std::fs::read(cache).map_err(|e| {
-            let action = if e.kind() == ErrorKind::NotFound {
+            let action = if e.kind() == io::ErrorKind::NotFound {
                 FileAction::Find
             } else {
                 FileAction::Read
             };
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(action, cache.to_path_buf()),
-                e
-            )
+            sherlock_msg!(Warning, ErrorKind::File(action, cache.to_path_buf()), e)
         })?;
         Self::decode(&bytes).map_err(|mut e| {
-            e.error_type =
-                SherlockErrorType::DeserializationError(cache.to_string_lossy().to_string());
+            e.kind = ErrorKind::Parse(cache.to_string_lossy().to_string());
             e
         })
     }
@@ -98,30 +88,14 @@ pub trait JsonCache: Serialize + DeserializeOwned + Default + Clone + Debug {
         let path = Self::cache_path();
 
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::DirError(DirAction::Create, parent.to_path_buf()),
-                    e
-                )
-            })?;
+            fs::create_dir_all(parent)
+                .or_kind_with(|| ErrorKind::Dir(DirAction::Create, parent.to_path_buf()))?;
         }
 
-        let content = simd_json::to_string(self).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DeserializationError(path.to_string_lossy().to_string()),
-                e
-            )
-        })?;
+        let content = simd_json::to_string(self)
+            .or_kind_with(|| ErrorKind::Parse(path.to_string_lossy().to_string()))?;
 
-        fs::write(&path, content).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Write, path),
-                e
-            )
-        })
+        fs::write(&path, content).or_kind_with(|| ErrorKind::File(FileAction::Write, path))
     }
 
     fn read_from_cache(age_minutes: u64) -> Result<Option<Self>, SherlockMessage> {
@@ -130,37 +104,26 @@ pub trait JsonCache: Serialize + DeserializeOwned + Default + Clone + Debug {
         if !path.exists() {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::FileError(FileAction::Find, path),
+                ErrorKind::File(FileAction::Find, path),
                 "File not found."
             ));
         }
 
         let mtime = fs::metadata(&path)
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::IO, e))?
+            .or_kind(ErrorKind::Io)?
             .modified()
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::IO, e))?;
+            .or_kind(ErrorKind::Io)?;
 
         let time_since = SystemTime::now()
             .duration_since(mtime)
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::IO, e))?;
+            .or_kind(ErrorKind::Io)?;
 
         if time_since < Duration::from_secs(60 * age_minutes) {
-            let reader = File::open(&path).map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::FileError(FileAction::Read, path.clone()),
-                    e
-                )
-            })?;
+            let reader = File::open(&path)
+                .or_kind_with(|| ErrorKind::File(FileAction::Read, path.clone()))?;
 
             return simd_json::from_reader(reader)
-                .map_err(|e| {
-                    sherlock_msg!(
-                        Warning,
-                        SherlockErrorType::DeserializationError(path.to_string_lossy().to_string()),
-                        e
-                    )
-                })
+                .or_kind_with(|| ErrorKind::Parse(path.to_string_lossy().to_string()))
                 .map(Some);
         }
 

@@ -1,62 +1,75 @@
-use std::{fmt::Display, path::PathBuf};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display as StrumDisplay};
+use strum::{Display as StrumDisplay, IntoStaticStr};
 
-#[derive(Debug, Clone, Serialize, Deserialize, AsRefStr)]
+/// What failed. The message is the headline; details go into the error's context and cause.
+///
+/// Adding a kind: one variant with its `#[error]` message.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, IntoStaticStr, thiserror::Error)]
 #[serde(rename_all = "snake_case")]
-#[derive(PartialEq)]
-pub enum SherlockErrorType {
-    /// Logical branch that code logic dictates is impossible to reach.
+pub enum ErrorKind {
+    /// A branch the code logic says can't be reached.
+    #[error("Unreachable code was reached")]
     Unreachable,
-    /// General-purpose Input/Output failures from the standard library.
-    IO,
-    /// Failure while converting internal data structures to a string/byte format.
-    SerializationError,
-    /// Failure while parsing external data (JSON/YAML) into internal structures.
-    DeserializationError(String),
-    /// Failure regarding provided data
+    /// The provided data is malformed or incomplete.
+    #[error("Invalid data")]
     InvalidData,
-    /// The provided launcher does not have this functionality
+    /// The launcher doesn't have this functionality.
+    #[error("Invalid launcher")]
     InvalidLauncher,
-    /// The requested UI or system action is not recognized or defined.
+    /// The requested action isn't defined.
+    #[error("Invalid action")]
     InvalidAction,
-    /// The specific internal function is not supported by the active launcher.
+    /// The active launcher doesn't support this function.
+    #[error("Invalid function")]
     InvalidFunction,
-    /// A concurrency error where a resource is already mutably borrowed.
-    BorrowCongestion,
-    /// A placeholder for "no error" (null object pattern).
-    None,
-    /// A placeholder debug launcher to preview errors
+    /// A preview message from the debug launcher.
+    #[error("Preview")]
     Preview,
 
-    // --- Launchers ---
-    /// A concurrency error where a resource is already mutably borrowed.
-    Weather,
+    /// Turning internal data into a string or bytes failed.
+    #[error("Failed to serialize")]
+    Serialize,
+    /// Reading external data (what) failed.
+    #[error("Failed to parse {0}")]
+    Parse(String),
+    /// The user's configuration is wrong.
+    #[error("Config error: {0}")]
+    Config(String),
 
-    // --- Variants with Data ---
-    /// Errors caused by the plugin syste, such as loading
+    /// A general I/O failure.
+    #[error("I/O error")]
+    Io,
+    #[error("Failed to {action} file \"{path}\"", action = .0, path = .1.display())]
+    File(FileAction, PathBuf),
+    #[error("Failed to {action} directory \"{path}\"", action = .0, path = .1.display())]
+    Dir(DirAction, PathBuf),
+    /// Running an external command failed.
+    #[error("Command failed: {0}")]
+    Command(String),
+    /// An environment variable is missing or malformed.
+    #[error("Failed to read \"{0}\"")]
+    Env(String),
+    #[error("DBus failed to {0} ({1})")]
+    DBus(DBusAction, String),
+    #[error("Failed to {0} socket")]
+    Socket(SocketAction),
+    #[error("Network failure during {0} from \"{1}\"")]
+    Network(NetworkAction, String),
+    #[error("Database failure during {0}")]
+    Database(DbAction),
+
+    /// The plugin system failed (action, plugin name).
+    #[error("Plugin `{1}` failed to {0}")]
     Plugin(PluginAction, String),
-    /// File-specific issues (read/write/permissions) at the given path.
-    FileError(FileAction, PathBuf),
-    /// Directory-specific issues (creation/deletion/access) at the given path.
-    DirError(DirAction, PathBuf),
-    /// Errors in logic or syntax within the user's configuration file.
-    ConfigError(String),
-    /// Failure when executing external shell commands or system binaries.
-    CommandError(String),
-    /// Missing or malformed system environment variables (e.g., $PATH, $HOME).
-    EnvError(String),
-    /// Communication failures with the system or session DBus.
-    DBusError(DBusAction, String),
-    /// Low-level IPC or network socket connection/read/write failures.
-    SocketError(SocketAction),
-    /// Remote request failures (HTTP, timeouts, or DNS issues).
-    NetworkError(NetworkAction, String),
-    /// SQL or connection failures involving the local SQLite database.
-    DatabaseError(DbAction),
-    /// Error triggered when a requested feature requires an unsupported web browser.
-    UnsupportedBrowser(String),
+}
+
+impl ErrorKind {
+    /// The kind's name, for headers and logs.
+    pub fn name(&self) -> &'static str {
+        self.into()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, StrumDisplay, PartialEq)]
@@ -121,36 +134,4 @@ pub enum DbAction {
     Initialize,
     Migrate,
     Transaction,
-}
-
-impl Display for SherlockErrorType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unreachable => write!(f, "It should never come to this"),
-            Self::EnvError(var) => write!(f, "Failed to read \"{var}\""),
-            Self::FileError(act, path) => {
-                write!(f, "Failed to {} file \"{}\"", act, path.display())
-            }
-            Self::DirError(act, path) => {
-                write!(f, "Failed to {} directory \"{}\"", act, path.display())
-            }
-            Self::ConfigError(msg) => write!(f, "Config error: {}", msg),
-            Self::DBusError(act, target) => {
-                write!(f, "DBus failed to {act} ({target})")
-            }
-            Self::SocketError(act) => write!(f, "Failed to {} socket", act),
-            Self::BorrowCongestion => write!(f, "Resource is currently locked/in use"),
-            Self::NetworkError(act, loc) => {
-                write!(f, "Network failure during {act} from \"{loc}\"")
-            }
-            Self::DatabaseError(act) => {
-                write!(f, "Database failure during operation: {act}")
-            }
-            Self::DeserializationError(msg) => {
-                write!(f, "Failed to deserialize: {msg}")
-            }
-            // Fallback for simple variants
-            _ => write!(f, "{}", self.as_ref()),
-        }
-    }
 }

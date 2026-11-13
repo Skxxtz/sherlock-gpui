@@ -8,7 +8,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         image_buf::ImageBuf,
         preview::{Fit, Rendered},
@@ -66,7 +66,7 @@ fn decode_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
     let read_err = |e: &dyn std::fmt::Display| {
         sherlock_msg!(
             Error,
-            SherlockErrorType::FileError(FileAction::Read, PathBuf::from(path)),
+            ErrorKind::File(FileAction::Read, PathBuf::from(path)),
             e.to_string()
         )
     };
@@ -82,7 +82,7 @@ fn decode_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
     let layout = SrcLayout::from_color(color).ok_or_else(|| {
         sherlock_msg!(
             Warning,
-            SherlockErrorType::InvalidData,
+            ErrorKind::InvalidData,
             format!("unsupported color type: {color:?}")
         )
     })?;
@@ -91,7 +91,7 @@ fn decode_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
     let mut out = ImageBuf::new(w, h).map_err(|e| {
         sherlock_msg!(
             Error,
-            SherlockErrorType::InvalidData,
+            ErrorKind::InvalidData,
             format!("failed to create image buf of size {w}x{h}. {e}")
         )
     })?;
@@ -104,7 +104,7 @@ fn decode_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
 
     // Temporary OS-backed buffer, unmapped when this function returns.
     let mut tmp = MmapMut::map_anon(decoder.total_bytes() as usize)
-        .map_err(|e| sherlock_msg!(Error, SherlockErrorType::IO, e.to_string()))?;
+        .map_err(|e| sherlock_msg!(Error, ErrorKind::Io, e.to_string()))?;
     decoder.read_image(&mut tmp).map_err(|e| read_err(&e))?;
 
     for (src, dst) in tmp

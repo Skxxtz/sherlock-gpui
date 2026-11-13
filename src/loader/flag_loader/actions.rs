@@ -7,7 +7,7 @@ use crate::{
     sherlock_msg,
     tokio_utils::SizedMessageObj,
     utils::{
-        errors::{SherlockMessage, types::SherlockErrorType},
+        errors::{SherlockMessage, types::ErrorKind},
         networking::ClientMessage,
         paths::get_cache_dir,
     },
@@ -39,7 +39,7 @@ impl TryFrom<&StartupAction> for SizedMessageObj {
         match value {
             StartupAction::Debug(_) => Err(sherlock_msg!(
                 Error,
-                SherlockErrorType::Unreachable,
+                ErrorKind::Unreachable,
                 "Tried to use `StartupAction::Debug` as a `SizedMessageObj`"
             )),
             StartupAction::Server { msg, .. } => SizedMessageObj::from_struct(msg),

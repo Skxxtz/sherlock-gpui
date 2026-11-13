@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io::ErrorKind,
+    io,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -20,7 +20,7 @@ use crate::{
         cache::BinaryCache,
         errors::{
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         item_key::ItemKey,
     },
@@ -67,7 +67,7 @@ impl Loader {
         data_handle: LauncherEntity,
         changes: Option<ConfigFileChange>,
     ) -> Result<LauncherLoadResult, SherlockMessage> {
-        let path = ConfigGuard::get(|c| c.files.fallback.arc());
+        let path = ConfigGuard::read_with(|c| c.files.fallback.clone())?;
         let raw = Self::read_launchers(&path);
         Self::build_launchers(cx, data_handle, changes, raw)
     }
@@ -208,10 +208,10 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
 
     let raw_bytes: Vec<u8> = match std::fs::read(path) {
         Ok(bytes) => bytes,
-        Err(e) if e.kind() == ErrorKind::NotFound => {
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
             warnings.push(sherlock_msg!(
                 Info,
-                SherlockErrorType::FileError(FileAction::Find, path.to_path_buf()),
+                ErrorKind::File(FileAction::Find, path.to_path_buf()),
                 "Using default fallback.json configuration."
             ));
             include_bytes!("../../assets/fallback.json").to_vec()
@@ -219,7 +219,7 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
         Err(e) => {
             warnings.push(sherlock_msg!(
                 Error,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
+                ErrorKind::File(FileAction::Read, path.to_path_buf()),
                 e
             ));
             return (launchers, warnings);
@@ -232,7 +232,7 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
         Err(e) => {
             warnings.push(sherlock_msg!(
                 Warning,
-                SherlockErrorType::DeserializationError(path.to_string_lossy().to_string()),
+                ErrorKind::Parse(path.to_string_lossy().to_string()),
                 e
             ));
             return (launchers, warnings);
@@ -245,7 +245,7 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
             Err(e) => {
                 warnings.push(sherlock_msg!(
                     Warning,
-                    SherlockErrorType::ConfigError("Invalid launcher configuration".into()),
+                    ErrorKind::Config("Invalid launcher configuration".into()),
                     e
                 ));
             }

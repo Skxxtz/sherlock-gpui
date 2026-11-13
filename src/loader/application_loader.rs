@@ -18,7 +18,7 @@ use crate::{
         cache::BinaryCache,
         errors::{
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         files::{expand_path, home_dir_owned},
     },
@@ -62,11 +62,8 @@ impl ApplicationLoader {
         let cached: Option<Vec<AppItem>> = match BinaryCache::read(&cache_path) {
             Ok(apps) => Some(apps),
             Err(e) => {
-                if !matches!(
-                    e.error_type,
-                    SherlockErrorType::FileError(FileAction::Find, _)
-                ) {
-                    eprintln!("app cache unusable, rebuilding: {}", e.error_type);
+                if !matches!(e.kind, ErrorKind::File(FileAction::Find, _)) {
+                    eprintln!("app cache unusable, rebuilding: {}", e.kind);
                 }
                 None
             }
@@ -166,7 +163,7 @@ impl ApplicationLoader {
     fn spawn_cache_write(path: Arc<Path>, apps: Arc<Vec<AppItem>>) {
         rayon::spawn_fifo(move || {
             if let Err(e) = BinaryCache::write(&path, &*apps) {
-                eprintln!("{}", e.error_type);
+                eprintln!("{}", e.kind);
             }
         });
     }

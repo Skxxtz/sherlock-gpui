@@ -18,7 +18,7 @@ use crate::{
     sherlock_msg,
     skip_func_if_nav,
     ui::widgets::{ChildKind, RenderableChild, timer::TimerChild},
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 define_inner_functions! {
@@ -41,7 +41,7 @@ impl LauncherProvider for TimerLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         serde_json::from_value::<TimerLauncher>(raw.args.as_ref().clone())
             .map(LauncherType::Timer)
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
+            .or_kind(ErrorKind::InvalidData)
     }
     fn objects(
         &self,
@@ -66,7 +66,7 @@ impl LauncherProvider for TimerLauncher {
         let ChildKind::Timer(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::Unreachable,
+                ErrorKind::Unreachable,
                 format!("Tried to unpack music tile but received: {:?}", child)
             ));
         };

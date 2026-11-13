@@ -6,9 +6,8 @@ use serde_json::Value;
 use crate::{
     launcher::{LauncherConfig, LauncherProvider, LauncherType},
     loader::{LoadContext, application_loader::ApplicationLoader, utils::RawLauncher},
-    sherlock_msg,
     ui::widgets::RenderableChild,
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 /// The following arguments are available to users:
@@ -23,7 +22,7 @@ impl LauncherProvider for AppLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         serde_json::from_value::<AppLauncher>(raw.args.as_ref().clone())
             .map(LauncherType::Apps)
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
+            .or_kind(ErrorKind::InvalidData)
     }
     fn objects(
         &self,

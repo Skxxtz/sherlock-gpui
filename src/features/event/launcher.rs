@@ -18,7 +18,7 @@ use crate::{
     ui::widgets::{ChildKind, RenderableChild, event::EventWidget},
     utils::{
         command_launch::{mime_lookup, spawn_detached},
-        errors::{SherlockMessage, types::SherlockErrorType},
+        errors::{SherlockMessage, types::ErrorKind},
         websearch::websearch,
     },
 };
@@ -89,7 +89,7 @@ impl LauncherProvider for EventLauncher {
         let ChildKind::Event(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::Unreachable,
+                ErrorKind::Unreachable,
                 format!("Tried to unpack Event tile but received: {:?}", child)
             ));
         };

@@ -33,7 +33,9 @@ pub struct MessageChild {
 }
 
 impl MessageChild {
-    pub fn new(message: SherlockMessage) -> Self {
+    /// Shown to the user: logs the message now.
+    pub fn new(mut message: SherlockMessage) -> Self {
+        message.report();
         Self {
             message,
             on_dismiss: None,
@@ -130,7 +132,7 @@ impl RenderableChildImpl for MessageChild {
                                     .text_size(px(13.))
                                     .font_weight(FontWeight::BOLD)
                                     .text_color(text)
-                                    .child(self.message.error_type.to_string())
+                                    .child(self.message.kind.to_string())
                                     .when_some(count_badge, ParentElement::child),
                             )
                             .when_some(dismiss_btn, ParentElement::child),
@@ -161,7 +163,7 @@ impl RenderableChildImpl for MessageChild {
                             .text_size(px(12.))
                             .line_height(px(16.))
                             .font_family(theme.typography.monospace.clone())
-                            .child(self.message.traceback.clone()),
+                            .child(self.message.details()),
                     ),
             )
             .into_any_element()
@@ -173,7 +175,7 @@ impl RenderableChildImpl for MessageChild {
     }
     #[inline(always)]
     fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
-        &self.message.traceback
+        &self.message.cause
     }
     #[inline(always)]
     fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {

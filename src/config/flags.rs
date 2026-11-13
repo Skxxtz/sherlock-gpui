@@ -8,7 +8,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         files::{expand_path, home_dir},
         paths,
@@ -64,7 +64,7 @@ impl SherlockFlags {
                     _ => {
                         return Err(sherlock_msg!(
                             Warning,
-                            SherlockErrorType::FileError(FileAction::Parse, path.clone()),
+                            ErrorKind::File(FileAction::Parse, path.clone()),
                             format!("unsupported format: '{}'", ext_str)
                         ));
                     }
@@ -74,7 +74,7 @@ impl SherlockFlags {
         } else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::FileError(FileAction::Parse, path.clone()),
+                ErrorKind::File(FileAction::Parse, path.clone()),
                 "file has no extension and cannot be parsed"
             ));
         };
@@ -89,7 +89,7 @@ impl SherlockFlags {
                         let err = |e: &dyn std::fmt::Display| {
                             sherlock_msg!(
                                 Warning,
-                                SherlockErrorType::DeserializationError("Json Config".into()),
+                                ErrorKind::Parse("Json Config".into()),
                                 e.to_string()
                             )
                         };
@@ -123,11 +123,7 @@ impl SherlockFlags {
                                 });
                         }
                         let err = |e: toml::de::Error| {
-                            sherlock_msg!(
-                                Warning,
-                                SherlockErrorType::DeserializationError("Toml Config".into()),
-                                e
-                            )
+                            sherlock_msg!(Warning, ErrorKind::Parse("Toml Config".into()), e)
                         };
                         toml::Deserializer::parse(&config_str)
                             .map_err(err)
@@ -144,7 +140,7 @@ impl SherlockFlags {
 
                         return Err(sherlock_msg!(
                             Warning,
-                            SherlockErrorType::FileError(FileAction::Parse, path.clone()),
+                            ErrorKind::File(FileAction::Parse, path.clone()),
                             format!("the file extension '{}' is not a supported format", ext)
                         ));
                     }
@@ -168,7 +164,7 @@ impl SherlockFlags {
                             .map(|w| {
                                 sherlock_msg!(
                                     Warning,
-                                    SherlockErrorType::ConfigError(path.display().to_string()),
+                                    ErrorKind::Config(path.display().to_string()),
                                     w
                                 )
                             })
@@ -185,11 +181,7 @@ impl SherlockFlags {
             Err(e) => {
                 let mut config = SherlockConfig::default();
                 config.apply_flags(self);
-                let e = sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::FileError(FileAction::Read, path),
-                    e
-                );
+                let e = sherlock_msg!(Warning, ErrorKind::File(FileAction::Read, path), e);
                 Ok((config, vec![e]))
             }
         }

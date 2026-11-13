@@ -31,7 +31,7 @@ use crate::{
         traits::{InputAction, RenderableChildDelegate},
         views::Propagation,
     },
-    utils::errors::types::SherlockErrorType,
+    utils::errors::types::ErrorKind,
 };
 
 // Selection and focus
@@ -534,7 +534,7 @@ impl LauncherView {
             self.navigation.push_message(
                 sherlock_msg!(
                     Error,
-                    SherlockErrorType::Unreachable,
+                    ErrorKind::Unreachable,
                     format!(
                         "Launcher {:?} configured incorrectly: context actions are empty but `has_actions` flag is set to true.",
                         launcher_type
@@ -609,7 +609,7 @@ impl LauncherView {
     }
 
     pub(super) fn close_window(&mut self, win: &mut Window, cx: &mut Context<Self>) {
-        if ConfigGuard::get(|c| c.behavior.keep_state) {
+        if ConfigGuard::read_with(|c| c.behavior.keep_state).unwrap_or_default() {
             // Keep the whole view alive, state included, for the next open (the window was its
             // only strong owner).
             let this = cx.entity();

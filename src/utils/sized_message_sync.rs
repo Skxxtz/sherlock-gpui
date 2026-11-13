@@ -6,8 +6,9 @@ use crate::{
     sherlock_msg,
     tokio_utils::SizedMessageObj,
     utils::errors::{
+        ResultExt,
         SherlockMessage,
-        types::{SherlockErrorType, SocketAction},
+        types::{ErrorKind, SocketAction},
     },
 };
 
@@ -45,26 +46,16 @@ impl<S: Read + Write> SizedMessage for S {
             .bytes()
             .len()
             .try_into()
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))?;
+            .or_kind(ErrorKind::InvalidData)?;
 
         // Write message size to stream
         let len_bytes = buf_len.to_be_bytes();
-        self.write_all(&len_bytes).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::SocketError(SocketAction::Write),
-                e
-            )
-        })?;
+        self.write_all(&len_bytes)
+            .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
 
         // Write message to stream
-        self.write_all(what.bytes()).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::SocketError(SocketAction::Write),
-                e
-            )
-        })?;
+        self.write_all(what.bytes())
+            .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
 
         Ok(())
     }
@@ -72,31 +63,21 @@ impl<S: Read + Write> SizedMessage for S {
         let mut buf_len = [0u8; 4];
 
         // Read message length
-        self.read_exact(&mut buf_len).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::SocketError(SocketAction::Read),
-                e
-            )
-        })?;
+        self.read_exact(&mut buf_len)
+            .or_kind_with(|| ErrorKind::Socket(SocketAction::Read))?;
         let msg_len = u32::from_be_bytes(buf_len) as usize;
 
         if msg_len > 1024 * 1024 {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::IO,
+                ErrorKind::Io,
                 "Invalid message size received"
             ));
         }
 
         let mut buf = vec![0u8; msg_len];
-        self.read_exact(&mut buf).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::SocketError(SocketAction::Read),
-                e
-            )
-        })?;
+        self.read_exact(&mut buf)
+            .or_kind_with(|| ErrorKind::Socket(SocketAction::Read))?;
 
         let cfg = bincode::config::standard();
         bincode::serde::decode_from_slice::<T, _>(&buf, cfg)
@@ -104,7 +85,7 @@ impl<S: Read + Write> SizedMessage for S {
             .map_err(|e| {
                 sherlock_msg!(
                     Warning,
-                    SherlockErrorType::DeserializationError("Socket Message".into()),
+                    ErrorKind::Parse("Socket Message".into()),
                     e.to_string()
                 )
             })

@@ -11,8 +11,7 @@ use gpui::SharedString;
 use crate::{
     config::{ConfigGuard, SherlockConfig},
     loader::application_loader::ApplicationLoader,
-    sherlock_msg,
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 /// Spawnes a command completely detatched from the current process.
@@ -88,7 +87,7 @@ pub fn spawn_detached(
 
     let mut child = command
         .spawn()
-        .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::CommandError(cmd.clone()), e))?;
+        .or_kind_with(|| ErrorKind::Command(cmd.clone()))?;
 
     // pass sudo password
     if sudo_used
@@ -97,7 +96,7 @@ pub fn spawn_detached(
             .find(|(k, _)| k.eq_ignore_ascii_case("sudo"))
     {
         send_sudo(&mut child, password.as_str())
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::CommandError(cmd.clone()), e))?;
+            .or_kind_with(|| ErrorKind::Command(cmd.clone()))?;
     }
 
     let _ = child.wait();

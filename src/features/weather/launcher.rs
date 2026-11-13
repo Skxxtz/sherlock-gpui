@@ -15,12 +15,12 @@ use crate::{
     features::weather::wttr_serde::{Area, CurrentCondition, Day},
     launcher::{LauncherConfig, LauncherProvider, LauncherType},
     loader::{IconType, resolve_icon_path, utils::RawLauncher},
-    sherlock_msg,
     ui::widgets::{RenderableChild, weather::WeatherWidget},
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{NetworkAction, SherlockErrorType},
+            types::{ErrorKind, NetworkAction},
         },
         files::home_dir_owned,
     },
@@ -59,7 +59,7 @@ impl LauncherProvider for WeatherLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         serde_json::from_value::<WeatherLauncher>(raw.args.as_ref().clone())
             .map(LauncherType::Weather)
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
+            .or_kind(ErrorKind::InvalidData)
     }
     fn objects(
         &self,
@@ -154,30 +154,13 @@ impl WeatherData {
         let url = format!("https://de.wttr.in/{}?format=j1", launcher.location);
         let bytes = reqwest::get(url)
             .await
-            .map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::NetworkError(NetworkAction::Get, "wttr.in".into()),
-                    e
-                )
-            })?
+            .or_kind_with(|| ErrorKind::Network(NetworkAction::Get, "wttr.in".into()))?
             .bytes()
             .await
-            .map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::DeserializationError("Wttr.in Response".into()),
-                    e
-                )
-            })?;
+            .or_kind_with(|| ErrorKind::Parse("Wttr.in Response".into()))?;
 
-        let raw: WttrResponse = pluck::from_slice(&bytes).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DeserializationError("Weather Data".into()),
-                e
-            )
-        })?;
+        let raw: WttrResponse =
+            pluck::from_slice(&bytes).or_kind_with(|| ErrorKind::Parse("Weather Data".into()))?;
 
         let data = transform_weather(raw, launcher)?;
         data.cache();

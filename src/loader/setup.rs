@@ -13,7 +13,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{DirAction, SherlockErrorType},
+            types::{DirAction, ErrorKind},
         },
         paths::get_config_dir,
     },
@@ -66,7 +66,7 @@ impl Loader {
         if CONFIG.set(RwLock::new(config.clone())).is_err() {
             messages.push(sherlock_msg!(
                 Warning,
-                SherlockErrorType::ConfigError("Failed to set global config singleton.".into()),
+                ErrorKind::Config("Failed to set global config singleton.".into()),
                 ""
             ));
         }
@@ -76,7 +76,7 @@ impl Loader {
             None => {
                 messages.push(sherlock_msg!(
                     Warning,
-                    SherlockErrorType::DirError(DirAction::Find, "Config Root Dir".into()),
+                    ErrorKind::Dir(DirAction::Find, "Config Root Dir".into()),
                     "Failed to read config root dir."
                 ));
                 get_config_dir()

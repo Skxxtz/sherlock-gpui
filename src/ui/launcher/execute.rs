@@ -15,7 +15,7 @@ use crate::{
     },
     utils::{
         command_launch::spawn_detached,
-        errors::{SherlockMessage, types::SherlockErrorType},
+        errors::{SherlockMessage, types::ErrorKind},
         item_key::ItemKey,
         websearch,
     },
@@ -259,7 +259,7 @@ impl LauncherView {
                     self.navigation.push_message(
                         sherlock_msg!(
                             Warning,
-                            SherlockErrorType::InvalidAction,
+                            ErrorKind::InvalidAction,
                             "The current item doesn't support the info action."
                         ),
                         cx,

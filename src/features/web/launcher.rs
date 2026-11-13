@@ -5,12 +5,11 @@ use serde_json::Value;
 use crate::{
     launcher::{LauncherConfig, LauncherProvider, LauncherType},
     loader::utils::RawLauncher,
-    sherlock_msg,
     ui::widgets::{
         RenderableChild,
         list_item::{ItemMeta, ListItem, web::WebPayload},
     },
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 /// The following arguments are available to users:
@@ -29,7 +28,7 @@ impl LauncherProvider for WebLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         serde_json::from_value::<WebLauncher>(raw.args.as_ref().clone())
             .map(LauncherType::Web)
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))
+            .or_kind(ErrorKind::InvalidData)
     }
     fn objects(
         &self,

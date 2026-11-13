@@ -24,7 +24,7 @@ pub fn transform_counter_file(path: &Path) {
         Err(e) => {
             eprintln!(
                 "[Counter File]: Failed to load applications. Caused by: {:?}",
-                e.traceback
+                e.cause
             );
             return;
         }
@@ -85,7 +85,7 @@ fn port_counts(
     if let Err(e) = mem.save_atomic() {
         eprintln!(
             "[Counter File]: Failed to write query memory. Caused by: {:?}",
-            e.traceback
+            e.cause
         );
         return None;
     }

@@ -30,8 +30,9 @@ use crate::{
     skip_func_if_nav,
     ui::widgets::{ChildKind, RenderableChild, audio::MusicPlayerWidget},
     utils::errors::{
+        ResultExt,
         SherlockMessage,
-        types::{DBusAction, DirAction, FileAction, SherlockErrorType, SocketAction},
+        types::{DBusAction, DirAction, ErrorKind, FileAction, SocketAction},
     },
 };
 
@@ -60,9 +61,9 @@ impl LauncherProvider for MusicPlayerLauncher {
             .map(|vec| {
                 vec.iter()
                     .map(|b| {
-                        Bind::try_from(b).map_err(|e| {
-                            sherlock_msg!(Error, SherlockErrorType::InvalidLauncher, e)
-                        })
+                        Bind::try_from(b)
+                            .or_kind(ErrorKind::InvalidLauncher)
+                            .map_err(SherlockMessage::as_error)
                     })
                     .collect::<Result<Arc<[Bind]>, _>>()
             })
@@ -98,7 +99,7 @@ impl LauncherProvider for MusicPlayerLauncher {
         let ChildKind::Music(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::Unreachable,
+                ErrorKind::Unreachable,
                 format!("Tried to unpack music tile but received: {:?}", child)
             ));
         };
@@ -150,9 +151,7 @@ impl MprisData {
     }
     fn cache_cover(image: &Bytes, loc: &str) -> Result<(), SherlockMessage> {
         // Create dir and parents
-        let home = env::var("HOME").map_err(|e| {
-            sherlock_msg!(Warning, SherlockErrorType::EnvError("HOME".to_string()), e)
-        })?;
+        let home = env::var("HOME").or_kind_with(|| ErrorKind::Env("HOME".to_string()))?;
 
         let home_dir = PathBuf::from(home);
         let path = home_dir.join(".cache/sherlock/mpris-cache/").join(loc);
@@ -160,7 +159,7 @@ impl MprisData {
             fs::create_dir_all(parent).map_err(|e| {
                 sherlock_msg!(
                     Warning,
-                    SherlockErrorType::DirError(DirAction::Create, parent.to_path_buf(),),
+                    ErrorKind::Dir(DirAction::Create, parent.to_path_buf(),),
                     e.to_string()
                 )
             })?;
@@ -171,65 +170,33 @@ impl MprisData {
         } else {
             File::create(&path)
         }
-        .map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Find, path.clone()),
-                e
-            )
-        })?;
+        .or_kind_with(|| ErrorKind::File(FileAction::Find, path.clone()))?;
 
-        file.write_all(image).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Find, path.clone()),
-                e
-            )
-        })?;
+        file.write_all(image)
+            .or_kind_with(|| ErrorKind::File(FileAction::Find, path.clone()))?;
         // if file not exist, create and write it
         Ok(())
     }
     fn read_cached_cover(loc: &str) -> Result<Vec<u8>, SherlockMessage> {
-        let home = env::var("HOME")
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::EnvError("$HOME".into()), e))?;
+        let home = env::var("HOME").or_kind_with(|| ErrorKind::Env("$HOME".into()))?;
         let home_dir = PathBuf::from(home);
         let path = home_dir.join(".cache/sherlock/mpris-cache/").join(loc);
 
-        let mut file = File::open(&path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Find, path.clone()),
-                e
-            )
-        })?;
+        let mut file =
+            File::open(&path).or_kind_with(|| ErrorKind::File(FileAction::Find, path.clone()))?;
         let mut buffer = vec![];
-        file.read_to_end(&mut buffer).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.clone()),
-                e
-            )
-        })?;
+        file.read_to_end(&mut buffer)
+            .or_kind_with(|| ErrorKind::File(FileAction::Read, path.clone()))?;
         Ok(buffer)
     }
     fn read_image_file(loc: &str) -> Result<Vec<u8>, SherlockMessage> {
         let path = PathBuf::from(loc.trim_start_matches("file://"));
 
-        let mut file = File::open(&path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Find, path.clone()),
-                e
-            )
-        })?;
+        let mut file =
+            File::open(&path).or_kind_with(|| ErrorKind::File(FileAction::Find, path.clone()))?;
         let mut buffer = vec![];
-        file.read_to_end(&mut buffer).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.clone()),
-                e
-            )
-        })?;
+        file.read_to_end(&mut buffer)
+            .or_kind_with(|| ErrorKind::File(FileAction::Read, path.clone()))?;
         Ok(buffer)
     }
     pub fn playpause(player: &str) -> Result<(), SherlockMessage> {
@@ -242,33 +209,19 @@ impl MprisData {
         Self::player_method(player, "Previous")
     }
     fn player_method(player: &str, method: &str) -> Result<(), SherlockMessage> {
-        let conn = Connection::session().map_err(|e| {
-            sherlock_msg!(
-                Error,
-                SherlockErrorType::DBusError(DBusAction::Connect, "Session Bus".into()),
-                e
-            )
-        })?;
+        let conn = Connection::session()
+            .or_kind_with(|| ErrorKind::DBus(DBusAction::Connect, "Session Bus".into()))
+            .map_err(SherlockMessage::as_error)?;
         let proxy = Proxy::new(
             &conn,
             player,
             "/org/mpris/MediaPlayer2",
             "org.mpris.MediaPlayer2.Player",
         )
-        .map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DBusError(DBusAction::Construct, player.to_string()),
-                e
-            )
-        })?;
-        proxy.call_method(method, &()).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DBusError(DBusAction::Call, method.to_string()),
-                e
-            )
-        })?;
+        .or_kind_with(|| ErrorKind::DBus(DBusAction::Construct, player.to_string()))?;
+        proxy
+            .call_method(method, &())
+            .or_kind_with(|| ErrorKind::DBus(DBusAction::Call, method.to_string()))?;
         Ok(())
     }
 }
@@ -279,13 +232,8 @@ pub struct AudioLauncherFunctions {
 
 impl AudioLauncherFunctions {
     pub fn new() -> Result<Self, SherlockMessage> {
-        let conn = Connection::session().map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::SocketError(SocketAction::Connect),
-                e
-            )
-        })?;
+        let conn =
+            Connection::session().or_kind_with(|| ErrorKind::Socket(SocketAction::Connect))?;
         Ok(AudioLauncherFunctions { conn })
     }
     pub fn get_current_player(&self) -> Option<String> {

@@ -10,8 +10,9 @@ use crate::{
     sherlock_msg,
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         paths,
     },
@@ -47,18 +48,13 @@ pub fn repair_config(flags: &mut SherlockFlags) {
 #[allow(dead_code)]
 pub fn migrate_fallback<P: AsRef<Path>>(path: P) -> Result<(), SherlockMessage> {
     let path_ref = path.as_ref();
-    let content = fs::read_to_string(path_ref).map_err(|e| {
-        sherlock_msg!(
-            Warning,
-            SherlockErrorType::FileError(FileAction::Read, path_ref.to_path_buf()),
-            e
-        )
-    })?;
+    let content = fs::read_to_string(path_ref)
+        .or_kind_with(|| ErrorKind::File(FileAction::Read, path_ref.to_path_buf()))?;
 
     let legacy_configs: Vec<LegacyRawLauncher> = serde_json::from_str(&content).map_err(|e| {
         sherlock_msg!(
             Warning,
-            SherlockErrorType::DeserializationError("Legacy Launcher".into()),
+            ErrorKind::Parse("Legacy Launcher".into()),
             format!("File is neither modern nor legacy format: {e}")
         )
     })?;
@@ -87,15 +83,10 @@ pub fn migrate_fallback<P: AsRef<Path>>(path: P) -> Result<(), SherlockMessage> 
     }
 
     // 5. Save the upgraded version back to the file
-    let new_json = serde_json::to_string_pretty(&upgraded_launchers)
-        .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::SerializationError, e))?;
-    fs::write(path_ref, new_json).map_err(|e| {
-        sherlock_msg!(
-            Warning,
-            SherlockErrorType::FileError(FileAction::Write, path_ref.to_path_buf()),
-            e
-        )
-    })?;
+    let new_json =
+        serde_json::to_string_pretty(&upgraded_launchers).or_kind(ErrorKind::Serialize)?;
+    fs::write(path_ref, new_json)
+        .or_kind_with(|| ErrorKind::File(FileAction::Write, path_ref.to_path_buf()))?;
 
     println!(
         "[{}] Successfully migrated to new format.",

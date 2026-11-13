@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use super::memory::{Boosts, QueryMemory, today};
 use crate::{
     QUERY_MEMORY,
-    sherlock_msg,
     utils::{
         cache::BinaryCache,
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         item_key::ItemKey,
     },
@@ -55,13 +55,9 @@ impl PersistentQueryMemory {
     pub fn save_atomic(&self) -> Result<(), SherlockMessage> {
         let tmp = self.path.with_extension("bin.tmp");
         BinaryCache::write(&tmp, &self.mem)?;
-        std::fs::rename(&tmp, &self.path).map_err(|e| {
-            sherlock_msg!(
-                Error,
-                SherlockErrorType::FileError(FileAction::Rename, tmp),
-                e
-            )
-        })?;
+        std::fs::rename(&tmp, &self.path)
+            .or_kind_with(|| ErrorKind::File(FileAction::Rename, tmp))
+            .map_err(SherlockMessage::as_error)?;
         Ok(())
     }
 

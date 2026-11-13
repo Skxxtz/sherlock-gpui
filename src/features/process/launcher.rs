@@ -29,7 +29,7 @@ use crate::{
             list_item::{ItemMeta, ListItem, fixed::FixedPayload},
         },
     },
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 define_inner_functions! {
@@ -111,7 +111,7 @@ impl LauncherProvider for ProcessLauncher {
 
 fn kill_process(pid: i32) -> Result<(), SherlockMessage> {
     let child = Pid::from_raw(pid);
-    kill(child, Signal::SIGKILL).map_err(|e| sherlock_msg!(Warning, SherlockErrorType::IO, e))
+    kill(child, Signal::SIGKILL).or_kind(ErrorKind::Io)
 }
 
 // DOCS

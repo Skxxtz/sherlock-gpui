@@ -24,7 +24,6 @@ mod utils;
 use crate::{
     app::theme::ThemeData,
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
-    sherlock_msg,
     ui::{
         traits::RenderableChildImpl,
         widgets::{
@@ -37,8 +36,9 @@ use crate::{
     },
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{NetworkAction, SherlockErrorType},
+            types::{ErrorKind, NetworkAction},
         },
         intent::{
             Intent,
@@ -114,7 +114,7 @@ impl RenderableChildImpl for TranslationData {
                 IntentResult::String(st) => st.clone(),
                 _ => "Invalid Response".into(),
             },
-            ApiStatus::Error { msg } => msg.traceback.clone(),
+            ApiStatus::Error { msg } => msg.cause.clone(),
         };
         let is_loading = matches!(api, ApiStatus::Pending);
 
@@ -314,32 +314,17 @@ pub async fn translate(
     );
 
     // GET request
-    let response = reqwest::get(url).await.map_err(|e| {
-        sherlock_msg!(
-            Warning,
-            SherlockErrorType::NetworkError(
-                NetworkAction::Get,
-                "api.mymemory.translated.net".into()
-            ),
-            e
-        )
+    let response = reqwest::get(url).await.or_kind_with(|| {
+        ErrorKind::Network(NetworkAction::Get, "api.mymemory.translated.net".into())
     })?;
 
     // Response parsing
-    let text = response.text().await.map_err(|e| {
-        sherlock_msg!(
-            Warning,
-            SherlockErrorType::DeserializationError("Translation Response".into()),
-            e
-        )
-    })?;
-    let data: MyMemoryResponse = serde_json::from_str(&text).map_err(|e| {
-        sherlock_msg!(
-            Warning,
-            SherlockErrorType::DeserializationError("Translation Data".into()),
-            e
-        )
-    })?;
+    let text = response
+        .text()
+        .await
+        .or_kind_with(|| ErrorKind::Parse("Translation Response".into()))?;
+    let data: MyMemoryResponse =
+        serde_json::from_str(&text).or_kind_with(|| ErrorKind::Parse("Translation Data".into()))?;
 
     Ok(IntentResult::String(data.response_data.translated_text))
 }

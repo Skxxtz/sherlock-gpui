@@ -5885,6 +5885,7 @@ dependencies = [
  "strum",
  "strum_macros 0.28.0",
  "suite-223b",
+ "thiserror 2.0.18",
  "tiny-skia",
  "tokio",
  "toml 0.9.11+spec-1.1.0",

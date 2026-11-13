@@ -5,11 +5,11 @@ use super::{ConfigGuard, writer::config_sources};
 use crate::loader::application_loader;
 use crate::{
     loader::application_loader::ApplicationLoader,
-    sherlock_msg,
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{DirAction, SherlockErrorType},
+            types::{DirAction, ErrorKind},
         },
         files::modified_since,
     },
@@ -48,13 +48,8 @@ impl ConfigWatcher {
         #[cfg(not(feature = "nixos"))]
         let nix_rebuilt = false;
 
-        let entries = std::fs::read_dir(&self.root_dir).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DirError(DirAction::Read, self.root_dir.to_path_buf()),
-                e
-            )
-        })?;
+        let entries = std::fs::read_dir(&self.root_dir)
+            .or_kind_with(|| ErrorKind::Dir(DirAction::Read, self.root_dir.to_path_buf()))?;
 
         let (config_file, fallback_file, alias_file, ignore_file, actions_file, cache_file) =
             ConfigGuard::read().map(|c| {

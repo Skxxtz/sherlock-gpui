@@ -6,8 +6,9 @@ use crate::{
     sherlock_msg,
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         files::read_lines,
     },
@@ -57,7 +58,7 @@ impl ConstantDefaults {
             .ok_or_else(|| {
                 sherlock_msg!(
                     Warning,
-                    SherlockErrorType::ConfigError("Failed to get terminal".into()),
+                    ErrorKind::Config("Failed to get terminal".into()),
                     "Unable to locate or parse a valid terminal app. Ensure that the terminal app is correctly specified in the configuration file or environment variables."
                 )
             })
@@ -81,20 +82,14 @@ impl ConstantDefaults {
             .arg("get")
             .arg("default-web-browser")
             .output()
-            .map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::EnvError("default browser".into()),
-                    e
-                )
-            })?;
+            .or_kind_with(|| ErrorKind::Env("default browser".into()))?;
 
         let desktop_file: String = if output.status.success() {
             String::from_utf8_lossy(&output.stdout).trim().to_string()
         } else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::EnvError("default browser".into()),
+                ErrorKind::Env("default browser".into()),
                 "Command 'xdg-settings get default-web-browser' failed to produce a valid output."
             ));
         };
@@ -102,29 +97,17 @@ impl ConstantDefaults {
         let browser_file = desktop_files
             .iter()
             .find(|f| f.ends_with(&desktop_file))
-            .ok_or_else(|| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::EnvError("default browser".into()),
-                    ""
-                )
-            })?;
+            .ok_or_else(|| sherlock_msg!(Warning, ErrorKind::Env("default browser".into()), ""))?;
         // read default browser desktop file
         let browser = read_lines(browser_file)
-            .map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::FileError(FileAction::Read, browser_file.clone()),
-                    e
-                )
-            })?
+            .or_kind_with(|| ErrorKind::File(FileAction::Read, browser_file.clone()))?
             .map_while(Result::ok)
             .find(|line| line.starts_with("Exec="))
             .and_then(|line| line.strip_prefix("Exec=").map(|l| l.to_string()))
             .ok_or_else(|| {
                 sherlock_msg!(
                     Warning,
-                    SherlockErrorType::FileError(FileAction::Parse, browser_file.clone()),
+                    ErrorKind::File(FileAction::Parse, browser_file.clone()),
                     ""
                 )
             })?;

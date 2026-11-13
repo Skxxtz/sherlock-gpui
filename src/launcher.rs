@@ -23,7 +23,7 @@ use crate::{
     },
     sherlock_msg,
     ui::{launcher::context_menu::ContextMenuAction, widgets::RenderableChild},
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{SherlockMessage, types::ErrorKind},
 };
 
 pub trait LauncherProvider {
@@ -48,7 +48,7 @@ pub trait LauncherProvider {
     ) -> Result<ExecEffect, SherlockMessage> {
         Err(sherlock_msg!(
             Warning,
-            SherlockErrorType::InvalidFunction,
+            ErrorKind::InvalidFunction,
             format!("{} does not provide function: {:?}", stringify!(self), func)
         ))
     }

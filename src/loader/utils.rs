@@ -12,13 +12,13 @@ use crate::{
     config::HomeType,
     launcher::{LauncherConfig, utils::binds::BindSerde, variant_type::LauncherVariant},
     loader::{IconType, resolve_icon_path},
-    sherlock_msg,
     ui::runtime_arguments::RuntimeArgument,
     utils::{
         cache::BinaryCache,
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{DirAction, SherlockErrorType},
+            types::{DirAction, ErrorKind},
         },
         paths,
     },
@@ -279,13 +279,8 @@ impl CounterReader {
         let data_dir = paths::get_data_dir()?;
         let path = data_dir.join("counts.bin");
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::DirError(DirAction::Create, parent.to_path_buf()),
-                    e
-                )
-            })?;
+            std::fs::create_dir_all(parent)
+                .or_kind_with(|| ErrorKind::Dir(DirAction::Create, parent.to_path_buf()))?;
         }
         Ok(CounterReader { path })
     }

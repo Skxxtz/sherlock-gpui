@@ -33,8 +33,9 @@ use crate::{
     },
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{DirAction, FileAction, SherlockErrorType},
+            types::{DirAction, ErrorKind, FileAction},
         },
         paths,
     },
@@ -122,21 +123,13 @@ impl LauncherProvider for DebugLauncher {
             DebugFunctions::ClearErrors => return Ok(ExecEffect::ClearMessages),
             DebugFunctions::InsertTestErrors => {
                 return Ok(ExecEffect::InsertMessages(vec![
-                    sherlock_msg!(
-                        Info,
-                        SherlockErrorType::Preview,
-                        "This is a test info message"
-                    ),
+                    sherlock_msg!(Info, ErrorKind::Preview, "This is a test info message"),
                     sherlock_msg!(
                         Warning,
-                        SherlockErrorType::Preview,
+                        ErrorKind::Preview,
                         "This is a test warning message"
                     ),
-                    sherlock_msg!(
-                        Error,
-                        SherlockErrorType::Preview,
-                        "This is a test error message"
-                    ),
+                    sherlock_msg!(Error, ErrorKind::Preview, "This is a test error message"),
                 ]));
             }
         }
@@ -168,13 +161,8 @@ impl DebugFunctions {
             return Ok(());
         }
 
-        fs::remove_file(path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Remove, path.to_path_buf()),
-                e
-            )
-        })
+        fs::remove_file(path)
+            .or_kind_with(|| ErrorKind::File(FileAction::Remove, path.to_path_buf()))
     }
     /// Safely removes a directory from the file system, skipping directories if they dont exist.
     #[inline]
@@ -183,13 +171,7 @@ impl DebugFunctions {
             return Ok(());
         }
 
-        fs::remove_dir_all(&path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DirError(DirAction::Remove, path),
-                e
-            )
-        })
+        fs::remove_dir_all(&path).or_kind_with(|| ErrorKind::Dir(DirAction::Remove, path))
     }
 }
 

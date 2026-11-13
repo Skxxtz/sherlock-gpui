@@ -35,7 +35,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{SherlockErrorType, SocketAction},
+            types::{ErrorKind, SocketAction},
         },
         intent::{Intent, cursor::Cursor, parsers::timer::TimerParser},
         networking::ClientMessage,
@@ -240,18 +240,13 @@ where
             Ok(msg) => {
                 on_message(Ok(msg));
             }
-            Err(e)
-                if matches!(
-                    e.error_type,
-                    SherlockErrorType::SocketError(SocketAction::EoF)
-                ) =>
-            {
+            Err(e) if matches!(e.kind, ErrorKind::Socket(SocketAction::EoF)) => {
                 break;
             }
             _ => {
                 let err = sherlock_msg!(
                     Error,
-                    SherlockErrorType::SocketError(SocketAction::Read),
+                    ErrorKind::Socket(SocketAction::Read),
                     "Socket error or timeout"
                 );
                 on_message(Err(err));

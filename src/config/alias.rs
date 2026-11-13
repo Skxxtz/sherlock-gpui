@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::ErrorKind};
+use std::{collections::HashMap, fs::File, io};
 
 use serde::Deserialize;
 
@@ -7,8 +7,9 @@ use crate::{
     sherlock_msg,
     ui::runtime_arguments::RuntimeArgument,
     utils::errors::{
+        ResultExt,
         SherlockMessage,
-        types::{FileAction, SherlockErrorType},
+        types::{ErrorKind, FileAction},
     },
 };
 
@@ -35,17 +36,12 @@ impl SherlockAlias {
     #[inline(always)]
     pub fn load(path: &std::path::Path) -> Result<HashMap<String, SherlockAlias>, SherlockMessage> {
         match File::open(path) {
-            Ok(f) => simd_json::from_reader(f).map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::DeserializationError(path.to_string_lossy().into()),
-                    e
-                )
-            }),
-            Err(e) if e.kind() == ErrorKind::NotFound => Ok(HashMap::new()),
+            Ok(f) => simd_json::from_reader(f)
+                .or_kind_with(|| ErrorKind::Parse(path.to_string_lossy().into())),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(HashMap::new()),
             Err(e) => Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
+                ErrorKind::File(FileAction::Read, path.to_path_buf()),
                 e
             )),
         }

@@ -27,7 +27,7 @@ use crate::{
     },
     sherlock_msg,
     utils::{
-        errors::{SherlockMessage, types::SherlockErrorType},
+        errors::{SherlockMessage, types::ErrorKind},
         files::home_dir,
     },
 };
@@ -158,7 +158,7 @@ impl<'g> IconThemeGuard {
         ICONS.get().ok_or_else(|| {
             sherlock_msg!(
                 Error,
-                SherlockErrorType::ConfigError("Failed to get ICONS singleton".into()),
+                ErrorKind::Config("Failed to get ICONS singleton".into()),
                 "Config not initialized"
             )
         })
@@ -168,7 +168,7 @@ impl<'g> IconThemeGuard {
         Self::get_theme()?.read().map_err(|_| {
             sherlock_msg!(
                 Warning,
-                SherlockErrorType::ConfigError("Failed to read icon theme".into()),
+                ErrorKind::Config("Failed to read icon theme".into()),
                 "Failed to acquire read lock on icon theme"
             )
         })
@@ -178,7 +178,7 @@ impl<'g> IconThemeGuard {
         Self::get_theme()?.write().map_err(|_| {
             sherlock_msg!(
                 Warning,
-                SherlockErrorType::ConfigError("Failed to get mutable icon theme".into()),
+                ErrorKind::Config("Failed to get mutable icon theme".into()),
                 "Failed to acquire write lock on icon theme"
             )
         })

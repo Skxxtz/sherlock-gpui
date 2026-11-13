@@ -13,8 +13,9 @@ use crate::{
     sherlock_msg,
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{FileAction, SherlockErrorType},
+            types::{ErrorKind, FileAction},
         },
         string::TrimInPlace,
     },
@@ -78,22 +79,13 @@ impl SherlockDocumentation {
         let docs = Self::new();
 
         let book_dir: &Path = concat!(env!("CARGO_MANIFEST_DIR"), "/docs/src/").as_ref();
-        docs.book.write(book_dir).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Write, book_dir.to_path_buf()),
-                e
-            )
-        })?;
+        docs.book
+            .write(book_dir)
+            .or_kind_with(|| ErrorKind::File(FileAction::Write, book_dir.to_path_buf()))?;
 
         fn write_file<C: AsRef<[u8]>>(path: &Path, content: C) -> Result<(), SherlockMessage> {
-            std::fs::write(path, content).map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::FileError(FileAction::Write, path.to_path_buf()),
-                    e
-                )
-            })
+            std::fs::write(path, content)
+                .or_kind_with(|| ErrorKind::File(FileAction::Write, path.to_path_buf()))
         }
 
         let readme_path: &Path = concat!(env!("CARGO_MANIFEST_DIR"), "/README.md").as_ref();

@@ -40,8 +40,9 @@ use crate::{
     },
     utils::{
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{PluginAction, SherlockErrorType},
+            types::{ErrorKind, PluginAction},
         },
         files::{expand_path, home_dir},
     },
@@ -76,7 +77,7 @@ impl LauncherProvider for PluginLauncher {
         else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::InvalidData,
+                ErrorKind::InvalidData,
                 format!(
                     "Field `path` missing on `{}`",
                     raw.name.as_deref().unwrap_or("PluginLauncher")
@@ -103,24 +104,15 @@ impl LauncherProvider for PluginLauncher {
         }
 
         // Canonical path = stable plugin identity (registry, tile subscribers).
-        let path = path.canonicalize().map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
-                e
-            )
-        })?;
+        let path = path
+            .canonicalize()
+            .or_kind_with(|| ErrorKind::Plugin(PluginAction::Load, path.display().to_string()))?;
         let path: Arc<Path> = Arc::from(path);
 
         let runtime = LuaRuntimeHandle::get();
         let handle = futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities))
-            .map_err(|e| {
-                sherlock_msg!(
-                    Error,
-                    SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
-                    e
-                )
-            })
+            .or_kind_with(|| ErrorKind::Plugin(PluginAction::Load, path.display().to_string()))
+            .map_err(SherlockMessage::as_error)
             .map(Arc::new)?;
 
         Ok(LauncherType::Plugin(Self {
@@ -161,7 +153,7 @@ impl LauncherProvider for PluginLauncher {
         let ChildKind::Plugin(inner) = &child.kind else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::Unreachable,
+                ErrorKind::Unreachable,
                 format!("Tried to unpack plugin tile but received: {:?}", child)
             ));
         };
@@ -426,7 +418,7 @@ async fn reload_plugin(
                 view.push_message(
                     sherlock_msg!(
                         Warning,
-                        SherlockErrorType::Plugin(PluginAction::Load, path.display().to_string()),
+                        ErrorKind::Plugin(PluginAction::Load, path.display().to_string()),
                         e
                     ),
                     cx,

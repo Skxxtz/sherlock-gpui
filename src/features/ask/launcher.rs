@@ -11,7 +11,6 @@ use crate::{
         utils::{binds::Bind, exec_mode::ExecMode},
     },
     loader::{LoadContext, utils::RawLauncher},
-    sherlock_msg,
     ui::{
         launcher::navigator::handle::ViewKind,
         views::ask::provider::Provider,
@@ -20,7 +19,7 @@ use crate::{
             list_item::{ItemMeta, ListItem, fixed::FixedPayload},
         },
     },
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 #[inline(always)]
@@ -49,16 +48,16 @@ pub struct AskLauncher {
 impl LauncherProvider for AskLauncher {
     fn try_parse(raw: &RawLauncher) -> Result<LauncherType, SherlockMessage> {
         let mut launcher = serde_json::from_value::<AskLauncher>(raw.args.as_ref().clone())
-            .map_err(|e| sherlock_msg!(Warning, SherlockErrorType::InvalidData, e))?;
+            .or_kind(ErrorKind::InvalidData)?;
         launcher.binds = raw
             .binds
             .as_ref()
             .map(|vec| {
                 vec.iter()
                     .map(|b| {
-                        Bind::try_from(b).map_err(|e| {
-                            sherlock_msg!(Error, SherlockErrorType::InvalidLauncher, e)
-                        })
+                        Bind::try_from(b)
+                            .or_kind(ErrorKind::InvalidLauncher)
+                            .map_err(SherlockMessage::as_error)
                     })
                     .collect::<Result<Arc<[Bind]>, _>>()
             })

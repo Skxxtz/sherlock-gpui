@@ -25,8 +25,9 @@ use crate::{
     utils::{
         cache::BinaryCache,
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{DbAction, DirAction, FileAction, SherlockErrorType},
+            types::{DbAction, DirAction, ErrorKind, FileAction},
         },
         files::home_dir,
         paths::get_cache_dir,
@@ -54,7 +55,7 @@ impl LauncherProvider for BookmarkLauncher {
             .ok_or_else(|| {
                 sherlock_msg!(
                     Warning,
-                    SherlockErrorType::InvalidData,
+                    ErrorKind::InvalidData,
                     format!(
                         "Failed to fetch browser for `{}`",
                         raw.name.as_deref().unwrap_or("BookmarkLauncher")
@@ -103,7 +104,7 @@ impl BookmarkLauncher {
                 ))?;
                 Err(sherlock_msg!(
                     Warning,
-                    SherlockErrorType::ConfigError("invalid browser configuration".into()),
+                    ErrorKind::Config("invalid browser configuration".into()),
                     format!(
                         "The browser \"{}\" is either not supported or not recognized.",
                         browser
@@ -118,36 +119,21 @@ struct BookmarkParser;
 impl BookmarkParser {
     fn brave(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let path = home_dir()?.join(".config/BraveSoftware/Brave-Browser/Default/Bookmarks");
-        let data = fs::read_to_string(&path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
-                e
-            )
-        })?;
+        let data = fs::read_to_string(&path)
+            .or_kind_with(|| ErrorKind::File(FileAction::Read, path.to_path_buf()))?;
 
         ChromeParser::parse(launcher, data)
     }
     fn thorium(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let path = home_dir()?.join(".config/thorium/Default/Bookmarks");
-        let data = fs::read_to_string(&path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
-                e
-            )
-        })?;
+        let data = fs::read_to_string(&path)
+            .or_kind_with(|| ErrorKind::File(FileAction::Read, path.to_path_buf()))?;
         ChromeParser::parse(launcher, data)
     }
     fn chrome(launcher: Arc<LauncherConfig>) -> Result<Bookmarks, SherlockMessage> {
         let path = home_dir()?.join(".config/google-chrome/Default/Bookmarks");
-        let data = fs::read_to_string(&path).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::FileError(FileAction::Read, path.to_path_buf()),
-                e
-            )
-        })?;
+        let data = fs::read_to_string(&path)
+            .or_kind_with(|| ErrorKind::File(FileAction::Read, path.to_path_buf()))?;
         ChromeParser::parse(launcher, data)
     }
 
@@ -198,11 +184,7 @@ impl MozillaSqliteParser {
         let root = root();
 
         let entries = fs::read_dir(&root).map_err(|e| {
-            sherlock_msg!(
-                Error,
-                SherlockErrorType::DirError(DirAction::Read, root),
-                e.to_string()
-            )
+            sherlock_msg!(Error, ErrorKind::Dir(DirAction::Read, root), e.to_string())
         })?;
         let paths = entries.filter_map(|entry| {
             let db = entry.ok()?.path().join("places.sqlite");
@@ -271,13 +253,7 @@ impl MozillaSqliteParser {
               AND p.url IS NOT NULL
               AND b.parent != 7";
 
-        let db_err = |e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DatabaseError(DbAction::Connect),
-                e
-            )
-        };
+        let db_err = |e| sherlock_msg!(Warning, ErrorKind::Database(DbAction::Connect), e);
 
         let conn =
             Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(db_err)?;
@@ -357,13 +333,8 @@ impl ChromeParser {
         }
 
         let mut bookmarks = Vec::new();
-        let file = serde_json::from_str::<parser::ChromeFile>(&data).map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::DeserializationError("Chrome Bookmarks".into()),
-                e
-            )
-        })?;
+        let file = serde_json::from_str::<parser::ChromeFile>(&data)
+            .or_kind_with(|| ErrorKind::Parse("Chrome Bookmarks".into()))?;
 
         fn process_bookmark(
             launcher: Arc<LauncherConfig>,

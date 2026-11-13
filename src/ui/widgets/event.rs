@@ -47,8 +47,9 @@ use crate::{
         widgets::{RenderableChildImpl, Selection},
     },
     utils::errors::{
+        ResultExt,
         SherlockMessage,
-        types::{SherlockErrorType, SocketAction},
+        types::{ErrorKind, SocketAction},
     },
 };
 
@@ -70,46 +71,25 @@ impl Fetchable for EventData {
 
         let mut stream = tokio::net::UnixStream::connect(SocketData::SOCKET_ADDR)
             .await
-            .map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::SocketError(SocketAction::Connect),
-                    e
-                )
-            })?;
+            .or_kind_with(|| ErrorKind::Socket(SocketAction::Connect))?;
 
         let config = bincode::config::standard();
         let req = Request::Event(EventFilter::Nearby {
             look_back: evt.look_back,
             look_ahead: evt.look_ahead,
         });
-        let req_obj = SizedMessageObj::from_struct(&req).map_err(|e| {
-            sherlock_msg!(Warning, SherlockErrorType::SerializationError, e.message)
-        })?;
+        let req_obj = SizedMessageObj::from_struct(&req)
+            .map_err(|e| sherlock_msg!(Warning, ErrorKind::Serialize, e.message))?;
 
         stream.write_sized(req_obj).await.map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::SocketError(SocketAction::Write),
-                e.message
-            )
+            sherlock_msg!(Warning, ErrorKind::Socket(SocketAction::Write), e.message)
         })?;
 
         let resp_bin = stream.read_sized().await.map_err(|e| {
-            sherlock_msg!(
-                Warning,
-                SherlockErrorType::SocketError(SocketAction::Read),
-                e.message
-            )
+            sherlock_msg!(Warning, ErrorKind::Socket(SocketAction::Read), e.message)
         })?;
         let (resp, _): (Response, _) = bincode::serde::decode_from_slice(&resp_bin, config)
-            .map_err(|e| {
-                sherlock_msg!(
-                    Warning,
-                    SherlockErrorType::DeserializationError("Events".into()),
-                    e
-                )
-            })?;
+            .or_kind_with(|| ErrorKind::Parse("Events".into()))?;
 
         if let Response::Events(mut events) = resp {
             let now = Local::now();

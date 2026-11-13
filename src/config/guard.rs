@@ -4,7 +4,7 @@ use crate::{
     CONFIG,
     config::SherlockConfig,
     sherlock_msg,
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{SherlockMessage, types::ErrorKind},
 };
 
 pub struct ConfigGuard;
@@ -13,7 +13,7 @@ impl<'g> ConfigGuard {
         CONFIG.get().ok_or_else(|| {
             sherlock_msg!(
                 Error,
-                SherlockErrorType::ConfigError("Failed to get global CONFIG singleton.".into()),
+                ErrorKind::Config("Failed to get global CONFIG singleton.".into()),
                 "Config not initialized"
             )
         })
@@ -23,7 +23,7 @@ impl<'g> ConfigGuard {
         Self::get_config()?.read().map_err(|_| {
             sherlock_msg!(
                 Warning,
-                SherlockErrorType::ConfigError("Failed get immutable CONFIG singleton.".into()),
+                ErrorKind::Config("Failed get immutable CONFIG singleton.".into()),
                 "Failed to acquire write lock on config"
             )
         })
@@ -33,7 +33,7 @@ impl<'g> ConfigGuard {
         Self::get_config()?.write().map_err(|_| {
             sherlock_msg!(
                 Warning,
-                SherlockErrorType::ConfigError("Failed to get mutable CONFIG singleton.".into()),
+                ErrorKind::Config("Failed to get mutable CONFIG singleton.".into()),
                 "Failed to acquire write lock on config"
             )
         })

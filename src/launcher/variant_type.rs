@@ -380,7 +380,7 @@ macro_rules! ensure_func {
         } else {
             return Err(sherlock_msg!(
                 Warning,
-                SherlockErrorType::InvalidFunction,
+                ErrorKind::InvalidFunction,
                 format!("Invalid function {:?} for this launcher", $val)
             ));
         }

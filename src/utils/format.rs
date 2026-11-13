@@ -1,6 +1,6 @@
 use crate::{
     sherlock_msg,
-    utils::errors::{SherlockMessage, types::SherlockErrorType},
+    utils::errors::{SherlockMessage, types::ErrorKind},
 };
 
 /// Converts an ASCII string to title case in place, without allocating new memory.
@@ -32,7 +32,7 @@ pub fn make_ascii_title_case(s: &mut str) -> Result<(), SherlockMessage> {
     if !s.is_ascii() {
         return Err(sherlock_msg!(
             Warning,
-            SherlockErrorType::InvalidData,
+            ErrorKind::InvalidData,
             "Provided string is not ascii"
         ));
     }
