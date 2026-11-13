@@ -10,6 +10,7 @@ use gpui::App;
 use super::{Loader, utils::CounterReader};
 use crate::{
     app::{LauncherEntity, data::LauncherData},
+    config::{ConfigFileChange, ConfigGuard},
     features::plugin::subscribers::{TileSubscribers, TileSubscribersGlobal},
     launcher::{Launcher, LauncherConfig, LauncherId},
     loader::utils::RawLauncher,
@@ -17,7 +18,6 @@ use crate::{
     ui::{launcher::LauncherMode, traits::RenderableChildDelegate, widgets::RenderableChild},
     utils::{
         cache::BinaryCache,
-        config::{ConfigFileChange, ConfigGuard},
         errors::{
             SherlockMessage,
             types::{FileAction, SherlockErrorType},

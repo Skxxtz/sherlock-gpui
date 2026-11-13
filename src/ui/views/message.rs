@@ -4,6 +4,7 @@ use gpui::{AnyElement, App, Context, IntoElement, WeakEntity, Window, px};
 
 use crate::{
     app::{data::LauncherData, theme::ActiveTheme},
+    config::HomeType,
     features::message::MessageLauncher,
     launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     ui::{
@@ -22,7 +23,7 @@ use crate::{
         },
         widgets::{ChildKind, RenderableChild, message::MessageChild},
     },
-    utils::{config::HomeType, errors::SherlockMessage},
+    utils::errors::SherlockMessage,
 };
 
 mod render;

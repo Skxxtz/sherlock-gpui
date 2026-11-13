@@ -1,12 +1,12 @@
 use std::{env, fs, path::Path};
 
 use crate::{
+    config::SherlockConfig,
     features::plugin::api::LuaApiDocumentation,
     loader::flag_loader::{DebugAction, flags::FLAGS, utils::FlagSection},
     sherlock_msg,
     tokio_utils::SizedMessageObj,
     utils::{
-        config::SherlockConfig,
         errors::{SherlockMessage, types::SherlockErrorType},
         networking::ClientMessage,
         paths::get_cache_dir,

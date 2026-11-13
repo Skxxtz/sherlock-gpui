@@ -14,6 +14,7 @@ use zbus::blocking::{Connection, Proxy};
 
 use super::io::MprisData;
 use crate::{
+    config::ConfigGuard,
     define_inner_functions,
     ensure_func,
     launcher::{
@@ -28,12 +29,9 @@ use crate::{
     sherlock_msg,
     skip_func_if_nav,
     ui::widgets::{ChildKind, RenderableChild, audio::MusicPlayerWidget},
-    utils::{
-        config::ConfigGuard,
-        errors::{
-            SherlockMessage,
-            types::{DBusAction, DirAction, FileAction, SherlockErrorType, SocketAction},
-        },
+    utils::errors::{
+        SherlockMessage,
+        types::{DBusAction, DirAction, FileAction, SherlockErrorType, SocketAction},
     },
 };
 
@@ -304,7 +302,7 @@ impl AudioLauncherFunctions {
         if let Ok(config) = ConfigGuard::read()
             && let Some(m) = config.default_apps.mpris.as_ref()
         {
-            let preferred = names.into_iter().find(|name| name.contains(m));
+            let preferred = names.into_iter().find(|name| name.contains(&**m));
             if preferred.is_some() {
                 return preferred;
             }

@@ -1,9 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
+    config::HomeType,
     launcher::{LauncherConfig, LauncherId},
     ui::utils::scoring::SortKey,
-    utils::config::HomeType,
 };
 
 #[derive(Clone, Copy, Default, PartialEq, Eq)]

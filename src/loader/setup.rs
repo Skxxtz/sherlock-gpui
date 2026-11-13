@@ -7,10 +7,10 @@ use super::Loader;
 use crate::{
     CONFIG,
     ICONS,
+    config::SherlockConfig,
     loader::{CustomIconTheme, IconThemeGuard},
     sherlock_msg,
     utils::{
-        config::SherlockConfig,
         errors::{
             SherlockMessage,
             types::{DirAction, SherlockErrorType},

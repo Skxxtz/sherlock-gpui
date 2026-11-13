@@ -2,10 +2,10 @@ use std::{fs::read_to_string, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use super::{ConfigSourceFiles, SherlockConfig, types::take_warnings};
 use crate::{
     sherlock_msg,
     utils::{
-        config::{ConfigSourceFiles, SherlockConfig},
         errors::{
             SherlockMessage,
             types::{FileAction, SherlockErrorType},
@@ -81,16 +81,24 @@ impl SherlockFlags {
 
         match std::fs::read_to_string(&path) {
             Ok(mut config_str) => {
+                let mut unknown: Vec<String> = Vec::new();
+                take_warnings(); // stale ones from an earlier read
                 let config_res: Result<SherlockConfig, SherlockMessage> = match filetype.as_str() {
                     "json" => {
                         let mut bytes = config_str.into_bytes();
-                        simd_json::from_slice(&mut bytes).map_err(|e| {
+                        let err = |e: &dyn std::fmt::Display| {
                             sherlock_msg!(
                                 Warning,
                                 SherlockErrorType::DeserializationError("Json Config".into()),
-                                e
+                                e.to_string()
                             )
-                        })
+                        };
+                        simd_json::Deserializer::from_slice(&mut bytes)
+                            .map_err(|e| err(&e))
+                            .and_then(|mut de| {
+                                serde_ignored::deserialize(&mut de, |p| unknown.push(p.to_string()))
+                                    .map_err(|e| err(&e))
+                            })
                     }
                     "toml" => {
                         // Setup to parse nested configs
@@ -114,13 +122,19 @@ impl SherlockFlags {
                                     config_str.push_str(&content);
                                 });
                         }
-                        toml::de::from_str(&config_str).map_err(|e| {
+                        let err = |e: toml::de::Error| {
                             sherlock_msg!(
                                 Warning,
                                 SherlockErrorType::DeserializationError("Toml Config".into()),
                                 e
                             )
-                        })
+                        };
+                        toml::Deserializer::parse(&config_str)
+                            .map_err(err)
+                            .and_then(|de| {
+                                serde_ignored::deserialize(de, |p| unknown.push(p.to_string()))
+                                    .map_err(err)
+                            })
                     }
                     _ => {
                         let ext = path
@@ -135,11 +149,31 @@ impl SherlockFlags {
                         ));
                     }
                 };
+                // problems that didn't stop the config from loading
+                let mut warnings = take_warnings();
+                unknown.retain(|key| key != "source" && !key.starts_with("source."));
+                warnings.extend(
+                    unknown
+                        .into_iter()
+                        .map(|key| format!("unknown key `{key}`, ignored")),
+                );
+
                 match config_res {
                     Ok(mut config) => {
                         config.apply_flags(self);
                         config.initialized = true;
-                        Ok((config, vec![]))
+                        warnings.extend(config.validate());
+                        let messages = warnings
+                            .into_iter()
+                            .map(|w| {
+                                sherlock_msg!(
+                                    Warning,
+                                    SherlockErrorType::ConfigError(path.display().to_string()),
+                                    w
+                                )
+                            })
+                            .collect();
+                        Ok((config, messages))
                     }
                     Err(e) => {
                         let mut config = SherlockConfig::default();

@@ -7,6 +7,7 @@ use std::{
 use gpui::App;
 
 use crate::{
+    config::ConfigGuard,
     define_inner_functions,
     ensure_func,
     launcher::{
@@ -31,7 +32,6 @@ use crate::{
         },
     },
     utils::{
-        config::ConfigGuard,
         errors::{
             SherlockMessage,
             types::{DirAction, FileAction, SherlockErrorType},

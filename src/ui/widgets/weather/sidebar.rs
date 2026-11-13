@@ -16,6 +16,7 @@ use gpui::{
 
 use crate::{
     app::theme::ActiveTheme,
+    config::types::{LengthUnit, TemperatureUnit},
     features::weather::{WeatherData, upcoming},
     ui::{
         components::graph::{Graph, GraphKind, Series},
@@ -35,14 +36,11 @@ pub struct WeatherSidebar {
 }
 
 impl WeatherSidebar {
-    pub fn new(data: Rc<WeatherData>, temp_unit: &str, length_unit: &str) -> Self {
-        const IMPERIALS: &[&str] = &[
-            "inches", "inch", "in", "feet", "foot", "ft", "miles", "mile", "mi",
-        ];
+    pub fn new(data: Rc<WeatherData>, temp_unit: TemperatureUnit, length_unit: LengthUnit) -> Self {
         Self {
             data,
-            fahrenheit: temp_unit.eq_ignore_ascii_case("f"),
-            imperial: IMPERIALS.contains(&length_unit.to_lowercase().as_str()),
+            fahrenheit: temp_unit == TemperatureUnit::Fahrenheit,
+            imperial: length_unit.is_imperial(),
         }
     }
 

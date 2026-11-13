@@ -24,6 +24,7 @@ use crate::{
         run_async_updates,
         spawn_launcher,
     },
+    config::{ConfigGuard, ConfigWatcher, reload_async},
     launcher::{Launcher, LauncherConfig, variant_type::LauncherType},
     sherlock_msg,
     tokio_utils::AsyncSizedMessage,
@@ -32,7 +33,6 @@ use crate::{
         widgets::{ChildKind, RenderableChild, dmenu::DmenuData},
     },
     utils::{
-        config::{ConfigGuard, ConfigWatcher, reload_async},
         errors::{
             SherlockMessage,
             types::{SherlockErrorType, SocketAction},

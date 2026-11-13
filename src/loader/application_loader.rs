@@ -10,12 +10,12 @@ use glob::Pattern;
 use rayon::prelude::*;
 
 use crate::{
+    config::{ConfigFileChange, ConfigGuard, SherlockAlias, SherlockIgnore},
     loader::application_loader::parser::DesktopFileParser,
     prelude::PathHelpers,
     ui::widgets::list_item::app::AppItem,
     utils::{
         cache::BinaryCache,
-        config::{ConfigFileChange, ConfigGuard, SherlockAlias, SherlockIgnore},
         errors::{
             SherlockMessage,
             types::{FileAction, SherlockErrorType},
@@ -57,7 +57,7 @@ impl ApplicationLoader {
         changes: Option<ConfigFileChange>,
     ) -> Result<Arc<Vec<AppItem>>, SherlockMessage> {
         // Don't hold the config lock while parsing (the parser reads it too).
-        let cache_path: Arc<Path> = ConfigGuard::read()?.caching.cache.clone();
+        let cache_path: Arc<Path> = ConfigGuard::read()?.caching.cache.arc();
 
         let cached: Option<Vec<AppItem>> = match BinaryCache::read(&cache_path) {
             Ok(apps) => Some(apps),

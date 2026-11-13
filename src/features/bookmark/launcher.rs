@@ -9,6 +9,7 @@ use std::{
 use rusqlite::{Connection, OpenFlags};
 
 use crate::{
+    config::ConfigGuard,
     launcher::{LauncherConfig, LauncherProvider, LauncherType},
     loader::{
         application_loader::file_has_changed,
@@ -23,7 +24,6 @@ use crate::{
     },
     utils::{
         cache::BinaryCache,
-        config::{ConfigGuard, ConstantDefaults},
         errors::{
             SherlockMessage,
             types::{DbAction, DirAction, FileAction, SherlockErrorType},
@@ -47,19 +47,20 @@ impl LauncherProvider for BookmarkLauncher {
             .get("browser")
             .and_then(|s| s.as_str().map(|str| str.to_string()))
             .or_else(|| {
-                ConfigGuard::read()
+                ConfigGuard::get(|c| c.default_apps.browser())
                     .ok()
-                    .and_then(|c| c.default_apps.browser.clone())
+                    .map(|b| b.to_string())
             })
-            .or_else(|| ConstantDefaults::browser().ok())
-            .ok_or(sherlock_msg!(
-                Warning,
-                SherlockErrorType::InvalidData,
-                format!(
-                    "Failed to fetch browser for `{}`",
-                    raw.name.as_deref().unwrap_or("BookmarkLauncher")
+            .ok_or_else(|| {
+                sherlock_msg!(
+                    Warning,
+                    SherlockErrorType::InvalidData,
+                    format!(
+                        "Failed to fetch browser for `{}`",
+                        raw.name.as_deref().unwrap_or("BookmarkLauncher")
+                    )
                 )
-            ))?;
+            })?;
 
         Ok(LauncherType::Bookmarks(BookmarkLauncher { target_browser }))
     }

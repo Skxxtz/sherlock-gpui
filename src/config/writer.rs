@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, path::Path};
 
-use crate::utils::{config::SherlockConfig, errors::SherlockMessage};
+use crate::{config::SherlockConfig, utils::errors::SherlockMessage};
 
 mod diff;
 mod locate;

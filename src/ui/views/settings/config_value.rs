@@ -1,6 +1,7 @@
 use gpui::SharedString;
 
 use super::model::SettingValue;
+use crate::config::types::{ConfigEnum, Percent, Text};
 
 /// What the struct can't know about a field: the allowed range, or the allowed strings.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -179,6 +180,58 @@ impl ConfigValue for Option<String> {
     fn apply(&mut self, value: &SettingValue) {
         if let SettingValue::Text(text) = value {
             *self = (!text.is_empty()).then(|| text.to_string());
+        }
+    }
+}
+
+impl ConfigValue for Text {
+    fn to_setting(&self, _: Meta) -> SettingValue {
+        SettingValue::Text(self.shared())
+    }
+    fn apply(&mut self, value: &SettingValue) {
+        if let SettingValue::Text(text) = value {
+            *self = text.clone().into();
+        }
+    }
+}
+
+/// Optional text: empty means "not set".
+impl ConfigValue for Option<Text> {
+    fn to_setting(&self, _: Meta) -> SettingValue {
+        SettingValue::Text(self.as_ref().map(Text::shared).unwrap_or_default())
+    }
+    fn apply(&mut self, value: &SettingValue) {
+        if let SettingValue::Text(text) = value {
+            *self = (!text.trim().is_empty()).then(|| text.clone().into());
+        }
+    }
+}
+
+/// A fraction, shown in percent.
+impl ConfigValue for Percent {
+    fn to_setting(&self, meta: Meta) -> SettingValue {
+        self.get().to_setting(meta)
+    }
+    fn apply(&mut self, value: &SettingValue) {
+        let v = self.get_mut();
+        v.apply(value);
+        *v = v.clamp(0., 1.);
+    }
+}
+
+/// A config enum: a choice of its values.
+impl<T: ConfigEnum> ConfigValue for T {
+    fn to_setting(&self, _: Meta) -> SettingValue {
+        SettingValue::Choice {
+            options: T::OPTIONS,
+            selected: self.index(),
+        }
+    }
+    fn apply(&mut self, value: &SettingValue) {
+        if let SettingValue::Choice { selected, .. } = value
+            && let Some(v) = T::from_index(*selected)
+        {
+            *self = v;
         }
     }
 }

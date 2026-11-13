@@ -1,12 +1,12 @@
 use std::{path::Path, time::SystemTime};
 
+use super::{ConfigGuard, writer::config_sources};
 #[cfg(feature = "nixos")]
 use crate::loader::application_loader;
 use crate::{
     loader::application_loader::ApplicationLoader,
     sherlock_msg,
     utils::{
-        config::{ConfigGuard, writer::config_sources},
         errors::{
             SherlockMessage,
             types::{DirAction, SherlockErrorType},

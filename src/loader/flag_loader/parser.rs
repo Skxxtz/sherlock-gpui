@@ -9,13 +9,11 @@ use super::{
 #[cfg(feature = "docs")]
 use crate::docs::SherlockDocumentation;
 use crate::{
+    config::{SherlockFlags, repair_config},
     features::debug::DebugFunctions,
     loader::flag_loader::actions::plugin_init,
     ui::query_memory::PersistentQueryMemory,
-    utils::{
-        config::{SherlockFlags, repair_config},
-        paths::query_memory_path,
-    },
+    utils::paths::query_memory_path,
 };
 
 pub struct ParsedArgs {

@@ -3,14 +3,12 @@ mod fallback_migration;
 
 use std::{fs, path::Path};
 
+use fallback_migration::LegacyRawLauncher;
+
 use crate::{
+    config::{SherlockConfig, SherlockFlags},
     sherlock_msg,
     utils::{
-        config::{
-            SherlockConfig,
-            SherlockFlags,
-            transformer::fallback_migration::LegacyRawLauncher,
-        },
         errors::{
             SherlockMessage,
             types::{FileAction, SherlockErrorType},

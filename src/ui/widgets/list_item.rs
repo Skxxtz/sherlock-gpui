@@ -13,6 +13,7 @@ use gpui::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    config::{ConfigGuard, SherlockAlias},
     launcher::{LauncherConfig, utils::exec_mode::ExecMode},
     loader::{
         IconType,
@@ -25,7 +26,6 @@ use crate::{
         traits::RenderableChildImpl,
         utils::render::substitute,
     },
-    utils::config::{AppearanceDefaults, ConfigGuard, SherlockAlias},
 };
 
 pub mod app;
@@ -137,8 +137,7 @@ impl<P: Payload> RenderableChildImpl for ListItem<P> {
         theme: Arc<crate::app::theme::ThemeData>,
         _cx: &mut gpui::App,
     ) -> AnyElement {
-        let icon_size = ConfigGuard::read_with(|c| c.appearance.icon_size)
-            .unwrap_or_else(|_| AppearanceDefaults::icon_size()) as f32;
+        let icon_size = ConfigGuard::get(|c| c.appearance.icon_size) as f32;
 
         let icon = match self.meta.icon.as_ref().or(launcher.icon.as_ref()) {
             Some(icon) => icon.element(px(icon_size), theme.primary_text),

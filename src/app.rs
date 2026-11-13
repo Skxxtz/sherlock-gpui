@@ -29,6 +29,7 @@ use tokio::net::UnixListener;
 use crate::{
     SOCKET_PATH,
     app::{data::LauncherData, theme::ActiveTheme},
+    config::{ConfigGuard, ConfigWatcher},
     features::plugin::runtime::LuaRuntimeHandle,
     loader::{LauncherLoadResult, Loader, SetupResult},
     ui::{
@@ -36,11 +37,7 @@ use crate::{
         components::search_bar::TextInput,
         launcher::{LauncherMode, LauncherView},
     },
-    utils::{
-        config::{AppearanceDefaults, ConfigGuard, ConfigWatcher},
-        errors::SherlockMessage,
-        preview_lru::PreviewCache,
-    },
+    utils::{errors::SherlockMessage, preview_lru::PreviewCache},
 };
 
 pub mod bindings;
@@ -159,8 +156,7 @@ fn spawn_launcher(
     let backdrop = spawn_backdrop(cx);
 
     cx.open_window(get_window_options(), move |win, cx| {
-        let placeholder = ConfigGuard::read_with(|c| c.appearance.placeholder.clone())
-            .unwrap_or(AppearanceDefaults::placeholder());
+        let placeholder = ConfigGuard::get(|c| c.appearance.placeholder.shared());
         let text_input = cx.new(|cx| TextInput::builder().placeholder(placeholder).build(cx));
 
         attach_window_hooks(win, cx);
@@ -207,7 +203,7 @@ fn spawn_backdrop(cx: &mut App) -> Option<WindowHandle<Backdrop>> {
         .filter(|c| c.backdrop.enable)
         .and_then(|c| {
             cx.open_window(Backdrop::window_options(), |_, cx| {
-                cx.new(|_| Backdrop::new(c.backdrop.opacity, c.backdrop.animation_duration))
+                cx.new(|_| Backdrop::new(c.backdrop.opacity.get(), c.backdrop.animation_duration))
             })
             .ok()
         })

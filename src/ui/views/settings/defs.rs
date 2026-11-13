@@ -6,8 +6,7 @@ use super::{
 };
 use crate::{
     app::bindings::split_scope,
-    ui::{actions::UIFunction, views::settings::model::SectionKind},
-    utils::config::{
+    config::{
         ConfigAppearance,
         ConfigBackdrop,
         ConfigBehavior,
@@ -19,6 +18,7 @@ use crate::{
         SherlockConfig,
         StatusBar,
     },
+    ui::{actions::UIFunction, views::settings::model::SectionKind},
 };
 
 /// One row: where its value lives in the config and how it's shown. Made by

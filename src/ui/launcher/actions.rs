@@ -7,6 +7,7 @@ use smallvec::SmallVec;
 use super::execute;
 use crate::{
     app::{RetainedLauncher, reset_generation},
+    config::ConfigGuard,
     launcher::{LauncherValues, utils::exec_mode::ExecMode, variant_type::QuickActionCapabilities},
     sherlock_msg,
     ui::{
@@ -30,7 +31,7 @@ use crate::{
         traits::{InputAction, RenderableChildDelegate},
         views::Propagation,
     },
-    utils::{config::ConfigGuard, errors::types::SherlockErrorType},
+    utils::errors::types::SherlockErrorType,
 };
 
 // Selection and focus

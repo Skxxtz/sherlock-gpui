@@ -200,8 +200,8 @@ impl SherlockView for EmojiView {
 mod tests {
     use super::*;
     use crate::{
+        config::HomeType,
         ui::{model::pipeline::FilterCtx, query_memory::Boosts},
-        utils::config::HomeType,
     };
 
     fn set() -> EmojiSet {

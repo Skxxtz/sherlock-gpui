@@ -3,7 +3,7 @@ use std::mem::discriminant;
 use gpui::SharedString;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::config::SherlockFlags;
+use crate::config::SherlockFlags;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum ClientMessage {

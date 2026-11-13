@@ -6,17 +6,18 @@ use tokio::io::AsyncWriteExt;
 
 use crate::{
     app::{bindings::ShortcutKeyMod, run_app},
+    config::SherlockConfig,
     loader::{CustomIconTheme, Loader, assets::Assets, pipe::read_stdin_piped},
     tokio_utils::{AsyncSizedMessage, SizedMessageObj},
     ui::query_memory::PersistentQueryMemory,
     utils::{
-        config::SherlockConfig,
         networking::{ClientMessage, ServerResponse},
         paths::query_memory_path,
     },
 };
 
 mod app;
+mod config;
 #[cfg(feature = "docs")]
 mod docs;
 mod features;

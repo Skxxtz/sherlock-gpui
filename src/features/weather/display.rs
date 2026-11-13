@@ -3,30 +3,27 @@ use super::{
     wttr_serde::{CurrentCondition, WttrResponse},
 };
 use crate::{
+    config::{
+        ConfigGuard,
+        types::{LengthUnit, TemperatureUnit},
+    },
     launcher::utils::to_title_case,
     loader::{IconType, resolve_icon_path},
     sherlock_msg,
-    utils::{
-        config::ConfigGuard,
-        errors::{SherlockMessage, types::SherlockErrorType},
-    },
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
-fn format_temp(current: &CurrentCondition, unit_pref: &str) -> String {
-    match unit_pref.to_lowercase().as_str() {
-        "f" => format!("{}°F", current.temp_f),
-        _ => format!("{}°C", current.temp_c),
+fn format_temp(current: &CurrentCondition, unit: TemperatureUnit) -> String {
+    match unit {
+        TemperatureUnit::Fahrenheit => format!("{}°F", current.temp_f),
+        TemperatureUnit::Celsius => format!("{}°C", current.temp_c),
     }
 }
 
-fn format_wind(current: &CurrentCondition, length_unit: &str) -> String {
-    const IMPERIALS: &[&str] = &[
-        "inches", "inch", "in", "feet", "foot", "ft", "miles", "mile", "mi",
-    ];
-
+fn format_wind(current: &CurrentCondition, length_unit: LengthUnit) -> String {
     let direction = get_wind_dir(current.wind_deg);
 
-    if IMPERIALS.contains(&length_unit.to_lowercase().as_str()) {
+    if length_unit.is_imperial() {
         format!("{} {}mph", direction, current.wind_mph)
     } else {
         format!("{} {}km/h", direction, current.wind_kmph)
@@ -63,12 +60,12 @@ pub(super) fn transform_weather(
     let config = ConfigGuard::read()?;
 
     Ok(WeatherData {
-        temperature: format_temp(&current, &config.units.temperatures).into(),
+        temperature: format_temp(&current, config.units.temperatures).into(),
         icon: resolve_icon(&launcher.icon_theme, &current.class),
         format_str: format!(
             "{}  {}",
             to_title_case(&launcher.location),
-            format_wind(&current, &config.units.lengths)
+            format_wind(&current, config.units.lengths)
         )
         .into(),
         condition: current.desc.clone().into(),

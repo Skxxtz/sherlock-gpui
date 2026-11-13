@@ -10,9 +10,9 @@ use super::{
     Location,
     utils::{file_err, is_json, read_or_empty},
 };
-use crate::utils::{
+use crate::{
     config::ConfigSource,
-    errors::{SherlockMessage, types::FileAction},
+    utils::errors::{SherlockMessage, types::FileAction},
 };
 
 /// For each dotted key: the first file (depth-first through `[[source]]`) that contains

@@ -4,6 +4,7 @@ use glob::Pattern;
 use gpui::SharedString;
 
 use crate::{
+    config::SherlockAlias,
     loader::{
         IconType,
         application_loader::should_ignore,
@@ -11,7 +12,7 @@ use crate::{
         utils::ApplicationAction,
     },
     ui::widgets::list_item::{ItemMeta, ListItem, app::AppPayload},
-    utils::{config::SherlockAlias, files::read_lines},
+    utils::files::read_lines,
 };
 
 #[derive(PartialEq, Eq)]

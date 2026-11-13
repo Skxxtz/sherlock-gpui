@@ -14,6 +14,7 @@ use gpui::{
 
 use crate::{
     app::LauncherEntity,
+    config::ConfigGuard,
     tokio_utils::SizedMessageObj,
     ui::{
         actions::launcher::*,
@@ -30,7 +31,6 @@ use crate::{
         model::item::SelectionKey,
     },
     utils::{
-        config::ConfigGuard,
         errors::SherlockMessage,
         networking::ServerResponse,
         sized_message_sync::SizedMessage,

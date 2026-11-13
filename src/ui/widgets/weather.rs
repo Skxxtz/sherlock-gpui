@@ -22,6 +22,7 @@ use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
+    config::ConfigGuard,
     features::weather::{WeatherData, launcher::WeatherIconTheme},
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     sherlock_msg,
@@ -36,10 +37,7 @@ use crate::{
         },
         widgets::RenderableChildImpl,
     },
-    utils::{
-        config::ConfigGuard,
-        errors::{SherlockMessage, types::SherlockErrorType},
-    },
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
 mod sidebar;
@@ -260,9 +258,8 @@ impl RenderableChildImpl for WeatherWidget {
             return None;
         };
         let (temps, lengths) =
-            ConfigGuard::read_with(|c| (c.units.temperatures.clone(), c.units.lengths.clone()))
-                .unwrap_or_default();
-        Some(WeatherSidebar::new(data.clone(), &temps, &lengths).into_any_element())
+            ConfigGuard::read_with(|c| (c.units.temperatures, c.units.lengths)).unwrap_or_default();
+        Some(WeatherSidebar::new(data.clone(), temps, lengths).into_any_element())
     }
 
     #[inline(always)]

@@ -9,12 +9,10 @@ use std::{
 use gpui::SharedString;
 
 use crate::{
+    config::{ConfigGuard, SherlockConfig},
     loader::application_loader::ApplicationLoader,
     sherlock_msg,
-    utils::{
-        config::{ConfigGuard, SherlockConfig},
-        errors::{SherlockMessage, types::SherlockErrorType},
-    },
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
 /// Spawnes a command completely detatched from the current process.
@@ -221,7 +219,7 @@ fn resolve_token(
     if token == "keyword" {
         out.push_str(keyword);
     } else if token == "terminal" {
-        out.push_str(&config.default_apps.terminal);
+        out.push_str(&config.default_apps.terminal());
         out.push_str(" -e");
     } else if let Some(var_name) = token.strip_prefix("variable:") {
         let value = variables

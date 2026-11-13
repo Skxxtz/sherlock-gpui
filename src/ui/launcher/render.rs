@@ -33,6 +33,7 @@ use crate::{
         bindings::ShortcutKeyMod,
         theme::{ActiveTheme, ThemeData},
     },
+    config::ConfigGuard,
     launcher::{LauncherValues, utils::exec_mode::ExecMode},
     loader::resolve_icon_path,
     ui::{
@@ -45,7 +46,6 @@ use crate::{
         views::{Background, Chrome, ShellCtx, list::RowCtx},
         widgets::RenderableChild,
     },
-    utils::config::ConfigGuard,
 };
 
 impl Render for LauncherView {

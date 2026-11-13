@@ -4,8 +4,9 @@ use gpui::SharedString;
 
 use super::utils::FlagSection;
 use crate::{
+    config::SherlockFlags,
     loader::flag_loader::{DebugAction, actions::StartupAction, utils::ParseError},
-    utils::{config::SherlockFlags, networking::ClientMessage},
+    utils::networking::ClientMessage,
 };
 
 type FlagParserFn<'a> = fn(

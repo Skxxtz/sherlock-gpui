@@ -14,6 +14,7 @@ use gpui::{
 
 use crate::{
     app::{LauncherEntityGlobal, bindings::reload_bindings},
+    config::{ConfigFileChange, ConfigGuard, SherlockConfig, reload_async, save_changes},
     ui::{
         model::data::NoData,
         views::{
@@ -25,7 +26,6 @@ use crate::{
             settings::{model::SectionKind, render::ROW_PAD},
         },
     },
-    utils::config::{ConfigFileChange, ConfigGuard, SherlockConfig, reload_async, save_changes},
 };
 
 mod actions;

@@ -9,13 +9,13 @@ use gpui::SharedString;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{
+    config::HomeType,
     launcher::{LauncherConfig, utils::binds::BindSerde, variant_type::LauncherVariant},
     loader::{IconType, resolve_icon_path},
     sherlock_msg,
     ui::runtime_arguments::RuntimeArgument,
     utils::{
         cache::BinaryCache,
-        config::HomeType,
         errors::{
             SherlockMessage,
             types::{DirAction, SherlockErrorType},

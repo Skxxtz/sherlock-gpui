@@ -1,12 +1,10 @@
-use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{LazyLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
     CONFIG,
+    config::SherlockConfig,
     sherlock_msg,
-    utils::{
-        config::SherlockConfig,
-        errors::{SherlockMessage, types::SherlockErrorType},
-    },
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
 pub struct ConfigGuard;
@@ -51,6 +49,17 @@ impl<'g> ConfigGuard {
     {
         let config = Self::get_read()?;
         Ok(key_fn(&config))
+    }
+    /// Reads from the config, or from the defaults while there is none.
+    pub fn get<F, R>(key_fn: F) -> R
+    where
+        F: FnOnce(&SherlockConfig) -> R,
+    {
+        static DEFAULT: LazyLock<SherlockConfig> = LazyLock::new(SherlockConfig::default);
+        match Self::get_read() {
+            Ok(config) => key_fn(&config),
+            Err(_) => key_fn(&DEFAULT),
+        }
     }
 
     pub fn write_with<F>(key_fn: F) -> Result<(), SherlockMessage>

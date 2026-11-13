@@ -3,6 +3,7 @@ use gpui::{App, AppContext, ClipboardItem, Context, SharedString, Window};
 use crate::{
     QUERY_MEMORY,
     app::LauncherEntityGlobal,
+    config::{ConfigGuard, SherlockAlias, SherlockIgnore, reload},
     launcher::{ExecEffect, utils::exec_mode::ExecMode},
     loader::utils::CounterReader,
     sherlock_msg,
@@ -14,7 +15,6 @@ use crate::{
     },
     utils::{
         command_launch::spawn_detached,
-        config::{ConfigGuard, SherlockAlias, SherlockIgnore, reload},
         errors::{SherlockMessage, types::SherlockErrorType},
         item_key::ItemKey,
         websearch,
@@ -242,7 +242,7 @@ impl LauncherView {
                             cx,
                             &data,
                             &mut Vec::new(),
-                            crate::utils::config::ConfigFileChange::Ignore,
+                            crate::config::ConfigFileChange::Ignore,
                         );
                     }
                     self.filter_and_sort_sync(cx);

@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use gpui::SharedString;
 
 use super::command_launch::spawn_detached;
-use crate::utils::{
-    config::{ConfigGuard, ConstantDefaults},
-    errors::SherlockMessage,
-    url_detection::is_url,
+use crate::{
+    config::ConfigGuard,
+    utils::{errors::SherlockMessage, url_detection::is_url},
 };
 
 pub fn websearch(
@@ -42,13 +41,7 @@ pub fn websearch(
 
     let mut browser = match browser {
         Some(b) => b.to_string(),
-        None => {
-            let c = ConfigGuard::read()?;
-            c.default_apps
-                .browser
-                .clone()
-                .unwrap_or(ConstantDefaults::browser()?)
-        }
+        None => ConfigGuard::read()?.default_apps.browser()?.to_string(),
     };
 
     let url = url_template.replace("{keyword}", &query.replace(" ", "+"));

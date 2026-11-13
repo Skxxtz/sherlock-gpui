@@ -3,11 +3,11 @@ use smallvec::SmallVec;
 
 use crate::{
     SHORTCUT_MOD,
+    config::ConfigGuard,
     ui::{
         actions::{ShortcutAction, UIFunction},
         launcher::context_menu::action_keys::ContextActionBinds,
     },
-    utils::config::{ConfigGuard, ConfigKeybinds},
 };
 
 pub struct ReservedKeys(pub Vec<ContextActionBinds>);
@@ -31,13 +31,7 @@ pub fn reload_bindings(cx: &mut App) {
 pub(super) fn register_bindings(cx: &mut App) {
     // one config read: the binds and the symbols for the shortcut modifiers
     let (binds, mod_symbols) =
-        ConfigGuard::read_with(|c| (c.keybinds.effective(), c.appearance.mod_key_ascii))
-            .unwrap_or_else(|_| {
-                (
-                    ConfigKeybinds::default().effective(),
-                    crate::utils::config::AppearanceDefaults::modkey_ascii(),
-                )
-            });
+        ConfigGuard::get(|c| (c.keybinds.effective(), c.appearance.mod_key_ascii));
 
     let mut bindings: Vec<KeyBinding> = Vec::with_capacity(binds.len() + 8);
     for (key, function) in &binds {

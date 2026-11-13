@@ -2,16 +2,13 @@ use std::{path::Path, sync::Arc};
 
 use gpui::{App, AppContext, AsyncApp};
 
-use super::{SherlockConfig, watcher::ConfigFileChange};
+use super::{ConfigGuard, SherlockAlias, SherlockConfig, watcher::ConfigFileChange};
 use crate::{
     app::{LauncherEntity, LauncherViewGlobal},
     launcher::variant_type::LauncherType,
     loader::{Loader, RawLaunchers},
     ui::{launcher::LauncherMode, widgets::ChildKind},
-    utils::{
-        config::{ConfigGuard, SherlockAlias},
-        errors::SherlockMessage,
-    },
+    utils::errors::SherlockMessage,
 };
 
 /// `reload` with the file reading and parsing on a background thread; only swapping in
@@ -22,7 +19,7 @@ pub async fn reload_async(
     initial_messages: &mut Vec<SherlockMessage>,
     changes: ConfigFileChange,
 ) -> Option<Arc<[LauncherMode]>> {
-    let fallback = ConfigGuard::read_with(|c| c.files.fallback.clone()).ok();
+    let fallback = ConfigGuard::read_with(|c| c.files.fallback.arc()).ok();
     let (config, raw) = cx
         .background_spawn(async move { read_changes(changes, fallback) })
         .await;
@@ -36,7 +33,7 @@ pub fn reload(
     initial_messages: &mut Vec<SherlockMessage>,
     changes: ConfigFileChange,
 ) -> Option<Arc<[LauncherMode]>> {
-    let fallback = ConfigGuard::read_with(|c| c.files.fallback.clone()).ok();
+    let fallback = ConfigGuard::read_with(|c| c.files.fallback.arc()).ok();
     let (config, raw) = read_changes(changes, fallback);
     finish(cx, data, initial_messages, changes, config, raw)
 }
@@ -57,7 +54,7 @@ fn read_changes(
             // a new config may point at another launcher file
             let path = config
                 .as_ref()
-                .map(|(c, _)| c.files.fallback.clone())
+                .map(|(c, _)| c.files.fallback.arc())
                 .or(fallback)?;
             Some(Loader::read_launchers(&path))
         })

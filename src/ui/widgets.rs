@@ -25,6 +25,7 @@ use theme::ThemeWidget;
 
 use crate::{
     app::theme::ThemeData,
+    config::HomeType,
     launcher::{
         ExecEffect,
         LauncherConfig,
@@ -65,7 +66,7 @@ use crate::{
             weather::WeatherWidget,
         },
     },
-    utils::{config::HomeType, errors::SherlockMessage, item_key::ItemKey},
+    utils::{errors::SherlockMessage, item_key::ItemKey},
 };
 
 /// Single source of truth for child variants. Generates:

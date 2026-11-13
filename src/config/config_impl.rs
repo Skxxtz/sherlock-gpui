@@ -1,9 +1,9 @@
 use std::{fs, path::Path};
 
 use crate::{
+    config::{ConfigAppearance, ConfigFiles, SherlockConfig, SherlockFlags, imp::WithRoot},
     sherlock_msg,
     utils::{
-        config::{ConfigAppearance, ConfigFiles, SherlockConfig, SherlockFlags, imp::WithRoot},
         errors::{
             SherlockMessage,
             types::{DirAction, FileAction, SherlockErrorType},

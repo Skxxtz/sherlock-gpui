@@ -12,6 +12,7 @@ use slotmap::{SlotMap, new_key_type};
 pub use variant_type::{LauncherType, LauncherVariant};
 
 use crate::{
+    config::HomeType,
     features::dmenu::DmenuLauncher,
     launcher::{utils::binds::Bind, variant_type::InnerFunction},
     loader::{
@@ -22,10 +23,7 @@ use crate::{
     },
     sherlock_msg,
     ui::{launcher::context_menu::ContextMenuAction, widgets::RenderableChild},
-    utils::{
-        config::HomeType,
-        errors::{SherlockMessage, types::SherlockErrorType},
-    },
+    utils::errors::{SherlockMessage, types::SherlockErrorType},
 };
 
 pub trait LauncherProvider {

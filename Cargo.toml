@@ -69,6 +69,7 @@ mupdf = {version = "0.8.0", default-features = false}
 slotmap = "1.1.1"
 toml_edit = "0.25.17"
 pulldown-cmark = {version = "0.13.6", default-features = false, optional = true}
+serde_ignored = "0.1.14"
 
 [features]
 default = ["wayland", "ai"]

@@ -191,6 +191,7 @@ fn serde_roundtrip() {
 #[test]
 fn learned_emoji_ranks_first_on_every_prefix() {
     use crate::{
+        config::HomeType,
         launcher::LauncherConfig,
         ui::{
             model::{
@@ -199,7 +200,6 @@ fn learned_emoji_ranks_first_on_every_prefix() {
             },
             views::emoji::EmojiSet,
         },
-        utils::config::HomeType,
     };
 
     let mut m = QueryMemory::default();

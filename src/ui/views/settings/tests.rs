@@ -11,8 +11,8 @@ use super::{
 };
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
+    config::ConfigKeybinds,
     ui::actions::UIFunction,
-    utils::config::ConfigKeybinds,
 };
 
 fn view(cx: &mut TestAppContext) -> Entity<SettingsView> {

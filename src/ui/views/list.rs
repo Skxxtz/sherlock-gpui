@@ -15,6 +15,7 @@ use gpui::{
 
 use crate::{
     app::theme::ThemeData,
+    config::ConfigGuard,
     ui::{
         launcher::{LauncherView, navigator::views::Grid},
         model::{
@@ -26,7 +27,6 @@ use crate::{
         views::ShellCtx,
         widgets::RenderableChild,
     },
-    utils::config::ConfigGuard,
 };
 
 /// Everything an item needs to draw its row.

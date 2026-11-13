@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
+    config::HomeType,
     launcher::{utils::binds::BindSerde, variant_type::LauncherVariant},
     loader::utils::{ApplicationActionSerde, RawLauncher},
     ui::runtime_arguments::{
@@ -15,7 +16,6 @@ use crate::{
         path::PathVar,
         string::StringVar,
     },
-    utils::config::HomeType,
 };
 
 fn default_true() -> bool {
