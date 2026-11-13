@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use syn::{DeriveInput, parse_macro_input};
 
+mod doc_fields;
 mod finalize;
 mod hideable;
 mod settings;
@@ -25,6 +26,15 @@ pub fn finalize(input: TokenStream) -> TokenStream {
 pub fn derive_settings(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     settings::expand(&input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+/// `Type::DOC_FIELDS`: name, type and `///` doc of every field, for generated docs.
+#[proc_macro_derive(DocFields)]
+pub fn derive_doc_fields(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    doc_fields::expand(&input)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

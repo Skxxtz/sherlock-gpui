@@ -14,6 +14,7 @@ use md_rs::{
 };
 
 use crate::{
+    app::theme::ThemeData,
     docs::book::{BookEntry, BookEntryBuilder, TopLevelEntry},
     launcher::LauncherConfig,
     ui::runtime_arguments::RuntimeArgument,
@@ -46,6 +47,10 @@ impl TopLevelEntry for Configuration {
             BookEntryBuilder::new::<RuntimeArgument>()
                 .title("Runtime Arguments")
                 .file("runtime_arguments.md")
+                .build(),
+            BookEntryBuilder::new::<ThemeData>()
+                .title("Themes")
+                .file("themes.md")
                 .build(),
         ]
         .into_iter()

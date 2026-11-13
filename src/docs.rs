@@ -30,6 +30,7 @@ pub mod plugins;
 mod readme;
 pub mod runtime_args;
 mod test;
+mod theme;
 pub mod utils;
 
 pub trait Documentation {

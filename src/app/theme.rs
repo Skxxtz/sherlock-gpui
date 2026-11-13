@@ -31,15 +31,21 @@ impl std::ops::Deref for ThemeData {
     }
 }
 
+#[cfg_attr(feature = "docs", derive(sherlock_derive::DocFields))]
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Typography {
+    /// Main UI font.
     pub font_family: SharedString,
+    /// Font for code and keybinds.
     pub monospace: SharedString,
+    /// Font for headings in reading views (e.g. the ask view).
     pub serif: SharedString,
     /// Base text size in px.
     pub font_size: f32,
+    /// Small text size in px (hints, secondary labels).
     pub font_size_sm: f32,
+    /// Large text size in px (titles).
     pub font_size_lg: f32,
 }
 
@@ -57,18 +63,23 @@ impl Default for Typography {
 }
 
 /// Sizes in px.
+#[cfg_attr(feature = "docs", derive(sherlock_derive::DocFields))]
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Metrics {
-    /// List items, cards, inputs.
+    /// Corner radius of list items, cards and inputs.
     pub radius: f32,
-    /// Badges, keybind chips.
+    /// Corner radius of badges and keybind chips.
     pub radius_sm: f32,
-    /// The launcher window.
+    /// Corner radius of the launcher window.
     pub radius_window: f32,
+    /// Width of item and window borders.
     pub border_width: f32,
+    /// Horizontal padding inside list items.
     pub item_padding_x: f32,
+    /// Vertical padding inside list items.
     pub item_padding_y: f32,
+    /// Size of item icons.
     pub icon_size: f32,
 }
 
@@ -86,72 +97,103 @@ impl Default for Metrics {
     }
 }
 
+#[cfg_attr(feature = "docs", derive(sherlock_derive::DocFields))]
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct ThemeColors {
     // Cursor and Selection
+    /// Text cursor in the search bar.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub cursor: Hsla,
+    /// Background of selected text.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub selection: Hsla,
+    /// Accent for highlights and active elements.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub accent: Hsla,
     // Backgrounds
+    /// Main window background.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_app: Hsla,
+    /// Background of overlays like the context menu.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_overlay: Hsla,
+    /// Background of the selected item.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_selected: Hsla,
+    /// Background of unselected items.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_idle: Hsla,
+    /// Status bar background.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_status_bar: Hsla,
+    /// Background of keybind chips.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_keybind: Hsla,
+    /// Background of code blocks.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_code: Hsla,
+    /// Subtle background for secondary surfaces.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_muted: Hsla,
+    /// Background of badges.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub bg_badge: Hsla,
     // Borders
+    /// Default border, e.g. below the search bar.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub border: Hsla,
+    /// Border of the selected item.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub border_selected: Hsla,
+    /// Border of unselected items.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub border_idle: Hsla,
     // Text
+    /// Main text.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub primary_text: Hsla,
+    /// Less prominent text, e.g. descriptions.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub secondary_text: Hsla,
+    /// Least prominent text, e.g. hints.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub tertiary_text: Hsla,
+    /// Status bar text.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub text_status_bar: Hsla,
+    /// Mode label in the search bar.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub text_mode_label: Hsla,
+    /// Search icon tint.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub text_search_icon: Hsla,
+    /// Text in code blocks.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub text_code: Hsla,
+    /// Search bar placeholder.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub text_placeholder: Hsla,
     // Status colors
+    /// Warnings.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub color_warn: Hsla,
+    /// Errors.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub color_err: Hsla,
+    /// Success states.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub color_succ: Hsla,
+    /// Informational messages.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub color_info: Hsla,
     // Config banner
+    /// Config banner background.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub banner_bg: Hsla,
+    /// Config banner border.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub banner_border: Hsla,
+    /// Config banner text.
     #[serde(deserialize_with = "hsla_from_hex")]
     pub banner_text: Hsla,
 }
