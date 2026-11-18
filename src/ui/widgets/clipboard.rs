@@ -18,7 +18,7 @@ use sherlock_derive::Hideable;
 
 use crate::{
     CLIPBOARD,
-    app::theme::ThemeData,
+    app::{LauncherEntityGlobal, theme::ThemeData},
     launcher::{LauncherConfig, utils::exec_mode::ExecMode, variant_type::LauncherType},
     loader::{resolve_icon_path, utils::ApplicationAction},
     ui::{
@@ -96,8 +96,20 @@ impl ClipWidget {
             cx.spawn(async move |weak, cx| {
                 while let Some(text) = rx.next().await {
                     let alive = weak.update(cx, |this: &mut ClipboardContent, cx| {
+                        let was_visible = this.result.is_some();
                         this.with_content(&launcher, text);
                         cx.notify();
+
+                        // Visibility is decided by `based_show`, which only reruns on data changes.
+                        // Without this, the row stays in (or out of) the list with stale contents
+                        // and the list reflows on the next refilter.
+                        if was_visible != this.result.is_some()
+                            && let Some(data) = cx
+                                .try_global::<LauncherEntityGlobal>()
+                                .and_then(|g| g.0.upgrade())
+                        {
+                            data.update(cx, |_, cx| cx.notify());
+                        }
                     });
 
                     if alive.is_err() {
