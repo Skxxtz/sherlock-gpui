@@ -93,9 +93,11 @@ impl Render for LauncherView {
             && !self.text_input.read(cx).content.is_empty();
         self.ensure_focus(chrome, win, cx);
         let sidebar = self.render_sidebar(chrome, &theme, cx);
+        let settled = self.scale_settled(win, cx);
 
         div()
             .id("sherlock")
+            .when(!settled, |this| this.opacity(0.))
             .track_focus(&self.focus_handle)
             .flex()
             .flex_col()

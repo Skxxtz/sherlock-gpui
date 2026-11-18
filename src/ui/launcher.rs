@@ -45,6 +45,7 @@ pub mod filter_and_sort;
 mod mode;
 pub mod navigator;
 pub mod render;
+pub mod scale_gate;
 pub mod sidebar;
 pub mod sidebar_controller;
 
@@ -110,6 +111,9 @@ pub struct LauncherView {
 
     /// Last rendered selection; its inner focus is reset when the selection moves.
     pub last_selected: Option<SelectionKey>,
+
+    /// Keeps the window transparent until its real scale factor arrived.
+    pub scale_gate: scale_gate::ScaleGate,
 }
 
 impl Focusable for LauncherView {
@@ -197,6 +201,7 @@ impl LauncherView {
             response_socket,
             backdrop,
             last_selected: None,
+            scale_gate: Default::default(),
             _bind_interceptor: cx.intercept_keystrokes(move |ev, win, cx| {
                 let handled = weak_self
                     .update(cx, |launcher, cx| launcher.run_bind(&ev.keystroke, win, cx))

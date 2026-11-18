@@ -188,6 +188,7 @@ pub fn reopen_launcher(
         v.text_input.update(cx, |this, cx| this.select_all(cx));
         v.backdrop = backdrop;
         v.navigation.evict_unretained(cx);
+        v.scale_gate.reset();
     });
     cx.open_window(get_window_options(), move |win, cx| {
         attach_window_hooks(win, cx);
