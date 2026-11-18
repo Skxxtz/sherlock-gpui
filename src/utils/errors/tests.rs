@@ -130,13 +130,15 @@ fn report_has_code_and_hint() {
 }
 
 #[test]
-fn fingerprint_ignores_cause() {
-    let make = |cause| sherlock_msg!(ErrorKind::Closed, cause);
-    let (a, b) = (make("x"), make("y"));
-    assert_ne!(a, b);
-    assert_eq!(a.fingerprint(), b.fingerprint()); // same code, same line
-    let other = sherlock_msg!(ErrorKind::Closed, "x");
-    assert_ne!(a.fingerprint(), other.fingerprint()); // another place
+fn repeats_need_the_same_reason() {
+    let make = |cause, path| sherlock_msg!(ErrorKind::fs(FsOp::Read, path), cause);
+    let a = make("not found", "/a");
+    assert!(a.is_repeat_of(&make("not found", "/a")));
+    assert!(a.is_repeat_of(&make("not found", "/a").error_level())); // level ignored
+    assert!(!a.is_repeat_of(&make("permission denied", "/a"))); // other cause
+    assert!(!a.is_repeat_of(&make("not found", "/b"))); // other file
+    let elsewhere = sherlock_msg!(ErrorKind::fs(FsOp::Read, "/a"), "not found");
+    assert!(!a.is_repeat_of(&elsewhere)); // other place
 }
 
 #[test]

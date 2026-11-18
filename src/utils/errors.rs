@@ -150,9 +150,13 @@ impl SherlockMessage {
         out
     }
 
-    /// Identifies repeats of the same failure: same code, same place.
-    pub fn fingerprint(&self) -> (&'static str, &str) {
-        (self.kind.code(), &self.location)
+    /// A repeat of the same failure: same kind (with its fields), place, context and cause.
+    /// Only the level may differ, so different reasons on one line stay separate rows.
+    pub fn is_repeat_of(&self, other: &Self) -> bool {
+        self.kind == other.kind
+            && self.location == other.location
+            && self.context == other.context
+            && self.cause == other.cause
     }
 
     /// Adds what was being done when this failed (becomes the outermost step).

@@ -69,7 +69,7 @@ impl MessageView {
         for message in data {
             if let Some(existing) = messages
                 .iter_mut()
-                .find(|m| m.message.fingerprint() == message.fingerprint())
+                .find(|m| m.message.is_repeat_of(&message))
             {
                 existing.count += 1;
                 message.quiet(); // shown and logged once
@@ -104,7 +104,7 @@ impl MessageView {
             if let Some(existing) = this
                 .items_mut()
                 .iter_mut()
-                .find(|m| m.message.fingerprint() == message.fingerprint())
+                .find(|m| m.message.is_repeat_of(&message))
             {
                 existing.count += 1;
                 message.quiet(); // shown and logged once
