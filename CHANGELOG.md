@@ -40,7 +40,7 @@ run `git log main..dev` for all changes
 
 ## [Unreleased]
 
-* as of **eebcc5e**
+* as of **35c9cbb**
 
 ### Added
 
@@ -55,6 +55,19 @@ run `git log main..dev` for all changes
 * **Message View**: Added empty state (`c7e8cec`)
 * **Keybinds**: Added default binds for `CursorLeft` and `CursorRight`
   (`4c920d6`)
+* **Commands**: Command registry and dispatcher: every key in launcher, views
+  and components is a command with an id (`7a535c7`, `38162e5`, `47a6ed1`,
+  `d5df5a2`, `3590a93`)
+  * New `[commands]` config table binds keys to command ids, including chains
+    (`ec29852`)
+  * Status bar hints are built from the available commands (`d63819d`)
+* **Settings View**: Rows for the missing actions and the shortcut modifier
+  (`8c609c8`)
+* **AI**: Optional `ai` feature flag; the AI launcher is only built with it
+  (`ce1c4f7`)
+* **Docs**: Docs for keybinds and themes, links to subsections and to struct
+  definitions (`link_to`), launchers in their own files (`a69770b`, `6f48883`,
+  `dc510a4`, `ce0a15d`, `d8a1e16`)
 * **Weather Launcher**:
   * New `Pixel` icon theme (`1a73a65c`)
   * New sidebar for weather launcher, showing a temperature graph (`ad283de1`, `281c5797`).
@@ -74,6 +87,19 @@ run `git log main..dev` for all changes
 * **Config**: Added support for watching config source files (`a9717fdc`)
 * **Themes**: Improved theme handling and parameters (`109bd994`, `eebcc5e`)
 * **Search Bar**: Added auto-selection of default variable input content (`4e165ca`)
+* **Config**: Reworked config into one section per file with a single place
+  for defaults, typed values (units, edges, paths with `~`), validation and
+  warnings for unknown keys; existing configs keep working (`9fca7a9`,
+  `d862594`)
+* **Errors**: Reworked internal errors: kinds, context chains, `?` support,
+  call-site locations, each message logged once (`5af667e`)
+* **Message View**: Reworked as a journal: one line per message, the selected
+  one expands into its trace; copy, dismiss and level counts in the status bar
+  (`35c9cbb`)
+* **Keybinds**: Launcher binds are more efficient (`b5801e6`)
+* **Search**: Guard to keep the search string lowercase (`93d6120`)
+* **Icons**: Proper AI icon (`e11c33e`)
+* **README**: Links to the launchers (`e912e22`)
 
 ### Performance
 
@@ -95,6 +121,12 @@ run `git log main..dev` for all changes
 * **Input**: Fixed event propagation on caret left/right (`7fde47e`)
 * **Settings View**: Fixed scroll padding (`004bddf`)
 * **Search Bar**: Fixed search bar placeholder config key application (`5fda67c`)
+* **Layout**: Fixed default spacing for the list view (`5f4d35e`)
+* **Keep State**: Fixed the remember-query config key; renamed it to
+  `keep_state`, which now also remembers the last views (`515b972`)
+* **Fonts**: Fixed font registration on non-AI builds (`42e638c`)
+* **Launcher**: The view's search placeholder shows again (`c7ba1d2`)
+* **Settings View**: Placeholder settings apply at runtime (`69759d6`)
 
 
 ## [0.2.4] - 23.10.26
