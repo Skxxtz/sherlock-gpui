@@ -212,21 +212,21 @@ impl RowRender<ListId> for MessageChild {
             .chain(cause)
             .enumerate()
             .map(|(depth, (step, is_cause))| {
-                let branch = if depth == 0 {
-                    String::new()
-                } else {
-                    format!("{}└─ ", "   ".repeat(depth - 1))
-                };
+                // Fixed-width boxes, not spaces and glyphs: alignment can't drift with the font.
+                let branch = (depth > 0).then(|| {
+                    div()
+                        .flex_none()
+                        .w(px(TREE_STEP))
+                        .text_color(theme.tertiary_text)
+                        .child("└─")
+                });
                 div()
                     .flex()
+                    .pl(px(TREE_STEP * depth.saturating_sub(1) as f32))
+                    .children(branch)
                     .child(
                         div()
-                            .flex_none()
-                            .text_color(theme.tertiary_text)
-                            .child(branch),
-                    )
-                    .child(
-                        div()
+                            .flex_1()
                             .min_w_0()
                             .text_color(if is_cause {
                                 level
@@ -238,12 +238,18 @@ impl RowRender<ListId> for MessageChild {
             });
 
         let excerpt = self.excerpt.as_ref().map(|ex| {
-            let width = ex.lines.last().map_or(1, |(n, _)| n.to_string().len());
             let gutter = |n: String| {
                 div()
                     .flex_none()
+                    .w(px(GUTTER_W))
+                    .mr(px(8.))
+                    .pr(px(8.))
+                    .flex()
+                    .justify_end()
+                    .border_r_1()
+                    .border_color(theme.border_idle)
                     .text_color(theme.tertiary_text)
-                    .child(format!("{n:>width$} │ "))
+                    .child(n)
             };
             let lines = ex.lines.iter().map(|(n, line)| {
                 div()
@@ -280,7 +286,7 @@ impl RowRender<ListId> for MessageChild {
         row_el
             .child(
                 div()
-                    .ml(px(LVL_W + COL_GAP))
+                    .ml(px(DETAIL_ML))
                     .mt(px(8.))
                     .line_height(px(19.))
                     .flex()
@@ -300,6 +306,12 @@ pub const AT_W: f32 = 180.;
 pub const COUNT_W: f32 = 24.;
 pub const COL_GAP: f32 = 12.;
 pub const ROW_PX: f32 = 12.;
+/// Details of an open row start under the message column.
+const DETAIL_ML: f32 = LVL_W + KIND_W + 2. * COL_GAP;
+/// Line-number column of a source excerpt.
+const GUTTER_W: f32 = 40.;
+/// One tree level: the `└─ ` branch box and the indent per depth.
+const TREE_STEP: f32 = 22.;
 
 pub fn level_tag(level: SherlockMessageLevel) -> &'static str {
     match level {
