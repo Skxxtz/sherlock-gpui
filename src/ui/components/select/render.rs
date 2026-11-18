@@ -22,7 +22,7 @@ use gpui::{
 use super::{PAD, ROW_H, Select, VISIBLE};
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
-    ui::{components::keybind::bounds_probe, traits::HandleInputExt},
+    ui::{commands::HandleCommandsExt, components::keybind::bounds_probe},
 };
 
 impl Select {
@@ -114,7 +114,7 @@ impl Render for Select {
             .relative()
             .flex_none()
             .track_focus(&self.focus)
-            .handle_input(cx)
+            .handle_commands(cx)
             .child(
                 div()
                     .id(("select", id))

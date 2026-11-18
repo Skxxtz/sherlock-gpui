@@ -1,25 +1,15 @@
 use std::sync::Arc;
 
-use gpui::{
-    AnyElement,
-    App,
-    Context,
-    Entity,
-    FocusHandle,
-    Keystroke,
-    SharedString,
-    WeakEntity,
-    Window,
-    px,
-};
+use gpui::{AnyElement, App, Context, Entity, FocusHandle, SharedString, WeakEntity, Window, px};
 
 use crate::{
     app::theme::ThemeData,
+    launcher::utils::binds::Bind,
     ui::{
+        commands::Command,
         components::status_bar::StatusBar,
         launcher::{LauncherView, navigator::views::Layout},
         model::{Model, ResultsChange, data::ModelData},
-        traits::HandleActions,
     },
 };
 
@@ -130,12 +120,22 @@ pub struct Background {
     pub busy: BusyStatus,
 }
 
-pub trait SherlockView: HandleActions + 'static + Sized {
+pub trait SherlockView: 'static + Sized {
     /// The data this view's model filters; `NoData` for views without items.
     type Data: ModelData;
 
     fn chrome(&self) -> Chrome {
         Chrome::DEFAULT
+    }
+
+    /// This view's commands, the first layer keys are offered to.
+    fn commands() -> &'static [Command<Self>] {
+        &[]
+    }
+
+    /// Binds from this view's launcher config (`"ctrl-n" → "new_chat"`): keys to command chains.
+    fn binds(&self) -> Option<Arc<[Bind]>> {
+        None
     }
 
     /// Search bar placeholder while this view is shown. `None`: the configured default.
@@ -157,12 +157,6 @@ pub trait SherlockView: HandleActions + 'static + Sized {
 
     /// `Some()` will overwrite the default status bar. `None` leaves the default status bar in place.
     fn status_bar(&self, _cx: &App) -> Option<StatusBar> {
-        None
-    }
-
-    /// The key of this view's bind whose callback runs `name` (e.g. "stop"), for status-bar
-    /// hints (`KeySpec::Bind`). `None`: not bound, the hint is hidden.
-    fn bind_key(&self, _name: &str) -> Option<Keystroke> {
         None
     }
 

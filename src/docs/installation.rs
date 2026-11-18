@@ -29,11 +29,11 @@ impl Documentation for Installation {
     fn docs() -> Self::Docs {
         md!(
             h2("Installation"),
-            ArchLinux::docs(),
-            Debian::docs(),
-            Source::docs(),
-            NixOS::docs(),
-            PostInstallation::docs(),
+            ArchLinux::section(),
+            Debian::section(),
+            Source::section(),
+            NixOS::section(),
+            PostInstallation::section(),
         )
     }
 }
@@ -120,7 +120,7 @@ impl Documentation for Source {
                 br(),
                 "Make sure to have the following dependencies installed:"
             ),
-            BuildDependencies::docs(),
+            BuildDependencies::section(),
             details().summary(html_strong("Build Steps:")).child(list!(
                 Ordered,
                 item!(
@@ -337,7 +337,7 @@ impl Documentation for Debian {
                 "package directly from source, follow these steps:"
             ),
             "Make sure you have the following dependencies installed:",
-            BuildDependencies::docs(),
+            BuildDependencies::section(),
             details().summary(html_strong("Build Steps:")).child(list!(
                 Ordered,
                 build_step_1,

@@ -1,62 +1,60 @@
 use gpui::{Context, KeyDownEvent, Window};
 
-use crate::ui::{actions::*, traits::HandleActions, views::Propagation};
+use super::NumberInput;
+use crate::ui::{
+    actions::*,
+    commands::{Command, ComponentCommands, Key},
+    views::Propagation,
+};
 
-impl HandleActions for super::NumberInput {
+fn step(
+    n: &mut NumberInput,
+    by: i64,
+    win: &mut Window,
+    cx: &mut Context<NumberInput>,
+) -> Propagation {
+    n.step_by(by, win, cx);
+    Propagation::Stop
+}
+
+impl ComponentCommands for NumberInput {
     const UNHANDLED: Propagation = Propagation::Stop;
 
-    fn item_up(&mut self, _: &ItemUp, window: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.step_by(1, window, cx);
-        Propagation::Stop
-    }
-    fn item_right(
-        &mut self,
-        _: &ItemRight,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        self.step_by(1, window, cx);
-        Propagation::Stop
-    }
-    fn item_down(
-        &mut self,
-        _: &ItemDown,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        self.step_by(-1, window, cx);
-        Propagation::Stop
-    }
-    fn item_left(
-        &mut self,
-        _: &ItemLeft,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        self.step_by(-1, window, cx);
-        Propagation::Stop
-    }
-
-    fn execute(&mut self, _: &Execute, window: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.leave(window, cx);
-        Propagation::Stop
-    }
-    fn execute_inplace(
-        &mut self,
-        _: &ExecuteInplace,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        self.leave(window, cx);
-        Propagation::Stop
-    }
-    fn quit(&mut self, _: &Quit, window: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        if let Some(entry) = self.entry {
-            self.set(entry, cx);
-        }
-        self.leave(window, cx);
-        Propagation::Stop
-    }
+    const COMMANDS: &'static [Command<Self>] = &[
+        Command::new(
+            "number.increment",
+            "+1",
+            &[Key::action::<ItemUp>(), Key::action::<ItemRight>()],
+            |n, win, cx| step(n, 1, win, cx),
+        ),
+        Command::new(
+            "number.decrement",
+            "-1",
+            &[Key::action::<ItemDown>(), Key::action::<ItemLeft>()],
+            |n, win, cx| step(n, -1, win, cx),
+        ),
+        Command::new(
+            "number.done",
+            "done",
+            &[Key::action::<Execute>(), Key::action::<ExecuteInplace>()],
+            |n, win, cx| {
+                n.leave(win, cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "number.cancel",
+            "cancel",
+            &[Key::action::<Quit>()],
+            |n, win, cx| {
+                if let Some(entry) = n.entry {
+                    n.set(entry, cx);
+                }
+                n.leave(win, cx);
+                Propagation::Stop
+            },
+        ),
+    ];
 
     /// A digit (or `-`) starts typing with that key; the field takes it from there.
     fn key_down(
@@ -74,7 +72,7 @@ impl HandleActions for super::NumberInput {
         if starts && self.typing.is_none() {
             self.start_typing(true, window, cx);
             self.field.update(cx, |field, cx| {
-                HandleActions::key_down(field, event, window, cx)
+                ComponentCommands::key_down(field, event, window, cx)
             });
         }
         Propagation::Stop

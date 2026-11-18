@@ -7,9 +7,7 @@ use crate::{
     launcher::{LauncherConfig, variant_type::LauncherType},
     ui::{
         model::Model,
-        traits::HandleActions,
         views::{
-            Propagation,
             Query,
             QueryResult,
             ShellCtx,
@@ -38,10 +36,6 @@ impl ProcessView {
             search: ProcessModel::new(launcher),
         }
     }
-}
-
-impl HandleActions for ProcessView {
-    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for ProcessView {

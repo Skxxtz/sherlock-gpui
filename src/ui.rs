@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod backdrop;
+pub mod commands;
 pub mod components;
 pub mod launcher;
 pub mod model;

@@ -16,7 +16,7 @@ fn question_mark_converts_and_locates() {
 
 #[test]
 fn or_kind_locates_the_caller() {
-    let line = line!() + 1;
+    let line = line!() + 2; // the `.or_kind` line
     let e = Err::<(), _>("boom")
         .or_kind(ErrorKind::InvalidData)
         .unwrap_err();

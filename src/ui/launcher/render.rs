@@ -37,7 +37,26 @@ use crate::{
     launcher::{LauncherValues, utils::exec_mode::ExecMode},
     loader::resolve_icon_path,
     ui::{
-        actions::UIFunction,
+        actions::{
+            UIFunction,
+            launcher::{
+                Back,
+                ErrorPage,
+                ExecuteInplace,
+                ItemDown,
+                ItemLeft,
+                ItemRight,
+                ItemUp,
+                MaximizeView,
+                MinimizeView,
+                NextVar,
+                PrevVar,
+                Quit,
+                ToggleContext,
+            },
+            search_bar::{Backspace as SearchBackspace, Copy, ShortcutAction},
+        },
+        commands::{self, Hint, Key},
         components::status_bar::{self, KeySpec, StatusItem, StatusKind},
         launcher::{Execute, LauncherMode, LauncherView, execute::ExecRequest},
         model::ItemIdx,
@@ -66,6 +85,7 @@ impl Render for LauncherView {
 
         self.check_actions(cx);
         self.sidebar_controller.check_validity(&self.navigation, cx);
+        self.sync_placeholder(cx);
 
         let chrome = self.navigation.current().handle.chrome(cx);
         // home mode with a query is a search
@@ -85,23 +105,25 @@ impl Render for LauncherView {
             .border_color(theme.border)
             .rounded_xl()
             .overflow_hidden()
-            .on_action(cx.listener(Self::selection_up))
-            .on_action(cx.listener(Self::selection_down))
-            .on_action(cx.listener(Self::selection_left))
-            .on_action(cx.listener(Self::selection_right))
-            .on_action(cx.listener(Self::next_var))
-            .on_action(cx.listener(Self::prev_var))
-            .on_action(cx.listener(Self::maximize_listener))
-            .on_action(cx.listener(Self::minimize_listener))
-            .on_action(cx.listener(Self::execute_listener))
-            .on_action(cx.listener(Self::execute_inplace_listener))
-            .on_action(cx.listener(Self::shortcut_listener))
-            .on_action(cx.listener(Self::quit))
-            .on_action(cx.listener(Self::open_context))
-            .on_action(cx.listener(Self::error_page))
-            .on_action(cx.listener(Self::back))
-            .on_action(cx.listener(Self::backspace))
-            .on_action(cx.listener(Self::copy_listener))
+            // Actions that reach the launcher (from a focused component, a click, `Back`) go
+            // through the command layers like keys do.
+            .on_action(cx.listener(Self::route_action::<ItemUp>))
+            .on_action(cx.listener(Self::route_action::<ItemDown>))
+            .on_action(cx.listener(Self::route_action::<ItemLeft>))
+            .on_action(cx.listener(Self::route_action::<ItemRight>))
+            .on_action(cx.listener(Self::route_action::<NextVar>))
+            .on_action(cx.listener(Self::route_action::<PrevVar>))
+            .on_action(cx.listener(Self::route_action::<MaximizeView>))
+            .on_action(cx.listener(Self::route_action::<MinimizeView>))
+            .on_action(cx.listener(Self::route_action::<Execute>))
+            .on_action(cx.listener(Self::route_action::<ExecuteInplace>))
+            .on_action(cx.listener(Self::route_action::<ShortcutAction>))
+            .on_action(cx.listener(Self::route_action::<Quit>))
+            .on_action(cx.listener(Self::route_action::<ToggleContext>))
+            .on_action(cx.listener(Self::route_action::<ErrorPage>))
+            .on_action(cx.listener(Self::route_action::<Back>))
+            .on_action(cx.listener(Self::route_action::<SearchBackspace>))
+            .on_action(cx.listener(Self::route_action::<Copy>))
             .on_key_down(cx.listener(Self::context_menu_binds_listener))
             .when(chrome.search_bar, |this| {
                 this.child(self.render_search_bar(theme.clone(), searching))
@@ -338,6 +360,19 @@ impl LauncherView {
             .child(body)
     }
 
+    /// Shows the current view's placeholder in the search bar (`SherlockView::placeholder`, e.g.
+    /// the Ask view's "Ask a follow-up…"); `None` falls back to the configured one. Every frame,
+    /// since it can follow the view's state; the input is only touched when it changes.
+    fn sync_placeholder(&mut self, cx: &mut Context<Self>) {
+        let placeholder = self.navigation.current().handle.placeholder(cx);
+        if self.text_input.read(cx).placeholder_override != placeholder {
+            self.text_input.update(cx, |input, cx| {
+                input.placeholder_override = placeholder;
+                cx.notify();
+            });
+        }
+    }
+
     /// The active view's status bar (`SherlockView::status_bar`), shell items filled in.
     fn render_status_bar(
         &self,
@@ -365,13 +400,61 @@ impl LauncherView {
             .text_color(theme.text_status_bar)
             .children(
                 (bar.left.iter().enumerate())
-                    .filter_map(|(i, item)| self.render_status_item(item, i, &theme, win, cx)),
+                    .flat_map(|(i, item)| self.render_status_items(item, i, &theme, win, cx)),
             )
             .child(div().flex_1())
             .children(
                 (bar.right.iter().enumerate())
-                    .filter_map(|(i, item)| self.render_status_item(item, n + i, &theme, win, cx)),
+                    .flat_map(|(i, item)| self.render_status_items(item, n + i, &theme, win, cx)),
             )
+    }
+
+    /// One bar item as elements: `Hints` expands to one per hint, the rest to at most one.
+    fn render_status_items(
+        &self,
+        item: &StatusItem,
+        id: usize,
+        theme: &Arc<ThemeData>,
+        win: &Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<Div> {
+        match item.kind {
+            StatusKind::Hints => self.render_hints(theme, win, cx),
+            _ => self
+                .render_status_item(item, id, theme, win, cx)
+                .into_iter()
+                .collect(),
+        }
+    }
+
+    /// The current view's command hints; click runs the command.
+    fn render_hints(
+        &self,
+        theme: &Arc<ThemeData>,
+        win: &Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<Div> {
+        let binds: Vec<_> = self.command_binds(cx).collect();
+        self.navigation
+            .current()
+            .handle
+            .hints(cx)
+            .into_iter()
+            .filter_map(|hint| {
+                let caps = hint_caps(&hint, &binds, win)?;
+                let id = hint.id;
+                Some(
+                    status_bar::keys(caps, hint.label, theme)
+                        .cursor_pointer()
+                        .on_mouse_down(
+                            gpui::MouseButton::Left,
+                            cx.listener(move |this, _, win, cx| {
+                                this.run_command(id, win, cx);
+                            }),
+                        ),
+                )
+            })
+            .collect()
     }
 
     /// One item; `None` when a shell item has nothing to show.
@@ -385,18 +468,7 @@ impl LauncherView {
     ) -> Option<Div> {
         let el = match &item.kind {
             StatusKind::Keys { keys, label } => {
-                let (caps, press) = self.resolve_keys(*keys, win, cx)?;
-                let el = status_bar::keys(caps, label.clone(), theme);
-                // A bind's hint without its own handler presses the bind's key.
-                if let (None, Some(stroke)) = (item.on_click, press) {
-                    return Some(el.cursor_pointer().on_mouse_down(
-                        gpui::MouseButton::Left,
-                        move |_, win, cx| {
-                            win.dispatch_keystroke(stroke.clone(), cx);
-                        },
-                    ));
-                }
-                el
+                status_bar::keys(resolve_keys(*keys, win)?, label.clone(), theme)
             }
             StatusKind::Brand => self.render_brand(cx),
             StatusKind::Messages => match self.navigation.message_count(cx) {
@@ -425,34 +497,6 @@ impl LauncherView {
                 .on_mouse_down(gpui::MouseButton::Left, move |_, win, cx| f(win, cx)),
             None => el,
         })
-    }
-
-    /// A hint's caps, looked up in the keymap or the view's binds; `None` when unbound. A bind
-    /// also returns its keystroke, so clicking the hint can press it.
-    fn resolve_keys(
-        &self,
-        spec: KeySpec,
-        win: &Window,
-        cx: &App,
-    ) -> Option<(Vec<SharedString>, Option<Keystroke>)> {
-        match spec {
-            KeySpec::Fixed(keys) => Some((
-                keys.iter().map(|k| SharedString::new_static(k)).collect(),
-                None,
-            )),
-            KeySpec::Action(action) => {
-                let binding = win.highest_precedence_binding_for_action(&*action())?;
-                let stroke = binding.keystrokes().first()?;
-                Some((status_bar::key_caps(stroke.modifiers(), stroke.key()), None))
-            }
-            KeySpec::Bind(name) => {
-                let stroke = self.navigation.current().handle.bind_key(name, cx)?;
-                Some((
-                    status_bar::key_caps(&stroke.modifiers, &stroke.key),
-                    Some(stroke),
-                ))
-            }
-        }
     }
 
     /// "Sherlock"; click shows the credits.
@@ -562,8 +606,11 @@ impl LauncherView {
         borderless: bool,
         content: AnyElement,
     ) -> AnyElement {
-        let shortcut_idx = row.shortcut;
         let selected = row.selected;
+
+        let shortcut_mod = ShortcutKeyMod::get();
+        let shortcut_idx = row.shortcut.filter(|_| shortcut_mod.is_some());
+
         let key = row.key;
         let theme = row.theme.clone();
         let handle = row.shell.clone();
@@ -585,7 +632,7 @@ impl LauncherView {
                     handle.update(cx, move |this, cx| {
                         this.navigation.select_key(key, cx);
                         if !this.context_menu.is_open() {
-                            this.execute_listener(&Execute {}, win, cx);
+                            this.command_action(&Execute, win, cx);
                         }
                     })
                 } else {
@@ -636,20 +683,15 @@ impl LauncherView {
                                                 .child(div().child("↵").relative().top(px(1.)))
                                         })
                                         .when(!selected, |this| {
-                                            this.children(
-                                                ShortcutKeyMod::get()
-                                                    .map(|mods| {
-                                                        mods.iter().map(|c| {
-                                                            div()
-                                                                .flex()
-                                                                .justify_center()
-                                                                .min_w(px(10.))
-                                                                .child(c.to_string())
-                                                        })
-                                                    })
-                                                    .into_iter()
-                                                    .flatten(),
-                                            )
+                                            this.children(shortcut_mod.into_iter().flatten().map(
+                                                |c| {
+                                                    div()
+                                                        .flex()
+                                                        .justify_center()
+                                                        .min_w(px(10.))
+                                                        .child(c.to_string())
+                                                },
+                                            ))
                                             .child(
                                                 div()
                                                     .flex()
@@ -701,5 +743,45 @@ fn context_key_parts() -> &'static [SharedString] {
                 })
             })
             .collect()
+    })
+}
+
+/// A `KeySpec`'s caps, looked up in the keymap; `None` when unbound.
+fn resolve_keys(spec: KeySpec, win: &Window) -> Option<Vec<SharedString>> {
+    match spec {
+        KeySpec::Fixed(keys) => Some(keys.iter().map(|k| SharedString::new_static(k)).collect()),
+        KeySpec::Action(action) => action_caps(&*action(), win),
+    }
+}
+
+/// The caps of the keymap's key for `action` in the focused context.
+fn action_caps(action: &dyn gpui::Action, win: &Window) -> Option<Vec<SharedString>> {
+    if action.partial_eq(&Back) {
+        return action_caps(&SearchBackspace, win);
+    }
+    let binding = win.highest_precedence_binding_for_action(action)?;
+    let stroke = binding.keystrokes().first()?;
+    Some(status_bar::key_caps(stroke.modifiers(), stroke.key()))
+}
+
+/// A hint's caps. `None`: no key reaches it, the hint is hidden.
+fn hint_caps(
+    hint: &Hint,
+    binds: &[Arc<[crate::launcher::utils::binds::Bind]>],
+    win: &Window,
+) -> Option<Vec<SharedString>> {
+    let bound = binds.iter().flat_map(|b| b.iter()).find(|b| {
+        b.callback
+            .split(';')
+            .any(|name| commands::named(hint.id, name.trim()))
+    });
+    if let Some(bind) = bound {
+        return Some(status_bar::key_caps(&bind.bind.modifiers, &bind.bind.key));
+    }
+    hint.keys.iter().find_map(|key| match key {
+        Key::Stroke(s) => Keystroke::parse(s)
+            .ok()
+            .map(|k| status_bar::key_caps(&k.modifiers, &k.key)),
+        Key::Action(action) => action_caps(&*action(), win),
     })
 }

@@ -1,4 +1,4 @@
-mod input;
+mod commands;
 mod poll;
 mod render;
 pub mod selection;

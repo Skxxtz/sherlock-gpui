@@ -44,11 +44,11 @@ use crate::{
     app::theme::{ActiveTheme, ThemeData},
     ui::{
         actions::{Execute, ExecuteInplace, ItemDown, ItemLeft, ItemRight, ItemUp, Quit},
+        commands::{Command, ComponentCommands, HandleCommandsExt, Key},
         components::{
             color_swatch::{hex, parse_hex},
             tiny_input::{TextEvent, TinyInput},
         },
-        traits::{HandleActions, HandleInputExt},
         views::Propagation,
     },
 };
@@ -193,41 +193,56 @@ impl ColorInput {
     }
 }
 
-impl HandleActions for ColorInput {
+impl ComponentCommands for ColorInput {
     /// A popup: nothing it doesn't use reaches the launcher.
     const UNHANDLED: Propagation = Propagation::Stop;
 
-    fn item_left(&mut self, _: &ItemLeft, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.nudge(cx, |s| s.nudge_hue(-HUE_STEP))
-    }
-    fn item_right(&mut self, _: &ItemRight, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.nudge(cx, |s| s.nudge_hue(HUE_STEP))
-    }
-    fn item_up(&mut self, _: &ItemUp, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.nudge(cx, |s| s.nudge_value(VALUE_STEP))
-    }
-    fn item_down(&mut self, _: &ItemDown, _: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.nudge(cx, |s| s.nudge_value(-VALUE_STEP))
-    }
+    const COMMANDS: &'static [Command<Self>] = &[
+        Command::new(
+            "color.hue_down",
+            "hue −",
+            &[Key::action::<ItemLeft>()],
+            |c, _, cx| c.nudge(cx, |s| s.nudge_hue(-HUE_STEP)),
+        ),
+        Command::new(
+            "color.hue_up",
+            "hue +",
+            &[Key::action::<ItemRight>()],
+            |c, _, cx| c.nudge(cx, |s| s.nudge_hue(HUE_STEP)),
+        ),
+        Command::new(
+            "color.brighter",
+            "brighter",
+            &[Key::action::<ItemUp>()],
+            |c, _, cx| c.nudge(cx, |s| s.nudge_value(VALUE_STEP)),
+        ),
+        Command::new(
+            "color.darker",
+            "darker",
+            &[Key::action::<ItemDown>()],
+            |c, _, cx| c.nudge(cx, |s| s.nudge_value(-VALUE_STEP)),
+        ),
+        Command::new(
+            "color.done",
+            "done",
+            &[Key::action::<Execute>(), Key::action::<ExecuteInplace>()],
+            |c, win, cx| {
+                c.close(win, cx);
+                Propagation::Stop
+            },
+        ),
+        Command::new(
+            "color.cancel",
+            "cancel",
+            &[Key::action::<Quit>()],
+            |c, win, cx| {
+                c.revert();
+                c.close(win, cx);
+                Propagation::Stop
+            },
+        ),
+    ];
 
-    fn execute(&mut self, _: &Execute, win: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.close(win, cx);
-        Propagation::Stop
-    }
-    fn execute_inplace(
-        &mut self,
-        _: &ExecuteInplace,
-        win: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Propagation {
-        self.close(win, cx);
-        Propagation::Stop
-    }
-    fn quit(&mut self, _: &Quit, win: &mut Window, cx: &mut Context<Self>) -> Propagation {
-        self.revert();
-        self.close(win, cx);
-        Propagation::Stop
-    }
     /// Typing a hex digit (or `#`) starts an edit with that key. While editing, the field has
     /// focus and gets keys first; only what it passes on arrives here.
     fn key_down(
@@ -435,7 +450,7 @@ impl Render for ColorInput {
             .bottom_0()
             .size_0()
             .track_focus(&self.focus)
-            .handle_input(cx)
+            .handle_commands(cx)
             // the grab only sees key downs
             .on_key_up(|_, _, cx| cx.stop_propagation())
             .when_some(panel, |this, panel| {

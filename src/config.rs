@@ -53,6 +53,11 @@ pub struct SherlockConfig {
     /// Custom key or action bindings (supplementing defaults)
     pub keybinds: ConfigKeybinds,
 
+    /// Keys that run commands by id, in every view: `"ctrl-n" = "ask.new_chat"`, chains
+    /// `"ask.stop;search.copy"`, `continue` lets the key go on to its usual action.
+    #[serde(skip_serializing_if = "ConfigCommands::is_empty")]
+    pub commands: ConfigCommands,
+
     /// User-specified overrides for default config file paths
     pub files: ConfigFiles,
     /// State from flags and piped input; read but never written
@@ -85,6 +90,7 @@ impl SherlockConfig {
         self.appearance.validate(&mut w);
         self.behavior.validate(&mut w);
         self.keybinds.validate(&mut w);
+        self.commands.validate(&mut w);
         self.files.validate(&mut w);
         self.runtime.validate(&mut w);
         self.caching.validate(&mut w);

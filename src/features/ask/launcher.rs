@@ -96,8 +96,10 @@ mod docs {
         display_name,
         docs::{
             Documentation,
+            commands::launcher_commands,
             launcher::{Example, FieldDoc, LauncherDocEntry},
         },
+        ui::views::ask::AskView,
         variant_name,
     };
 
@@ -240,6 +242,7 @@ mod docs {
                         }"#
                     },
                 }],
+                commands: Some(launcher_commands::<AskView>),
                 ..LauncherDocEntry::new()
             }
         }

@@ -1,12 +1,11 @@
-use gpui::{Action, App, SharedString, Window};
+use gpui::SharedString;
 
 use crate::ui::{
-    actions::{Back, Copy, Execute, ExecuteInplace, NextVar},
-    components::status_bar::{KeySpec, StatusBar, StatusItem},
+    components::status_bar::{StatusBar, StatusItem},
     views::{
         BusyStatus,
         ask::{
-            model::exchange::{Exchange, Phase, RemoteLimits, Usage},
+            model::exchange::{Phase, RemoteLimits, Usage},
             provider::Provider,
             store::quota::local_clock,
             ui::view::AskView,
@@ -14,47 +13,8 @@ use crate::ui::{
     },
 };
 
-/// Dispatches `A` like its key binding would.
-fn dispatch<A: Action + Default>(win: &mut Window, cx: &mut App) {
-    win.dispatch_action(Box::new(A::default()), cx);
-}
-
-const STOP_COMMAND: StatusItem = StatusItem::keys(KeySpec::Bind("stop"), "stop command");
-const STOP: StatusItem = StatusItem::keys(KeySpec::Bind("stop"), "stop");
-const NEW: StatusItem = StatusItem::keys(KeySpec::Bind("new_chat"), "new");
-const COPY_SELECTION: StatusItem = hint::<Copy>("copy");
-const COPY_OUTPUT: StatusItem = hint::<Execute>("copy");
-const CLEAR_OUTPUT: StatusItem = hint::<Back>("clear");
-const FIX: StatusItem = hint::<Execute>("fix it");
-const OPEN_TERMINAL: StatusItem = hint::<Execute>("open in terminal");
-const RUN: StatusItem = hint::<Execute>("run");
-const RUN_IN_TERMINAL: StatusItem = hint::<ExecuteInplace>("in terminal");
-const COPY_ALL: StatusItem = hint::<ExecuteInplace>("copy all");
-const NEXT: StatusItem = hint::<NextVar>("next");
-const OPEN_CHAT: StatusItem = hint::<Execute>("open");
-const DELETE_CHAT: StatusItem = hint::<Back>("delete");
-const ASK: StatusItem = hint::<Execute>("ask");
-const EDIT: StatusItem = hint::<NextVar>("edit");
-const SELECT: StatusItem = hint::<NextVar>("select");
-
-/// A hint for action `A`: shows its bound keys, clicking dispatches it.
-const fn hint<A: Action + Default>(label: &'static str) -> StatusItem {
-    StatusItem::keys(KeySpec::action::<A>(), label).on_click(dispatch::<A>)
-}
-
-// Hint sets (statics, so the bar borrows them instead of allocating).
-static WHILE_RUNNING: [StatusItem; 1] = [STOP_COMMAND];
-static WHILE_ANSWERING: [StatusItem; 1] = [STOP];
-static ON_SELECTION: [StatusItem; 1] = [COPY_SELECTION];
-static ON_FAILED_OUTPUT: [StatusItem; 3] = [FIX, CLEAR_OUTPUT, NEXT];
-static ON_TERMINAL_OUTPUT: [StatusItem; 3] = [OPEN_TERMINAL, CLEAR_OUTPUT, NEXT];
-static ON_OUTPUT: [StatusItem; 3] = [COPY_OUTPUT, CLEAR_OUTPUT, NEXT];
-static ON_ITEM: [StatusItem; 3] = [RUN, RUN_IN_TERMINAL, NEXT];
-static ON_ONLY_ITEM: [StatusItem; 3] = [COPY_SELECTION, RUN, RUN_IN_TERMINAL];
-static ON_ANSWER: [StatusItem; 2] = [COPY_ALL, NEW];
-static ON_RUNNABLE_ANSWER: [StatusItem; 3] = [SELECT, COPY_ALL, NEW];
-static ON_SUGGESTION: [StatusItem; 2] = [ASK, EDIT];
-static ON_CHAT: [StatusItem; 2] = [OPEN_CHAT, DELETE_CHAT];
+/// The right side: what the keys do now (`AskView::COMMANDS`).
+static HINTS: [StatusItem; 1] = [StatusItem::HINTS];
 
 impl AskView {
     /// Requests/tokens left, as text, and whether it's running low (under 10%).
@@ -84,10 +44,7 @@ impl AskView {
     pub(super) fn bar(&self) -> Option<StatusBar> {
         let Some(ex) = self.conv.shown() else {
             // Empty view.
-            return self
-                .focus
-                .recent()
-                .map(|_| StatusBar::shell().with_right(&ON_CHAT[..]));
+            return Some(StatusBar::shell().with_right(&HINTS[..]));
         };
         let (label, status): (SharedString, _) = match &ex.phase {
             Phase::Waiting => ("Thinking".into(), BusyStatus::Busy),
@@ -113,39 +70,8 @@ impl AskView {
         // Right
         Some(match &self.toast {
             Some(toast) => bar.right(StatusItem::status(toast.clone(), BusyStatus::Ok)),
-            None => bar.with_right(self.hints(ex)),
+            None => bar.with_right(&HINTS[..]),
         })
-    }
-
-    /// The keys that apply now, most relevant first.
-    fn hints(&self, ex: &Exchange) -> &'static [StatusItem] {
-        if self.is_running() {
-            &WHILE_RUNNING
-        } else if ex.phase.is_live() {
-            &WHILE_ANSWERING
-        } else if self.text_sel.as_ref().is_some_and(|s| !s.is_empty()) {
-            &ON_SELECTION
-        } else if self.focus.suggestion().is_some() {
-            &ON_SUGGESTION
-        } else if let Some(run) = self.focused_output().filter(|r| r.failed() && !r.sent) {
-            if run.wants_terminal() {
-                &ON_TERMINAL_OUTPUT
-            } else {
-                &ON_FAILED_OUTPUT
-            }
-        } else if self.focus.output().is_some() {
-            &ON_OUTPUT
-        } else if self.focus.selected_item().is_some() {
-            if self.items().len() > 1 {
-                &ON_ITEM
-            } else {
-                &ON_ONLY_ITEM
-            }
-        } else if self.items().is_empty() && self.suggestions().is_empty() {
-            &ON_ANSWER
-        } else {
-            &ON_RUNNABLE_ANSWER
-        }
     }
 
     /// Today's use and the quota, under the recent chats.

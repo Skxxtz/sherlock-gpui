@@ -1,13 +1,15 @@
 use std::{
     any::TypeId,
-    collections::HashMap,
     fmt::{Result, Write},
-    path::Path,
 };
 
 use md_rs::components::Component;
 
-use crate::{docs::Documentation, snake_file, utils::string::TrimInPlace};
+use crate::{
+    docs::{Documentation, link_scope},
+    snake_file,
+    utils::string::TrimInPlace,
+};
 
 pub trait TopLevelEntry {
     type Summary: Component;
@@ -106,45 +108,39 @@ impl BookEntry {
             .file(snake_file!(T))
             .build()
     }
-    #[cfg(all(test, feature = "docs"))]
-    pub fn render(self) -> Vec<String> {
-        let mut out = Vec::new();
-
-        if let Some(render) = self.render_fn {
-            out.push((render)());
+    /// This entry's type is the page `file` (for `link_to`), then its children.
+    fn register(&self) {
+        if let Some(file) = self.file {
+            link_scope::register_page(self.of, file);
         }
-
-        for child in self.children {
-            out.extend(child.render());
-        }
-
-        out
+        self.children.iter().for_each(Self::register);
     }
-    pub fn write(&self, dir: &Path) -> std::io::Result<()> {
-        if let (Some(render), Some(file)) = (self.render_fn, self.file) {
-            std::fs::write(dir.join(file), render())?;
+
+    /// Renders this entry and its children, each with itself as the current page. Links are
+    /// placeholders.
+    fn render_into(&self, out: &mut Vec<(Option<&'static str>, String)>) {
+        if let Some(render) = self.render_fn {
+            let text = match self.file {
+                Some(file) => link_scope::in_page(file, render),
+                None => render(),
+            };
+            out.push((self.file, text));
         }
         for child in &self.children {
-            child.write(dir)?;
+            child.render_into(out);
         }
-        Ok(())
     }
 }
 
 pub struct Book(pub Vec<BookEntry>);
 impl Book {
-    pub(super) fn index(&self) -> HashMap<TypeId, &'static str> {
-        fn walk(entries: &[BookEntry], map: &mut HashMap<TypeId, &'static str>) {
-            for e in entries {
-                if let Some(file) = e.file {
-                    map.entry(e.of).or_insert(file);
-                }
-                walk(&e.children, map);
-            }
+    pub(super) fn render_pages(&self) -> Vec<(Option<&'static str>, String)> {
+        self.0.iter().for_each(BookEntry::register);
+        let mut out = Vec::new();
+        for entry in &self.0 {
+            entry.render_into(&mut out);
         }
-        let mut map = HashMap::new();
-        walk(&self.0, &mut map);
-        map
+        out
     }
 
     fn summary(&self) -> String {
@@ -169,26 +165,7 @@ impl Book {
         }
         Ok(())
     }
-    pub fn write<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
-        let dir = dir.as_ref();
-        // Build summary
-        let summary = self.summary();
-        let summary_path = dir.join("SUMMARY.md");
-        std::fs::write(summary_path, summary)?;
-
-        // Build files
-        for entry in &self.0 {
-            entry.write(dir)?;
-        }
-        Ok(())
-    }
-
-    #[cfg(all(test, feature = "docs"))]
-    pub fn render(self) -> Vec<String> {
-        let mut out = Vec::from([self.summary()]);
-        for entry in self.0 {
-            out.extend(entry.render());
-        }
-        out
+    pub(super) fn summary_md(&self) -> String {
+        self.summary()
     }
 }

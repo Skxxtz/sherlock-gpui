@@ -11,15 +11,9 @@ use gpui::{
     px,
 };
 
-use super::Propagation;
 use crate::{
     app::theme::ActiveTheme,
-    ui::{
-        components::sherlock_pixel,
-        model::data::NoData,
-        traits::HandleActions,
-        views::SherlockView,
-    },
+    ui::{components::sherlock_pixel, model::data::NoData, views::SherlockView},
 };
 
 /// One entry in the credits; will later be generated into `assets/contributors.json`.
@@ -41,10 +35,6 @@ const FADE: f32 = 48.;
 const LIST_MAX: f32 = 160.;
 
 pub struct CreditView;
-
-impl HandleActions for CreditView {
-    const UNHANDLED: Propagation = Propagation::Continue;
-}
 
 impl SherlockView for CreditView {
     type Data = NoData;

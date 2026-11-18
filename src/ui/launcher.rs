@@ -38,6 +38,7 @@ use crate::{
 };
 
 pub mod actions;
+mod commands;
 pub mod context_menu;
 mod execute;
 pub mod filter_and_sort;
@@ -200,8 +201,9 @@ impl LauncherView {
                 let handled = weak_self
                     .update(cx, |launcher, cx| launcher.run_bind(&ev.keystroke, win, cx))
                     .unwrap_or(false);
+                // Taken by a bind or command: no action dispatch for this key.
                 if handled {
-                    cx.propagate();
+                    cx.stop_propagation();
                 }
             }),
         }

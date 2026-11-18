@@ -6,6 +6,8 @@ mod item;
 mod render;
 mod state;
 
+#[cfg(feature = "docs")]
+pub(crate) use input::ColorInput;
 pub use item::ColorItem;
 
 const PANEL_W: f32 = 256.;

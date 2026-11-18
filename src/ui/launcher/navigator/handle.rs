@@ -1,31 +1,20 @@
 use std::sync::Arc;
 
-use gpui::{
-    AnyElement,
-    AnyEntity,
-    App,
-    AppContext,
-    Entity,
-    FocusHandle,
-    Keystroke,
-    SharedString,
-    Window,
-    px,
-};
+use gpui::{AnyElement, AnyEntity, App, AppContext, Entity, FocusHandle, SharedString, Window, px};
 
 #[cfg(feature = "ai")]
 use crate::ui::views::ask::AskView;
 use crate::{
     app::LauncherEntity,
-    launcher::{LauncherConfig, variant_type::LauncherType},
+    launcher::{LauncherConfig, utils::binds::Bind, variant_type::LauncherType},
     ui::{
+        commands::{self, Command, Hint, Pressed},
         components::status_bar::StatusBar,
         launcher::navigator::views::{Layout, NavView},
         model::{
             data::ModelData,
             item::{SelectionKey, ShellItem},
         },
-        traits::{HandleActions, InputAction},
         views::{
             Background,
             Chrome,
@@ -121,6 +110,11 @@ fn item_ref<'a, V: SherlockView>(
         .read(cx)
         .get(id)
         .map(|item| item as &dyn ShellItem)
+}
+
+/// `V::commands()`, with `V` inferred from the entity at the call site.
+fn view_commands<V: SherlockView>() -> &'static [Command<V>] {
+    V::commands()
 }
 
 fn with_item<V: SherlockView, R>(
@@ -266,24 +260,28 @@ impl ViewHandle {
         dispatch!(self, e => e.update(cx, |v, cx| v.on_query(query, cx)))
     }
 
-    /// Offers `action` to the view. Updates the view entity.
-    pub fn route<A: InputAction>(
-        &self,
-        action: &A,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Propagation {
-        dispatch!(self, e => e.update(cx, |v, cx| action.route(v, window, cx)))
+    /// The view's own binds (`SherlockView::binds`).
+    pub fn binds(&self, cx: &App) -> Option<Arc<[Bind]>> {
+        dispatch!(self, e => e.read(cx).binds())
     }
 
-    /// Offers a keystroke to the view's binds (`HandleActions::bind`). Updates the view entity.
-    pub fn bind(&self, key: &Keystroke, window: &mut Window, cx: &mut App) -> Propagation {
-        dispatch!(self, e => e.update(cx, |v, cx| v.bind(key, window, cx)))
+    /// Offers a keystroke or action to the view's commands. Updates the view entity.
+    pub fn command(&self, pressed: &Pressed, window: &mut Window, cx: &mut App) -> Propagation {
+        dispatch!(self, e => e.update(cx, |v, cx| {
+            commands::dispatch(view_commands(), v, pressed, window, cx)
+        }))
     }
 
-    /// The key of the view's bind that runs `name` (`SherlockView::bind_key`).
-    pub fn bind_key(&self, name: &str, cx: &App) -> Option<Keystroke> {
-        dispatch!(self, e => e.read(cx).bind_key(name))
+    /// Runs the view's command `id` if available. Updates the view entity.
+    pub fn run_command(&self, id: &str, window: &mut Window, cx: &mut App) -> Propagation {
+        dispatch!(self, e => e.update(cx, |v, cx| {
+            commands::run_id(view_commands(), v, id, window, cx)
+        }))
+    }
+
+    /// The view's available commands to hint in the status bar.
+    pub fn hints(&self, cx: &App) -> Vec<Hint> {
+        dispatch!(self, e => commands::hints(view_commands(), e.read(cx), cx))
     }
 
     /// Type-erased entity, for rendering

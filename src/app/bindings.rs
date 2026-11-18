@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use gpui::{App, AsKeystroke, Global, KeyBinding, Keystroke, Modifiers};
 use smallvec::SmallVec;
 
 use crate::{
     SHORTCUT_MOD,
     config::ConfigGuard,
+    launcher::utils::binds::Bind,
     ui::{
         actions::{ShortcutAction, UIFunction},
         launcher::context_menu::action_keys::ContextActionBinds,
@@ -12,6 +15,11 @@ use crate::{
 
 pub struct ReservedKeys(pub Vec<ContextActionBinds>);
 impl Global for ReservedKeys {}
+
+/// `[commands]` from the config: keys that run commands in every view.
+#[derive(Default)]
+pub struct CommandBinds(pub Arc<[Bind]>);
+impl Global for CommandBinds {}
 
 /// `"variable.tab"` → `(Some("variable"), "tab")`; `"ctrl-n"` → `(None, "ctrl-n")`.
 pub fn split_scope(key: &str) -> (Option<&str>, &str) {
@@ -29,10 +37,15 @@ pub fn reload_bindings(cx: &mut App) {
 }
 
 pub(super) fn register_bindings(cx: &mut App) {
+    let command_binds = ConfigGuard::get(|c| c.commands.binds().0);
+    cx.set_global(CommandBinds(command_binds.into()));
+
     // one config read: the binds and the symbols for the shortcut modifiers
     let (binds, mod_symbols) =
         ConfigGuard::get(|c| (c.keybinds.effective(), c.appearance.mod_key_ascii));
 
+    // set again below if shortcut keys are still bound
+    ShortcutKeyMod::clear();
     let mut bindings: Vec<KeyBinding> = Vec::with_capacity(binds.len() + 8);
     for (key, function) in &binds {
         let (scope, keys) = split_scope(key);
@@ -79,18 +92,46 @@ pub struct ShortcutKeyMod {
 }
 
 impl ShortcutKeyMod {
-    /// Stores the symbols for `mods`; `symbols` are ⌘, ^, ⌥, ⇧ (from the config). Set once:
-    /// later calls are ignored.
+    /// Stores the symbols for `mods`; `symbols` are ⌘, ^, ⌥, ⇧ (from the config).
     fn set(mods: &Modifiers, symbols: &[char; 4]) {
         let buf = [mods.platform, mods.control, mods.alt, mods.shift]
             .into_iter()
             .zip(symbols)
             .filter_map(|(held, &symbol)| held.then_some(symbol))
             .collect();
-        let _ = SHORTCUT_MOD.set(Self { buf });
+        if let Ok(mut current) = SHORTCUT_MOD.write() {
+            *current = Some(Self { buf });
+        }
     }
 
-    pub fn get() -> Option<&'static SmallVec<[char; 4]>> {
-        SHORTCUT_MOD.get().map(|m| &m.buf)
+    /// No shortcut keys bound (`"ctrl-<digit>" = "unbind"`).
+    fn clear() {
+        if let Ok(mut current) = SHORTCUT_MOD.write() {
+            *current = None;
+        }
+    }
+
+    /// The symbols, or `None` while no shortcut keys are bound (then results show no badges).
+    pub fn get() -> Option<SmallVec<[char; 4]>> {
+        SHORTCUT_MOD.read().ok()?.as_ref().map(|m| m.buf.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The symbols follow the keymap: replaced on every registration, gone when unbound.
+    #[test]
+    fn shortcut_symbols_follow_the_keymap() {
+        let symbols = ['⌘', '^', '⎇', '⇧'];
+        ShortcutKeyMod::set(&shortcut_modifiers("ctrl-<digit>").unwrap(), &symbols);
+        assert_eq!(ShortcutKeyMod::get().as_deref(), Some(&['^'][..]));
+
+        ShortcutKeyMod::set(&shortcut_modifiers("alt-<digit>").unwrap(), &symbols);
+        assert_eq!(ShortcutKeyMod::get().as_deref(), Some(&['⎇'][..]));
+
+        ShortcutKeyMod::clear();
+        assert_eq!(ShortcutKeyMod::get(), None);
     }
 }

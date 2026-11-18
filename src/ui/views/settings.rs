@@ -16,6 +16,7 @@ use crate::{
     app::{LauncherEntityGlobal, bindings::reload_bindings},
     config::{ConfigFileChange, ConfigGuard, SherlockConfig, reload_async, save_changes},
     ui::{
+        commands::Command,
         model::data::NoData,
         views::{
             Chrome,
@@ -76,6 +77,10 @@ fn default_config() -> SherlockConfig {
 
 impl SherlockView for SettingsView {
     type Data = NoData;
+
+    fn commands() -> &'static [Command<Self>] {
+        Self::COMMANDS
+    }
 
     /// The shell's search bar (it filters the settings); everything below it is drawn here.
     fn chrome(&self) -> Chrome {
@@ -261,7 +266,7 @@ impl SettingsView {
 
     /// A finished edit (clicks, Enter, editors): [`Self::edit`], then saves the config file.
     fn apply(&mut self, id: &'static str, edit: Edit, cx: &mut Context<Self>) {
-        let refresh_binds = matches!(edit, Edit::SetChords(_));
+        let refresh_binds = matches!(edit, Edit::SetChords(_)) || id == "keybinds.shortcut";
         self.edit(id, edit, cx);
         self.save(cx, refresh_binds);
     }

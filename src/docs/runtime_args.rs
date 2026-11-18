@@ -60,7 +60,7 @@ impl TopLevelEntry for RuntimeArgument {
     fn summary() -> Self::Summary {
         md!(
             h1("Runtime Arguments"),
-            ReplacementVariables::docs(),
+            ReplacementVariables::section(),
             p!(
                 "In Sherlock",
                 bold("Runtime Arguments"),
@@ -94,7 +94,7 @@ impl Documentation for RuntimeArgument {
     type Docs = Container;
     fn docs() -> Self::Docs {
         md().child(h1("Runtime Arguments"))
-            .child(ReplacementVariables::docs())
+            .child(ReplacementVariables::section())
             .child(p!(
                 "In Sherlock",
                 bold("Runtime Arguments"),
@@ -106,12 +106,12 @@ impl Documentation for RuntimeArgument {
                 "turn your launcher into an interactive CLI shell."
             ))
             .children([
-                StringVar::docs(),
-                NumberVar::docs(),
-                PathVar::docs(),
-                CommandVar::docs(),
-                ChoiceVar::docs(),
-                PasswordVar::docs(),
+                StringVar::section(),
+                NumberVar::section(),
+                PathVar::section(),
+                CommandVar::section(),
+                ChoiceVar::section(),
+                PasswordVar::section(),
             ])
     }
 }

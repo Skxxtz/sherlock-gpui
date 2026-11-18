@@ -10,10 +10,8 @@ use crate::{
     ui::{
         launcher::navigator::views::Layout,
         model::{ItemIdx, Model},
-        traits::HandleActions,
         views::{
             Chrome,
-            Propagation,
             Query,
             QueryResult,
             ShellCtx,
@@ -147,10 +145,6 @@ impl MessageView {
         self.model.filtered = Arc::from([]);
         self.count.set(0);
     }
-}
-
-impl HandleActions for MessageView {
-    const UNHANDLED: Propagation = Propagation::Continue;
 }
 
 impl SherlockView for MessageView {

@@ -25,7 +25,7 @@ use gpui::{
 use crate::{
     app::theme::{ActiveTheme, ThemeData},
     loader::resolve_icon_path,
-    ui::traits::HandleInputExt,
+    ui::commands::HandleCommandsExt,
 };
 
 const H: f32 = 28.;
@@ -124,7 +124,7 @@ impl Render for super::NumberInput {
 
         div()
             .track_focus(&self.focus)
-            .handle_input(cx)
+            .handle_commands(cx)
             .flex()
             .flex_none()
             .items_center()

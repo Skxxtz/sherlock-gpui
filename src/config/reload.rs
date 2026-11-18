@@ -94,6 +94,8 @@ fn finish(
         }
     }
 
+    let placeholder = ConfigGuard::get(|c| c.appearance.placeholder.shared());
+
     // Reload launchers
     let modes =
         raw.and_then(
@@ -105,6 +107,8 @@ fn finish(
                         .and_then(|g| g.0.upgrade())
                     {
                         view.update(cx, |view, cx| {
+                            view.text_input
+                                .update(cx, |this, _| this.placeholder = placeholder);
                             view.modes = result.modes.clone();
                             cx.notify();
                         });
