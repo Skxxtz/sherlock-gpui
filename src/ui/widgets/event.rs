@@ -47,9 +47,10 @@ use crate::{
         widgets::{RenderableChildImpl, Selection},
     },
     utils::errors::{
+        Format,
         ResultExt,
         SherlockMessage,
-        types::{ErrorKind, SocketAction},
+        types::{ErrorKind, IoOp},
     },
 };
 
@@ -71,7 +72,7 @@ impl Fetchable for EventData {
 
         let mut stream = tokio::net::UnixStream::connect(SocketData::SOCKET_ADDR)
             .await
-            .or_kind_with(|| ErrorKind::Socket(SocketAction::Connect))?;
+            .or_kind_with(|| ErrorKind::Ipc(IoOp::Connect))?;
 
         let config = bincode::config::standard();
         let req = Request::Event(EventFilter::Nearby {
@@ -79,17 +80,19 @@ impl Fetchable for EventData {
             look_ahead: evt.look_ahead,
         });
         let req_obj = SizedMessageObj::from_struct(&req)
-            .map_err(|e| sherlock_msg!(Warning, ErrorKind::Serialize, e.message))?;
+            .map_err(|e| sherlock_msg!(ErrorKind::Serialize(Format::Binary), e.message))?;
 
-        stream.write_sized(req_obj).await.map_err(|e| {
-            sherlock_msg!(Warning, ErrorKind::Socket(SocketAction::Write), e.message)
-        })?;
+        stream
+            .write_sized(req_obj)
+            .await
+            .map_err(|e| sherlock_msg!(ErrorKind::Ipc(IoOp::Write), e.message))?;
 
-        let resp_bin = stream.read_sized().await.map_err(|e| {
-            sherlock_msg!(Warning, ErrorKind::Socket(SocketAction::Read), e.message)
-        })?;
+        let resp_bin = stream
+            .read_sized()
+            .await
+            .map_err(|e| sherlock_msg!(ErrorKind::Ipc(IoOp::Read), e.message))?;
         let (resp, _): (Response, _) = bincode::serde::decode_from_slice(&resp_bin, config)
-            .or_kind_with(|| ErrorKind::Parse("Events".into()))?;
+            .or_kind_with(|| ErrorKind::parse(Format::Binary, "events"))?;
 
         if let Response::Events(mut events) = resp {
             let now = Local::now();

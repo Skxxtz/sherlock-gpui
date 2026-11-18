@@ -88,9 +88,8 @@ impl LauncherProvider for EventLauncher {
 
         let ChildKind::Event(inner) = &child.kind else {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::Unreachable,
-                format!("Tried to unpack Event tile but received: {:?}", child)
+                ErrorKind::bug("tile of the wrong kind"),
+                format!("expected event tile, got {:?}", child)
             ));
         };
 

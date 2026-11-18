@@ -25,7 +25,7 @@ use crate::{
             script::{ScriptData, ScriptDataUpdateEntity},
         },
     },
-    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
+    utils::errors::{Feature, ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 define_inner_functions! {
@@ -56,7 +56,7 @@ impl LauncherProvider for ScriptLauncher {
                 vec.iter()
                     .map(|b| {
                         Bind::try_from(b)
-                            .or_kind(ErrorKind::InvalidLauncher)
+                            .or_kind(ErrorKind::Unsupported(Feature::Launcher))
                             .map_err(SherlockMessage::error_level)
                     })
                     .collect::<Result<Arc<[Bind]>, _>>()
@@ -84,8 +84,7 @@ impl LauncherProvider for ScriptLauncher {
             .and_then(|v| v.as_str())
             .map(|s| SharedString::from(s.to_owned()))
             .ok_or(sherlock_msg!(
-                Warning,
-                ErrorKind::Config(format!(
+                ErrorKind::config(format!(
                     "Failed to parse command from launcher configuration of launcher: {launcher}"
                 )),
                 format!("`exec` key is required. Received arguments: {:?}", opts)

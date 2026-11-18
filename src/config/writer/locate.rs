@@ -1,18 +1,17 @@
 use std::{
     borrow::Cow,
     collections::HashSet,
-    fmt::Display,
     fs,
     path::{Path, PathBuf},
 };
 
 use super::{
     Location,
-    utils::{file_err, is_json, read_or_empty},
+    utils::{is_json, read_or_empty},
 };
 use crate::{
     config::ConfigSource,
-    utils::errors::{SherlockMessage, types::FileAction},
+    utils::errors::{ResultExt, SherlockMessage},
 };
 
 /// For each dotted key: the first file (depth-first through `[[source]]`) that contains
@@ -107,11 +106,10 @@ fn read_table(path: &Path) -> Result<toml::Table, SherlockMessage> {
     if content.trim().is_empty() {
         return Ok(toml::Table::new());
     }
-    let parse = |e: &dyn Display| file_err(FileAction::Parse, path, e);
     if is_json(path) {
-        serde_json::from_str(&content).map_err(|e| parse(&e))
+        serde_json::from_str(&content).in_file(path)
     } else {
-        content.parse::<toml::Table>().map_err(|e| parse(&e))
+        content.parse::<toml::Table>().in_file_text(path, &content)
     }
 }
 
@@ -120,9 +118,7 @@ fn take_sources(table: &mut toml::Table, path: &Path) -> Result<Vec<PathBuf>, Sh
     let Some(v) = table.remove("source") else {
         return Ok(Vec::new());
     };
-    let sources: Vec<ConfigSource> = v
-        .try_into()
-        .map_err(|e| file_err(FileAction::Parse, path, &e))?;
+    let sources: Vec<ConfigSource> = v.try_into().in_file(path)?;
     let base = path.parent().unwrap_or(Path::new("."));
     Ok(sources
         .into_iter()

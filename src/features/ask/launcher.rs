@@ -19,7 +19,7 @@ use crate::{
             list_item::{ItemMeta, ListItem, fixed::FixedPayload},
         },
     },
-    utils::errors::{ResultExt, SherlockMessage, types::ErrorKind},
+    utils::errors::{Feature, ResultExt, SherlockMessage, types::ErrorKind},
 };
 
 #[inline(always)]
@@ -56,7 +56,7 @@ impl LauncherProvider for AskLauncher {
                 vec.iter()
                     .map(|b| {
                         Bind::try_from(b)
-                            .or_kind(ErrorKind::InvalidLauncher)
+                            .or_kind(ErrorKind::Unsupported(Feature::Launcher))
                             .map_err(SherlockMessage::error_level)
                     })
                     .collect::<Result<Arc<[Bind]>, _>>()

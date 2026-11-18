@@ -9,7 +9,7 @@ use crate::{
         errors::{
             ResultExt,
             SherlockMessage,
-            types::{DirAction, ErrorKind},
+            types::{ErrorKind, FsOp},
         },
         files::modified_since,
     },
@@ -49,7 +49,7 @@ impl ConfigWatcher {
         let nix_rebuilt = false;
 
         let entries = std::fs::read_dir(&self.root_dir)
-            .or_kind_with(|| ErrorKind::Dir(DirAction::Read, self.root_dir.to_path_buf()))?;
+            .or_kind_with(|| ErrorKind::fs(FsOp::ReadDir, self.root_dir.to_path_buf()))?;
 
         let (config_file, fallback_file, alias_file, ignore_file, actions_file, cache_file) =
             ConfigGuard::read().map(|c| {

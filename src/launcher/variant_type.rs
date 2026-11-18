@@ -379,8 +379,9 @@ macro_rules! ensure_func {
             inner
         } else {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::InvalidFunction,
+                $crate::utils::errors::ErrorKind::Unsupported(
+                    $crate::utils::errors::Feature::Function
+                ),
                 format!("Invalid function {:?} for this launcher", $val)
             ));
         }

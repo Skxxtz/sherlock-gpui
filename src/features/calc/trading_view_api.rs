@@ -3,9 +3,10 @@ use serde_json::json;
 
 use super::currency::{Currency, CurrencyCode};
 use crate::utils::errors::{
+    Format,
     ResultExt,
     SherlockMessage,
-    types::{ErrorKind, NetworkAction},
+    types::{ErrorKind, HttpMethod},
 };
 
 pub(super) struct TradingViewApiRequest;
@@ -66,14 +67,16 @@ impl TradingViewApiRequest {
             .body(Self::build_body().to_string())
             .send()
             .await
-            .or_kind_with(|| {
-                ErrorKind::Network(NetworkAction::Get, "TradingView (Currencies)".into())
-            })?;
+            .or_kind_with(|| ErrorKind::http(HttpMethod::Get, "TradingView (currencies)"))?;
 
-        let mut bytes = res.bytes().await.or_kind(ErrorKind::Io)?.to_vec();
+        let mut bytes = res
+            .bytes()
+            .await
+            .or_kind(ErrorKind::http(HttpMethod::Get, "TradingView (currencies)"))?
+            .to_vec();
 
         simd_json::from_slice(&mut bytes)
-            .or_kind_with(|| ErrorKind::Parse("TradingView Currency Response".to_string()))
+            .or_kind_with(|| ErrorKind::parse(Format::Json, "TradingView currency response"))
     }
 }
 

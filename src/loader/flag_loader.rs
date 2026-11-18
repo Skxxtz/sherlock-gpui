@@ -22,6 +22,9 @@ pub enum DebugAction {
     QueryReport {
         query: Option<String>,
     },
+    Explain {
+        code: Option<String>,
+    },
     #[cfg(feature = "docs")]
     GenerateDocs,
 }

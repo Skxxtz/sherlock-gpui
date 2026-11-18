@@ -18,9 +18,10 @@ use crate::{
     ui::widgets::{RenderableChild, theme::ThemeWidget},
     utils::{
         errors::{
+            Format,
             ResultExt,
             SherlockMessage,
-            types::{DirAction, ErrorKind},
+            types::{ErrorKind, FsOp},
         },
         files::{expand_path, home_dir},
         format::make_title_case,
@@ -70,15 +71,14 @@ impl LauncherProvider for ThemePicker {
 
         let custom = if path.is_dir() {
             std::fs::read_dir(&path)
-                .or_kind_with(|| ErrorKind::Dir(DirAction::Read, path))?
+                .or_kind_with(|| ErrorKind::fs(FsOp::ReadDir, path))?
                 .flatten()
                 .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("toml"))
                 .filter_map(|file| {
                     let data = ThemeData::from_file(&file.path())
                         .map_err(|e| {
                             messages.push(sherlock_msg!(
-                                Warning,
-                                ErrorKind::Parse(file.path().to_string_lossy().into()),
+                                ErrorKind::parse_file(Format::Toml, file.path(), None),
                                 e
                             ))
                         })

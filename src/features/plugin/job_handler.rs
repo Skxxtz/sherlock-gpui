@@ -10,7 +10,7 @@ use super::{
     sandbox::{load_ui_lib, make_env},
     ui_schema::{PluginNodeRegistration, PluginTileContent},
 };
-use crate::utils::errors::types::PluginAction;
+use crate::utils::errors::types::PluginOp;
 
 pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: LuaJob) {
     match job {
@@ -105,11 +105,7 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                     .await
                     .map(|_| ());
                     if let Err(e) = result {
-                        report_error(
-                            &handle.name,
-                            PluginAction::Live,
-                            format!("live() exited: {e}"),
-                        );
+                        report_error(&handle.name, PluginOp::Live, format!("live() exited: {e}"));
                     }
                 })
             };
@@ -135,7 +131,7 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
             if let Err(e) = result {
                 report_error(
                     &handle.name,
-                    PluginAction::Callback,
+                    PluginOp::Callback,
                     format!("on_click failed: {e}"),
                 );
             }
@@ -167,7 +163,7 @@ pub async fn handle_job(lua: Lua, registry: Rc<RefCell<PluginRegistry>>, job: Lu
                     if let Err(e) = result {
                         report_error(
                             &handle.name,
-                            PluginAction::Query,
+                            PluginOp::Query,
                             format!("on_query failed: {e}"),
                         );
                     }

@@ -19,8 +19,9 @@ use crate::{
     utils::{
         cache::BinaryCache,
         errors::{
+            ResultExt,
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         item_key::ItemKey,
     },
@@ -211,7 +212,7 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             warnings.push(sherlock_msg!(
                 Info,
-                ErrorKind::File(FileAction::Find, path.to_path_buf()),
+                ErrorKind::fs(FsOp::Find, path.to_path_buf()),
                 "Using default fallback.json configuration."
             ));
             include_bytes!("../../assets/fallback.json").to_vec()
@@ -219,7 +220,7 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
         Err(e) => {
             warnings.push(sherlock_msg!(
                 Error,
-                ErrorKind::File(FileAction::Read, path.to_path_buf()),
+                ErrorKind::fs(FsOp::Read, path.to_path_buf()),
                 e
             ));
             return (launchers, warnings);
@@ -230,11 +231,9 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
     let raw_values: Vec<serde_json::Value> = match simd_json::from_slice(&mut buffer) {
         Ok(v) => v,
         Err(e) => {
-            warnings.push(sherlock_msg!(
-                Warning,
-                ErrorKind::Parse(path.to_string_lossy().to_string()),
-                e
-            ));
+            // simd_json parsed in place: re-read the text for the position
+            let text = std::fs::read_to_string(path).unwrap_or_default();
+            warnings.push(Err::<(), _>(e).in_file_text(path, &text).unwrap_err());
             return (launchers, warnings);
         }
     };
@@ -244,8 +243,7 @@ fn parse_launcher_configs<P: AsRef<Path>>(p: P) -> (Vec<RawLauncher>, Vec<Sherlo
             Ok(launcher) => launchers.push(launcher),
             Err(e) => {
                 warnings.push(sherlock_msg!(
-                    Warning,
-                    ErrorKind::Config("Invalid launcher configuration".into()),
+                    ErrorKind::config("Invalid launcher configuration"),
                     e
                 ));
             }

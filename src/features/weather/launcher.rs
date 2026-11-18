@@ -18,9 +18,10 @@ use crate::{
     ui::widgets::{RenderableChild, weather::WeatherWidget},
     utils::{
         errors::{
+            Format,
             ResultExt,
             SherlockMessage,
-            types::{ErrorKind, NetworkAction},
+            types::{ErrorKind, HttpMethod},
         },
         files::home_dir_owned,
     },
@@ -154,13 +155,13 @@ impl WeatherData {
         let url = format!("https://de.wttr.in/{}?format=j1", launcher.location);
         let bytes = reqwest::get(url)
             .await
-            .or_kind_with(|| ErrorKind::Network(NetworkAction::Get, "wttr.in".into()))?
+            .or_kind_with(|| ErrorKind::http(HttpMethod::Get, "wttr.in"))?
             .bytes()
             .await
-            .or_kind_with(|| ErrorKind::Parse("Wttr.in Response".into()))?;
+            .or_kind_with(|| ErrorKind::http(HttpMethod::Get, "wttr.in"))?;
 
-        let raw: WttrResponse =
-            pluck::from_slice(&bytes).or_kind_with(|| ErrorKind::Parse("Weather Data".into()))?;
+        let raw: WttrResponse = pluck::from_slice(&bytes)
+            .or_kind_with(|| ErrorKind::parse(Format::Json, "weather data"))?;
 
         let data = transform_weather(raw, launcher)?;
         data.cache();

@@ -10,7 +10,7 @@ use crate::{
     launcher::utils::to_title_case,
     loader::{IconType, resolve_icon_path},
     sherlock_msg,
-    utils::errors::{SherlockMessage, types::ErrorKind},
+    utils::errors::{Format, SherlockMessage, types::ErrorKind},
 };
 
 fn format_temp(current: &CurrentCondition, unit: TemperatureUnit) -> String {
@@ -51,8 +51,7 @@ pub(super) fn transform_weather(
     } = raw;
     let today = days.first().ok_or_else(|| {
         sherlock_msg!(
-            Warning,
-            ErrorKind::Parse("Weather Data".into()),
+            ErrorKind::parse(Format::Json, "weather data"),
             "wttr.in response has no forecast (use ?format=j1)"
         )
     })?;

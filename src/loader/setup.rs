@@ -11,10 +11,7 @@ use crate::{
     loader::{CustomIconTheme, IconThemeGuard},
     sherlock_msg,
     utils::{
-        errors::{
-            SherlockMessage,
-            types::{DirAction, ErrorKind},
-        },
+        errors::{SherlockMessage, types::ErrorKind},
         paths::get_config_dir,
     },
 };
@@ -64,20 +61,15 @@ impl Loader {
         });
 
         if CONFIG.set(RwLock::new(config.clone())).is_err() {
-            messages.push(sherlock_msg!(
-                Warning,
-                ErrorKind::Config("Failed to set global config singleton.".into()),
-                ""
-            ));
+            messages.push(sherlock_msg!(ErrorKind::bug("global config set twice"), ""));
         }
 
         let config_dir: Box<Path> = match config.files.config.parent() {
             Some(p) => p.into(),
             None => {
                 messages.push(sherlock_msg!(
-                    Warning,
-                    ErrorKind::Dir(DirAction::Find, "Config Root Dir".into()),
-                    "Failed to read config root dir."
+                    ErrorKind::missing("config directory"),
+                    format!("{} has no parent", config.files.config.display())
                 ));
                 get_config_dir()
                     .unwrap_or(PathBuf::from("/tmp"))

@@ -7,8 +7,11 @@ use crate::{
     sherlock_msg,
     utils::{
         errors::{
+            Format,
+            ParseError,
+            ResultExt,
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         files::{expand_path, home_dir},
         paths,
@@ -63,9 +66,8 @@ impl SherlockFlags {
                     }
                     _ => {
                         return Err(sherlock_msg!(
-                            Warning,
-                            ErrorKind::File(FileAction::Parse, path.clone()),
-                            format!("unsupported format: '{}'", ext_str)
+                            ErrorKind::config("unsupported config file format"),
+                            format!("'{ext_str}' in {}", path.display())
                         ));
                     }
                 }
@@ -73,9 +75,8 @@ impl SherlockFlags {
             ext_str
         } else {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::File(FileAction::Parse, path.clone()),
-                "file has no extension and cannot be parsed"
+                ErrorKind::config("unsupported config file format"),
+                format!("{} has no extension", path.display())
             ));
         };
 
@@ -85,22 +86,16 @@ impl SherlockFlags {
                 take_warnings(); // stale ones from an earlier read
                 let config_res: Result<SherlockConfig, SherlockMessage> = match filetype.as_str() {
                     "json" => {
-                        let mut bytes = config_str.into_bytes();
-                        let err = |e: &dyn std::fmt::Display| {
-                            sherlock_msg!(
-                                Warning,
-                                ErrorKind::Parse("Json Config".into()),
-                                e.to_string()
-                            )
-                        };
+                        // simd_json parses in place: keep the text for error positions
+                        let mut bytes = config_str.clone().into_bytes();
                         simd_json::Deserializer::from_slice(&mut bytes)
-                            .map_err(|e| err(&e))
                             .and_then(|mut de| {
                                 serde_ignored::deserialize(&mut de, |p| unknown.push(p.to_string()))
-                                    .map_err(|e| err(&e))
                             })
+                            .in_file_text(&path, &config_str)
                     }
                     "toml" => {
+                        let main_len = config_str.len();
                         // Setup to parse nested configs
                         if let Ok(sources) = toml::de::from_str::<ConfigSourceFiles>(&config_str)
                             && !sources.source.is_empty()
@@ -122,14 +117,19 @@ impl SherlockFlags {
                                     config_str.push_str(&content);
                                 });
                         }
-                        let err = |e: toml::de::Error| {
-                            sherlock_msg!(Warning, ErrorKind::Parse("Toml Config".into()), e)
-                        };
+                        // positions past the main file belong to appended sources
+                        let main_text = &config_str[..main_len];
                         toml::Deserializer::parse(&config_str)
-                            .map_err(err)
                             .and_then(|de| {
                                 serde_ignored::deserialize(de, |p| unknown.push(p.to_string()))
-                                    .map_err(err)
+                            })
+                            .map_err(|e| {
+                                let in_main = e.span().is_some_and(|s| s.start < main_len);
+                                let text = in_main.then_some(main_text);
+                                sherlock_msg!(
+                                    ErrorKind::parse_file(Format::Toml, &path, e.pos(text)),
+                                    e
+                                )
                             })
                     }
                     _ => {
@@ -139,9 +139,8 @@ impl SherlockFlags {
                             .unwrap_or_else(|| "none".into());
 
                         return Err(sherlock_msg!(
-                            Warning,
-                            ErrorKind::File(FileAction::Parse, path.clone()),
-                            format!("the file extension '{}' is not a supported format", ext)
+                            ErrorKind::config("unsupported config file format"),
+                            format!("'{ext}' in {}", path.display())
                         ));
                     }
                 };
@@ -162,11 +161,7 @@ impl SherlockFlags {
                         let messages = warnings
                             .into_iter()
                             .map(|w| {
-                                sherlock_msg!(
-                                    Warning,
-                                    ErrorKind::Config(path.display().to_string()),
-                                    w
-                                )
+                                sherlock_msg!(ErrorKind::config(path.display().to_string()), w)
                             })
                             .collect();
                         Ok((config, messages))
@@ -181,7 +176,7 @@ impl SherlockFlags {
             Err(e) => {
                 let mut config = SherlockConfig::default();
                 config.apply_flags(self);
-                let e = sherlock_msg!(Warning, ErrorKind::File(FileAction::Read, path), e);
+                let e = sherlock_msg!(ErrorKind::fs(FsOp::Read, path), e);
                 Ok((config, vec![e]))
             }
         }

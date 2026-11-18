@@ -28,8 +28,7 @@ impl LauncherProvider for CommandLauncher {
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
         let cmds = opts.get("commands").ok_or_else(|| {
             sherlock_msg!(
-                Warning,
-                ErrorKind::Config("Invalid launcher configuration.".into()),
+                ErrorKind::config("Invalid launcher configuration."),
                 "Command launcher does not contain any commands."
             )
         })?;

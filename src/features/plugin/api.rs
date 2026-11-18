@@ -31,7 +31,7 @@ pub fn send_to_ui(msg: PluginDeferFunction) {
 
 pub fn report_error(
     plugin: &str,
-    action: crate::utils::errors::types::PluginAction,
+    action: crate::utils::errors::types::PluginOp,
     err: impl std::fmt::Display,
 ) {
     let message = err.to_string();

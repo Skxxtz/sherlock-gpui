@@ -43,13 +43,9 @@ pub fn home_dir() -> Result<&'static Path, SherlockMessage> {
     if let Some(home) = HOME.get() {
         return Ok(home);
     }
-    let home = env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
-        sherlock_msg!(
-            Warning,
-            ErrorKind::Env("$HOME".into()),
-            "Variable `$HOME` is not set."
-        )
-    })?;
+    let home = env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| sherlock_msg!(ErrorKind::env("HOME"), "Variable `$HOME` is not set."))?;
     Ok(HOME.get_or_init(|| home))
 }
 

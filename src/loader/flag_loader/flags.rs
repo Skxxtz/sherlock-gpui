@@ -112,6 +112,19 @@ pub const FLAGS: &[FlagSpec] = &[
         },
     },
     FlagSpec {
+        long: "--explain",
+        short: None,
+        section: FlagSection::Basics,
+        help: "Explain an error code (e.g. S0103), or list all codes.",
+        parse: |_args, iter, _flags, startup| {
+            if startup.is_none() {
+                let code = iter.next_if(|a| !a.starts_with('-')).cloned();
+                *startup = Some(DebugAction::Explain { code }.into());
+            }
+            Ok(())
+        },
+    },
+    FlagSpec {
         long: "query-report",
         short: None,
         section: FlagSection::Basics,

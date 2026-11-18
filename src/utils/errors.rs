@@ -1,12 +1,12 @@
 //! Sherlock's error type.
 //!
 //! A [`SherlockMessage`] has a [`level`](SherlockMessageLevel), a [`kind`](ErrorKind) (what
-//! failed), a context chain (what was being done, outermost first) and a cause (the underlying
+//! failed, declared with its code, default level and hint in `types.rs`), a context chain (what was being done, outermost first) and a cause (the underlying
 //! error text). It records where it was made, via `#[track_caller]`.
 //!
 //! ```ignore
 //! // foreign errors: name what failed
-//! fs::create_dir_all(dir).or_kind_with(|| ErrorKind::Dir(DirAction::Create, dir.into()))?;
+//! fs::create_dir_all(dir).or_kind_with(|| ErrorKind::fs(FsOp::CreateDir, dir))?;
 //!
 //! // common ones convert with `?` (io, toml, json)
 //! let text = fs::read_to_string(path)?;
@@ -15,7 +15,10 @@
 //! load_launchers(path).context("loading fallback launchers")?;
 //!
 //! // made from nothing
-//! return Err(sherlock_msg!(Warning, ErrorKind::Config("unknown launcher".into()), name));
+//! return Err(sherlock_msg!(ErrorKind::config("unknown launcher"), name));
+//!
+//! // parse errors in files carry their position
+//! let cfg: Config = serde_json::from_str(&text).in_file(path)?;
 //! ```
 //!
 //! **Logging:** every message is logged exactly once, with its full context: when it is
@@ -36,22 +39,26 @@ mod convert;
 pub mod types;
 
 #[allow(unused_imports)] // OptionExt: no callers yet
-pub use context::{OptionExt, ResultExt};
+pub use context::{OptionExt, ParseError, ResultExt};
 pub use types::*;
 
 /// Builds a [`SherlockMessage`] from nothing.
 ///
-/// `sherlock_msg!(Warning, ErrorKind::Config("x".into()), cause)`. The cause is anything
-/// [`Display`].
+/// `sherlock_msg!(ErrorKind::config("x"), cause)` uses the kind's default level;
+/// `sherlock_msg!(Error, kind, cause)` overrides it. The cause is anything [`Display`].
 #[macro_export]
 macro_rules! sherlock_msg {
-    ($level:ident, $kind:expr, $cause:expr) => {
+    ($level:ident, $kind:expr, $cause:expr $(,)?) => {
         $crate::utils::errors::SherlockMessage::new(
             $crate::utils::errors::SherlockMessageLevel::$level,
             $kind,
             $cause,
         )
     };
+    ($kind:expr, $cause:expr $(,)?) => {{
+        let kind: $crate::utils::errors::ErrorKind = $kind;
+        $crate::utils::errors::SherlockMessage::new(kind.level(), kind, $cause)
+    }};
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -116,21 +123,18 @@ impl SherlockMessage {
             let mut context = Vec::with_capacity(inner.context.len() + 1);
             context.push(inner.kind.to_string().into());
             context.append(&mut inner.context);
-            let mut msg = Self::at(inner.level, kind, inner.cause.clone(), loc);
+            let level = inner.level.max(kind.level());
+            let mut msg = Self::at(level, kind, inner.cause.clone(), loc);
             msg.context = context;
             return msg;
         }
-        Self::at(
-            SherlockMessageLevel::Warning,
-            kind,
-            error.to_string().into(),
-            loc,
-        )
+        let level = kind.level();
+        Self::at(level, kind, error.to_string().into(), loc)
     }
 
     /// Plaintext report for copying a message.
     pub fn to_report(&self) -> String {
-        let mut out = format!("[{:?}] {}\n", self.level, self.kind);
+        let mut out = format!("[{:?}] {} {}\n", self.level, self.kind.code(), self.kind);
         let cause = (!self.cause.is_empty()).then_some(&self.cause);
         for (depth, step) in self.context.iter().chain(cause).enumerate() {
             let branch = match depth {
@@ -139,8 +143,16 @@ impl SherlockMessage {
             };
             out.push_str(&format!("  {branch}{step}\n"));
         }
+        if let Some(hint) = self.kind.hint() {
+            out.push_str(&format!("  hint: {hint}\n"));
+        }
         out.push_str(&format!("  at {}", self.location));
         out
+    }
+
+    /// Identifies repeats of the same failure: same code, same place.
+    pub fn fingerprint(&self) -> (&'static str, &str) {
+        (self.kind.code(), &self.location)
     }
 
     /// Adds what was being done when this failed (becomes the outermost step).
@@ -201,7 +213,13 @@ impl SherlockMessage {
             .rsplit_once(':')
             .unwrap_or((&self.location, "0"));
         let _ = crate::sher_log!(
-            format!("[{:?}] {} - {}", self.level, self.kind.name(), self),
+            format!(
+                "[{:?}] {} {} - {}",
+                self.level,
+                self.kind.code(),
+                self.kind.name(),
+                self
+            ),
             file,
             line.parse().unwrap_or(0)
         );

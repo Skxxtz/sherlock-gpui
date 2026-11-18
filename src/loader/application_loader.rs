@@ -18,7 +18,7 @@ use crate::{
         cache::BinaryCache,
         errors::{
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         files::{expand_path, home_dir_owned},
     },
@@ -62,7 +62,7 @@ impl ApplicationLoader {
         let cached: Option<Vec<AppItem>> = match BinaryCache::read(&cache_path) {
             Ok(apps) => Some(apps),
             Err(e) => {
-                if !matches!(e.kind, ErrorKind::File(FileAction::Find, _)) {
+                if !matches!(e.kind, ErrorKind::Fs { op: FsOp::Find, .. }) {
                     eprintln!("app cache unusable, rebuilding: {}", e.kind);
                 }
                 None

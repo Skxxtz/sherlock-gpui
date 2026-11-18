@@ -348,12 +348,8 @@ impl LauncherView {
 
             self.navigation.push_message(
                 sherlock_msg!(
-                    Error,
-                    ErrorKind::Unreachable,
-                    format!(
-                        "Launcher {:?} configured incorrectly: context actions are empty but `has_actions` flag is set to true.",
-                        launcher_type
-                    )
+                    ErrorKind::bug("`has_actions` is set but the context actions are empty"),
+                    format!("launcher {launcher_type:?}")
                 ),
                 cx,
             );

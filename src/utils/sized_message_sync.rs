@@ -6,9 +6,10 @@ use crate::{
     sherlock_msg,
     tokio_utils::SizedMessageObj,
     utils::errors::{
+        Format,
         ResultExt,
         SherlockMessage,
-        types::{ErrorKind, SocketAction},
+        types::{ErrorKind, IoOp},
     },
 };
 
@@ -51,11 +52,11 @@ impl<S: Read + Write> SizedMessage for S {
         // Write message size to stream
         let len_bytes = buf_len.to_be_bytes();
         self.write_all(&len_bytes)
-            .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+            .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
 
         // Write message to stream
         self.write_all(what.bytes())
-            .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+            .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
 
         Ok(())
     }
@@ -64,28 +65,26 @@ impl<S: Read + Write> SizedMessage for S {
 
         // Read message length
         self.read_exact(&mut buf_len)
-            .or_kind_with(|| ErrorKind::Socket(SocketAction::Read))?;
+            .or_kind_with(|| ErrorKind::Ipc(IoOp::Read))?;
         let msg_len = u32::from_be_bytes(buf_len) as usize;
 
         if msg_len > 1024 * 1024 {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::Io,
-                "Invalid message size received"
+                ErrorKind::InvalidData,
+                "message larger than 1 MiB"
             ));
         }
 
         let mut buf = vec![0u8; msg_len];
         self.read_exact(&mut buf)
-            .or_kind_with(|| ErrorKind::Socket(SocketAction::Read))?;
+            .or_kind_with(|| ErrorKind::Ipc(IoOp::Read))?;
 
         let cfg = bincode::config::standard();
         bincode::serde::decode_from_slice::<T, _>(&buf, cfg)
             .map(|(val, _)| val)
             .map_err(|e| {
                 sherlock_msg!(
-                    Warning,
-                    ErrorKind::Parse("Socket Message".into()),
+                    ErrorKind::parse(Format::Binary, "socket message"),
                     e.to_string()
                 )
             })

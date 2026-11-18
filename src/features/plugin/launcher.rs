@@ -42,7 +42,7 @@ use crate::{
         errors::{
             ResultExt,
             SherlockMessage,
-            types::{ErrorKind, PluginAction},
+            types::{ErrorKind, PluginOp},
         },
         files::{expand_path, home_dir},
     },
@@ -76,7 +76,6 @@ impl LauncherProvider for PluginLauncher {
             .map(|s| expand_path(s, home))
         else {
             return Err(sherlock_msg!(
-                Warning,
                 ErrorKind::InvalidData,
                 format!(
                     "Field `path` missing on `{}`",
@@ -106,12 +105,12 @@ impl LauncherProvider for PluginLauncher {
         // Canonical path = stable plugin identity (registry, tile subscribers).
         let path = path
             .canonicalize()
-            .or_kind_with(|| ErrorKind::Plugin(PluginAction::Load, path.display().to_string()))?;
+            .or_kind_with(|| ErrorKind::plugin(PluginOp::Load, path.display().to_string()))?;
         let path: Arc<Path> = Arc::from(path);
 
         let runtime = LuaRuntimeHandle::get();
         let handle = futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities))
-            .or_kind_with(|| ErrorKind::Plugin(PluginAction::Load, path.display().to_string()))
+            .or_kind_with(|| ErrorKind::plugin(PluginOp::Load, path.display().to_string()))
             .map_err(SherlockMessage::error_level)
             .map(Arc::new)?;
 
@@ -152,9 +151,8 @@ impl LauncherProvider for PluginLauncher {
 
         let ChildKind::Plugin(inner) = &child.kind else {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::Unreachable,
-                format!("Tried to unpack plugin tile but received: {:?}", child)
+                ErrorKind::bug("tile of the wrong kind"),
+                format!("expected plugin tile, got {:?}", child)
             ));
         };
 
@@ -417,8 +415,7 @@ async fn reload_plugin(
                 };
                 view.push_message(
                     sherlock_msg!(
-                        Warning,
-                        ErrorKind::Plugin(PluginAction::Load, path.display().to_string()),
+                        ErrorKind::plugin(PluginOp::Load, path.display().to_string()),
                         e
                     ),
                     cx,

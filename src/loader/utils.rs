@@ -18,7 +18,7 @@ use crate::{
         errors::{
             ResultExt,
             SherlockMessage,
-            types::{DirAction, ErrorKind},
+            types::{ErrorKind, FsOp},
         },
         paths,
     },
@@ -280,7 +280,7 @@ impl CounterReader {
         let path = data_dir.join("counts.bin");
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
-                .or_kind_with(|| ErrorKind::Dir(DirAction::Create, parent.to_path_buf()))?;
+                .or_kind_with(|| ErrorKind::fs(FsOp::CreateDir, parent.to_path_buf()))?;
         }
         Ok(CounterReader { path })
     }

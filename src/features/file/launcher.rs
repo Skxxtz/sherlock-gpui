@@ -21,10 +21,7 @@ use crate::{
         },
     },
     utils::{
-        errors::{
-            SherlockMessage,
-            types::{ErrorKind, FileAction},
-        },
+        errors::{SherlockMessage, types::ErrorKind},
         files::binary_exists,
     },
 };
@@ -54,8 +51,7 @@ impl LauncherProvider for FileLauncher {
             && !binary_exists(bin)
         {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::File(FileAction::Read, bin.into()),
+                ErrorKind::missing(bin.to_string()),
                 format!("`{bin}` not found in $PATH")
             ));
         }

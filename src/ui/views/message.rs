@@ -64,21 +64,28 @@ impl MessageView {
             spawn_focus: true,
             ..Default::default()
         });
-        let messages: Vec<_> = data
-            .into_iter()
-            .map(|message| {
-                let weak = cx.entity().downgrade();
-                MessageChild::new(message).on_dismiss(move |cx, idx| {
-                    if let Some(entity) = weak.upgrade() {
-                        entity.update(cx, |message_view, cx| {
-                            message_view.remove_message(idx, cx);
-                        });
-                    }
-                })
-            })
-            .collect();
+        let total = data.len();
+        let mut messages: Vec<MessageChild> = Vec::with_capacity(total);
+        for message in data {
+            if let Some(existing) = messages
+                .iter_mut()
+                .find(|m| m.message.fingerprint() == message.fingerprint())
+            {
+                existing.count += 1;
+                message.quiet(); // shown and logged once
+                continue;
+            }
+            let weak = cx.entity().downgrade();
+            messages.push(MessageChild::new(message).on_dismiss(move |cx, idx| {
+                if let Some(entity) = weak.upgrade() {
+                    entity.update(cx, |message_view, cx| {
+                        message_view.remove_message(idx, cx);
+                    });
+                }
+            }));
+        }
 
-        let count = messages.len();
+        let count = total;
         let data = ListData::new(messages);
         let all = data.all_ids();
         let entity = cx.new(|_| data);
@@ -94,8 +101,13 @@ impl MessageView {
     pub fn push_message(&mut self, message: SherlockMessage, cx: &mut Context<Self>) {
         let weak = cx.weak_entity();
         self.model.data().update(cx, |this, cx| {
-            if let Some(existing) = this.items_mut().iter_mut().find(|m| m.message == message) {
+            if let Some(existing) = this
+                .items_mut()
+                .iter_mut()
+                .find(|m| m.message.fingerprint() == message.fingerprint())
+            {
                 existing.count += 1;
+                message.quiet(); // shown and logged once
             } else {
                 this.push(MessageChild::new(message).on_dismiss(move |cx, id| {
                     if let Some(view) = weak.upgrade() {

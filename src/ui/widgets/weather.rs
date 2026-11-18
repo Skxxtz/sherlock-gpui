@@ -37,7 +37,7 @@ use crate::{
         },
         widgets::RenderableChildImpl,
     },
-    utils::errors::{SherlockMessage, types::ErrorKind},
+    utils::errors::{Feature, SherlockMessage, types::ErrorKind},
 };
 
 mod sidebar;
@@ -52,7 +52,7 @@ impl Fetchable for WeatherData {
         let LauncherType::Weather(wttr) = &launcher.launcher_type else {
             return Err(sherlock_msg!(
                 Error,
-                ErrorKind::InvalidLauncher,
+                ErrorKind::Unsupported(Feature::Launcher),
                 format!(
                     "Wrong launcher type.\nExpected: WeatherLauncher\nGot:{:?}",
                     &launcher.launcher_type

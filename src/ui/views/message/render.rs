@@ -71,7 +71,7 @@ pub fn column_header(theme: &ThemeData) -> impl IntoElement {
         .text_size(px(10.))
         .text_color(theme.tertiary_text)
         .child(cell(Some(LVL_W), "LVL"))
-        .child(cell(Some(KIND_W), "KIND"))
+        .child(cell(Some(KIND_W), "CODE"))
         .child(cell(None, "MESSAGE"))
         .child(cell(Some(AT_W), "AT"))
         .child(div().w(px(COUNT_W)).flex_none().flex())

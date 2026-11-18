@@ -2,7 +2,7 @@ use std::{path::Path, sync::Arc};
 
 use crate::{
     features::plugin::ui_schema::{PluginNodeRegistration, PluginTileContent},
-    utils::errors::types::PluginAction,
+    utils::errors::types::PluginOp,
 };
 
 pub enum PluginDeferFunction {
@@ -18,7 +18,7 @@ pub enum PluginDeferFunction {
     },
     Error {
         plugin: String,
-        action: PluginAction,
+        action: PluginOp,
         message: String,
     },
 }

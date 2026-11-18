@@ -8,7 +8,7 @@ use crate::{
     utils::{
         errors::{
             ResultExt,
-            types::{DirAction, ErrorKind},
+            types::{ErrorKind, FsOp},
         },
         files,
     },
@@ -32,9 +32,8 @@ pub fn get_config_dir() -> Result<PathBuf, crate::utils::errors::SherlockMessage
     let xdg_dirs = get_xdg_dirs();
     let dir = xdg_dirs
         .get_config_home()
-        .ok_or_else(|| sherlock_msg!(Warning, ErrorKind::Env("$HOME".into()), ""))?;
-    fs::create_dir_all(&dir)
-        .or_kind_with(|| ErrorKind::Dir(DirAction::Create, dir.to_path_buf()))?;
+        .ok_or_else(|| sherlock_msg!(ErrorKind::env("HOME"), ""))?;
+    fs::create_dir_all(&dir).or_kind_with(|| ErrorKind::fs(FsOp::CreateDir, dir.to_path_buf()))?;
     Ok(dir)
 }
 
@@ -43,7 +42,7 @@ pub fn get_config_dir_raw() -> Result<PathBuf, crate::utils::errors::SherlockMes
     let xdg_dirs = xdg::BaseDirectories::new();
     xdg_dirs
         .get_config_home()
-        .ok_or_else(|| sherlock_msg!(Warning, ErrorKind::Env("$HOME".into()), ""))
+        .ok_or_else(|| sherlock_msg!(ErrorKind::env("HOME"), ""))
 }
 
 /// Returns the data directory.
@@ -59,9 +58,8 @@ pub fn get_data_dir() -> Result<PathBuf, crate::utils::errors::SherlockMessage> 
     let xdg_dirs = get_xdg_dirs();
     let dir = xdg_dirs
         .get_data_home()
-        .ok_or_else(|| sherlock_msg!(Warning, ErrorKind::Env("$HOME".into()), ""))?;
-    fs::create_dir_all(&dir)
-        .or_kind_with(|| ErrorKind::Dir(DirAction::Create, dir.to_path_buf()))?;
+        .ok_or_else(|| sherlock_msg!(ErrorKind::env("HOME"), ""))?;
+    fs::create_dir_all(&dir).or_kind_with(|| ErrorKind::fs(FsOp::CreateDir, dir.to_path_buf()))?;
     Ok(dir)
 }
 
@@ -73,8 +71,8 @@ pub fn get_cache_dir() -> Result<PathBuf, crate::utils::errors::SherlockMessage>
     let xdg_dirs = get_xdg_dirs();
     let dir = xdg_dirs
         .get_cache_home()
-        .ok_or_else(|| sherlock_msg!(Warning, ErrorKind::Env("$HOME".into()), ""))?;
-    fs::create_dir_all(&dir).or_kind_with(|| ErrorKind::Dir(DirAction::Create, dir.clone()))?;
+        .ok_or_else(|| sherlock_msg!(ErrorKind::env("HOME"), ""))?;
+    fs::create_dir_all(&dir).or_kind_with(|| ErrorKind::fs(FsOp::CreateDir, dir.clone()))?;
     Ok(dir)
 }
 
@@ -224,7 +222,6 @@ pub fn get_nth_command_completion(input: &str, n: usize) -> Option<String> {
 /// Gives the location for the query memory binary
 pub fn query_memory_path() -> Result<PathBuf, crate::utils::errors::SherlockMessage> {
     let dir = get_data_dir()?;
-    std::fs::create_dir_all(&dir)
-        .or_kind_with(|| ErrorKind::Dir(DirAction::Create, dir.clone()))?;
+    std::fs::create_dir_all(&dir).or_kind_with(|| ErrorKind::fs(FsOp::CreateDir, dir.clone()))?;
     Ok(dir.join("queries.bin"))
 }

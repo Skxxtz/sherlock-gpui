@@ -12,9 +12,10 @@ use tokio::{
 use crate::{
     sherlock_msg,
     utils::errors::{
+        Format,
         ResultExt,
         SherlockMessage,
-        types::{ErrorKind, SocketAction},
+        types::{ErrorKind, IoOp},
     },
 };
 
@@ -28,7 +29,7 @@ impl SizedMessageObj {
     pub fn from_struct<T: Serialize>(data: &T) -> Result<Self, SherlockMessage> {
         let config = bincode::config::standard();
         let buffer = bincode::serde::encode_to_vec(data, config)
-            .map_err(|e| sherlock_msg!(Warning, ErrorKind::Serialize, e.to_string()))?;
+            .map_err(|e| sherlock_msg!(ErrorKind::Serialize(Format::Binary), e))?;
 
         Ok(Self { buffer })
     }
@@ -66,15 +67,15 @@ impl AsyncSizedMessage for UnixStream {
             let len_bytes = buf_len.to_be_bytes();
             self.write_all(&len_bytes)
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
 
             // Write message to stream
             self.write_all(what.bytes())
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
             self.flush()
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
 
             Ok(())
         }
@@ -89,14 +90,13 @@ impl AsyncSizedMessage for UnixStream {
             // Read message length
             self.read_exact(&mut buf_len)
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::EoF))?;
+                .or_kind_with(|| ErrorKind::Closed)?;
             let msg_len = u32::from_be_bytes(buf_len) as usize;
 
             if msg_len > 1024 * 1024 {
                 return Err(sherlock_msg!(
-                    Warning,
-                    ErrorKind::Io,
-                    "Invalid message size received"
+                    ErrorKind::InvalidData,
+                    "message larger than 1 MiB"
                 ));
             }
 
@@ -105,12 +105,11 @@ impl AsyncSizedMessage for UnixStream {
             while total < msg_len {
                 self.readable()
                     .await
-                    .or_kind_with(|| ErrorKind::Socket(SocketAction::Read))?;
+                    .or_kind_with(|| ErrorKind::Ipc(IoOp::Read))?;
                 match self.try_read(&mut buf[total..]) {
                     Ok(0) => {
                         return Err(sherlock_msg!(
-                            Warning,
-                            ErrorKind::Socket(SocketAction::Read),
+                            ErrorKind::Ipc(IoOp::Read),
                             "connection closed before full message received"
                         ));
                     }
@@ -120,11 +119,7 @@ impl AsyncSizedMessage for UnixStream {
                         continue;
                     }
                     Err(e) => {
-                        return Err(sherlock_msg!(
-                            Warning,
-                            ErrorKind::Socket(SocketAction::Read),
-                            e
-                        ));
+                        return Err(sherlock_msg!(ErrorKind::Ipc(IoOp::Read), e));
                     }
                 }
             }
@@ -134,8 +129,7 @@ impl AsyncSizedMessage for UnixStream {
                 .map(|(val, _)| val)
                 .map_err(|e| {
                     sherlock_msg!(
-                        Warning,
-                        ErrorKind::Parse("Socket Message".into()),
+                        ErrorKind::parse(Format::Binary, "socket message"),
                         e.to_string()
                     )
                 })
@@ -151,8 +145,7 @@ impl AsyncSizedMessage for OwnedReadHalf {
     ) -> impl Future<Output = Result<(), SherlockMessage>> + Send + 'a {
         async move {
             Err(sherlock_msg!(
-                Warning,
-                ErrorKind::Socket(SocketAction::Write),
+                ErrorKind::Ipc(IoOp::Write),
                 "Cannot write from ReadHalf"
             ))
         }
@@ -167,21 +160,20 @@ impl AsyncSizedMessage for OwnedReadHalf {
             // Read message length
             self.read_exact(&mut buf_len)
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Read))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Read))?;
             let msg_len = u32::from_be_bytes(buf_len) as usize;
 
             let mut buf = vec![0u8; msg_len];
             self.read_exact(&mut buf)
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Read))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Read))?;
 
             let cfg = bincode::config::standard();
             bincode::serde::decode_from_slice::<R, _>(&buf, cfg)
                 .map(|(val, _)| val)
                 .map_err(|e| {
                     sherlock_msg!(
-                        Warning,
-                        ErrorKind::Parse("Socket Message".into()),
+                        ErrorKind::parse(Format::Binary, "socket message"),
                         e.to_string()
                     )
                 })
@@ -197,24 +189,25 @@ impl AsyncSizedMessage for OwnedWriteHalf {
     ) -> impl Future<Output = Result<(), SherlockMessage>> + Send + 'a {
         async move {
             // Safely convert buf_len from usize to u32
-            let buf_len: u32 =
-                what.bytes().len().try_into().map_err(|_| {
-                    sherlock_msg!(Warning, ErrorKind::InvalidData, "message too long")
-                })?;
+            let buf_len: u32 = what
+                .bytes()
+                .len()
+                .try_into()
+                .map_err(|_| sherlock_msg!(ErrorKind::InvalidData, "message too long"))?;
 
             // Write message size to stream
             let len_bytes = buf_len.to_be_bytes();
             self.write_all(&len_bytes)
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
 
             // Write message to stream
             self.write_all(what.bytes())
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
             self.flush()
                 .await
-                .or_kind_with(|| ErrorKind::Socket(SocketAction::Write))?;
+                .or_kind_with(|| ErrorKind::Ipc(IoOp::Write))?;
 
             Ok(())
         }
@@ -225,8 +218,7 @@ impl AsyncSizedMessage for OwnedWriteHalf {
     ) -> impl Future<Output = Result<R, SherlockMessage>> + Send + 'a {
         async move {
             Err(sherlock_msg!(
-                Warning,
-                ErrorKind::Socket(SocketAction::Read),
+                ErrorKind::Ipc(IoOp::Read),
                 "Cannot read from WriteHalf"
             ))
         }

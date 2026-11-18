@@ -7,7 +7,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         files::read_lines,
     },
@@ -25,8 +25,7 @@ impl SherlockIgnore {
                 .collect()),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
             Err(e) => Err(sherlock_msg!(
-                Warning,
-                ErrorKind::File(FileAction::Read, path.to_path_buf()),
+                ErrorKind::fs(FsOp::Read, path.to_path_buf()),
                 e
             )),
         }
@@ -34,11 +33,7 @@ impl SherlockIgnore {
 
     pub fn add_entry(path: &std::path::Path, entry: &str) -> Result<(), SherlockMessage> {
         let write_err = |e: std::io::Error| {
-            sherlock_msg!(
-                Error,
-                ErrorKind::File(FileAction::Write, path.into()),
-                e.to_string()
-            )
+            sherlock_msg!(Error, ErrorKind::fs(FsOp::Write, path), e.to_string())
         };
 
         if let Some(parent) = path.parent() {

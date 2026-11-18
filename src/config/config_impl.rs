@@ -4,9 +4,10 @@ use crate::{
     config::{ConfigAppearance, ConfigFiles, SherlockConfig, SherlockFlags, imp::WithRoot},
     utils::{
         errors::{
+            Format,
             ResultExt,
             SherlockMessage,
-            types::{DirAction, ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         files::{expand_path, home_dir},
     },
@@ -43,7 +44,7 @@ impl SherlockConfig {
             let alias_path = path.join(name);
             if !alias_path.exists() {
                 if let Err(error) = fs::write(&alias_path, content)
-                    .or_kind_with(|| ErrorKind::File(FileAction::Write, alias_path))
+                    .or_kind_with(|| ErrorKind::fs(FsOp::Write, alias_path))
                 {
                     error_message(name, error);
                 } else {
@@ -55,8 +56,7 @@ impl SherlockConfig {
         };
 
         // mkdir -p
-        fs::create_dir_all(&path)
-            .or_kind_with(|| ErrorKind::Dir(DirAction::Create, path.clone()))?;
+        fs::create_dir_all(&path).or_kind_with(|| ErrorKind::fs(FsOp::CreateDir, path.clone()))?;
         // create subdirs
         ensure_dir(&path.join("icons/"), "icons");
         ensure_dir(&path.join("scripts/"), "scripts");
@@ -66,12 +66,13 @@ impl SherlockConfig {
         let config = SherlockConfig::with_root(loc);
         match ext {
             "json" => {
-                let json_str =
-                    serde_json::to_string_pretty(&config).or_kind(ErrorKind::Serialize)?;
+                let json_str = serde_json::to_string_pretty(&config)
+                    .or_kind(ErrorKind::Serialize(Format::Json))?;
                 write_file("config.json", &json_str);
             }
             _ => {
-                let toml_str = toml::to_string(&config).or_kind(ErrorKind::Serialize)?;
+                let toml_str =
+                    toml::to_string(&config).or_kind(ErrorKind::Serialize(Format::Toml))?;
                 write_file("config.toml", &toml_str);
             }
         }

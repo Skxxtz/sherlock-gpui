@@ -35,7 +35,7 @@ use crate::{
         errors::{
             ResultExt,
             SherlockMessage,
-            types::{DirAction, ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         paths,
     },
@@ -123,13 +123,9 @@ impl LauncherProvider for DebugLauncher {
             DebugFunctions::ClearErrors => return Ok(ExecEffect::ClearMessages),
             DebugFunctions::InsertTestErrors => {
                 return Ok(ExecEffect::InsertMessages(vec![
-                    sherlock_msg!(Info, ErrorKind::Preview, "This is a test info message"),
-                    sherlock_msg!(
-                        Warning,
-                        ErrorKind::Preview,
-                        "This is a test warning message"
-                    ),
-                    sherlock_msg!(Error, ErrorKind::Preview, "This is a test error message"),
+                    sherlock_msg!(Info, ErrorKind::Demo, "This is a test info message"),
+                    sherlock_msg!(ErrorKind::Demo, "This is a test warning message"),
+                    sherlock_msg!(Error, ErrorKind::Demo, "This is a test error message"),
                 ]));
             }
         }
@@ -161,8 +157,7 @@ impl DebugFunctions {
             return Ok(());
         }
 
-        fs::remove_file(path)
-            .or_kind_with(|| ErrorKind::File(FileAction::Remove, path.to_path_buf()))
+        fs::remove_file(path).or_kind_with(|| ErrorKind::fs(FsOp::Remove, path.to_path_buf()))
     }
     /// Safely removes a directory from the file system, skipping directories if they dont exist.
     #[inline]
@@ -171,7 +166,7 @@ impl DebugFunctions {
             return Ok(());
         }
 
-        fs::remove_dir_all(&path).or_kind_with(|| ErrorKind::Dir(DirAction::Remove, path))
+        fs::remove_dir_all(&path).or_kind_with(|| ErrorKind::fs(FsOp::RemoveDir, path))
     }
 }
 

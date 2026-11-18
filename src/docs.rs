@@ -17,7 +17,7 @@ use crate::{
         errors::{
             ResultExt,
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         string::TrimInPlace,
     },
@@ -121,10 +121,10 @@ impl SherlockDocumentation {
     }
 
     pub fn write() -> Result<(), SherlockMessage> {
-        let docs = Self::new().or_kind(ErrorKind::Config("documentation".into()))?;
+        let docs = Self::new().or_kind(ErrorKind::config("documentation"))?;
 
         let book_dir: &Path = concat!(env!("CARGO_MANIFEST_DIR"), "/docs/src/").as_ref();
-        let write_err = || ErrorKind::File(FileAction::Write, book_dir.to_path_buf());
+        let write_err = || ErrorKind::fs(FsOp::Write, book_dir.to_path_buf());
         std::fs::write(book_dir.join("SUMMARY.md"), &docs.summary).or_kind_with(write_err)?;
         for (file, text) in docs
             .pages
@@ -136,7 +136,7 @@ impl SherlockDocumentation {
 
         fn write_file<C: AsRef<[u8]>>(path: &Path, content: C) -> Result<(), SherlockMessage> {
             std::fs::write(path, content)
-                .or_kind_with(|| ErrorKind::File(FileAction::Write, path.to_path_buf()))
+                .or_kind_with(|| ErrorKind::fs(FsOp::Write, path.to_path_buf()))
         }
 
         let readme_path: &Path = concat!(env!("CARGO_MANIFEST_DIR"), "/README.md").as_ref();

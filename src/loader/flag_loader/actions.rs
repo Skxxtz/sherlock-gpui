@@ -38,9 +38,8 @@ impl TryFrom<&StartupAction> for SizedMessageObj {
     fn try_from(value: &StartupAction) -> Result<Self, Self::Error> {
         match value {
             StartupAction::Debug(_) => Err(sherlock_msg!(
-                Error,
-                ErrorKind::Unreachable,
-                "Tried to use `StartupAction::Debug` as a `SizedMessageObj`"
+                ErrorKind::bug("`StartupAction::Debug` used as a `SizedMessageObj`"),
+                ""
             )),
             StartupAction::Server { msg, .. } => SizedMessageObj::from_struct(msg),
         }
@@ -152,6 +151,27 @@ pub(super) fn plugin_init() {
             return;
         }
         println!("wrote {}", luarc_path.display());
+    }
+}
+
+pub(super) fn explain_error(code: Option<&str>) {
+    match code {
+        Some(code) => match ErrorKind::explain(code) {
+            Some(info) => print!("{info}"),
+            None => {
+                eprintln!("Unknown error code `{code}`. Run `sherlock --explain` for all codes.")
+            }
+        },
+        None => {
+            for info in ErrorKind::CATALOG {
+                println!(
+                    "{}  {:<12} {}",
+                    info.code,
+                    info.name,
+                    info.doc.lines().next().unwrap_or("").trim()
+                );
+            }
+        }
     }
 }
 

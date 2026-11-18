@@ -36,9 +36,10 @@ use crate::{
     },
     utils::{
         errors::{
+            Format,
             ResultExt,
             SherlockMessage,
-            types::{ErrorKind, NetworkAction},
+            types::{ErrorKind, HttpMethod},
         },
         intent::{
             Intent,
@@ -310,17 +311,17 @@ pub async fn translate(
     );
 
     // GET request
-    let response = reqwest::get(url).await.or_kind_with(|| {
-        ErrorKind::Network(NetworkAction::Get, "api.mymemory.translated.net".into())
-    })?;
+    let response = reqwest::get(url)
+        .await
+        .or_kind_with(|| ErrorKind::http(HttpMethod::Get, "api.mymemory.translated.net"))?;
 
     // Response parsing
     let text = response
         .text()
         .await
-        .or_kind_with(|| ErrorKind::Parse("Translation Response".into()))?;
-    let data: MyMemoryResponse =
-        serde_json::from_str(&text).or_kind_with(|| ErrorKind::Parse("Translation Data".into()))?;
+        .or_kind_with(|| ErrorKind::parse(Format::Text, "translation response"))?;
+    let data: MyMemoryResponse = serde_json::from_str(&text)
+        .or_kind_with(|| ErrorKind::parse(Format::Json, "translation response"))?;
 
     Ok(IntentResult::String(data.response_data.translated_text))
 }

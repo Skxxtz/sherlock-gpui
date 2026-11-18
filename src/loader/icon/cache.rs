@@ -158,7 +158,7 @@ impl<'g> IconThemeGuard {
         ICONS.get().ok_or_else(|| {
             sherlock_msg!(
                 Error,
-                ErrorKind::Config("Failed to get ICONS singleton".into()),
+                ErrorKind::bug("icon cache not initialized"),
                 "Config not initialized"
             )
         })
@@ -167,8 +167,7 @@ impl<'g> IconThemeGuard {
     pub fn get_read() -> Result<RwLockReadGuard<'g, CustomIconTheme>, SherlockMessage> {
         Self::get_theme()?.read().map_err(|_| {
             sherlock_msg!(
-                Warning,
-                ErrorKind::Config("Failed to read icon theme".into()),
+                ErrorKind::bug("icon theme lock poisoned (read)"),
                 "Failed to acquire read lock on icon theme"
             )
         })
@@ -177,8 +176,7 @@ impl<'g> IconThemeGuard {
     pub fn get_write() -> Result<RwLockWriteGuard<'g, CustomIconTheme>, SherlockMessage> {
         Self::get_theme()?.write().map_err(|_| {
             sherlock_msg!(
-                Warning,
-                ErrorKind::Config("Failed to get mutable icon theme".into()),
+                ErrorKind::bug("icon theme lock poisoned (write)"),
                 "Failed to acquire write lock on icon theme"
             )
         })

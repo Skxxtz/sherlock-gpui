@@ -87,7 +87,7 @@ pub fn spawn_detached(
 
     let mut child = command
         .spawn()
-        .or_kind_with(|| ErrorKind::Command(cmd.clone()))?;
+        .or_kind_with(|| ErrorKind::command(cmd.clone()))?;
 
     // pass sudo password
     if sudo_used
@@ -96,7 +96,7 @@ pub fn spawn_detached(
             .find(|(k, _)| k.eq_ignore_ascii_case("sudo"))
     {
         send_sudo(&mut child, password.as_str())
-            .or_kind_with(|| ErrorKind::Command(cmd.clone()))?;
+            .or_kind_with(|| ErrorKind::command(cmd.clone()))?;
     }
 
     let _ = child.wait();

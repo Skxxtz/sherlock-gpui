@@ -65,9 +65,8 @@ impl LauncherProvider for TimerLauncher {
 
         let ChildKind::Timer(inner) = &child.kind else {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::Unreachable,
-                format!("Tried to unpack music tile but received: {:?}", child)
+                ErrorKind::bug("tile of the wrong kind"),
+                format!("expected timer tile, got {:?}", child)
             ));
         };
 

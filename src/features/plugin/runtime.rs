@@ -147,11 +147,7 @@ impl LuaRuntimeHandle {
                             message,
                         } => {
                             cx.update(|cx| {
-                                let msg = sherlock_msg!(
-                                    Warning,
-                                    ErrorKind::Plugin(action, plugin),
-                                    message
-                                );
+                                let msg = sherlock_msg!(ErrorKind::plugin(action, plugin), message);
                                 // The message view only exists once a window is open.
                                 match cx.try_global::<MessageViewGlobal>().cloned() {
                                     Some(view) => view.push_message(msg, cx),

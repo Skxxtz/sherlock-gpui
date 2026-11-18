@@ -4,7 +4,7 @@ use crate::{
     sherlock_msg,
     utils::errors::{
         SherlockMessage,
-        types::{ErrorKind, FileAction},
+        types::{ErrorKind, FsOp},
     },
 };
 
@@ -16,18 +16,10 @@ pub fn read_or_empty(path: &Path) -> Result<String, SherlockMessage> {
     match std::fs::read_to_string(path) {
         Ok(s) => Ok(s),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
-        Err(e) => Err(file_err(FileAction::Read, path, &e)),
+        Err(e) => Err(file_err(FsOp::Read, path, &e)),
     }
 }
 
-pub fn file_err(action: FileAction, path: &Path, e: &dyn Display) -> SherlockMessage {
-    sherlock_msg!(
-        Warning,
-        ErrorKind::File(action, path.to_path_buf()),
-        e.to_string()
-    )
-}
-
-pub fn ser_err(e: impl Display) -> SherlockMessage {
-    sherlock_msg!(Warning, ErrorKind::Serialize, e.to_string())
+pub fn file_err(action: FsOp, path: &Path, e: &dyn Display) -> SherlockMessage {
+    sherlock_msg!(ErrorKind::fs(action, path), e.to_string())
 }

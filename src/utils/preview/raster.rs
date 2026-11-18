@@ -8,7 +8,7 @@ use crate::{
     utils::{
         errors::{
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         image_buf::ImageBuf,
         preview::{Fit, Rendered},
@@ -66,7 +66,7 @@ fn decode_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
     let read_err = |e: &dyn std::fmt::Display| {
         sherlock_msg!(
             Error,
-            ErrorKind::File(FileAction::Read, PathBuf::from(path)),
+            ErrorKind::fs(FsOp::Read, PathBuf::from(path)),
             e.to_string()
         )
     };
@@ -81,7 +81,6 @@ fn decode_rgba(path: &str) -> Result<ImageBuf, SherlockMessage> {
     let color = decoder.color_type();
     let layout = SrcLayout::from_color(color).ok_or_else(|| {
         sherlock_msg!(
-            Warning,
             ErrorKind::InvalidData,
             format!("unsupported color type: {color:?}")
         )

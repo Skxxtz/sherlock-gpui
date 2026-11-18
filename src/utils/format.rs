@@ -31,7 +31,6 @@ use crate::{
 pub fn make_ascii_title_case(s: &mut str) -> Result<(), SherlockMessage> {
     if !s.is_ascii() {
         return Err(sherlock_msg!(
-            Warning,
             ErrorKind::InvalidData,
             "Provided string is not ascii"
         ));

@@ -30,8 +30,7 @@ impl LauncherProvider for CategoryLauncher {
     ) -> Result<Vec<RenderableChild>, crate::utils::errors::SherlockMessage> {
         let cmds = opts.get("categories").ok_or_else(|| {
             sherlock_msg!(
-                Warning,
-                ErrorKind::Config("Invalid launcher configuration.".into()),
+                ErrorKind::config("Invalid launcher configuration."),
                 "Category launcher does not contain any categories."
             )
         })?;

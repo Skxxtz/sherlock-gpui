@@ -13,7 +13,7 @@ impl<'g> ConfigGuard {
         CONFIG.get().ok_or_else(|| {
             sherlock_msg!(
                 Error,
-                ErrorKind::Config("Failed to get global CONFIG singleton.".into()),
+                ErrorKind::bug("global config not initialized"),
                 "Config not initialized"
             )
         })
@@ -22,8 +22,7 @@ impl<'g> ConfigGuard {
     fn get_read() -> Result<RwLockReadGuard<'g, SherlockConfig>, SherlockMessage> {
         Self::get_config()?.read().map_err(|_| {
             sherlock_msg!(
-                Warning,
-                ErrorKind::Config("Failed get immutable CONFIG singleton.".into()),
+                ErrorKind::bug("config lock poisoned (read)"),
                 "Failed to acquire write lock on config"
             )
         })
@@ -32,8 +31,7 @@ impl<'g> ConfigGuard {
     fn get_write() -> Result<RwLockWriteGuard<'g, SherlockConfig>, SherlockMessage> {
         Self::get_config()?.write().map_err(|_| {
             sherlock_msg!(
-                Warning,
-                ErrorKind::Config("Failed to get mutable CONFIG singleton.".into()),
+                ErrorKind::bug("config lock poisoned (write)"),
                 "Failed to acquire write lock on config"
             )
         })

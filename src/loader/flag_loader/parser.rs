@@ -2,7 +2,7 @@ use std::{iter::Peekable, slice::Iter};
 
 use super::{
     DebugAction,
-    actions::{StartupAction, flag_documentation, init_config, print_version},
+    actions::{StartupAction, explain_error, flag_documentation, init_config, print_version},
     flags::FLAGS,
     utils::{FlagSection, ParseError},
 };
@@ -49,6 +49,7 @@ impl ParsedArgs {
             }
             DebugAction::Init { path, extension } => init_config(&path, &extension),
             DebugAction::PluginInit => plugin_init(),
+            DebugAction::Explain { code } => explain_error(code.as_deref()),
             DebugAction::QueryReport { query } => match query_memory_path() {
                 Ok(p) => {
                     let mem = PersistentQueryMemory::load(p);

@@ -1,32 +1,31 @@
-use std::{fmt::Display, fs, path::Path};
+use std::{fs, path::Path};
 
 use toml_edit::{DocumentMut, Item, TableLike};
 
 use super::{
     locate::lookup,
-    utils::{file_err, is_json, read_or_empty, ser_err},
+    utils::{file_err, is_json, read_or_empty},
 };
-use crate::utils::errors::{SherlockMessage, types::FileAction};
+use crate::utils::errors::{ErrorKind, Format, FsOp, ResultExt, SherlockMessage};
 
 /// Writes `keys` (dotted paths) with their values from `new` into `path`, keeping
 /// comments and formatting. Keys missing from `new` are removed.
 pub fn write_keys(path: &Path, keys: &[&str], new: &toml::Table) -> Result<(), SherlockMessage> {
     let current = read_or_empty(path)?;
-    let parse = |e: &dyn Display| file_err(FileAction::Parse, path, e);
 
     let out = if is_json(path) {
         let mut file: serde_json::Value = if current.trim().is_empty() {
             serde_json::Value::Object(Default::default())
         } else {
-            serde_json::from_str(&current).map_err(|e| parse(&e))?
+            serde_json::from_str(&current).in_file(path)?
         };
         for key in keys {
             let segs: Vec<&str> = key.split('.').collect();
             set_json(&mut file, &segs, lookup(new, &segs));
         }
-        serde_json::to_string_pretty(&file).map_err(ser_err)?
+        serde_json::to_string_pretty(&file).or_kind(ErrorKind::Serialize(Format::Json))?
     } else {
-        let mut doc: DocumentMut = current.parse().map_err(|e| parse(&e))?;
+        let mut doc: DocumentMut = current.parse().in_file_text(path, &current)?;
         for key in keys {
             let segs: Vec<&str> = key.split('.').collect();
             set_toml(doc.as_table_mut(), &segs, lookup(new, &segs), false);
@@ -37,7 +36,7 @@ pub fn write_keys(path: &Path, keys: &[&str], new: &toml::Table) -> Result<(), S
     if out == current {
         return Ok(());
     }
-    fs::write(path, out).map_err(|e| file_err(FileAction::Write, path, &e))
+    fs::write(path, out).map_err(|e| file_err(FsOp::Write, path, &e))
 }
 
 pub fn set_toml(doc: &mut dyn TableLike, segs: &[&str], val: Option<&toml::Value>, inline: bool) {

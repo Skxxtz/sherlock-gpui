@@ -8,7 +8,7 @@ use crate::{
         errors::{
             ResultExt,
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         item_key::ItemKey,
     },
@@ -56,7 +56,7 @@ impl PersistentQueryMemory {
         let tmp = self.path.with_extension("bin.tmp");
         BinaryCache::write(&tmp, &self.mem)?;
         std::fs::rename(&tmp, &self.path)
-            .or_kind_with(|| ErrorKind::File(FileAction::Rename, tmp))
+            .or_kind_with(|| ErrorKind::fs(FsOp::Rename, tmp))
             .map_err(SherlockMessage::error_level)?;
         Ok(())
     }

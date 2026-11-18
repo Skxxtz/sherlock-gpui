@@ -9,7 +9,7 @@ use crate::{
     utils::errors::{
         ResultExt,
         SherlockMessage,
-        types::{ErrorKind, FileAction},
+        types::{ErrorKind, FsOp},
     },
 };
 
@@ -36,12 +36,10 @@ impl SherlockAlias {
     #[inline(always)]
     pub fn load(path: &std::path::Path) -> Result<HashMap<String, SherlockAlias>, SherlockMessage> {
         match File::open(path) {
-            Ok(f) => simd_json::from_reader(f)
-                .or_kind_with(|| ErrorKind::Parse(path.to_string_lossy().into())),
+            Ok(f) => simd_json::from_reader(f).in_file(path),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(HashMap::new()),
             Err(e) => Err(sherlock_msg!(
-                Warning,
-                ErrorKind::File(FileAction::Read, path.to_path_buf()),
+                ErrorKind::fs(FsOp::Read, path.to_path_buf()),
                 e
             )),
         }

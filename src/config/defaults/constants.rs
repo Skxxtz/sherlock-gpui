@@ -8,7 +8,7 @@ use crate::{
         errors::{
             ResultExt,
             SherlockMessage,
-            types::{ErrorKind, FileAction},
+            types::{ErrorKind, FsOp},
         },
         files::read_lines,
     },
@@ -56,9 +56,7 @@ impl ConstantDefaults {
             .find(|t| Self::is_terminal_installed(t))
             .map(|t| t.to_string())
             .ok_or_else(|| {
-                sherlock_msg!(
-                    Warning,
-                    ErrorKind::Config("Failed to get terminal".into()),
+                sherlock_msg!(ErrorKind::config("Failed to get terminal"),
                     "Unable to locate or parse a valid terminal app. Ensure that the terminal app is correctly specified in the configuration file or environment variables."
                 )
             })
@@ -82,14 +80,13 @@ impl ConstantDefaults {
             .arg("get")
             .arg("default-web-browser")
             .output()
-            .or_kind_with(|| ErrorKind::Env("default browser".into()))?;
+            .or_kind_with(|| ErrorKind::missing("default browser"))?;
 
         let desktop_file: String = if output.status.success() {
             String::from_utf8_lossy(&output.stdout).trim().to_string()
         } else {
             return Err(sherlock_msg!(
-                Warning,
-                ErrorKind::Env("default browser".into()),
+                ErrorKind::missing("default browser"),
                 "Command 'xdg-settings get default-web-browser' failed to produce a valid output."
             ));
         };
@@ -97,18 +94,17 @@ impl ConstantDefaults {
         let browser_file = desktop_files
             .iter()
             .find(|f| f.ends_with(&desktop_file))
-            .ok_or_else(|| sherlock_msg!(Warning, ErrorKind::Env("default browser".into()), ""))?;
+            .ok_or_else(|| sherlock_msg!(ErrorKind::missing("default browser"), ""))?;
         // read default browser desktop file
         let browser = read_lines(browser_file)
-            .or_kind_with(|| ErrorKind::File(FileAction::Read, browser_file.clone()))?
+            .or_kind_with(|| ErrorKind::fs(FsOp::Read, browser_file.clone()))?
             .map_while(Result::ok)
             .find(|line| line.starts_with("Exec="))
             .and_then(|line| line.strip_prefix("Exec=").map(|l| l.to_string()))
             .ok_or_else(|| {
                 sherlock_msg!(
-                    Warning,
-                    ErrorKind::File(FileAction::Parse, browser_file.clone()),
-                    ""
+                    ErrorKind::missing("default browser"),
+                    format!("no `Exec=` line in {}", browser_file.display())
                 )
             })?;
         Ok(browser)

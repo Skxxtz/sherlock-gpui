@@ -24,7 +24,7 @@ use crate::{
         },
         views::list::{RowCtx, RowRender},
     },
-    utils::errors::{SherlockMessage, SherlockMessageLevel},
+    utils::errors::{Pos, Remedy, SherlockMessage, SherlockMessageLevel},
 };
 
 type DismissFunction = Arc<dyn Fn(&mut App, ListId) + Send + Sync + 'static>;
@@ -36,8 +36,39 @@ pub struct MessageChild {
     headline: SharedString,
     /// Level, kind, message, context and cause, for the filter.
     search: SharedString,
+    /// Source lines around a parse error's position, read once.
+    excerpt: Option<Excerpt>,
     pub on_dismiss: Option<DismissFunction>,
     pub count: usize,
+}
+
+#[derive(Clone)]
+struct Excerpt {
+    /// (line number, text), ending with the error's line.
+    lines: Vec<(u32, SharedString)>,
+    col: u32,
+}
+
+impl Excerpt {
+    /// The error's line and the one before it.
+    fn read(path: &std::path::Path, pos: Pos) -> Option<Self> {
+        use std::io::{BufRead, BufReader};
+        let file = std::fs::File::open(path).ok()?;
+        let first = pos.line.saturating_sub(1).max(1);
+        let lines = BufReader::new(file)
+            .lines()
+            .map_while(Result::ok)
+            .enumerate()
+            .map(|(i, l)| (i as u32 + 1, l))
+            .skip_while(|(n, _)| *n < first)
+            .take_while(|(n, _)| *n <= pos.line)
+            .map(|(n, l)| (n, SharedString::from(l)))
+            .collect::<Vec<_>>();
+        (!lines.is_empty()).then_some(Self {
+            lines,
+            col: pos.col,
+        })
+    }
 }
 
 impl MessageChild {
@@ -46,16 +77,22 @@ impl MessageChild {
         message.report();
         let headline: SharedString = message.kind.to_string().into();
         let search = format!(
-            "{} {} {}",
+            "{} {} {} {}",
             level_tag(message.level).to_lowercase(),
+            message.kind.code().to_lowercase(),
             message.kind.name().to_lowercase(),
             message.to_string().to_lowercase()
         )
         .into();
+        let excerpt = match message.kind.remedy() {
+            Some(Remedy::OpenFile(path, Some(pos))) => Excerpt::read(&path, pos),
+            _ => None,
+        };
         Self {
             message,
             headline,
             search,
+            excerpt,
             on_dismiss: None,
             count: 1,
         }
@@ -74,11 +111,16 @@ impl ListItem for MessageChild {
 }
 
 impl ShellItem for MessageChild {
-    /// Enter copies the message.
+    /// Enter applies the kind's remedy (opens the file), else copies the report.
     fn exec(&self, _cx: &mut App) -> Option<ExecMode> {
-        Some(ExecMode::Copy {
-            content: self.message.to_string(),
-        })
+        match self.message.kind.remedy() {
+            Some(Remedy::OpenFile(path, _)) => Some(ExecMode::Command {
+                exec: format!("xdg-open {}", shell_escape(&path.to_string_lossy())),
+            }),
+            None => Some(ExecMode::Copy {
+                content: self.message.to_report(),
+            }),
+        }
     }
 }
 
@@ -115,7 +157,7 @@ impl RowRender<ListId> for MessageChild {
                     .text_ellipsis()
                     .whitespace_nowrap()
                     .text_color(text)
-                    .child(msg.kind.name()),
+                    .child(msg.kind.code()),
             )
             .child(
                 div()
@@ -195,6 +237,46 @@ impl RowRender<ListId> for MessageChild {
                     )
             });
 
+        let excerpt = self.excerpt.as_ref().map(|ex| {
+            let width = ex.lines.last().map_or(1, |(n, _)| n.to_string().len());
+            let gutter = |n: String| {
+                div()
+                    .flex_none()
+                    .text_color(theme.tertiary_text)
+                    .child(format!("{n:>width$} │ "))
+            };
+            let lines = ex.lines.iter().map(|(n, line)| {
+                div()
+                    .flex()
+                    .child(gutter(n.to_string()))
+                    .child(div().text_color(theme.secondary_text).child(line.clone()))
+            });
+            let caret =
+                div()
+                    .flex()
+                    .child(gutter(String::new()))
+                    .child(div().text_color(level).child(format!(
+                        "{}^",
+                        " ".repeat(ex.col.saturating_sub(1) as usize)
+                    )));
+            div()
+                .mt(px(6.))
+                .flex()
+                .flex_col()
+                .whitespace_nowrap()
+                .children(lines)
+                .child(caret)
+        });
+
+        let footer = msg.kind.hint().map(|hint| {
+            div()
+                .mt(px(6.))
+                .flex()
+                .gap(px(6.))
+                .child(div().flex_none().text_color(theme.accent).child("hint"))
+                .child(div().min_w_0().text_color(theme.tertiary_text).child(hint))
+        });
+
         row_el
             .child(
                 div()
@@ -203,7 +285,9 @@ impl RowRender<ListId> for MessageChild {
                     .line_height(px(19.))
                     .flex()
                     .flex_col()
-                    .children(trace),
+                    .children(trace)
+                    .children(excerpt)
+                    .children(footer),
             )
             .into_any_element()
     }
@@ -239,4 +323,16 @@ fn short_location(location: &SharedString) -> SharedString {
         Some((_, tail)) => tail.to_string().into(),
         None => location.clone(),
     }
+}
+
+/// Backslash-escapes what `split_as_command` would split or strip.
+fn shell_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        if matches!(c, ' ' | '\\' | '\'' | '"') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
 }

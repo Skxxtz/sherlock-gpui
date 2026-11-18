@@ -13,7 +13,6 @@ mod tests;
 use diff::changed_keys;
 pub use locate::config_sources;
 use locate::locate_keys;
-use utils::ser_err;
 use write::write_keys;
 
 struct Location<'a> {
@@ -28,8 +27,8 @@ pub fn save_changes(
     before: &SherlockConfig,
     after: &SherlockConfig,
 ) -> Result<(), SherlockMessage> {
-    let old = toml::Table::try_from(before).map_err(ser_err)?;
-    let new = toml::Table::try_from(after).map_err(ser_err)?;
+    let old = toml::Table::try_from(before)?;
+    let new = toml::Table::try_from(after)?;
 
     let keys = changed_keys(&old, &new);
     if keys.is_empty() {
