@@ -112,7 +112,7 @@ impl RenderableChildImpl for PluginWidget {
             },
             tile_id: self.tile_id.clone(),
             theme,
-            focused: state.focused_item.filter(|_| selection.is_selected),
+            focused: state.focused_item.filter(|_| selection.is()),
             item_counter: Cell::new(0),
         };
         render_node(&data.node, &ctx)

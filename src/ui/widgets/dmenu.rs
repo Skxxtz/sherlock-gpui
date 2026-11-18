@@ -45,9 +45,7 @@ impl RenderableChildImpl for DmenuData {
                         .text_sm()
                         .font_family(theme.typography.font_family.clone())
                         .text_color(theme.secondary_text)
-                        .when(selection.is_selected, |this| {
-                            this.text_color(theme.primary_text)
-                        })
+                        .when(selection.is(), |this| this.text_color(theme.primary_text))
                         .overflow_hidden()
                         .text_ellipsis()
                         .whitespace_nowrap()

@@ -57,7 +57,7 @@ impl PersistentQueryMemory {
         BinaryCache::write(&tmp, &self.mem)?;
         std::fs::rename(&tmp, &self.path)
             .or_kind_with(|| ErrorKind::File(FileAction::Rename, tmp))
-            .map_err(SherlockMessage::as_error)?;
+            .map_err(SherlockMessage::error_level)?;
         Ok(())
     }
 

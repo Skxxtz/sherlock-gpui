@@ -63,7 +63,7 @@ impl LauncherProvider for MusicPlayerLauncher {
                     .map(|b| {
                         Bind::try_from(b)
                             .or_kind(ErrorKind::InvalidLauncher)
-                            .map_err(SherlockMessage::as_error)
+                            .map_err(SherlockMessage::error_level)
                     })
                     .collect::<Result<Arc<[Bind]>, _>>()
             })
@@ -211,7 +211,7 @@ impl MprisData {
     fn player_method(player: &str, method: &str) -> Result<(), SherlockMessage> {
         let conn = Connection::session()
             .or_kind_with(|| ErrorKind::DBus(DBusAction::Connect, "Session Bus".into()))
-            .map_err(SherlockMessage::as_error)?;
+            .map_err(SherlockMessage::error_level)?;
         let proxy = Proxy::new(
             &conn,
             player,

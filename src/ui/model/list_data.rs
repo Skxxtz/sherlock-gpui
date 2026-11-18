@@ -55,7 +55,7 @@ impl<T> Clone for ListData<T> {
     }
 }
 
-impl<T> ListData<T> {
+impl<T: Clone> ListData<T> {
     pub fn new(items: impl Into<Rc<[T]>>) -> Self {
         Self {
             items: items.into(),
@@ -67,6 +67,33 @@ impl<T> ListData<T> {
     pub fn set(&mut self, items: impl Into<Rc<[T]>>) {
         self.items = items.into();
         self.revision = next_revision();
+    }
+
+    /// Removes an item at `id` if it exists. Later items are moved down one id.
+    pub fn remove(&mut self, id: ListId) -> Option<T> {
+        let i = id.0 as usize;
+        if i > self.items.len().saturating_sub(1) {
+            return None;
+        }
+        let mut items = self.items.to_vec();
+        let removed = items.remove(i);
+        self.set(items);
+        Some(removed)
+    }
+
+    /// Adds `item` at the end and returns its id.
+    pub fn push(&mut self, item: T) -> ListId {
+        let mut items = self.items.to_vec();
+        items.push(item);
+        let id = ListId(items.len() as u32 - 1);
+        self.set(items);
+        id
+    }
+
+    /// The items mutably. Only use for changes that don't couch their search text and therefore
+    /// invalidate the search revision.
+    pub fn items_mut(&mut self) -> &mut [T] {
+        Rc::make_mut(&mut self.items)
     }
 
     pub fn items(&self) -> &[T] {
@@ -82,7 +109,7 @@ impl<T> ListData<T> {
     }
 }
 
-impl<T> Default for ListData<T> {
+impl<T: Clone> Default for ListData<T> {
     fn default() -> Self {
         Self::new(Vec::new())
     }
@@ -137,6 +164,7 @@ mod tests {
         query_memory::Boosts,
     };
 
+    #[derive(Clone)]
     struct Entry(&'static str, u16);
     impl crate::ui::model::item::ShellItem for Entry {}
     impl ListItem for Entry {

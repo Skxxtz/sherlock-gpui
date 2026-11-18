@@ -53,7 +53,7 @@ fn option_and_levels() {
     let e = None::<u8>
         .or_kind(ErrorKind::Env("TERMINAL".into()))
         .unwrap_err()
-        .as_error();
+        .error_level();
     assert_eq!(e.level, SherlockMessageLevel::Error);
     assert_eq!(e.to_string(), "Failed to read \"TERMINAL\"");
     assert_eq!(e.kind.name(), "Env");

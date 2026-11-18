@@ -26,7 +26,7 @@ impl MessageViewGlobal {
     /// Does nothing if the view has been dropped.
     pub fn push_message<C: AppContext>(&self, message: SherlockMessage, cx: &mut C) {
         let _ = self.0.update(cx, |this, cx| {
-            this.push_message(message, cx.weak_entity(), cx);
+            this.push_message(message, cx);
         });
     }
 }
@@ -202,7 +202,7 @@ impl Navigator {
     /// Add a new error/warning/info message to the message view
     pub fn push_message(&self, message: SherlockMessage, cx: &mut App) {
         self.message_entity.update(cx, |this, cx| {
-            this.push_message(message, cx.weak_entity(), cx);
+            this.push_message(message, cx);
         });
     }
 

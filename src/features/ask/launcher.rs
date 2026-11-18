@@ -57,7 +57,7 @@ impl LauncherProvider for AskLauncher {
                     .map(|b| {
                         Bind::try_from(b)
                             .or_kind(ErrorKind::InvalidLauncher)
-                            .map_err(SherlockMessage::as_error)
+                            .map_err(SherlockMessage::error_level)
                     })
                     .collect::<Result<Arc<[Bind]>, _>>()
             })

@@ -221,9 +221,7 @@ impl RenderableChildImpl for EventWidget {
             .justify_start()
             .border_1()
             .rounded_md()
-            .when(!selection.is_selected, |this| {
-                this.border_color(theme.border_idle)
-            })
+            .when(!selection, |this| this.border_color(theme.border_idle))
             .child(
                 div()
                     .size_full()
@@ -310,7 +308,7 @@ impl RenderableChildImpl for EventWidget {
                     && (matches!(
                         self.animation.get(),
                         AnimState::InProgress | AnimState::Done
-                    ) || selection.is_selected),
+                    ) || selection.is()),
                 |this| {
                     this.child(
                         div()
@@ -355,7 +353,7 @@ impl RenderableChildImpl for EventWidget {
                                 ),
                             )
                             .with_animation(
-                                if selection.is_selected {
+                                if selection.is() {
                                     "attendee-reveal"
                                 } else {
                                     "attendee-veal"
@@ -363,11 +361,10 @@ impl RenderableChildImpl for EventWidget {
                                 Animation::new(Duration::from_millis(200)).with_easing(SMOOTH_EASE),
                                 {
                                     let anim_state = Rc::clone(&self.animation);
-                                    let selection = selection.is_selected;
                                     move |this, delta| {
                                         let is_done = delta == 1.0;
                                         if is_done {
-                                            if selection {
+                                            if selection.is() {
                                                 anim_state.set(AnimState::Done);
                                             } else {
                                                 anim_state.set(AnimState::Inactive);
@@ -375,7 +372,8 @@ impl RenderableChildImpl for EventWidget {
                                         } else {
                                             anim_state.set(AnimState::InProgress);
                                         }
-                                        let delta = if selection { delta } else { 1.0 - delta };
+                                        let delta =
+                                            if selection.is() { delta } else { 1.0 - delta };
                                         this.py(px(12. * delta))
                                             .mt(px(15. * delta))
                                             .opacity(delta)

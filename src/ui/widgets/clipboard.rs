@@ -240,9 +240,7 @@ fn calc_tile(
             div()
                 .text_size(px(24.0))
                 .text_color(theme.secondary_text)
-                .when(selection.is_selected, |this| {
-                    this.text_color(theme.primary_text)
-                })
+                .when(selection.is(), |this| this.text_color(theme.primary_text))
                 .overflow_hidden()
                 .text_ellipsis()
                 .whitespace_nowrap()
@@ -261,9 +259,7 @@ fn color_show(result: u32, selection: Selection, theme: Arc<ThemeData>) -> gpui:
         .items_center()
         .border_1()
         .rounded_md()
-        .when(!selection.is_selected, |this| {
-            this.border_color(theme.border_idle)
-        })
+        .when(!selection, |this| this.border_color(theme.border_idle))
         .child(div().size(px(24.)).rounded_full().bg(rgb(result)))
         .child(
             div()
@@ -274,9 +270,7 @@ fn color_show(result: u32, selection: Selection, theme: Arc<ThemeData>) -> gpui:
                     div()
                         .text_sm()
                         .text_color(theme.secondary_text)
-                        .when(selection.is_selected, |this| {
-                            this.text_color(theme.primary_text)
-                        })
+                        .when(selection.is(), |this| this.text_color(theme.primary_text))
                         .overflow_hidden()
                         .text_ellipsis()
                         .whitespace_nowrap()
@@ -315,9 +309,7 @@ fn url_show(url: SharedString, selection: Selection, theme: Arc<ThemeData>) -> g
                         .text_sm()
                         .font_family(theme.typography.font_family.clone())
                         .text_color(theme.secondary_text)
-                        .when(selection.is_selected, |this| {
-                            this.text_color(theme.primary_text)
-                        })
+                        .when(selection.is(), |this| this.text_color(theme.primary_text))
                         .overflow_hidden()
                         .text_ellipsis()
                         .whitespace_nowrap()

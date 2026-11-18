@@ -157,9 +157,7 @@ fn calc_tile(
                 .font_family(theme.typography.font_family.clone())
                 .text_size(px(24.0))
                 .text_color(theme.secondary_text)
-                .when(selection.is_selected, |this| {
-                    this.text_color(theme.primary_text)
-                })
+                .when(selection.is(), |this| this.text_color(theme.primary_text))
                 .overflow_hidden()
                 .text_ellipsis()
                 .whitespace_nowrap()
@@ -189,9 +187,7 @@ fn color_show(result: u32, selection: Selection, theme: Arc<ThemeData>) -> gpui:
                     .font_family(theme.typography.font_family.clone())
                     .text_sm()
                     .text_color(theme.secondary_text)
-                    .when(selection.is_selected, |this| {
-                        this.text_color(theme.primary_text)
-                    })
+                    .when(selection.is(), |this| this.text_color(theme.primary_text))
                     .overflow_hidden()
                     .text_ellipsis()
                     .whitespace_nowrap()

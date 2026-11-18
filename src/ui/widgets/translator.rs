@@ -121,9 +121,7 @@ impl RenderableChildImpl for TranslationData {
         div()
             .border_1()
             .rounded_md()
-            .when(!selection.is_selected, |this| {
-                this.border_color(theme.border_idle)
-            })
+            .when(!selection, |this| this.border_color(theme.border_idle))
             .size_full()
             .px(px(14.))
             .py(px(12.))
@@ -158,7 +156,7 @@ impl RenderableChildImpl for TranslationData {
                             .text_size(px(10.))
                             .font_weight(FontWeight::BOLD)
                             .text_color(theme.secondary_text)
-                            .when(!selection.is_selected, |this| {
+                            .when(!selection, |this| {
                                 this.bg(theme.bg_idle)
                                     .border_color(theme.border_idle)
                                     .text_color(theme.secondary_text.opacity(0.6))
@@ -171,7 +169,7 @@ impl RenderableChildImpl for TranslationData {
                     .w_full()
                     .h(px(1.))
                     .bg(theme.border)
-                    .when(!selection.is_selected, |this| this.bg(theme.border_idle)),
+                    .when(!selection, |this| this.bg(theme.border_idle)),
             )
             .child(
                 div()
@@ -185,9 +183,7 @@ impl RenderableChildImpl for TranslationData {
                                 .text_xl()
                                 .font_weight(FontWeight::MEDIUM)
                                 .text_color(theme.primary_text)
-                                .when(!selection.is_selected, |this| {
-                                    this.text_color(theme.secondary_text)
-                                })
+                                .when(!selection, |this| this.text_color(theme.secondary_text))
                                 .child(display_text.to_string())
                                 .with_animation(
                                     "translation_appear",

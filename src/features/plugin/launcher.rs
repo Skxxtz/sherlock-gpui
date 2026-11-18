@@ -112,7 +112,7 @@ impl LauncherProvider for PluginLauncher {
         let runtime = LuaRuntimeHandle::get();
         let handle = futures::executor::block_on(runtime.load_plugin(path.clone(), capabilities))
             .or_kind_with(|| ErrorKind::Plugin(PluginAction::Load, path.display().to_string()))
-            .map_err(SherlockMessage::as_error)
+            .map_err(SherlockMessage::error_level)
             .map(Arc::new)?;
 
         Ok(LauncherType::Plugin(Self {

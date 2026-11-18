@@ -6,28 +6,36 @@ use gpui::{
     FontWeight,
     InteractiveElement,
     IntoElement,
-    MouseButton,
     ParentElement,
+    SharedString,
     Styled,
     div,
     prelude::FluentBuilder,
     px,
-    relative,
 };
-use sherlock_derive::Hideable;
 
 use crate::{
     app::theme::ThemeData,
-    launcher::{LauncherConfig, utils::exec_mode::ExecMode},
-    ui::{model::ItemIdx, traits::RenderableChildImpl, widgets::Selection},
+    launcher::utils::exec_mode::ExecMode,
+    ui::{
+        model::{
+            item::ShellItem,
+            list_data::{ListId, ListItem},
+        },
+        views::list::{RowCtx, RowRender},
+    },
     utils::errors::{SherlockMessage, SherlockMessageLevel},
 };
 
-type DismissFunction = Arc<dyn Fn(&mut gpui::App, ItemIdx) + Send + Sync + 'static>;
+type DismissFunction = Arc<dyn Fn(&mut App, ListId) + Send + Sync + 'static>;
 
-#[derive(Clone, Hideable)]
+#[derive(Clone)]
 pub struct MessageChild {
     pub message: SherlockMessage,
+    /// The kind's message: the row's text.
+    headline: SharedString,
+    /// Level, kind, message, context and cause, for the filter.
+    search: SharedString,
     pub on_dismiss: Option<DismissFunction>,
     pub count: usize,
 }
@@ -36,149 +44,199 @@ impl MessageChild {
     /// Shown to the user: logs the message now.
     pub fn new(mut message: SherlockMessage) -> Self {
         message.report();
+        let headline: SharedString = message.kind.to_string().into();
+        let search = format!(
+            "{} {} {}",
+            level_tag(message.level).to_lowercase(),
+            message.kind.name().to_lowercase(),
+            message.to_string().to_lowercase()
+        )
+        .into();
         Self {
             message,
+            headline,
+            search,
             on_dismiss: None,
             count: 1,
         }
     }
-    pub fn on_dismiss(
-        mut self,
-        f: impl Fn(&mut gpui::App, ItemIdx) + Send + Sync + 'static,
-    ) -> Self {
-        self.on_dismiss = Some(std::sync::Arc::new(f));
+
+    pub fn on_dismiss(mut self, f: impl Fn(&mut App, ListId) + Send + Sync + 'static) -> Self {
+        self.on_dismiss = Some(Arc::new(f));
         self
     }
 }
 
-impl RenderableChildImpl for MessageChild {
-    const HANDLES_BORDERS: bool = true;
-    fn render(
-        &self,
-        _launcher: &Arc<LauncherConfig>,
-        selection: Selection,
-        _query: &str,
-        theme: Arc<ThemeData>,
-        _cx: &mut App,
-    ) -> AnyElement {
-        let text = match self.message.level {
-            SherlockMessageLevel::Error => theme.color_err,
-            SherlockMessageLevel::Warning => theme.color_warn,
-            SherlockMessageLevel::Info => theme.color_info,
+impl ListItem for MessageChild {
+    fn search(&self) -> &str {
+        &self.search
+    }
+}
+
+impl ShellItem for MessageChild {
+    /// Enter copies the message.
+    fn exec(&self, _cx: &mut App) -> Option<ExecMode> {
+        Some(ExecMode::Copy {
+            content: self.message.to_string(),
+        })
+    }
+}
+
+impl RowRender<ListId> for MessageChild {
+    fn render_row(&self, row: &RowCtx<ListId>, _cx: &mut App) -> AnyElement {
+        let theme = &row.theme;
+        let msg = &self.message;
+        let level = level_color(msg.level, theme);
+        let selected = row.selected;
+        let text = if selected {
+            theme.primary_text
+        } else {
+            theme.secondary_text
         };
-        let bg = text.alpha(if selection.is_selected { 0.15 } else { 0.08 });
-        let border = text.alpha(if selection.is_selected { 0.8 } else { 0.4 });
 
-        let dismiss_btn = self.on_dismiss.as_ref().map(|f| {
-            let f = f.clone();
-            div()
-                .id("dismiss")
-                .absolute()
-                .top(px(1.))
-                .right(px(1.))
-                .px(px(4.))
-                .py(px(1.))
-                .rounded_sm()
-                .text_size(px(10.))
-                .font_family(theme.typography.font_family.clone())
-                .text_color(text)
-                .cursor_pointer()
-                .on_mouse_down(MouseButton::Left, move |_, _, cx| f(cx, selection.data_idx))
-                .child("✕")
-        });
-
-        let count_badge = (self.count > 1).then(|| {
-            div()
-                .flex()
-                .p_0p5()
-                .items_center()
-                .justify_center()
-                .rounded_sm()
-                .border_1()
-                .text_color(text)
-                .bg(border.opacity(0.5))
-                .text_size(px(8.))
-                .line_height(relative(1.))
-                .font_weight(FontWeight::BOLD)
-                .child(self.count.to_string())
-        });
-
-        div()
-            .id("error-box")
-            .group("error-box")
-            .w_full()
-            .px_4()
-            .py_3()
-            .rounded_md()
-            .bg(bg)
-            .border_1()
-            .border_color(border)
-            .text_size(px(12.0))
-            .text_color(text)
-            .font_family(theme.typography.font_family.clone())
-            .relative()
+        // lvl · kind · message · at · ×count
+        let line = div()
+            .flex()
+            .items_center()
+            .gap(px(COL_GAP))
             .child(
                 div()
+                    .w(px(LVL_W))
+                    .flex_none()
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(level)
+                    .child(level_tag(msg.level)),
+            )
+            .child(
+                div()
+                    .w(px(KIND_W))
+                    .flex_none()
+                    .overflow_hidden()
+                    .text_ellipsis()
+                    .whitespace_nowrap()
+                    .text_color(text)
+                    .child(msg.kind.name()),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .text_ellipsis()
+                    .whitespace_nowrap()
+                    .text_color(text)
+                    .child(self.headline.clone()),
+            )
+            .child(
+                div()
+                    .w(px(AT_W))
+                    .flex_none()
+                    .overflow_hidden()
+                    .text_ellipsis()
+                    .whitespace_nowrap()
+                    .text_color(theme.tertiary_text)
+                    .child(short_location(&msg.location)),
+            )
+            .child(
+                div()
+                    .w(px(COUNT_W))
+                    .flex_none()
+                    .flex()
+                    .justify_end()
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(level)
+                    .when(self.count > 1, |d| d.child(self.count.to_string())),
+            );
+
+        let row_el = div()
+            .id(("message", row.id.0 as usize))
+            .w_full()
+            .px(px(ROW_PX))
+            .py(px(7.))
+            .font_family(theme.typography.monospace.clone())
+            .text_size(px(12.))
+            .line_height(px(16.))
+            .border_b_1()
+            .border_color(theme.border_idle)
+            .child(line);
+
+        if !selected {
+            return row_el.into_any_element();
+        }
+
+        let steps = msg.context.iter().map(|s| (s.clone(), false));
+        let cause = (!msg.cause.is_empty()).then(|| (msg.cause.clone(), true));
+        let trace = steps
+            .chain(cause)
+            .enumerate()
+            .map(|(depth, (step, is_cause))| {
+                let branch = if depth == 0 {
+                    String::new()
+                } else {
+                    format!("{}└─ ", "   ".repeat(depth - 1))
+                };
+                div()
+                    .flex()
                     .child(
                         div()
-                            .flex()
-                            .justify_between()
-                            .items_center()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .text_size(px(13.))
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(text)
-                                    .child(self.message.kind.to_string())
-                                    .when_some(count_badge, ParentElement::child),
-                            )
-                            .when_some(dismiss_btn, ParentElement::child),
+                            .flex_none()
+                            .text_color(theme.tertiary_text)
+                            .child(branch),
                     )
                     .child(
                         div()
-                            .mt_1()
-                            .text_size(px(11.))
-                            .line_height(px(12.))
-                            .font_family(theme.typography.font_family.clone())
-                            .text_color(text)
-                            .opacity(0.8)
-                            .child(self.message.location.clone()),
+                            .min_w_0()
+                            .text_color(if is_cause {
+                                level
+                            } else {
+                                theme.secondary_text
+                            })
+                            .child(step),
                     )
-                    .child(
-                        div()
-                            .w(relative(0.9))
-                            .h(px(1.5))
-                            .rounded_full()
-                            .bg(text)
-                            .opacity(0.25)
-                            .mt(px(10.))
-                            .mb(px(10.)),
-                    )
-                    .child(
-                        div()
-                            .mt_1()
-                            .text_size(px(12.))
-                            .line_height(px(16.))
-                            .font_family(theme.typography.monospace.clone())
-                            .child(self.message.details()),
-                    ),
+            });
+
+        row_el
+            .child(
+                div()
+                    .ml(px(LVL_W + COL_GAP))
+                    .mt(px(8.))
+                    .line_height(px(19.))
+                    .flex()
+                    .flex_col()
+                    .children(trace),
             )
             .into_any_element()
     }
-    #[inline(always)]
-    fn build_exec(&self, launcher: &Arc<LauncherConfig>, cx: &mut App) -> Option<ExecMode> {
-        self.get_content(launcher, cx)
-            .map(|content| ExecMode::Copy { content })
+}
+
+// Column widths, shared with the view's header row.
+pub const LVL_W: f32 = 32.;
+pub const KIND_W: f32 = 64.;
+pub const AT_W: f32 = 180.;
+pub const COUNT_W: f32 = 24.;
+pub const COL_GAP: f32 = 12.;
+pub const ROW_PX: f32 = 12.;
+
+pub fn level_tag(level: SherlockMessageLevel) -> &'static str {
+    match level {
+        SherlockMessageLevel::Error => "ERR",
+        SherlockMessageLevel::Warning => "WRN",
+        SherlockMessageLevel::Info => "INF",
     }
-    #[inline(always)]
-    fn search(&self, _launcher: &Arc<LauncherConfig>) -> &str {
-        &self.message.cause
+}
+
+pub fn level_color(level: SherlockMessageLevel, theme: &ThemeData) -> gpui::Hsla {
+    match level {
+        SherlockMessageLevel::Error => theme.color_err,
+        SherlockMessageLevel::Warning => theme.color_warn,
+        SherlockMessageLevel::Info => theme.color_info,
     }
-    #[inline(always)]
-    fn get_content(&self, _launcher: &Arc<LauncherConfig>, _cx: &mut App) -> Option<String> {
-        Some(self.message.to_string())
+}
+
+/// `src/loader/launcher_loader.rs:214` → `launcher_loader.rs:214`
+fn short_location(location: &SharedString) -> SharedString {
+    match location.rsplit_once('/') {
+        Some((_, tail)) => tail.to_string().into(),
+        None => location.clone(),
     }
 }

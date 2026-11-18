@@ -99,9 +99,7 @@ impl RenderableChildImpl for MusicPlayerWidget {
             .items_center()
             .border_1()
             .rounded_md()
-            .when(!selection.is_selected, |this| {
-                this.border_color(theme.border_idle)
-            })
+            .when(!selection, |this| this.border_color(theme.border_idle))
             .child(if let Some(icon) = &state.image {
                 img(ImageSource::Image(Arc::clone(icon)))
                     .size(px(64.))
@@ -112,9 +110,7 @@ impl RenderableChildImpl for MusicPlayerWidget {
             .child(
                 div()
                     .text_color(theme.secondary_text)
-                    .when(selection.is_selected, |this| {
-                        this.text_color(theme.primary_text)
-                    })
+                    .when(selection.is(), |this| this.text_color(theme.primary_text))
                     .flex_col()
                     .justify_between()
                     .items_center()

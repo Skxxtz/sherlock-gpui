@@ -13,7 +13,6 @@ use crate::{
         installation::Installation,
         readme::Readme,
     },
-    sherlock_msg,
     utils::{
         errors::{
             ResultExt,

@@ -128,6 +128,21 @@ impl SherlockMessage {
         )
     }
 
+    /// Plaintext report for copying a message.
+    pub fn to_report(&self) -> String {
+        let mut out = format!("[{:?}] {}\n", self.level, self.kind);
+        let cause = (!self.cause.is_empty()).then_some(&self.cause);
+        for (depth, step) in self.context.iter().chain(cause).enumerate() {
+            let branch = match depth {
+                0 => String::new(),
+                d => format!("{}└─ ", "   ".repeat(d - 1)),
+            };
+            out.push_str(&format!("  {branch}{step}\n"));
+        }
+        out.push_str(&format!("  at {}", self.location));
+        out
+    }
+
     /// Adds what was being done when this failed (becomes the outermost step).
     pub fn context(mut self, what: impl Into<SharedString>) -> Self {
         self.context.insert(0, what.into());
@@ -138,10 +153,12 @@ impl SherlockMessage {
         self.level = level;
         self
     }
-    pub fn as_error(self) -> Self {
+
+    pub fn error_level(self) -> Self {
         self.with_level(SherlockMessageLevel::Error)
     }
-    pub fn as_info(self) -> Self {
+
+    pub fn info_level(self) -> Self {
         self.with_level(SherlockMessageLevel::Info)
     }
 

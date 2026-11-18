@@ -594,7 +594,7 @@ impl LauncherView {
         row: &RowCtx<ItemIdx>,
         cx: &mut App,
     ) -> AnyElement {
-        let selection = Selection::new(row.id, row.selected);
+        let selection = Selection::new(row.selected);
         let content = ad.render(selection, row.query, row.theme.clone(), cx);
         Self::render_row_frame(row, ad.handles_borders(), content)
     }

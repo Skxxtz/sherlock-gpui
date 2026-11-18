@@ -102,7 +102,7 @@ impl RenderableChildImpl for ThemeWidget {
                                     .text_sm()
                                     .w_full()
                                     .text_color(theme.secondary_text)
-                                    .when(selection.is_selected, |this| {
+                                    .when(selection.is(), |this| {
                                         this.text_color(theme.primary_text)
                                     })
                                     .overflow_hidden()
