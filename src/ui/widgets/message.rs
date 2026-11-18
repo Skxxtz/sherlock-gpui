@@ -310,7 +310,7 @@ pub const ROW_PX: f32 = 12.;
 const DETAIL_ML: f32 = LVL_W + KIND_W + 2. * COL_GAP;
 /// Line-number column of a source excerpt.
 const GUTTER_W: f32 = 40.;
-/// One tree level: the `└─ ` branch box and the indent per depth.
+/// One tree level: width of the branch box and the indent per depth.
 const TREE_STEP: f32 = 22.;
 
 pub fn level_tag(level: SherlockMessageLevel) -> &'static str {

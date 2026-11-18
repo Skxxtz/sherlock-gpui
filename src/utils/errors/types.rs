@@ -10,13 +10,7 @@ use strum::{Display as StrumDisplay, IntoStaticStr};
 
 use super::SherlockMessageLevel;
 
-/// Declares every [`ErrorKind`] in one table. Each row generates the variant, its message
-/// (`thiserror`), stable code, default level, category, optional hint and catalog entry.
-///
-/// ```ignore
-/// /// docs, shown by `--explain`
-/// Variant(Fields..) => "S0000", Level, Category, ("message {0}"), hint: "what to do";
-/// ```
+/// Declares every `ErrorKind` in one table.
 macro_rules! error_kinds {
     ($(
         $(#[doc = $doc:literal])*
@@ -73,7 +67,7 @@ macro_rules! error_kinds {
 }
 
 error_kinds! {
-    // ── internal: S00xx ─────────────────────────────────────────────────────────────────────
+    // internal: S00xx
     /// An invariant the code relies on was broken. Always a bug in Sherlock.
     Bug(SharedString)
         => "S0001", Error, Internal, ("Internal error: {0}"),
@@ -85,11 +79,11 @@ error_kinds! {
     Demo
         => "S0003", Info, Internal, ("Test message");
 
-    // ── data: S01xx ─────────────────────────────────────────────────────────────────────────
+    // data: S01xx
     /// Data is malformed or incomplete. The cause says how.
     InvalidData
         => "S0101", Warning, Data, ("Invalid data");
-    /// Data that isn't a file (a response, a socket message, …) couldn't be parsed.
+    /// Data that isn't a file (a response, a socket message, etc.) couldn't be parsed.
     Parse { format: Format, what: SharedString }
         => "S0102", Warning, Data, ("Failed to parse {format} ({what})");
     /// A file couldn't be parsed. Carries the position when the parser reports one.
@@ -100,7 +94,7 @@ error_kinds! {
     Serialize(Format)
         => "S0104", Warning, Data, ("Failed to serialize {0}");
 
-    // ── config: S02xx ───────────────────────────────────────────────────────────────────────
+    // config: S02xx
     /// The configuration is wrong.
     Config(SharedString)
         => "S0201", Warning, Config, ("Config error: {0}"),
@@ -113,7 +107,7 @@ error_kinds! {
     Missing(SharedString)
         => "S0203", Warning, Config, ("Not found: {0}");
 
-    // ── system: S03xx ───────────────────────────────────────────────────────────────────────
+    // system: S03xx
     /// A general I/O failure.
     Io
         => "S0301", Warning, System, ("I/O error");
@@ -127,7 +121,7 @@ error_kinds! {
     Database(DbOp)
         => "S0304", Warning, System, ("Database {0} failed");
 
-    // ── ipc: S04xx ──────────────────────────────────────────────────────────────────────────
+    // ipc: S04xx
     /// A socket operation failed.
     Ipc(IoOp)
         => "S0401", Warning, Ipc, ("Socket {0} failed");
@@ -138,13 +132,13 @@ error_kinds! {
     DBus { op: DBusOp, target: SharedString }
         => "S0403", Warning, Ipc, ("D-Bus {op} failed ({target})");
 
-    // ── network: S05xx ──────────────────────────────────────────────────────────────────────
+    // network: S05xx
     /// An HTTP request failed.
     Http { method: HttpMethod, target: SharedString }
         => "S0501", Warning, Net, ("HTTP {method} to \"{target}\" failed"),
         hint: "check your internet connection";
 
-    // ── plugins: S06xx ──────────────────────────────────────────────────────────────────────
+    // plugins: S06xx
     /// The plugin system failed.
     Plugin { op: PluginOp, name: SharedString }
         => "S0601", Warning, Plugin, ("Plugin `{name}` failed to {op}");
